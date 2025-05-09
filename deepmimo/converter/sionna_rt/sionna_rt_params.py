@@ -87,9 +87,9 @@ class SionnaRayTracingParameters(RayTracingParameters):
             raise ValueError("los not found in Sionna RT parameters")
         
         # Raise error if arrays are not synthetic
-        if not raw_params['synthetic_array']:
-            raise ValueError("arrays are not synthetic in Sionna RT parameters. "
-                             "Multi-antenna arrays are not supported yet.")
+        # if not raw_params['synthetic_array']:
+        #     raise ValueError("arrays are not synthetic in Sionna RT parameters. "
+        #                      "Multi-antenna arrays are not supported yet.")
         
         # NOTE: Sionna distributes these samples across antennas AND TXs
         n_tx, n_tx_ant = raw_params['tx_array_size'], raw_params['tx_array_num_ant']

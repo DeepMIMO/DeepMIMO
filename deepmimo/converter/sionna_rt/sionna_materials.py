@@ -44,6 +44,8 @@ def read_materials(load_folder: str, save_folder: str) -> Tuple[Dict, Dict[str, 
         scattering_model = Material.SCATTERING_NONE if not scat_coeff else scattering_model
         
         # Create Material object
+        def safe_float(val, default=0.0):
+            return float(val) if val is not None else default
         material = Material(
             id=i,
             name=f'material_{i}',  # Default name if not provided
@@ -52,9 +54,9 @@ def read_materials(load_folder: str, save_folder: str) -> Tuple[Dict, Dict[str, 
             scattering_model=scattering_model,
             scattering_coefficient=float(scat_coeff),
             cross_polarization_coefficient=float(mat_property['xpd_coefficient']),
-            alpha_r=float(mat_property['alpha_r']),
-            alpha_i=float(mat_property['alpha_i']),
-            lambda_param=float(mat_property['lambda_'])
+            alpha_r=safe_float(mat_property['alpha_r']),
+            alpha_i=safe_float(mat_property['alpha_i']),
+            lambda_param=safe_float(mat_property['lambda_'])
         )
         materials.append(material)
     
