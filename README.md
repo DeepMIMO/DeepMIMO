@@ -63,7 +63,7 @@ pip install -e .
 ```python
 import deepmimo as dm
 
-# Print summary of available datasets
+# Print summary of available datasets 
 dm.summary('asu_campus_3p5')
 
 # Generate a dataset
