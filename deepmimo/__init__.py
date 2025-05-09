@@ -45,9 +45,10 @@ from .info import info
 from .general_utils import (
     get_available_scenarios,
     get_params_path,
+    get_scenario_folder,
     load_dict_from_json,
     zip,
-    get_scenario_folder,
+    unzip,
 )
 
 from .summary import summary, plot_summary
@@ -66,6 +67,12 @@ from .scene import (
     PhysicalElement,
     PhysicalElementGroup,
     Scene
+)
+
+# Materials
+from .materials import (
+    Material,
+    MaterialList,
 )
 
 # Import immediate modules
@@ -94,7 +101,8 @@ __all__ = [
     # Visualization
     'plot_coverage',
     'plot_rays',
-    
+    'plot_power_discarding',
+
     # Utilities
     'LinearPath',
     'get_idxs_with_limits',
@@ -105,19 +113,36 @@ __all__ = [
     'PhysicalElementGroup',
     'Scene',
     
+    # Materials
+    'Material',
+    'MaterialList',
+    
     # General utilities
     'summary',
+    'plot_summary',
+
+    # Database API
     'upload',
     'upload_rt_source',
     'upload_images',
     'download',
     'search',
+
+    # Scenario management utils
     'get_available_scenarios',
     'get_params_path',
+    'get_scenario_folder',
     'load_dict_from_json',
     
     # Constants and configuration
     'consts',
     'general_utils',
     'config',
+
+    # Zip/unzip
+    'zip',
+    'unzip',
+
+    # Beamforming utils
+    'steering_vec',
 ]

@@ -34,3 +34,7 @@ When specifying array dimensions, elements are indexed and grow as follows:
 - For 2D arrays, elements grow first along X (horizontal) then Y (vertical)
 - Channel matrices use a flattened representation of the array elements
 - For an MxN array, element (i,j) maps to index i*N + j in the flattened channel
+
+![Array element indexing convention](/_static/array_indexing.png)
+
+

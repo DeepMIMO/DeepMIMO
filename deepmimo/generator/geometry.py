@@ -102,14 +102,14 @@ def _array_response_phase(theta: float, phi: float, kd: float) -> NDArray:
     return np.vstack([gamma_x, gamma_y, gamma_z]).T
 
 
-def _ant_indices(panel_size: Tuple[int, int, int]) -> NDArray:
+def _ant_indices(panel_size: Tuple[int, int]) -> NDArray:
     """Generate antenna element indices for a rectangular panel.
     
     This function creates an array of indices representing antenna positions 
     in 3D space for a rectangular antenna panel.
     
     Args:
-        panel_size (Tuple[int, int, int]): Panel dimensions as tuple (Mx, My, Mz)
+        panel_size (Tuple[int, int]): Panel dimensions as tuple (Mx, My)
         
     Returns:
         NDArray: Array of antenna indices with shape (N,3) where N is total number of elements

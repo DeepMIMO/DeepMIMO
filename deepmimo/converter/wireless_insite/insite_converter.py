@@ -99,7 +99,8 @@ def insite_rt_converter(rt_folder: str, copy_source: bool = False,
     scene_dict = scene.export_data(output_folder)
     
     # Visualize if requested
-    if vis_scene: scene.plot()
+    if vis_scene:
+        scene.plot()
     
     # Save parameters to params.json
     params = {

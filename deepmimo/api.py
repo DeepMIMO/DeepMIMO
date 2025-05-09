@@ -561,34 +561,31 @@ def upload(scenario_name: str, key: str,
            skip_zip: bool = False, submission_only: bool = False, include_images: bool = True) -> str:
     """Upload a DeepMIMO scenario to the server.
 
-    Args:
-        scenario_name: Scenario name
-        key: Upload authorization key
-        details: Optional list of details about the scenario. This is the detail boxes.
-        extra_metadata: Optional dictionary containing additional metadata fields
-                        (environment, digitalTwin, city, bbCoords, etc.)
-            dict contents = {
-                'digitalTwin': <boolean>,
-                'environment': <enum> of 'indoor' or 'outdoor' (all lowercase),
-                'bbCoords': {
-                    "minLat": <float>,
-                    "minLon": <float>,
-                    "maxLat": <float>,
-                    "maxLon": <float>
-                }
-                'city': <string>
-            }
-            This variable can be used to assign manual metadata to the scenario.
-            Through this, submissions can be 100% automated (via code).
+    Uploads a scenario to the DeepMIMO database by zipping the scenario folder,
+    uploading to B2 storage, and creating a submission on the server.
 
-        skip_zip: Skip zipping the scenario folder if True
-        include_images: Generate and upload visualization images if True
-        submission_only: Skip zipping and uploading to B2, only make a submission on the server. 
-                         Only useful if a pre-zipped scenario is already uploaded to B2.
-        
+    Args:
+        scenario_name (str): Name of the scenario to upload.
+        key (str): Authorization key for upload access.
+        details (list[str], optional): List of details about the scenario for detail boxes.
+        extra_metadata (dict, optional): Additional metadata fields including:
+            digitalTwin (bool): Whether scenario is a digital twin
+            environment (str): Either 'indoor' or 'outdoor'
+            bbCoords (dict): Bounding box coordinates with keys:
+            - minLat (float): Minimum latitude
+            - minLon (float): Minimum longitude  
+            - maxLat (float): Maximum latitude
+            - maxLon (float): Maximum longitude
+            city (str): City name
+        skip_zip (bool, optional): If True, skip zipping scenario folder. Defaults to False.
+        include_images (bool, optional): If True, generate and upload visualization images. 
+            Defaults to True.
+        submission_only (bool, optional): If True, skip B2 upload and only create server 
+            submission. Use when scenario is already uploaded. Defaults to False.
+
     Returns:
-        Scenario name if the initial submission creation was successful, None otherwise.
-        Note: Image upload success/failure doesn't change this return value.
+        str: Name of submitted scenario if initial submission succeeds, None otherwise.
+            Image upload status does not affect return value.
     """
     scen_folder = get_scenario_folder(scenario_name)
     params_path = get_params_path(scenario_name)
@@ -600,7 +597,7 @@ def upload(scenario_name: str, key: str,
         params_dict = load_dict_from_json(params_path)
         print("✓ Parameters parsed successfully")
     except Exception as e:
-        print(f"Error: Failed to parse parameters")
+        print("Error: Failed to parse parameters")
         raise RuntimeError(f"Failed to parse parameters - {str(e)}")
 
     if not submission_only:
@@ -821,26 +818,26 @@ def search(query: Dict) -> Optional[List[str]]:
 
     Args:
         query: Dictionary containing search parameters from the following list:
-            - bands: List[str] - Array of frequency bands ['sub6', 'mmW', 'subTHz']
-            - raytracerName: str - Raytracer name or 'all'
-            - environment: str - 'indoor', 'outdoor', or 'all'
-            - numTx: Dict - Numeric range filter {'min': number, 'max': number}
-            - numRx: Dict - Numeric range filter {'min': number, 'max': number}
-            - pathDepth: Dict - Numeric range filter {'min': number, 'max': number}
-            - maxReflections: Dict - Numeric range filter {'min': number, 'max': number}
-            - numRays: Dict - Numeric range filter {'min': number, 'max': number}
-            - multiRxAnt: bool - Boolean filter or 'all' to ignore
-            - multiTxAnt: bool - Boolean filter or 'all' to ignore
-            - dualPolarization: bool - Boolean filter or 'all' to ignore
-            - BS2BS: bool - Boolean filter or 'all' to ignore
-            - dynamic: bool - Boolean filter or 'all' to ignore
-            - diffraction: bool - Boolean filter or 'all' to ignore
-            - scattering: bool - Boolean filter or 'all' to ignore
-            - transmission: bool - Boolean filter or 'all' to ignore
-            - digitalTwin: bool - Boolean filter or 'all' to ignore
-            - city: str - City name text filter
-            - bbCoords: Dict - Bounding box coordinates 
-              {'minLat': float, 'minLon': float, 'maxLat': float, 'maxLon': float}
+        - bands: List[str] - Array of frequency bands ['sub6', 'mmW', 'subTHz']
+        - raytracerName: str - Raytracer name or 'all'
+        - environment: str - 'indoor', 'outdoor', or 'all'
+        - numTx: Dict - Numeric range filter {'min': number, 'max': number}
+        - numRx: Dict - Numeric range filter {'min': number, 'max': number}
+        - pathDepth: Dict - Numeric range filter {'min': number, 'max': number}
+        - maxReflections: Dict - Numeric range filter {'min': number, 'max': number}
+        - numRays: Dict - Numeric range filter {'min': number, 'max': number}
+        - multiRxAnt: bool - Boolean filter or 'all' to ignore
+        - multiTxAnt: bool - Boolean filter or 'all' to ignore
+        - dualPolarization: bool - Boolean filter or 'all' to ignore
+        - BS2BS: bool - Boolean filter or 'all' to ignore
+        - dynamic: bool - Boolean filter or 'all' to ignore
+        - diffraction: bool - Boolean filter or 'all' to ignore
+        - scattering: bool - Boolean filter or 'all' to ignore
+        - transmission: bool - Boolean filter or 'all' to ignore
+        - digitalTwin: bool - Boolean filter or 'all' to ignore
+        - city: str - City name text filter
+        - bbCoords: Dict - Bounding box coordinates 
+            {'minLat': float, 'minLon': float, 'maxLat': float, 'maxLon': float}
     
     Returns:
         Dict containing count and list of matching scenario names if successful, None otherwise

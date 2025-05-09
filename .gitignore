@@ -14,7 +14,6 @@ deepmimo_scenarios*
 **/osm_root/*
 **/blender_addons/*
 manuals/*
-*.png
 *.pptx
 *.mp4
 *.npy
@@ -40,6 +39,7 @@ keep_for_future/*
 # Documentation
 docs/_build/
 docs/api/_autosummary/
+docs/manual_full.ipynb
 
 # Gitignore Defaults
 __pycache__/

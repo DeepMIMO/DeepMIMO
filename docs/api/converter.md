@@ -2,55 +2,6 @@
 
 The converter module provides functionality to automatically detect and convert raytracing data from various supported formats into a standardized DeepMIMO format.
 
-## Core Function
-
-### convert()
-Convert raytracing data to DeepMIMO format.
-
-```python
-import deepmimo as dm
-
-# Convert raytracing data
-scenario = dm.convert(
-    path_to_rt_folder,  # Path to raytracing data
-    **conversion_params  # Additional parameters
-)
-```
-
-## Supported Formats
-
-### Wireless InSite
-```python
-# Convert Wireless InSite project
-scenario = dm.convert('path/to/insite_project')
-
-# Required files:
-# - *.setup (Project setup)
-# - *.paths (Ray paths)
-# - *.points (Receiver points)
-```
-
-### Sionna RT
-```python
-# Convert Sionna RT data
-scenario = dm.convert('path/to/sionna_data')
-
-# Required files:
-# - *.pkl (Scene data)
-# - *.json (Parameters)
-```
-
-### AODT
-```python
-# Convert AODT data
-scenario = dm.convert('path/to/aodt_data')
-
-# Required files:
-# - *.aodt (Ray data)
-```
-
-## Module Structure
-
 ```
 converter/
   ├── converter.py (Main converter)
@@ -63,30 +14,27 @@ converter/
       └── insite_converter.py
 ```
 
-## Dependencies
+```{eval-rst}
 
-The converter module depends on:
-- `scene.py` for physical world representation
-- `materials.py` for material properties
-- `general_utils.py` for utility functions
-
-## Import Paths
-
-```python
-# Main function
-from deepmimo.converter import convert
-
-# Format-specific converters
-from deepmimo.converter.aodt import aodt_rt_converter
-from deepmimo.converter.sionna_rt import sionna_rt_converter
-from deepmimo.converter.wireless_insite import insite_rt_converter
+.. autofunction:: deepmimo.converter.convert
+   :noindex:
 ```
 
-## Conversion Process
+```python
+import deepmimo as dm
+
+# Convert raytracing data
+scenario = dm.convert(
+    path_to_rt_folder,  # Path to raytracing data
+    **conversion_params  # Additional parameters
+)
+```
+
+**Conversion Process**:
 
 1. Format Detection
    ```python
-   # Automatic format detection based on file extensions
+   # Automatic format detection based on file extensions (internal logic)
    if '.aodt' in files:
        converter = aodt_rt_converter
    elif '.pkl' in files:
@@ -95,41 +43,90 @@ from deepmimo.converter.wireless_insite import insite_rt_converter
        converter = insite_rt_converter
    ```
 
-2. Data Loading
-   ```python
-   # Load raytracing data
-   rt_data = converter.load_data(path_to_rt_folder)
-   ```
+2. Read Ray Tracing Parameters
+3. Read TXRX Configuration
+4. Read Paths 
+   - Save DeepMIMO Core Matrices
+5. Read Materials
+6. Read Scene Objects
+   - Save `vertices.mat` and `objects.json`
+7. Save `params.json`
 
-3. Standardization
-   ```python
-   # Convert to standard format
-   scenario = converter.standardize(rt_data)
-   ```
+```{tip}
+*Always* the auto converter that detects which converter should be used based on the contents of the folder. The conversion parameters should match one of the converters below. 
+```
 
-4. Validation
-   ```python
-   # Validate converted data
-   converter.validate(scenario)
-   ```
 
-## Best Practices
+## Wireless InSite
+```python
+from deepmimo.converter.wireless_insite.insite_converter import insite_rt_converter
 
-1. Data Organization
-   - Keep raytracing files in dedicated folders
-   - Use consistent naming conventions
-   - Maintain original file structure
+# Convert Wireless InSite project
+scenario = insite_rt_converter('path/to/insite_project')
 
-2. Memory Management
-   - Convert large datasets in chunks
-   - Clean up temporary files
-   - Monitor memory usage
+# Required files:
+# - <scen_name>.setup (Project setup)
+# - <scen_name>.txrx (Project setup)
+# - <scen_name>.xml (Project setup)
+# - <p2m_folder>/*.paths (Ray paths)
+# - <p2m_folder>/*.pl (Pathloss files)
+```
 
-3. Error Handling
-   - Validate input files before conversion
-   - Handle missing or corrupt data gracefully
-   - Provide informative error messages
+```{tip}
+Check <a href="../manual_full.html#from-wireless-insite">Conversion From Wireless InSite</a> section in DeepMIMO manual for a full end-to-end example of conversion from a Wireless InSite simulation.
+```
 
-## File Format Guidelines
+```{eval-rst}
 
-For detailed information about the expected file formats and organization for each ray tracer, please refer to the {doc}`
+.. autofunction:: deepmimo.converter.wireless_insite.insite_converter.insite_rt_converter
+
+```
+
+## Sionna RT
+
+Conversion from Sionna involves 2 steps: 
+1. Exporting: Since Sionna RT does not save files, we must save them.
+2. Converting: From the saved files
+
+### Exporting
+```python
+from deepmimo.converter.sionna_rt import sionna_exporter
+
+sionna_exporter.export_to_deepmimo(
+   scene,
+   path_list,
+   my_compute_path_params,
+   save_folder='sionna_folder/'
+)
+```
+
+```{eval-rst}
+
+.. autofunction:: deepmimo.converter.sionna_rt.sionna_exporter.export_to_deepmimo
+
+```
+
+### Converting
+
+```python
+from deepmimo.converter.sionna_rt.sionna_converter import sionna_rt_converter
+# Convert Sionna RT data
+scenario = sionna_rt_converter('path/to/sionna_data')
+
+# Required files:
+# - *.pkl (Scene data)
+```
+
+```{tip}
+Check <a href="../manual_full.html#from-sionna-rt">Conversion From Sionna RT</a> section in DeepMIMO manual for a conversion example using Sionna 0.19. Sionna 1.0 support is coming in May 2025.
+```
+
+```{eval-rst}
+
+.. autofunction:: deepmimo.converter.sionna_rt.sionna_converter.sionna_rt_converter
+
+```
+
+## AODT
+
+### (under construction)

@@ -1,0 +1,29 @@
+
+Workflow:
+1. open one terminal for compilation in deepmimo/docs, and run: 
+    - sphinx-build -b html . _build/html
+2. open one terminal for serving in deepmimo/docs, and run:
+    - `python -m http.server --directory _build/html` to serve the HTML in 127.0.0.1:8000 
+    - `rmdir /s /q _build` on windows, to clear the build directory
+
+
+To update the documentation (like adding an example), do this:
+
+1. Push test package
+2. Install test package on Colab
+3. Add example to colab
+4. Download notebook as manual_full.ipynb
+5. Replace the table of contents in the downloaded notebook to be that of the manual.ipynb, because that one has markdown links.
+6. Filter neededless stuff in manual.ipynb with: 
+    `jupyter nbconvert manual_full.ipynb —ClearMetadataPreprocessor.enabled=True —clear-output —to notebook —output manual.ipynb`
+7. Change docs/conf.py to exclude manual.ipynb
+8. Change docs/index.md to include manual_full.ipynb
+9. Compile.
+10. Push manual.ipynb with the new example.
+
+
+Alternatively:
+1. Same until step 5 (including)
+2. Push manual_full.ipynb to github
+
+The only difference is the filtering step and having 2 files aboard.

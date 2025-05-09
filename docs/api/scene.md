@@ -1,53 +1,91 @@
 # Scene
 
-The scene module provides classes for representing and managing physical objects in a wireless environment, including buildings, terrain, vegetation, and other structures that affect wireless propagation.
+The `scene` module provides classes for representing and managing physical objects in a wireless environment, including buildings, terrain, vegetation, and other structures that affect wireless propagation.
 
-## Core Classes
-
-### Scene
-The `Scene` class represents a complete physical environment containing multiple objects.
-
-```python
-import deepmimo as dm
-
-# Create a new scene
-scene = dm.Scene()
-
-# Add objects
-scene.add_object(building)
-scene.add_objects([tree1, tree2])
-
-# Get objects by category
-buildings = scene.get_objects(label='buildings')
-metal_objects = scene.get_objects(material=1)  # material_id = 1
-
-# Export scene data
-metadata = scene.export_data('path/to/folder')
-
-# Load scene from data
-scene = dm.Scene.from_data('path/to/folder')
+```
+scene.py
+  ├── BoundingBox (3D bounds)
+  ├── Face (Surface representation)
+  ├── PhysicalElement (Individual objects)
+  ├── PhysicalElementGroup (Object collections)
+  └── Scene (Complete environment)
 ```
 
-#### Visualization
-```python
-# 3D visualization
-scene.plot(mode='faces')  # Use convex hull representation
-scene.plot(mode='tri_faces')  # Use triangular representation
+The `Scene` class acts as a container for multiple `PhysicalElement` objects, 
+each representing a distinct object in the environment. Each `PhysicalElement` is 
+composed of `Face` objects, which define the surfaces of the element and are associated 
+with materials. The `BoundingBox` class provides spatial boundaries for these elements. 
+Together, these components allow for the representation and manipulation of complex environments, 
+with functionalities for plotting and material management integrated into the scene.
 
-# 2D top-down view
-scene.plot(proj_2d=True)
+
+The scene module depends on:
+- `materials.py` for material properties
+- `general_utils.py` for utility functions
+- NumPy for geometric computations
+- Matplotlib for visualization
+
+
+## BoundingBox
+
+Dataclass for bounding boxes.
+
+```python
+# Create a bounding box
+bbox = dm.BoundingBox(x_min=0, x_max=10, y_min=0, y_max=5, z_min=0, z_max=3)
 ```
 
-#### Properties
+| Property | Description |
+|----------|-------------|
+| `x_min`  | Minimum x-coordinate |
+| `x_max`  | Maximum x-coordinate |
+| `y_min`  | Minimum y-coordinate |
+| `y_max`  | Maximum y-coordinate |
+| `z_min`  | Minimum z-coordinate |
+| `z_max`  | Maximum z-coordinate |
+| `width`  | Width (X dimension) of the bounding box |
+| `length` | Length (Y dimension) of the bounding box |
+| `height` | Height (Z dimension) of the bounding box |
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `objects` | List[PhysicalElement] | List of objects in the scene |
-| `bounding_box` | BoundingBox | Scene's bounding box |
-| `visualization_settings` | dict | Visualization parameters |
+<!-- ```{eval-rst}
+.. autoclass:: deepmimo.scene.BoundingBox
+   :members:
+   :undoc-members:
+   :show-inheritance:
+``` -->
 
-### PhysicalElement
+## Face
+
+The `Face` class represents a single face (surface) of a physical object.
+
+```python
+# Create a face
+face = dm.Face(
+    vertices=vertices,  # Array of vertex coordinates
+    material_idx=1  # Material index
+)
+```
+
+```{eval-rst}
+.. autoclass:: deepmimo.scene.Face
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+
+## PhysicalElement
+
 The `PhysicalElement` class represents individual physical objects in the scene.
+
+There are standard categories for physical elements, used only to organize them:
+
+| Category | Description | Example Objects |
+|----------|-------------|-----------------|
+| `buildings` | Building structures | Houses, offices |
+| `terrain` | Ground surfaces | Ground, hills |
+| `vegetation` | Plant life | Trees, bushes |
+| `floorplans` | Indoor layouts | Walls, rooms |
+| `objects` | Other items | Cars, signs |
 
 ```python
 # Create a physical object
@@ -64,44 +102,15 @@ volume = element.volume
 position = element.position
 ```
 
-#### Properties
-
-| Property | Type | Description |
-|----------|------|-------------|
-| `faces` | List[Face] | Object's faces |
-| `height` | float | Object height |
-| `volume` | float | Object volume |
-| `position` | ndarray | Center position |
-| `bounding_box` | BoundingBox | Object's bounding box |
-| `footprint_area` | float | Ground projection area |
-
-### Face
-The `Face` class represents a single face (surface) of a physical object.
-
-```python
-# Create a face
-face = dm.Face(
-    vertices=vertices,  # Array of vertex coordinates
-    material_idx=1  # Material index
-)
-
-# Access properties
-normal = face.normal
-area = face.area
-centroid = face.centroid
+```{eval-rst}
+.. autoclass:: deepmimo.scene.PhysicalElement
+   :members:
+   :undoc-members:
+   :show-inheritance:
 ```
 
-#### Properties
+## PhysicalElementGroup
 
-| Property | Type | Description |
-|----------|------|-------------|
-| `vertices` | ndarray | Face vertices |
-| `normal` | ndarray | Face normal vector |
-| `area` | float | Face area |
-| `centroid` | ndarray | Face center point |
-| `material_idx` | int | Material index |
-
-### PhysicalElementGroup
 The `PhysicalElementGroup` class manages collections of physical objects.
 
 ```python
@@ -117,54 +126,49 @@ first = group[0]
 subset = group[1:3]
 ```
 
-## Object Categories
-
-The scene module defines standard categories for physical objects:
-
-| Category | Description | Example Objects |
-|----------|-------------|-----------------|
-| `buildings` | Building structures | Houses, offices |
-| `terrain` | Ground surfaces | Ground, hills |
-| `vegetation` | Plant life | Trees, bushes |
-| `floorplans` | Indoor layouts | Walls, rooms |
-| `objects` | Other items | Cars, signs |
-
-## Module Structure
-
-```
-scene.py
-  ├── BoundingBox (3D bounds)
-  ├── Face (Surface representation)
-  ├── PhysicalElement (Individual objects)
-  ├── PhysicalElementGroup (Object collections)
-  └── Scene (Complete environment)
+```{eval-rst}
+.. autoclass:: deepmimo.scene.PhysicalElementGroup
+   :members:
+   :undoc-members:
+   :show-inheritance:
 ```
 
-## Dependencies
+## Scene
 
-The scene module depends on:
-- `materials.py` for material properties
-- `general_utils.py` for utility functions
-- NumPy for geometric computations
-- Matplotlib for visualization
-
-## Import Paths
+The `Scene` class represents a complete physical environment containing multiple objects.
 
 ```python
-# Main classes
-from deepmimo.scene import (
-    Scene,
-    PhysicalElement,
-    PhysicalElementGroup,
-    Face
-)
+import deepmimo as dm
 
-# Constants
-from deepmimo.scene import (
-    CAT_BUILDINGS,
-    CAT_TERRAIN,
-    CAT_VEGETATION,
-    CAT_FLOORPLANS,
-    CAT_OBJECTS
-)
-``` 
+# Create a new scene
+scene = dm.Scene()
+
+# Add objects
+scene.add_object(building)
+scene.add_objects([tree1, tree2])
+
+# Get objects by category
+buildings = scene.get_objects(label='buildings')
+metal_objects = scene.get_objects(material=1)  # material_id = 1
+
+# Export scene data to dictionary
+metadata_dict = scene.export_data()
+
+# Load scene from dictionary
+scene = dm.Scene.from_data(metadata_dict)
+
+# 3D visualization
+scene.plot(mode='faces')  # Use convex hull representation
+scene.plot(mode='tri_faces')  # Use triangular representation
+
+# 2D top-down view
+scene.plot(proj_2d=True)
+```
+
+```{eval-rst}
+.. autoclass:: deepmimo.scene.Scene
+   :members:
+   :undoc-members:
+   :show-inheritance:
+```
+

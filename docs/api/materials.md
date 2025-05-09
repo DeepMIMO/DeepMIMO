@@ -2,9 +2,7 @@
 
 The materials module provides classes for representing and managing material properties in wireless environments, including electromagnetic and scattering characteristics.
 
-## Core Classes
-
-### Material
+## Material
 The `Material` class represents a single material with its electromagnetic and scattering properties.
 
 ```python
@@ -16,12 +14,28 @@ material = dm.Material(
     name='Concrete',
     permittivity=4.5,
     conductivity=0.02,
+    scattering_model='directive',
     scattering_coefficient=0.2,
-    roughness=0.001  # meters
+    cross_polarization_coefficient=0.1,
+    alpha_r=4.0,
+    alpha_i=4.0,
+    lambda_param=0.5,
+    roughness=0.001,
+    thickness=0.3,
+    vertical_attenuation=0.5,
+    horizontal_attenuation=0.3
 )
 ```
 
-#### Properties
+
+<!-- ```{eval-rst}
+.. autoclass:: deepmimo.materials.Material
+   :members:
+   :undoc-members:
+   :show-inheritance:
+``` -->
+
+## Properties
 
 | Property | Type | Description |
 |----------|------|-------------|
@@ -33,8 +47,8 @@ material = dm.Material(
 | `cross_polarization_coefficient` | float | Fraction of scattered field cross-polarized (0-1) |
 | `roughness` | float | Surface roughness (m) |
 | `thickness` | float | Material thickness (m) |
-
-#### Scattering Models
+| `vertical_attenuation` | float | Vertical attenuation (dB/m) |
+| `horizontal_attenuation` | float | Horizontal attenuation (dB/m) |
 
 The Material class supports different scattering models:
 
@@ -52,7 +66,9 @@ material.alpha_i = 4.0  # Backward lobe width
 material.lambda_param = 0.5  # Forward/backward ratio
 ```
 
-### MaterialList
+The field `vertical_attenuation` and `horizontal_attenuation` describe the attenuation properties of the material, and are mainly used in folliage. 
+
+## MaterialList
 The `MaterialList` class manages collections of materials and provides database functionality.
 
 ```python
@@ -69,79 +85,30 @@ metal_objects = materials[1:3]  # Slice
 # Export/import
 materials_dict = materials.to_dict()
 materials = dm.MaterialList.from_dict(materials_dict)
+
+# Material management
+
+dataset = dm.load('asu_campus_3p5')[0]
+
+materials = dataset.materials
+
+# Get materials used by buildings
+buildings = scene.get_objects(label='buildings')
+building_materials = buildings.get_materials()
+
+# Get objects with a certain material
+objects_with_material = dataset.scene.get_objects(material=building_materials[0])
 ```
 
-#### Material Management
+```{eval-rst}
 
-```python
-# Iterate over materials
-for material in materials:
-    print(f"{material.name}: εᵣ={material.permittivity}")
-
-# Get material indices
-indices = materials.get_materials()
-
-# Filter duplicates
-materials._filter_duplicates()
-```
-
-## Default Materials
-
-The module provides default materials commonly used in wireless propagation:
-
-| Material | εᵣ | σ (S/m) | Scattering |
-|----------|-----|---------|------------|
-| Perfect Electric Conductor | ∞ | ∞ | None |
-| Concrete | 4.5 | 0.02 | Lambertian |
-| Glass | 6.0 | 0.004 | Directive |
-| Wood | 2.1 | 0.002 | Lambertian |
-| Metal | 1.0 | 1e7 | None |
-
-## Module Structure
+.. autoclass:: deepmimo.materials.MaterialList
+   :members:
+   :undoc-members:
+   :show-inheritance:
 
 ```
-materials.py
-  ├── Material (Single material)
-  └── MaterialList (Material collection)
+
+```{tip}
+See the <a href="../manual_full.html#scene-materials">Materials Section</a> of the DeepMIMO Manual for examples. 
 ```
-
-## Dependencies
-
-The materials module depends on:
-- `dataclasses` for class definitions
-- `typing` for type hints
-- NumPy for numerical operations
-
-## Import Paths
-
-```python
-# Main classes
-from deepmimo.materials import (
-    Material,
-    MaterialList
-)
-
-# Scattering models
-from deepmimo.materials import (
-    SCATTERING_NONE,
-    SCATTERING_LAMBERTIAN,
-    SCATTERING_DIRECTIVE
-)
-```
-
-## Best Practices
-
-1. Material Properties
-   - Use realistic values from measurements when available
-   - Consider frequency dependence for wideband simulations
-   - Document sources of material parameters
-
-2. Scattering Models
-   - Use Lambertian for rough surfaces
-   - Use Directive for smoother surfaces
-   - Adjust parameters based on measurements if available
-
-3. Performance
-   - Reuse common materials across objects
-   - Filter duplicates in large material lists
-   - Cache material computations when possible 

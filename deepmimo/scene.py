@@ -27,6 +27,13 @@ Module Organization:
           (used in _get_2d_face)
         - _signed_distance_to_curve: Calculate signed distance from point to curve
           (used in _trim_points_protected to trim along the road)
+
+The `Scene` class acts as a container for multiple `PhysicalElement` objects, 
+each representing a distinct object in the environment. Each `PhysicalElement` is 
+composed of `Face` objects, which define the surfaces of the element and are associated 
+with materials. The `BoundingBox` class provides spatial boundaries for these elements. 
+Together, these components allow for the representation and manipulation of complex environments, 
+with functionalities for plotting and material management integrated into the scene.
 """
 
 import numpy as np
@@ -128,15 +135,15 @@ class Face:
     
     This class implements a dual representation for faces:
     1. Primary representation: Convex hull faces (stored in vertices)
-       - More efficient for storage
-       - Better for most geometric operations
-       - Suitable for ray tracing and wireless simulations
+    - More efficient for storage
+    - Better for most geometric operations
+    - Suitable for ray tracing and wireless simulations
        
     2. Secondary representation: Triangular faces (generated on demand)
-       - Available through triangular_faces property
-       - Better for detailed visualization
-       - Preserves exact geometry when needed
-       - Generated using fan triangulation
+    - Available through triangular_faces property
+    - Better for detailed visualization
+    - Preserves exact geometry when needed
+    - Generated using fan triangulation
        
     This dual representation allows the system to be efficient while maintaining
     the ability to represent detailed geometry when required.
@@ -692,14 +699,14 @@ class Scene:
         3D Mode (proj_2d=False):
             Two representation options:
             1. 'faces' (default) - Uses the primary convex hull representation
-               - More efficient for visualization
-               - Cleaner look for simple geometric shapes
-               - Suitable for most visualization needs
+            - More efficient for visualization
+            - Cleaner look for simple geometric shapes
+            - Suitable for most visualization needs
                
             2. 'tri_faces' - Uses the secondary triangular representation
-               - Shows detailed geometry
-               - Better for debugging geometric issues
-               - More accurate representation of complex shapes
+            - Shows detailed geometry
+            - Better for debugging geometric issues
+            - More accurate representation of complex shapes
                
         2D Mode (proj_2d=True):
             Creates a top-down view showing object footprints:

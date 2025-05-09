@@ -84,7 +84,6 @@ def save_mat(data: np.ndarray, data_key: str, output_folder: str,
     file_path = os.path.join(output_folder, mat_file_name)
     scipy.io.savemat(file_path, {data_key: data}) 
 
-
 def ext_in_list(extension: str, file_list: List[str]) -> List[str]:
     """Filter files by extension.
     
@@ -99,7 +98,6 @@ def ext_in_list(extension: str, file_list: List[str]) -> List[str]:
         List[str]: Filtered list containing only filenames ending with extension
     """
     return [el for el in file_list if el.endswith(extension)]
-
 
 def save_rt_source_files(sim_folder: str, source_exts: List[str]) -> None:
     """Save raytracing source files to a new directory and create a zip archive.
@@ -131,7 +129,6 @@ def save_rt_source_files(sim_folder: str, source_exts: List[str]) -> None:
     shutil.rmtree(zip_temp_folder)
 
     return
-
 
 def save_scenario(sim_folder: str, scen_name: str = '', 
                  overwrite: Optional[bool] = None) -> Optional[str]:

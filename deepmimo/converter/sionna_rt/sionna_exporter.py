@@ -343,7 +343,27 @@ def export_scene_buildings(scene: Scene) -> Tuple[np.ndarray, Dict]:
 
 def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths, 
                        my_compute_path_params: Dict, save_folder: str):
-    """ Export a complete Sionna simulation to a format that can be converted by DeepMIMO """
+    """ Export a complete Sionna simulation to a format that can be converted by DeepMIMO.
+    
+    This function exports all necessary data from a Sionna ray tracing simulation to files
+    that can be converted into the DeepMIMO format. The exported data includes:
+    - Ray paths and their properties
+    - Scene materials and their properties 
+    - Ray tracing parameters used in the simulation
+    - Scene geometry (vertices and objects)
+
+    Args:
+        scene (Scene): The Sionna Scene object containing the simulation environment
+        path_list (List[Paths] | Paths): Ray paths computed by Sionna's ray tracer, either
+            for a single transmitter (Paths) or multiple transmitters (List[Paths])
+        my_compute_path_params (Dict): Dictionary containing the parameters used in
+            Sionna's compute_paths() function. This is needed since Sionna does not
+            save these parameters internally.
+        save_folder (str): Directory path where the exported files will be saved
+
+    Note:
+        This function has been tested with Sionna v0.19.1.
+    """
     
     paths_dict_list = export_paths(path_list)
     materials_dict_list, material_indices = export_scene_materials(scene)
@@ -369,7 +389,27 @@ def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths,
 
 def export_to_deepmimo_v2(scene: Scene, path_list: List[Paths] | Paths, 
                        my_compute_path_params: Dict, save_folder: str):
-    """ Export a complete Sionna simulation to a format that can be converted by DeepMIMO """
+    """ Export a complete Sionna simulation to a format that can be converted by DeepMIMO.
+    
+    This function exports all necessary data from a Sionna ray tracing simulation to files
+    that can be converted into the DeepMIMO format. The exported data includes:
+    - Ray paths and their properties
+    - Scene materials and their properties 
+    - Ray tracing parameters used in the simulation
+    - Scene geometry (vertices and objects)
+
+    Args:
+        scene (Scene): The Sionna Scene object containing the simulation environment
+        path_list (List[Paths] | Paths): Ray paths computed by Sionna's ray tracer, either
+            for a single transmitter (Paths) or multiple transmitters (List[Paths])
+        my_compute_path_params (Dict): Dictionary containing the parameters used in
+            Sionna's compute_paths() function. This is needed since Sionna does not
+            save these parameters internally.
+        save_folder (str): Directory path where the exported files will be saved
+
+    Note:
+        This function has been tested with Sionna v1.0.0.
+    """
     
     paths_dict_list = path_list # export moved to pipeline (needs to be called during RT)
     materials_dict_list, material_indices = {}, [] #export_scene_materials(scene)
