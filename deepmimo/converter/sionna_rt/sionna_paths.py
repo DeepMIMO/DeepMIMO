@@ -10,6 +10,7 @@ from tqdm import tqdm
 from typing import Dict
 from ... import consts as c
 from .. import converter_utils as cu
+import sionna
 
 # Interaction Type Map for Sionna
 INTERACTIONS_MAP = {
@@ -19,6 +20,20 @@ INTERACTIONS_MAP = {
     3:  c.INTERACTION_SCATTERING,    # Diffuse Scattering
     4:  None,  # Sionna RIS is not supported yet
 }
+
+def is_sionna_v1():
+    try:
+        if hasattr(sionna, '__version__'):
+            version_str = sionna.__version__
+        elif hasattr(sionna, 'rt') and hasattr(sionna.rt, '__version__'):
+            version_str = sionna.rt.__version__
+        else:
+            print("Warning: Could not determine Sionna version, assuming v1.x+.")
+            return True
+        return int(version_str.split('.')[0]) >= 1
+    except Exception as e:
+        print(f"Warning: Sionna version check failed ({e}), assuming v1.x+.")
+        return True
 
 def _preallocate_data(n_rx: int) -> Dict:
     """Pre-allocate data for path conversion.
@@ -48,7 +63,7 @@ def _preallocate_data(n_rx: int) -> Dict:
     
 
 def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, 
-                          t: int, curr_max_inter: int, last_idx: int, batch_size: int) -> int:
+                          t: int, curr_max_inter: int, batch_size: int, targets: np.ndarray, rx_pos: np.ndarray) -> int:
     """Process a batch of paths from Sionna format and store in DeepMIMO format.
     
     Args:
@@ -57,8 +72,9 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
         b: Batch index
         t: Transmitter index in current paths dictionary
         curr_max_inter: Maximum number of interactions per path
-        last_idx: Starting index for storing in data arrays
         batch_size: Number of receivers in current batch
+        targets: Array of target positions
+        rx_pos: Array of RX positions
         
     Returns:
         int: Number of inactive receivers found in this batch
@@ -75,26 +91,33 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
     except KeyError:
         print("Warning: No 'types' or '_types' found in paths_dict, using dummy types.")
         types = np.zeros_like(a, dtype=np.float32)
-    # Process each receiver (batch)
     for rel_idx in range(batch_size):
-        abs_idx = last_idx + rel_idx
-        # Loop over each transmit antenna (tx_ant)
-        for tx_ant_idx in range(a.shape[3]):
-            amp = a[rel_idx, 0, 0, tx_ant_idx, :]  # (number of paths,)
+        rx_pos_this = targets[rel_idx]
+        abs_idx_arr = np.where(np.all(rx_pos == rx_pos_this, axis=1))[0]
+        if len(abs_idx_arr) == 0:
+            # RX position not found in global RX list, skip
+            continue
+        abs_idx = abs_idx_arr[0]
+        if is_sionna_v1():
+            tx_ant_range = [0]
+        else:
+            tx_ant_range = range(a.shape[3])
+        for tx_ant_idx in tx_ant_range:
+            amp = a[rel_idx, 0, 0, tx_ant_idx, :]
             path_idxs = np.where(amp != 0)[0][:c.MAX_PATHS]
             n_paths = len(path_idxs)
             if n_paths == 0:
                 continue
-            # Save power, phase, delay
             data[c.POWER_PARAM_NAME][abs_idx,:n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
             data[c.PHASE_PARAM_NAME][abs_idx,:n_paths] = np.angle(amp[path_idxs], deg=True)
-            # tau shape에 따라 인덱싱 분기
+            # Indexing for tau depending on shape
             if tau.ndim == 5:
                 delays = tau[b, rel_idx, 0, tx_ant_idx, path_idxs]
             elif tau.ndim == 4:
                 delays = tau[b, rel_idx, tx_ant_idx, path_idxs]
             elif tau.ndim == 3:
-                delays = tau[b, rel_idx, path_idxs]
+                rx_axis = tau.shape[1]
+                delays = tau[b, rel_idx if rx_axis > 1 else 0, path_idxs]
             else:
                 delays = tau.flatten()[path_idxs]
             data[c.DELAY_PARAM_NAME][abs_idx,:n_paths] = delays
@@ -103,13 +126,10 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
             data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(phi_t, b, rel_idx, tx_ant_idx, path_idxs))
             data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(theta_r, b, rel_idx, tx_ant_idx, path_idxs))
             data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(theta_t, b, rel_idx, tx_ant_idx, path_idxs))
-            # Interaction positions (geometry info) is handled as dummy
-            # Save interaction types (dummy geometry)
             types_sel = types[b, rel_idx, 0, tx_ant_idx, path_idxs]
-            inter_pos_rx = np.zeros((n_paths, curr_max_inter, 3))  # dummy
+            inter_pos_rx = np.zeros((n_paths, curr_max_inter, 3))
             interactions = get_sionna_interaction_types(types_sel, inter_pos_rx)
             data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = interactions
-    
     return inactive_count
 
 def _get_path_key(paths_dict, key, fallback_key=None, default=None):
@@ -183,7 +203,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
 
     # Initialize inactive indices list
     rx_inactive_idxs_count = 0
-    
+    bs_bs_paths = False
     for tx_idx, tx_pos_target in enumerate(all_tx_pos):
         # Pre-allocate matrices
         data = _preallocate_data(n_rx)
@@ -194,47 +214,32 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
         pbar = tqdm(total=n_rx, desc=f"Processing receivers for TX {tx_idx}")
         
         b = 0  # batch index 
-        last_idx = 0
-        bs_bs_paths = False
         # Process each batch of paths
         for path_dict_idx, paths_dict in enumerate(path_dict_list):
-            # Find if and where this TX exists in current paths_dict
             sources = _get_path_key(paths_dict, 'sources', '_src_positions')
             tx_idx_in_dict = np.where(np.all(sources == tx_pos_target, axis=1))[0]
             if len(tx_idx_in_dict) == 0:
                 continue
-
-            # Check if BS-BS paths exist (they are the first paths_dict)
             if path_dict_idx == 0:
                 targets = _get_path_key(paths_dict, 'targets', '_tgt_positions')
                 if np.array_equal(sources, targets):
                     bs_bs_paths = True
                     continue
-                
-            t = tx_idx_in_dict[0]  # Get the index of this TX in current paths_dict
-            batch_size = paths_dict['a'].shape[1]
-            
-            # Get max number of interactions per path
+            t = tx_idx_in_dict[0]
+            batch_size = targets.shape[0]
             if 'vertices' in paths_dict:
                 vertices = paths_dict['vertices']
             elif '_vertices' in paths_dict:
                 vertices = paths_dict['_vertices']
             else:
                 print("Warning: No vertices found in paths_dict, using dummy vertices.")
-                # Use a dummy vertices array with minimal shape
                 vertices = np.zeros((1, 1, 1, 1, 1, 3))
             curr_max_inter = min(c.MAX_INTER_PER_PATH, vertices.shape[0])
-
-            # Process the batch using helper function
-            inactive_count = _process_paths_batch(paths_dict, data, b, t, curr_max_inter,
-                                                  last_idx, batch_size)
-            
-            if tx_idx == 0:  # Only count inactive RXs for first TX
+            targets = _get_path_key(paths_dict, 'targets', '_tgt_positions')
+            inactive_count = _process_paths_batch(paths_dict, data, b, t, curr_max_inter, batch_size, targets, rx_pos)
+            if tx_idx == 0:
                 rx_inactive_idxs_count += inactive_count
-            
-            # Update progress bar for each receiver processed
             pbar.update(batch_size)
-            last_idx += batch_size
 
         pbar.close()
 
@@ -266,7 +271,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
             curr_max_inter = min(c.MAX_INTER_PER_PATH, vertices.shape[0])
 
             # Process BS-BS paths using helper function
-            _process_paths_batch(paths_dict, data_bs_bs, b, t, curr_max_inter, 0, num_bs)
+            _process_paths_batch(paths_dict, data_bs_bs, b, t, curr_max_inter, 0, all_bs_pos, rx_pos)
             
             # Compress data before saving
             data_bs_bs = cu.compress_path_data(data_bs_bs)
@@ -359,6 +364,7 @@ def get_angle_slice(arr, b, rel_idx, tx_ant_idx, path_idxs):
     elif arr.ndim == 4:
         return arr[b, rel_idx, tx_ant_idx, path_idxs]
     elif arr.ndim == 3:
-        return arr[b, rel_idx, path_idxs]
+        rx_axis = arr.shape[1]
+        return arr[b, rel_idx if rx_axis > 1 else 0, path_idxs]
     else:
         return arr.flatten()[path_idxs] 
