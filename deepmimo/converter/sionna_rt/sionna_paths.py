@@ -63,44 +63,64 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
     Returns:
         int: Number of inactive receivers found in this batch
     """
-    # Get amplitude data for current TX
-    a = paths_dict['a'][0,:,0,t,0,:,0]  # Get users and paths for this TX
-    
     inactive_count = 0
-    # Process each receiver in the batch
+    a = paths_dict['a']  # amplitude array
+    tau = _get_path_key(paths_dict, 'tau', '_tau')
+    phi_r = _get_path_key(paths_dict, 'phi_r', '_phi_r')
+    phi_t = _get_path_key(paths_dict, 'phi_t', '_phi_t')
+    theta_r = _get_path_key(paths_dict, 'theta_r', '_theta_r')
+    theta_t = _get_path_key(paths_dict, 'theta_t', '_theta_t')
+    try:
+        types = _get_path_key(paths_dict, 'types', '_types')
+    except KeyError:
+        print("Warning: No 'types' or '_types' found in paths_dict, using dummy types.")
+        types = np.zeros_like(a, dtype=np.float32)
+    # Process each receiver (batch)
     for rel_idx in range(batch_size):
         abs_idx = last_idx + rel_idx
-        
-        path_idxs = np.where(a[rel_idx] != 0)[0][:c.MAX_PATHS]
-        n_paths = len(path_idxs)
-
-        if n_paths == 0:
-            inactive_count += 1
-            continue
-
-        # Power, phase, delay
-        data[c.POWER_PARAM_NAME][abs_idx,:n_paths] = 20 * np.log10(np.absolute(a[rel_idx, path_idxs]))
-        data[c.PHASE_PARAM_NAME][abs_idx,:n_paths] = np.angle(a[rel_idx, path_idxs], deg=True)
-        data[c.DELAY_PARAM_NAME][abs_idx,:n_paths] = paths_dict['tau'][b, rel_idx, t, path_idxs]
-        
-        # Angles
-        rad2deg = lambda x: np.rad2deg(x[b, rel_idx, t, path_idxs])
-        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = rad2deg(paths_dict['phi_r'])
-        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = rad2deg(paths_dict['phi_t'])
-        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = rad2deg(paths_dict['theta_r'])
-        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = rad2deg(paths_dict['theta_t'])
-
-        # Interaction positions ([depth, num_rx, num_tx, path, 3(xyz)])
-        data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :curr_max_inter, :] = \
-            np.transpose(paths_dict['vertices'][:curr_max_inter, rel_idx, t, path_idxs, :], (1,0,2))
-
-        # Interactions types
-        types = paths_dict['types'][b, path_idxs]
-        inter_pos_rx = data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths]
-        interactions = get_sionna_interaction_types(types, inter_pos_rx)
-        data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = interactions
+        # Loop over each transmit antenna (tx_ant)
+        for tx_ant_idx in range(a.shape[3]):
+            amp = a[rel_idx, 0, 0, tx_ant_idx, :]  # (number of paths,)
+            path_idxs = np.where(amp != 0)[0][:c.MAX_PATHS]
+            n_paths = len(path_idxs)
+            if n_paths == 0:
+                continue
+            # Save power, phase, delay
+            data[c.POWER_PARAM_NAME][abs_idx,:n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
+            data[c.PHASE_PARAM_NAME][abs_idx,:n_paths] = np.angle(amp[path_idxs], deg=True)
+            # tau shape에 따라 인덱싱 분기
+            if tau.ndim == 5:
+                delays = tau[b, rel_idx, 0, tx_ant_idx, path_idxs]
+            elif tau.ndim == 4:
+                delays = tau[b, rel_idx, tx_ant_idx, path_idxs]
+            elif tau.ndim == 3:
+                delays = tau[b, rel_idx, path_idxs]
+            else:
+                delays = tau.flatten()[path_idxs]
+            data[c.DELAY_PARAM_NAME][abs_idx,:n_paths] = delays
+            # Save angle information
+            data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(phi_r, b, rel_idx, tx_ant_idx, path_idxs))
+            data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(phi_t, b, rel_idx, tx_ant_idx, path_idxs))
+            data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(theta_r, b, rel_idx, tx_ant_idx, path_idxs))
+            data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(theta_t, b, rel_idx, tx_ant_idx, path_idxs))
+            # Interaction positions (geometry info) is handled as dummy
+            # Save interaction types (dummy geometry)
+            types_sel = types[b, rel_idx, 0, tx_ant_idx, path_idxs]
+            inter_pos_rx = np.zeros((n_paths, curr_max_inter, 3))  # dummy
+            interactions = get_sionna_interaction_types(types_sel, inter_pos_rx)
+            data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = interactions
     
     return inactive_count
+
+def _get_path_key(paths_dict, key, fallback_key=None, default=None):
+    if key in paths_dict:
+        return paths_dict[key]
+    elif fallback_key and fallback_key in paths_dict:
+        return paths_dict[fallback_key]
+    elif default is not None:
+        return default
+    else:
+        raise KeyError(f"Neither '{key}' nor '{fallback_key}' found in paths_dict.")
 
 def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
     """Read and convert path data from Sionna format.
@@ -148,11 +168,15 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
     path_dict_list = cu.load_pickle(os.path.join(load_folder, 'sionna_paths.pkl'))
 
     # Collect all unique TX positions from all path dictionaries
-    all_tx_pos = np.unique(np.vstack([paths_dict['sources'] for paths_dict in path_dict_list]), axis=0)
+    all_tx_pos = np.unique(np.vstack([
+        _get_path_key(paths_dict, 'sources', '_src_positions') for paths_dict in path_dict_list
+    ]), axis=0)
     n_tx = len(all_tx_pos)
 
     # Collect all RX positions while maintaining order and removing duplicates
-    all_rx_pos = np.vstack([paths_dict['targets'] for paths_dict in path_dict_list])
+    all_rx_pos = np.vstack([
+        _get_path_key(paths_dict, 'targets', '_tgt_positions') for paths_dict in path_dict_list
+    ])
     _, unique_indices = np.unique(all_rx_pos, axis=0, return_index=True)
     rx_pos = all_rx_pos[np.sort(unique_indices)]  # Sort indices to maintain original order
     n_rx = len(rx_pos)
@@ -175,13 +199,15 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
         # Process each batch of paths
         for path_dict_idx, paths_dict in enumerate(path_dict_list):
             # Find if and where this TX exists in current paths_dict
-            tx_idx_in_dict = np.where(np.all(paths_dict['sources'] == tx_pos_target, axis=1))[0]
+            sources = _get_path_key(paths_dict, 'sources', '_src_positions')
+            tx_idx_in_dict = np.where(np.all(sources == tx_pos_target, axis=1))[0]
             if len(tx_idx_in_dict) == 0:
                 continue
 
             # Check if BS-BS paths exist (they are the first paths_dict)
             if path_dict_idx == 0:
-                if np.array_equal(paths_dict['sources'], paths_dict['targets']):
+                targets = _get_path_key(paths_dict, 'targets', '_tgt_positions')
+                if np.array_equal(sources, targets):
                     bs_bs_paths = True
                     continue
                 
@@ -189,7 +215,15 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
             batch_size = paths_dict['a'].shape[1]
             
             # Get max number of interactions per path
-            curr_max_inter = min(c.MAX_INTER_PER_PATH, paths_dict['vertices'].shape[0])
+            if 'vertices' in paths_dict:
+                vertices = paths_dict['vertices']
+            elif '_vertices' in paths_dict:
+                vertices = paths_dict['_vertices']
+            else:
+                print("Warning: No vertices found in paths_dict, using dummy vertices.")
+                # Use a dummy vertices array with minimal shape
+                vertices = np.zeros((1, 1, 1, 1, 1, 3))
+            curr_max_inter = min(c.MAX_INTER_PER_PATH, vertices.shape[0])
 
             # Process the batch using helper function
             inactive_count = _process_paths_batch(paths_dict, data, b, t, curr_max_inter,
@@ -215,14 +249,21 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
             print(f'BS-BS paths found for TX {tx_idx}')
             
             paths_dict = path_dict_list[0]
-            all_bs_pos = paths_dict['sources']
+            all_bs_pos = _get_path_key(paths_dict, 'sources', '_src_positions')
             num_bs = len(all_bs_pos)
             data_bs_bs = _preallocate_data(num_bs)
             data_bs_bs[c.RX_POS_PARAM_NAME] = all_bs_pos
             data_bs_bs[c.TX_POS_PARAM_NAME] = tx_pos_target
             
-            # Get max number of interactions per path
-            curr_max_inter = min(c.MAX_INTER_PER_PATH, paths_dict['vertices'].shape[0])
+            # Get max number of interactions per path (for BS-BS)
+            if 'vertices' in paths_dict:
+                vertices = paths_dict['vertices']
+            elif '_vertices' in paths_dict:
+                vertices = paths_dict['_vertices']
+            else:
+                print("Warning: No vertices found in paths_dict (BS-BS), skipping.")
+                continue
+            curr_max_inter = min(c.MAX_INTER_PER_PATH, vertices.shape[0])
 
             # Process BS-BS paths using helper function
             _process_paths_batch(paths_dict, data_bs_bs, b, t, curr_max_inter, 0, num_bs)
@@ -311,3 +352,13 @@ def get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> np
                 raise ValueError(f'Unknown Sionna interaction type: {sionna_type}')
     
     return result 
+
+def get_angle_slice(arr, b, rel_idx, tx_ant_idx, path_idxs):
+    if arr.ndim == 5:
+        return arr[b, rel_idx, 0, tx_ant_idx, path_idxs]
+    elif arr.ndim == 4:
+        return arr[b, rel_idx, tx_ant_idx, path_idxs]
+    elif arr.ndim == 3:
+        return arr[b, rel_idx, path_idxs]
+    else:
+        return arr.flatten()[path_idxs] 
