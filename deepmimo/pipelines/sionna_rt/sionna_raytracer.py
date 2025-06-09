@@ -113,7 +113,8 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
             "max_depth": rt_params['max_reflections'],
             # "diffraction": bool(rt_params['max_diffractions']),
             "specular_reflection": bool(rt_params['max_reflections']),
-            "diffuse_reflection": rt_params['ds_enable']
+            "diffuse_reflection": rt_params['ds_enable'],
+            "refraction": rt_params['refraction']
         }
 
     # Add BSs
@@ -156,10 +157,13 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
     
     # Save Sionna outputs
     print("Saving Sionna outputs")
-    sionna_rt_folder_FULL = os.path.join(scene_folder, "sionna_export/")
-    sionna_exporter.export_to_deepmimo(scene, path_list, rt_params, sionna_rt_folder_FULL)
+    sionna_rt_folder = os.path.join(scene_folder, "sionna_export/")
+    if IS_LEGACY_VERSION:
+        sionna_exporter.export_to_deepmimo(scene, path_list, rt_params, sionna_rt_folder)
+    else:
+        sionna_exporter.export_to_deepmimo_v2(scene, path_list, rt_params, sionna_rt_folder)
 
-    return sionna_rt_folder_FULL
+    return sionna_rt_folder
 
 import sionna.rt
 

@@ -153,6 +153,7 @@ p = {
 	'builtin_scene_path': 'simple_reflector', # 'simple_reflector', 'simple_street_canyon'
 	'n_samples_per_src': 1_000_000,  # Number of ray sampling directions per source
 	'max_paths_per_src': 1_000_000,  # Maximum number of paths per source
+	'refraction': True,  # Whether to use refraction (True) or not (False)
 
 	# Ray-tracing parameters -> Efficient if they match the dataclass in SetupEditor.py
 	'carrier_freq': 3.5e9,  # Hz

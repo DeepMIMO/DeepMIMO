@@ -244,38 +244,38 @@ def export_scene_rt_params2(scene: Scene, **compute_paths_kwargs) -> Dict[str, A
     """ Extract parameters from Scene (and from compute_paths arguments)"""
     
     scene_dict = scene_to_dict2(scene)
+    wavelength = scene.wavelength
     rt_params_dict = dict(
         bandwidth=scene_dict['bandwidth'].numpy(),
         frequency=scene_dict['frequency'].numpy(),
         
         rx_array_size=scene_dict['rx_array'].array_size,  # dual-pol if diff than num_ant
         rx_array_num_ant=scene_dict['rx_array'].num_ant,
-        rx_array_ant_pos=scene_dict['rx_array'].positions.numpy(),  # relative to ref.
+        rx_array_ant_pos=scene_dict['rx_array'].positions(wavelength).numpy(),  # relative to ref.
         
         tx_array_size=scene_dict['tx_array'].array_size, 
         tx_array_num_ant=scene_dict['tx_array'].num_ant,
-        tx_array_ant_pos=scene_dict['tx_array'].positions.numpy(),
+        tx_array_ant_pos=scene_dict['tx_array'].positions(wavelength).numpy(),
     
-        synthetic_array=scene_dict['synthetic_array'],
+        synthetic_array=compute_paths_kwargs['synthetic_array'],
     
         # custom
-        raytracer_version=sionna.__version__,
+        raytracer_version=sionna.rt.__version__,
         doppler_available=0,
     )
 
-    default_compute_paths_params = dict( # with Sionna default values
-        max_depth=3, 
-        method='fibonacci',
-        num_samples=1000000,
-        los=True,
-        reflection=True,
-        diffraction=False,
-        scattering=False,
-        scat_keep_prob=0.001,
-        edge_diffraction=False,
-        scat_random_phases=True
+    default_compute_paths_params = dict( # Sionna 1.0.2 default values
+        max_depth = 3,
+        max_num_paths_per_src = 1000000,
+        samples_per_src = 1000000,
+        synthetic_array = True,
+        los = True,
+        specular_reflection = True,
+        diffuse_reflection = False,
+        refraction = True,
+        seed = 42
     )
-    
+
     # Note 1: Sionna considers only last-bounce diffusion (except in compute_coverage(.), 
     #         but that one doesn't return paths)
     # Note 2: Sionna considers only one diffraction (first-order diffraction), 
