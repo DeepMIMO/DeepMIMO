@@ -83,18 +83,27 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
                     f"{1 if rt_params['ds_enable'] else 0}S")
 
     scene_folder = os.path.join(osm_folder, scene_name)
-    xml_path = os.path.join(osm_folder, "scene.xml")  # Created by Blender OSM Export!
+    
+    if rt_params['use_builtin_scene']:
+        xml_path = getattr(sionna.rt.scene, rt_params['builtin_scene_path'])
+    else:
+        xml_path = os.path.join(osm_folder, "scene.xml")  # Created by Blender OSM Export!
+    
+    print(f"XML scene path: {xml_path}")
     scene = create_base_scene(xml_path, rt_params['carrier_freq'])
-    scene = set_materials(scene)
+    if not rt_params['use_builtin_scene']:
+        scene = set_materials(scene)
     
     # Map general parameters to Sionna RT parameters
     if IS_LEGACY_VERSION:
         compute_paths_rt_params = {
+            "los": rt_params['los'],
             "max_depth": rt_params['max_reflections'],
             "diffraction": bool(rt_params['max_diffractions']),
             "scattering": rt_params['ds_enable'],
             "num_samples": rt_params['n_samples_per_src']
         }
+        scene.synthetic_array = rt_params['synthetic_array']
     else: # version 1.x
         compute_paths_rt_params = {
             "los": rt_params['los'],
@@ -110,10 +119,7 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
     # Add BSs
     num_bs = len(tx_pos)
     for b in range(num_bs): 
-        if IS_LEGACY_VERSION:
-            pwr_dbm = tf.Variable(0, dtype=tf.float32)
-        else: # version 1.x
-            pwr_dbm = 0
+        pwr_dbm = tf.Variable(0, dtype=tf.float32) if IS_LEGACY_VERSION else 0
         tx = Transmitter(position=tx_pos[b], name=f"BS_{b}", power_dbm=pwr_dbm)
         scene.add(tx)
         print(f"Added BS_{b} at position {tx_pos[b]}")

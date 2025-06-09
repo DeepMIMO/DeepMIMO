@@ -65,31 +65,32 @@ from deepmimo.pipelines.blender_osm_export import fetch_osm_scene
 from deepmimo.pipelines.utils.geo_utils import get_city_name, fetch_satellite_view
 
 # API Keys
-GMAPS_API_KEY = ""
-if GMAPS_API_KEY == "":
-	try:
-		from api_keys import GMAPS_API_KEY
-	except ImportError:
-		print("Please create a api_keys.py file, with GMAPS_API_KEY defined")
-		print("Disabling Google Maps services:\n"
-			"  - city name extraction\n"
-			"  - satellite view image save")
+# GMAPS_API_KEY = ""
+# if GMAPS_API_KEY == "":
+# 	try:
+# 		from api_keys import GMAPS_API_KEY
+# 	except ImportError:
+# 		print("Please create a api_keys.py file, with GMAPS_API_KEY defined")
+# 		print("Disabling Google Maps services:\n"
+# 			"  - city name extraction\n"
+# 			"  - satellite view image save")
 
-# DeepMIMO API Key
-DEEPMIMO_API_KEY = ""
-if DEEPMIMO_API_KEY == "":
-	try:
-		from api_keys import DEEPMIMO_API_KEY
-	except ImportError:
-		print("Please create a api_keys.py file, with DEEPMIMO_API_KEY defined")
-		print("Disabling DeepMIMO services: scenario upload (zip, images, rt source)")
+# # DeepMIMO API Key
+# DEEPMIMO_API_KEY = ""
+# if DEEPMIMO_API_KEY == "":
+# 	try:
+# 		from api_keys import DEEPMIMO_API_KEY
+# 	except ImportError:
+# 		print("Please create a api_keys.py file, with DEEPMIMO_API_KEY defined")
+# 		print("Disabling DeepMIMO services: scenario upload (zip, images, rt source)")
 
 # Configure Ray Tracing Versions (before importing the pipeline modules)
 dm.config('wireless_insite_version', "4.0.1")  # E.g. '3.3.0', '4.0.1'
 dm.config('sionna_version', '0.19.1')  # E.g. '0.19.1', '1.0.2'
+dm.config('sionna_version', '1.0.2')  # E.g. '0.19.1', '1.0.2'
 
 # from deepmimo.pipelines.wireless_insite.insite_raytracer import raytrace_insite
-# from deepmimo.pipelines.sionna_rt.sionna_raytracer import raytrace_sionna
+from deepmimo.pipelines.sionna_rt.sionna_raytracer import raytrace_sionna
 
 
 # Absolute (!!) Paths
@@ -111,7 +112,7 @@ TERRAIN_MATERIAL_PATH = os.path.join(WI_MAT, "ITU Wet earth 3.5 GHz.mtl")
 COUNTER = 30
 #%% Iterate over CSV file to extract the map, create TX/RX positions, and run RT
 
-df = pd.read_csv('./dev/params_20cities_t.csv')
+# df = pd.read_csv('./dev/params_20cities_t.csv')
 
 # GPU definition (e.g. for Sionna)
 gpu_num = 0 # Use "" to use the CPU
@@ -143,9 +144,15 @@ p = {
 	'terrain_material': TERRAIN_MATERIAL_PATH,
 
 	# Sionna specific parameters
+	'los': True,  # Whether to use LOS paths (True) or not (False)
+	'synthetic_array': True,  # Whether to use a synthetic array (True) or a real array (False)
 	'batch_size': 15,  # Number of users to compute at a time
 					   # Heuristic: 1.5 per GB of GPU VRAM, if using scattering, 
 					   # else 5-10 users per GB
+	'use_builtin_scene': True,  # Whether to use a builtin scene (True) or a custom scene (False)
+	'builtin_scene_path': 'simple_reflector', # 'simple_reflector', 'simple_street_canyon'
+	'n_samples_per_src': 1_000_000,  # Number of ray sampling directions per source
+	'max_paths_per_src': 1_000_000,  # Maximum number of paths per source
 
 	# Ray-tracing parameters -> Efficient if they match the dataclass in SetupEditor.py
 	'carrier_freq': 3.5e9,  # Hz
@@ -162,37 +169,45 @@ p = {
 	'ds_final_interaction_only': True,
 	'conform_to_terrain': False,  # Whether to conform the terrain to the ray tracing grid
 								  # (if True, positions have added the terrain height)
+	
 }
 
-for index, row in df.iterrows():
-	print(f"\n{'=' * 50}\nSTARTING SCENARIO {index + 1}/{len(df)}: {row['name']}\n{'=' * 50}")
+# for index, row in df.iterrows():
+for index in [1]:
+	# print(f"\n{'=' * 50}\nSTARTING SCENARIO {index + 1}/{len(df)}: {row['name']}\n{'=' * 50}")
 
-	# RT Phase 1: Load GPS coordinates from CSV
-	load_params_from_row(row, p)
+	# # RT Phase 1: Load GPS coordinates from CSV
+	# load_params_from_row(row, p)
 
-	# RT Phase 2: Extract OSM data, City Name, and Satellite View
-	COUNTER += 1
-	osm_folder = os.path.join(OSM_ROOT, row['name']) + f'_{COUNTER}'
-	fetch_osm_scene(p['min_lat'], p['min_lon'], p['max_lat'], p['max_lon'],
-					osm_folder, output_formats=['insite','sionna'])
-	p['origin_lat'], p['origin_lon'] = get_origin_coords(osm_folder)
+	# # RT Phase 2: Extract OSM data, City Name, and Satellite View
+	# COUNTER += 1
+	# osm_folder = os.path.join(OSM_ROOT, row['name']) + f'_{COUNTER}'
+	# fetch_osm_scene(p['min_lat'], p['min_lon'], p['max_lat'], p['max_lon'],
+	# 				osm_folder, output_formats=['insite','sionna'])
+	# p['origin_lat'], p['origin_lon'] = get_origin_coords(osm_folder)
 
-	p['city'] = get_city_name(p['origin_lat'], p['origin_lon'], GMAPS_API_KEY)
-	sat_view_path = fetch_satellite_view(p['min_lat'], p['min_lon'], p['max_lat'], p['max_lon'],
-										 GMAPS_API_KEY, osm_folder)
+	# p['city'] = get_city_name(p['origin_lat'], p['origin_lon'], GMAPS_API_KEY)
+	# sat_view_path = fetch_satellite_view(p['min_lat'], p['min_lon'], p['max_lat'], p['max_lon'],
+	# 									 GMAPS_API_KEY, osm_folder)
 	
-	break
-	# RT Phase 3: Generate RX and TX positions
-	rx_pos = gen_rx_grid(p)  # N x 3 (N ~ 100k)
-	tx_pos = gen_tx_pos(p)   # M x 3 (M ~ 3)
+	# # break
+	# # RT Phase 3: Generate RX and TX positions
+	# rx_pos = gen_rx_grid(p)  # N x 3 (N ~ 100k)
+	# tx_pos = gen_tx_pos(p)   # M x 3 (M ~ 3)
 	
-	# Optional: Round positions (visually better)
-	rx_pos = np.round(rx_pos, p['pos_prec'])
-	tx_pos = np.round(tx_pos, p['pos_prec'])
+	# # Optional: Round positions (visually better)
+	# rx_pos = np.round(rx_pos, p['pos_prec'])
+	# tx_pos = np.round(tx_pos, p['pos_prec'])
 	
+	print('Starting RT')
+	osm_folder = os.path.join(OSM_ROOT, "simple_reflector")
+
+	rx_pos = np.array([[0, 10, 0]])
+	tx_pos = np.array([[0, 0, 0]])
+
 	# RT Phase 4: Run Wireless InSite ray tracing
-	rt_path = raytrace_insite(osm_folder, tx_pos, rx_pos, **p)
-	# rt_path = raytrace_sionna(osm_folder, tx_pos, rx_pos, **p)
+	# rt_path = raytrace_insite(osm_folder, tx_pos, rx_pos, **p)
+	rt_path = raytrace_sionna(osm_folder, tx_pos, rx_pos, **p)
 
 	# RT Phase 5: Convert to DeepMIMO format
 	scen_name = dm.convert(rt_path, overwrite=True)
@@ -201,12 +216,12 @@ for index, row in df.iterrows():
 	dataset = dm.load(scen_name)[0]
 	dataset.plot_coverage(dataset.los)
 	dataset.plot_coverage(dataset.pwr[:, 0])
-	# break
+	break
 
 	# RT Phase 7: Upload (zip rt source)
-	scen_name = dm.zip(rt_path)
-	dm.upload(scen_name, key=DEEPMIMO_API_KEY)
-	dm.upload_images(scen_name, img_paths=[sat_view_path],  key=DEEPMIMO_API_KEY)
-	dm.upload_rt_source(scen_name, rt_zip_path=dm.zip(rt_path), key=DEEPMIMO_API_KEY)
+	# scen_name = dm.zip(rt_path)
+	# dm.upload(scen_name, key=DEEPMIMO_API_KEY)
+	# dm.upload_images(scen_name, img_paths=[sat_view_path],  key=DEEPMIMO_API_KEY)
+	# dm.upload_rt_source(scen_name, rt_zip_path=dm.zip(rt_path), key=DEEPMIMO_API_KEY)
 
 # %%
