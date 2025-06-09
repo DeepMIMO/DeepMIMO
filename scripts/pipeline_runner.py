@@ -169,6 +169,7 @@ p = {
 	'ds_final_interaction_only': True,
 	'conform_to_terrain': False,  # Whether to conform the terrain to the ray tracing grid
 								  # (if True, positions have added the terrain height)
+	'bs2bs': False,  # Whether to compute path between BSs (True) or not (False)
 	
 }
 

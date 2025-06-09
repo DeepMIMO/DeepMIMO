@@ -135,12 +135,12 @@ def raytrace_insite(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
         txrx_editor.add_txrx(
             txrx_type="points",
             is_transmitter=True,
-            is_receiver=True,
+            is_receiver=rt_params['bs2bs'],
             pos=pos,
             name=f"BS{b_idx+1}",
             conform_to_terrain=False)
 
-    #   RX (UEs)
+    #   RX (UEs) - adding ues as points is much slower than as a grid
     if False:
         txrx_editor.add_txrx(
                 txrx_type="points",

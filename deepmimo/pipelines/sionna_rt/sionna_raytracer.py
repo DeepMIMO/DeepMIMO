@@ -130,17 +130,18 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
     path_list = []
 
     p_solver = None if IS_LEGACY_VERSION else PathSolver()
+    
+    if rt_params['bs2bs']:
+        # Ray-tracing BS-BS paths
+        print("Ray-tracing BS-BS paths")
+        for b in range(num_bs):
+            scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b]))
 
-    # Ray-tracing BS-BS paths
-    print("Ray-tracing BS-BS paths")
-    for b in range(num_bs):
-        scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b]))
+        paths = _compute_paths(scene, p_solver, compute_paths_rt_params)
+        path_list.append(paths)
 
-    paths = _compute_paths(scene, p_solver, compute_paths_rt_params)
-    path_list.append(paths)
-
-    for b in range(num_bs):
-        scene.remove(f"rx_{b}")
+        for b in range(num_bs):
+            scene.remove(f"rx_{b}")
 
     # Ray-tracing BS-UE paths
     for batch in tqdm(data_loader, desc="Ray-tracing BS-UE paths", unit='batch'):
