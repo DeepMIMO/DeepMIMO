@@ -102,6 +102,8 @@ class SionnaRayTracingParameters(RayTracingParameters):
                         raw_params['max_lat'], raw_params['max_lon'])
         else:
             gps_bbox = (0,0,0,0) # default
+        
+        rt_method = raw_params.get('method', 'fibonacci')
 
         # Create standardized parameters
         params_dict = {
@@ -132,8 +134,8 @@ class SionnaRayTracingParameters(RayTracingParameters):
             'diffuse_random_phases': raw_params.get('scat_random_phases', True),
 
             'synthetic_array': raw_params.get('synthetic_array', True),
-            'num_rays': -1 if raw_params['method'] != 'fibonacci' else n_rays, 
-            'ray_casting_method': raw_params['method'].replace('fibonacci', 'uniform'),
+            'num_rays': -1 if rt_method != 'fibonacci' else n_rays, 
+            'ray_casting_method': rt_method.replace('fibonacci', 'uniform'),
             # The alternative to fibonacci is exhaustive, for which the number of rays is not predictable
 
             # GPS Bounding Box

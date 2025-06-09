@@ -264,7 +264,7 @@ def export_scene_rt_params2(scene: Scene, **compute_paths_kwargs) -> Dict[str, A
         doppler_available=0,
     )
 
-    default_compute_paths_params = dict( # Sionna 1.0.2 default values
+    default_compute_paths_params = dict( # Sionna 1.0 default values
         max_depth = 3,
         max_num_paths_per_src = 1000000,
         samples_per_src = 1000000,
@@ -276,21 +276,17 @@ def export_scene_rt_params2(scene: Scene, **compute_paths_kwargs) -> Dict[str, A
         seed = 42
     )
 
-    # Note 1: Sionna considers only last-bounce diffusion (except in compute_coverage(.), 
-    #         but that one doesn't return paths)
-    # Note 2: Sionna considers only one diffraction (first-order diffraction), 
-    #         though it may occur anywhere in the path
-    # Note 3: Sionna does not save compute_path(.) argument values. 
-    #         Many of them cannot be derived from the paths and scenes.
-    #         For this reason, we ask the user to define a dictionary with the 
-    #         parameters we care about and raytrace using that dict.
-    #         Alternatively, the user may fill the dictionary after ray tracing with 
-    #         the parameters that changed from their default values in Sionna.
-
-    # Update default parameters of compute_path(.) with parameters that changed (in kwargs)
     default_compute_paths_params.update(compute_paths_kwargs)
+    raw_params = {**rt_params_dict, **default_compute_paths_params}
 
-    return {**rt_params_dict, **default_compute_paths_params}
+    # Mapping from Sionna 1.0.2 to common parameters
+    param_mapping = {
+        'num_samples': raw_params['samples_per_src'],
+        'reflection': bool(raw_params['specular_reflection']),
+        'diffraction': False, #bool(raw_params['diffraction']),
+        'scattering': bool(raw_params['diffuse_reflection']),
+    }
+    return {**raw_params, **param_mapping}
 
 def export_scene_buildings(scene: Scene) -> Tuple[np.ndarray, Dict]:
     """ Export the vertices and faces of buildings in a Sionna Scene.
@@ -388,7 +384,7 @@ def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths,
     return
 
 def export_to_deepmimo_v2(scene: Scene, path_list: List[Paths] | Paths, 
-                       my_compute_path_params: Dict, save_folder: str):
+                          my_compute_path_params: Dict, save_folder: str):
     """ Export a complete Sionna simulation to a format that can be converted by DeepMIMO.
     
     This function exports all necessary data from a Sionna ray tracing simulation to files
@@ -412,7 +408,7 @@ def export_to_deepmimo_v2(scene: Scene, path_list: List[Paths] | Paths,
     """
     
     paths_dict_list = path_list # export moved to pipeline (needs to be called during RT)
-    materials_dict_list, material_indices = {}, [] #export_scene_materials(scene)
+    materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params2(scene, **my_compute_path_params) # some params are broken
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
     

@@ -63,7 +63,8 @@ def _preallocate_data(n_rx: int) -> Dict:
     
 
 def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, 
-                          t: int, curr_max_inter: int, batch_size: int, targets: np.ndarray, rx_pos: np.ndarray) -> int:
+                         t: int, curr_max_inter: int, batch_size: int, 
+                         targets: np.ndarray, rx_pos: np.ndarray) -> int:
     """Process a batch of paths from Sionna format and store in DeepMIMO format.
     
     Args:
@@ -80,56 +81,77 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
         int: Number of inactive receivers found in this batch
     """
     inactive_count = 0
-    a = paths_dict['a']  # amplitude array
-    tau = _get_path_key(paths_dict, 'tau', '_tau')
-    phi_r = _get_path_key(paths_dict, 'phi_r', '_phi_r')
-    phi_t = _get_path_key(paths_dict, 'phi_t', '_phi_t')
-    theta_r = _get_path_key(paths_dict, 'theta_r', '_theta_r')
-    theta_t = _get_path_key(paths_dict, 'theta_t', '_theta_t')
-    try:
-        types = _get_path_key(paths_dict, 'types', '_types')
-    except KeyError:
-        print("Warning: No 'types' or '_types' found in paths_dict, using dummy types.")
-        types = np.zeros_like(a, dtype=np.float32)
-    for rel_idx in range(batch_size):
-        rx_pos_this = targets[rel_idx]
-        abs_idx_arr = np.where(np.all(rx_pos == rx_pos_this, axis=1))[0]
+    
+    a = paths_dict['a']    
+    tau = paths_dict['tau']
+    phi_r = paths_dict['phi_r'] 
+    phi_t = paths_dict['phi_t']
+    theta_r = paths_dict['theta_r']
+    theta_t = paths_dict['theta_t']
+
+    # Sionna 0.x, uses 'types' & Sionna 1.x, uses 'interactions'
+    types = _get_path_key(paths_dict, 'types', 'interactions')
+    
+    rx_ant_range = range(a.shape[1])
+    tx_ant_range = range(a.shape[3])
+
+    # Check if single antenna (this changes the dimensions of the arrays)
+    if theta_r.ndim == 4 - int(is_sionna_v1()):
+        single_ant = True
+        rx_ant_idx = 0
+        tx_ant_idx = 0
+        tx_idx = t
+    else:
+        single_ant = False
+        raise NotImplementedError('Multi antenna support is not implemented yet.')
+    
+    # Notes for single and multi antenna, in Sionna 0.x and Sionna 1.x
+    # DIM_TYPE_1: [batch_size, num_rx, num_rx_ant, num_tx, num_tx_ant, max_num_paths]
+    # DIM_TYPE_2: [batch_size, num_rx, num_tx, max_num_paths]
+    
+    # Sionna 0.x:
+    # - a:        DIM_TYPE_1
+    # - tau:      DIM_TYPE_1 or DIM_TYPE_2
+    # - phi_r:    DIM_TYPE_1 or DIM_TYPE_2
+    # - types:    DIM_TYPE_1 or DIM_TYPE_2
+    # - vertices: DIM_TYPE_1 or DIM_TYPE_2
+    # Sionna 1.x: (the same but without batch dimension)
+    # Currently, we only support DIM_TYPE_2 (no multi antenna)
+
+    for rel_rx_idx in range(batch_size):
+        abs_idx_arr = np.where(np.all(rx_pos == targets[rel_rx_idx], axis=1))[0]
         if len(abs_idx_arr) == 0:
             # RX position not found in global RX list, skip
             continue
         abs_idx = abs_idx_arr[0]
-        if is_sionna_v1():
-            tx_ant_range = [0]
-        else:
-            tx_ant_range = range(a.shape[3])
-        for tx_ant_idx in tx_ant_range:
-            amp = a[rel_idx, 0, 0, tx_ant_idx, :]
-            path_idxs = np.where(amp != 0)[0][:c.MAX_PATHS]
-            n_paths = len(path_idxs)
-            if n_paths == 0:
-                continue
-            data[c.POWER_PARAM_NAME][abs_idx,:n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
-            data[c.PHASE_PARAM_NAME][abs_idx,:n_paths] = np.angle(amp[path_idxs], deg=True)
-            # Indexing for tau depending on shape
-            if tau.ndim == 5:
-                delays = tau[b, rel_idx, 0, tx_ant_idx, path_idxs]
-            elif tau.ndim == 4:
-                delays = tau[b, rel_idx, tx_ant_idx, path_idxs]
-            elif tau.ndim == 3:
-                rx_axis = tau.shape[1]
-                delays = tau[b, rel_idx if rx_axis > 1 else 0, path_idxs]
-            else:
-                delays = tau.flatten()[path_idxs]
-            data[c.DELAY_PARAM_NAME][abs_idx,:n_paths] = delays
-            # Save angle information
-            data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(phi_r, b, rel_idx, tx_ant_idx, path_idxs))
-            data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(phi_t, b, rel_idx, tx_ant_idx, path_idxs))
-            data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(theta_r, b, rel_idx, tx_ant_idx, path_idxs))
-            data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(get_angle_slice(theta_t, b, rel_idx, tx_ant_idx, path_idxs))
-            types_sel = types[b, rel_idx, 0, tx_ant_idx, path_idxs]
-            inter_pos_rx = np.zeros((n_paths, curr_max_inter, 3))
-            interactions = get_sionna_interaction_types(types_sel, inter_pos_rx)
-            data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = interactions
+
+        amp = a[rel_rx_idx, rx_ant_idx, tx_idx, tx_ant_idx, :]
+        path_idxs = np.where(amp != 0)[0][:c.MAX_PATHS]
+        n_paths = len(path_idxs)
+        if n_paths == 0:
+            inactive_count += 1
+            continue
+        data[c.POWER_PARAM_NAME][abs_idx, :n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
+        data[c.PHASE_PARAM_NAME][abs_idx, :n_paths] = np.angle(amp[path_idxs], deg=True)
+        
+        aoa_az = get_angle_slice(phi_r, b, rel_rx_idx, tx_idx, path_idxs)
+        aoa_el = get_angle_slice(theta_r, b, rel_rx_idx, tx_idx, path_idxs)
+        aod_az = get_angle_slice(phi_t, b, rel_rx_idx, tx_idx, path_idxs)
+        aod_el = get_angle_slice(theta_t, b, rel_rx_idx, tx_idx, path_idxs)
+        delays = get_angle_slice(tau, b, rel_rx_idx, tx_idx, path_idxs)
+
+        # Save information
+        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(aoa_az)
+        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(aod_az)
+        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(aoa_el)
+        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(aod_el)
+        data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = delays
+
+        types_sel = types[b, rel_rx_idx, tx_idx, path_idxs]
+        inter_pos_rx = np.zeros((n_paths, curr_max_inter, 3))
+        interactions = get_sionna_interaction_types(types_sel, inter_pos_rx)
+        data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = interactions
+        
     return inactive_count
 
 def _get_path_key(paths_dict, key, fallback_key=None, default=None):
@@ -189,13 +211,13 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
 
     # Collect all unique TX positions from all path dictionaries
     all_tx_pos = np.unique(np.vstack([
-        _get_path_key(paths_dict, 'sources', '_src_positions') for paths_dict in path_dict_list
+        _get_path_key(paths_dict, 'sources', 'src_positions') for paths_dict in path_dict_list
     ]), axis=0)
     n_tx = len(all_tx_pos)
 
     # Collect all RX positions while maintaining order and removing duplicates
     all_rx_pos = np.vstack([
-        _get_path_key(paths_dict, 'targets', '_tgt_positions') for paths_dict in path_dict_list
+        _get_path_key(paths_dict, 'targets', 'tgt_positions') for paths_dict in path_dict_list
     ])
     _, unique_indices = np.unique(all_rx_pos, axis=0, return_index=True)
     rx_pos = all_rx_pos[np.sort(unique_indices)]  # Sort indices to maintain original order
@@ -216,26 +238,20 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
         b = 0  # batch index 
         # Process each batch of paths
         for path_dict_idx, paths_dict in enumerate(path_dict_list):
-            sources = _get_path_key(paths_dict, 'sources', '_src_positions')
+            sources = _get_path_key(paths_dict, 'sources', 'src_positions')
             tx_idx_in_dict = np.where(np.all(sources == tx_pos_target, axis=1))[0]
             if len(tx_idx_in_dict) == 0:
                 continue
             if path_dict_idx == 0:
-                targets = _get_path_key(paths_dict, 'targets', '_tgt_positions')
+                targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
                 if np.array_equal(sources, targets):
                     bs_bs_paths = True
                     continue
             t = tx_idx_in_dict[0]
             batch_size = targets.shape[0]
-            if 'vertices' in paths_dict:
-                vertices = paths_dict['vertices']
-            elif '_vertices' in paths_dict:
-                vertices = paths_dict['_vertices']
-            else:
-                print("Warning: No vertices found in paths_dict, using dummy vertices.")
-                vertices = np.zeros((1, 1, 1, 1, 1, 3))
+            vertices = _get_path_key(paths_dict, 'vertices', '_vertices')
             curr_max_inter = min(c.MAX_INTER_PER_PATH, vertices.shape[0])
-            targets = _get_path_key(paths_dict, 'targets', '_tgt_positions')
+            targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
             inactive_count = _process_paths_batch(paths_dict, data, b, t, curr_max_inter, batch_size, targets, rx_pos)
             if tx_idx == 0:
                 rx_inactive_idxs_count += inactive_count
@@ -254,7 +270,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
             print(f'BS-BS paths found for TX {tx_idx}')
             
             paths_dict = path_dict_list[0]
-            all_bs_pos = _get_path_key(paths_dict, 'sources', '_src_positions')
+            all_bs_pos = _get_path_key(paths_dict, 'sources', 'src_positions')
             num_bs = len(all_bs_pos)
             data_bs_bs = _preallocate_data(num_bs)
             data_bs_bs[c.RX_POS_PARAM_NAME] = all_bs_pos
@@ -362,13 +378,13 @@ def get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> np
     
     return result 
 
-def get_angle_slice(arr, b, rel_idx, tx_ant_idx, path_idxs):
+def get_angle_slice(arr, b, rx_idx, tx_idx, path_idxs):
     if arr.ndim == 5:
-        return arr[b, rel_idx, 0, tx_ant_idx, path_idxs]
+        return arr[b, rx_idx, 0, tx_idx, path_idxs]
     elif arr.ndim == 4:
-        return arr[b, rel_idx, tx_ant_idx, path_idxs]
+        return arr[b, rx_idx, tx_idx, path_idxs]
     elif arr.ndim == 3:
         rx_axis = arr.shape[1]
-        return arr[b, rel_idx if rx_axis > 1 else 0, path_idxs]
+        return arr[b, rx_idx if rx_axis > 1 else 0, path_idxs]
     else:
-        return arr.flatten()[path_idxs] 
+        return arr.flatten()[path_idxs]

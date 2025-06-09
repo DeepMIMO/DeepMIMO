@@ -204,7 +204,7 @@ for index in [1]:
 	print('Starting RT')
 	osm_folder = os.path.join(OSM_ROOT, "simple_reflector")
 
-	rx_pos = np.array([[0, 10, 0]])
+	rx_pos = np.array([[0, 10, 0], [0, 0, 5], [0, 10, 5]])
 	tx_pos = np.array([[0, 0, 0]])
 
 	# RT Phase 4: Run Wireless InSite ray tracing
@@ -215,7 +215,7 @@ for index in [1]:
 	scen_name = dm.convert(rt_path, overwrite=True)
 
 	# RT Phase 6: Test Conversion
-	dataset = dm.load(scen_name)[0]
+	dataset = dm.load(scen_name)
 	dataset.plot_coverage(dataset.los)
 	dataset.plot_coverage(dataset.pwr[:, 0])
 	break

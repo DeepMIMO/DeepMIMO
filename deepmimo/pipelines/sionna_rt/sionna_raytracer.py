@@ -174,35 +174,50 @@ def to_dict(paths: Paths) -> dict:
     """Exports paths to a filtered dictionary with only selected keys """
     members_names = dir(paths)
     members_objects = [getattr(paths, attr) for attr in members_names]
-    data = {attr_name[1:] : attr_obj for (attr_obj, attr_name)
-            in zip(members_objects,members_names)
+    data = {attr_name : attr_obj for (attr_obj, attr_name)
+            in zip(members_objects, members_names)
             if not callable(attr_obj) and
                 not isinstance(attr_obj, Scene) and
                 not attr_name.startswith("__") and
-                attr_name.startswith("_")}
+                not attr_name.startswith("_")}
     return data
 
 
 def export_paths_to_cpu(paths_obj: Paths) -> dict:
-    """Exports paths to a filtered dictionary with only selected keys """
-    if IS_LEGACY_VERSION:
-        relevant_keys = ['sources', 'targets', 'a', 'tau', 'phi_r', 'phi_t', 
-                        'theta_r', 'theta_t', 'types', 'vertices']
-    else:
-        relevant_keys = ['a_imag', 'a_real', 'interactions', 'phi_r', 'phi_t', 
-                        'tau', 'theta_r', 'theta_t', 'vertices', 
-                        'src_positions', 'tgt_positions']
+    """Exports paths to a filtered dictionary with only selected keys.
     
-    path_dict = to_dict(paths_obj)
-    keys = path_dict.keys()
-    
-    
-    # IF THE COPY IS WORKING, check if we can get the interactions as well
-    # print(keys)
-    # print(relevant_keys)
-    # print(set(keys) - set(relevant_keys))~
+    This function is (CURRENTLY) only applied to Sionna 1.x. 
+    (Sionna 0.x currently takes care of the conversion in the exporter - Need organizing!)
 
-    # filter unnecessary keys & convert to numpy 
-    dict_filtered = {key: path_dict[key].numpy() for key in relevant_keys if key in keys}
-        
+    Note:
+    - in both versions:
+        - 'tau' is a float array
+        - 'phi_r' and 'phi_t' are float arrays
+        - 'theta_r' and 'theta_t' are float arrays
+        - 'sources' and 'targets' are lists of positions
+        - 'vertices' is a list of vertices
+        - 'rx_array' and 'tx_array' are arrays of positions
+    - Sionna 0.x:
+        - 'a' is a complex array
+        - 'types' is are the types of each interaction
+    - Sionna 1.x:
+        - 'a' is a tuple of real and imaginary parts
+        - 'interactions' is are the types of each interaction
+    """
+    relevant_keys = ['a', 'tau', 'phi_r', 'phi_t', 'theta_r', 'theta_t',
+                     'sources', 'targets', 'vertices']
+    relevant_keys += ['types'] if IS_LEGACY_VERSION else ['interactions']
+
+    path_dict = to_dict(paths_obj)
+    path_dict_keys = path_dict.keys()
+    
+    dict_filtered = {}
+    for key in relevant_keys:
+        if key in path_dict_keys:
+            if key == 'a' and not IS_LEGACY_VERSION:
+                # Compose complex array from real and imaginary parts
+                dict_filtered[key] = path_dict[key][0].numpy() + 1j * path_dict[key][1].numpy()
+            else:
+                dict_filtered[key] = path_dict[key].numpy()
+    
     return dict_filtered
