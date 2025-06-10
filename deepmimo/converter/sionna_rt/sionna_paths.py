@@ -35,6 +35,48 @@ def is_sionna_v1():
         print(f"Warning: Sionna version check failed ({e}), assuming v1.x+.")
         return True
 
+def transform_interaction_types(types: np.ndarray) -> np.ndarray:
+    """Transform a (n_paths, max_depth) interaction types array into a (n_paths,) array
+    where each element is an integer formed by concatenating the interaction type digits.
+    
+    Args:
+        types: Array of shape (n_paths, max_depth) containing interaction types:
+              0 for LoS, 1 for Reflection, 2 for Diffraction, 3 for Scattering
+              
+    Returns:
+        np.ndarray: Array of shape (n_paths,) where each element is an integer
+                   representing the concatenated interaction types.
+                   
+    Example:
+        [[0, 0, 0],      ->  [0,      # LoS
+         [1, 1, 0],           11,     # Two reflections
+         [1, 3, 0],           13,     # Reflection followed by scattering
+         [2, 0, 0]]           2]      # Single diffraction
+    """
+    n_paths = types.shape[0]
+    result = np.zeros(n_paths, dtype=np.float32)
+    
+    for i in range(n_paths):
+        # Get non-zero interactions (ignoring trailing zeros)
+        path = types[i]
+        if np.all(path == 0):
+            # All zeros means LoS
+            result[i] = c.INTERACTION_LOS
+            continue
+            
+        # Find first zero after a non-zero (if any)
+        non_zero_mask = path != 0
+        if np.any(non_zero_mask):
+            # Get indices where we have non-zero values
+            non_zero_indices = np.where(non_zero_mask)[0]
+            # Take all interactions up to the last non-zero
+            valid_interactions = path[: non_zero_indices[-1] + 1]
+            # Convert to string and remove any zeros
+            interaction_str = ''.join(str(int(x)) for x in valid_interactions if x != 0)
+            result[i] = float(interaction_str)
+            
+    return result
+
 def _preallocate_data(n_rx: int) -> Dict:
     """Pre-allocate data for path conversion.
     
@@ -62,9 +104,8 @@ def _preallocate_data(n_rx: int) -> Dict:
     
     
 
-def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, 
-                         t: int, curr_max_inter: int, batch_size: int, 
-                         targets: np.ndarray, rx_pos: np.ndarray) -> int:
+def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
+                         batch_size: int, targets: np.ndarray, rx_pos: np.ndarray) -> int:
     """Process a batch of paths from Sionna format and store in DeepMIMO format.
     
     Args:
@@ -72,7 +113,6 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
         data: Dictionary to store processed path data
         b: Batch index
         t: Transmitter index in current paths dictionary
-        curr_max_inter: Maximum number of interactions per path
         batch_size: Number of receivers in current batch
         targets: Array of target positions
         rx_pos: Array of RX positions
@@ -88,10 +128,10 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
     phi_t = paths_dict['phi_t']
     theta_r = paths_dict['theta_r']
     theta_t = paths_dict['theta_t']
+    vertices = paths_dict['vertices']
 
     # Sionna 0.x, uses 'types' & Sionna 1.x, uses 'interactions'
     types = _get_path_key(paths_dict, 'types', 'interactions')
-    
 
     # Notes for single and multi antenna, in Sionna 0.x and Sionna 1.x
     # DIM_TYPE_1: [batch_size, num_rx, num_rx_ant, num_tx, num_tx_ant, max_num_paths]
@@ -101,9 +141,10 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
     # - a:        DIM_TYPE_1
     # - tau:      DIM_TYPE_1 or DIM_TYPE_2
     # - phi_r:    DIM_TYPE_1 or DIM_TYPE_2
-    # - types:    DIM_TYPE_1 or DIM_TYPE_2
-    # - vertices: DIM_TYPE_1 or DIM_TYPE_2
+    # - vertices: DIM_TYPE_1 or DIM_TYPE_2 + (,3) (but with max_depth instead of batch_size)
+    # - types:    ...
     # Sionna 1.x: (the same but without batch dimension)
+    # - types:    DIM_TYPE_1 or DIM_TYPE_2 (but with max_depth instead of batch_size)
     # Currently, we only support DIM_TYPE_2 (no multi antenna)
     
     if not is_sionna_v1():
@@ -115,17 +156,14 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
         theta_t = theta_t[b, ...]
         types = types[b, ...]
 
-    rx_ant_range = range(a.shape[1])
-    tx_ant_range = range(a.shape[3])
-
     # Check if single antenna (this changes the dimensions of the arrays)
     if theta_r.ndim == 3:
-        single_ant = True
         rx_ant_idx = 0
         tx_ant_idx = 0
         tx_idx = t
     else:
-        single_ant = False
+        rx_ant_range = range(a.shape[1])
+        tx_ant_range = range(a.shape[3])
         raise NotImplementedError('Multi antenna support is not implemented yet.')
     
     n_rx = targets.shape[0]
@@ -154,13 +192,19 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
         
         data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = tau[rel_rx_idx, tx_idx, path_idxs]
 
+        # Interaction positions and types
+        inter_pos_rx = vertices[:, rel_rx_idx, tx_idx, path_idxs, :].swapaxes(0,1)
+        n_interactions = inter_pos_rx.shape[1]
+        data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :n_interactions, :] = inter_pos_rx
         if is_sionna_v1():
-            types_sel = types[rel_rx_idx, tx_idx, path_idxs] ## will break in sionna 1.x
+            # For Sionna v1, types is (max_depth, n_rx, n_tx, max_paths)
+            # We need to get (n_paths, max_depth) for the current rx/tx pair
+            path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0,1)
+            inter_types = transform_interaction_types(path_types)
         else:
-            types_sel = types[path_idxs]
-        inter_pos_rx = np.zeros((n_paths, curr_max_inter, 3))
-        interactions = get_sionna_interaction_types(types_sel, inter_pos_rx)
-        data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = interactions
+            inter_types = get_sionna_interaction_types(types[path_idxs], inter_pos_rx)
+        
+        data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = inter_types
         
     return inactive_count
 
@@ -260,10 +304,8 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
                     continue
             t = tx_idx_in_dict[0]
             batch_size = targets.shape[0]
-            vertices = _get_path_key(paths_dict, 'vertices', '_vertices')
-            curr_max_inter = min(c.MAX_INTER_PER_PATH, vertices.shape[0])
             targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
-            inactive_count = _process_paths_batch(paths_dict, data, b, t, curr_max_inter, batch_size, targets, rx_pos)
+            inactive_count = _process_paths_batch(paths_dict, data, b, t, batch_size, targets, rx_pos)
             if tx_idx == 0:
                 rx_inactive_idxs_count += inactive_count
             pbar.update(batch_size)
@@ -287,18 +329,8 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
             data_bs_bs[c.RX_POS_PARAM_NAME] = all_bs_pos
             data_bs_bs[c.TX_POS_PARAM_NAME] = tx_pos_target
             
-            # Get max number of interactions per path (for BS-BS)
-            if 'vertices' in paths_dict:
-                vertices = paths_dict['vertices']
-            elif '_vertices' in paths_dict:
-                vertices = paths_dict['_vertices']
-            else:
-                print("Warning: No vertices found in paths_dict (BS-BS), skipping.")
-                continue
-            curr_max_inter = min(c.MAX_INTER_PER_PATH, vertices.shape[0])
-
             # Process BS-BS paths using helper function
-            _process_paths_batch(paths_dict, data_bs_bs, b, t, curr_max_inter, 0, all_bs_pos, rx_pos)
+            _process_paths_batch(paths_dict, data_bs_bs, b, t, 0, all_bs_pos, rx_pos)
             
             # Compress data before saving
             data_bs_bs = cu.compress_path_data(data_bs_bs)
@@ -388,16 +420,3 @@ def get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> np
                 raise ValueError(f'Unknown Sionna interaction type: {sionna_type}')
     
     return result 
-
-# def get_angle_slice(arr, rx_idx, tx_idx, path_idxs):
-#     if arr.ndim != 3:
-#         print(f'arr.shape: {arr.shape}')
-#     if arr.ndim == 4:
-#         return arr[rx_idx, 0, tx_idx, path_idxs]
-#     elif arr.ndim == 3:
-#         return arr[rx_idx, tx_idx, path_idxs]
-#     elif arr.ndim == 2:
-#         rx_axis = arr.shape[1]
-#         return arr[rx_idx if rx_axis > 1 else 0, path_idxs]
-#     else:
-#         return arr.flatten()[path_idxs]
