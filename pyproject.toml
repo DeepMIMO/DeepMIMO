@@ -80,6 +80,8 @@ sionna019 = [
      "pandas",
      "shapely",
      "bpy==3.6.0; python_version == '3.10'",
+     "bpy==4.4.0; python_version == '3.11'",
+     "numpy<2.0; python_version == '3.11'",
  
      # InSite Specific
      "plyfile",
