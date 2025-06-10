@@ -82,7 +82,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
     """
     inactive_count = 0
     
-    a = paths_dict['a']    
+    a = paths_dict['a']
     tau = paths_dict['tau']
     phi_r = paths_dict['phi_r'] 
     phi_t = paths_dict['phi_t']
@@ -92,19 +92,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
     # Sionna 0.x, uses 'types' & Sionna 1.x, uses 'interactions'
     types = _get_path_key(paths_dict, 'types', 'interactions')
     
-    rx_ant_range = range(a.shape[1])
-    tx_ant_range = range(a.shape[3])
 
-    # Check if single antenna (this changes the dimensions of the arrays)
-    if theta_r.ndim == 4 - int(is_sionna_v1()):
-        single_ant = True
-        rx_ant_idx = 0
-        tx_ant_idx = 0
-        tx_idx = t
-    else:
-        single_ant = False
-        raise NotImplementedError('Multi antenna support is not implemented yet.')
-    
     # Notes for single and multi antenna, in Sionna 0.x and Sionna 1.x
     # DIM_TYPE_1: [batch_size, num_rx, num_rx_ant, num_tx, num_tx_ant, max_num_paths]
     # DIM_TYPE_2: [batch_size, num_rx, num_tx, max_num_paths]
@@ -117,6 +105,28 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
     # - vertices: DIM_TYPE_1 or DIM_TYPE_2
     # Sionna 1.x: (the same but without batch dimension)
     # Currently, we only support DIM_TYPE_2 (no multi antenna)
+    
+    if not is_sionna_v1():
+        a = a[b, ..., 0]
+        tau = tau[b, ...]
+        phi_r = phi_r[b, ...]
+        phi_t = phi_t[b, ...]
+        theta_r = theta_r[b, ...]
+        theta_t = theta_t[b, ...]
+        types = types[b, ...]
+
+    rx_ant_range = range(a.shape[1])
+    tx_ant_range = range(a.shape[3])
+
+    # Check if single antenna (this changes the dimensions of the arrays)
+    if theta_r.ndim == 3:
+        single_ant = True
+        rx_ant_idx = 0
+        tx_ant_idx = 0
+        tx_idx = t
+    else:
+        single_ant = False
+        raise NotImplementedError('Multi antenna support is not implemented yet.')
     
     n_rx = targets.shape[0]
 
@@ -137,20 +147,17 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
         data[c.POWER_PARAM_NAME][abs_idx, :n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
         data[c.PHASE_PARAM_NAME][abs_idx, :n_paths] = np.angle(amp[path_idxs], deg=True)
         
-        aoa_az = get_angle_slice(phi_r, b, rel_rx_idx, tx_idx, path_idxs)
-        aoa_el = get_angle_slice(theta_r, b, rel_rx_idx, tx_idx, path_idxs)
-        aod_az = get_angle_slice(phi_t, b, rel_rx_idx, tx_idx, path_idxs)
-        aod_el = get_angle_slice(theta_t, b, rel_rx_idx, tx_idx, path_idxs)
-        delays = get_angle_slice(tau, b, rel_rx_idx, tx_idx, path_idxs)
+        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_r[rel_rx_idx, tx_idx, path_idxs])
+        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_t[rel_rx_idx, tx_idx, path_idxs])
+        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_r[rel_rx_idx, tx_idx, path_idxs])
+        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_t[rel_rx_idx, tx_idx, path_idxs])
+        
+        data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = tau[rel_rx_idx, tx_idx, path_idxs]
 
-        # Save information
-        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(aoa_az)
-        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(aod_az)
-        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(aoa_el)
-        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(aod_el)
-        data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = delays
-
-        types_sel = types[b, rel_rx_idx, tx_idx, path_idxs]
+        if is_sionna_v1():
+            types_sel = types[rel_rx_idx, tx_idx, path_idxs] ## will break in sionna 1.x
+        else:
+            types_sel = types[path_idxs]
         inter_pos_rx = np.zeros((n_paths, curr_max_inter, 3))
         interactions = get_sionna_interaction_types(types_sel, inter_pos_rx)
         data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = interactions
@@ -382,13 +389,15 @@ def get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> np
     
     return result 
 
-def get_angle_slice(arr, b, rx_idx, tx_idx, path_idxs):
-    if arr.ndim == 5:
-        return arr[b, rx_idx, 0, tx_idx, path_idxs]
-    elif arr.ndim == 4:
-        return arr[b, rx_idx, tx_idx, path_idxs]
-    elif arr.ndim == 3:
-        rx_axis = arr.shape[1]
-        return arr[b, rx_idx if rx_axis > 1 else 0, path_idxs]
-    else:
-        return arr.flatten()[path_idxs]
+# def get_angle_slice(arr, rx_idx, tx_idx, path_idxs):
+#     if arr.ndim != 3:
+#         print(f'arr.shape: {arr.shape}')
+#     if arr.ndim == 4:
+#         return arr[rx_idx, 0, tx_idx, path_idxs]
+#     elif arr.ndim == 3:
+#         return arr[rx_idx, tx_idx, path_idxs]
+#     elif arr.ndim == 2:
+#         rx_axis = arr.shape[1]
+#         return arr[rx_idx if rx_axis > 1 else 0, path_idxs]
+#     else:
+#         return arr.flatten()[path_idxs]

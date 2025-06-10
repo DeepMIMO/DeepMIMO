@@ -87,11 +87,10 @@ from deepmimo.pipelines.utils.geo_utils import get_city_name, fetch_satellite_vi
 # Configure Ray Tracing Versions (before importing the pipeline modules)
 dm.config('wireless_insite_version', "4.0.1")  # E.g. '3.3.0', '4.0.1'
 dm.config('sionna_version', '0.19.1')  # E.g. '0.19.1', '1.0.2'
-dm.config('sionna_version', '1.0.2')  # E.g. '0.19.1', '1.0.2'
+# dm.config('sionna_version', '1.0.2')  # E.g. '0.19.1', '1.0.2'
 
 # from deepmimo.pipelines.wireless_insite.insite_raytracer import raytrace_insite
 from deepmimo.pipelines.sionna_rt.sionna_raytracer import raytrace_sionna
-
 
 # Absolute (!!) Paths
 # OSM_ROOT = "/home/jamorais/osm_root" # Windows
@@ -151,6 +150,13 @@ p = {
 					   # else 5-10 users per GB
 	'use_builtin_scene': True,  # Whether to use a builtin scene (True) or a custom scene (False)
 	'builtin_scene_path': 'simple_street_canyon', # 'simple_reflector', 'simple_street_canyon'
+	
+	# Sionna 0.x parameters
+	'scat_random_phases': True,
+	'edge_diffraction': False,
+	'scat_keep_prob': 0.001,
+
+	# Sionna 1.x parameters
 	'n_samples_per_src': 1_000_000,  # Number of ray sampling directions per source
 	'max_paths_per_src': 1_000_000,  # Maximum number of paths per source
 	'refraction': False,  # Whether to use refraction (True) or not (False)
@@ -158,7 +164,7 @@ p = {
 	# Ray-tracing parameters -> Efficient if they match the dataclass in SetupEditor.py
 	'carrier_freq': 3.5e9,  # Hz
 	'bandwidth': 10e6,  # Hz
-	'max_reflections': 5,
+	'max_reflections': 3, # Sionna currently breaking with 4 or more max_depth.
 	'max_paths': 10,
 	'ray_spacing': 0.25,  # m
 	'max_transmissions': 0,
@@ -229,3 +235,5 @@ for index in [1]:
 	# dm.upload_rt_source(scen_name, rt_zip_path=dm.zip(rt_path), key=DEEPMIMO_API_KEY)
 
 # %%
+
+scen_name = dm.convert(rt_path, overwrite=True)

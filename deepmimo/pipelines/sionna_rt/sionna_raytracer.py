@@ -101,7 +101,10 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
             "max_depth": rt_params['max_reflections'],
             "diffraction": bool(rt_params['max_diffractions']),
             "scattering": rt_params['ds_enable'],
-            "num_samples": rt_params['n_samples_per_src']
+            "num_samples": rt_params['n_samples_per_src'],
+            "scat_random_phases": rt_params['scat_random_phases'],
+            "edge_diffraction": rt_params['edge_diffraction'],
+            'ris': False,
         }
         scene.synthetic_array = rt_params['synthetic_array']
     else: # version 1.x
