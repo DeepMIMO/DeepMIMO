@@ -217,6 +217,8 @@ def export_paths_to_cpu(paths_obj: Paths) -> dict:
             if key == 'a' and not IS_LEGACY_VERSION:
                 # Compose complex array from real and imaginary parts
                 dict_filtered[key] = path_dict[key][0].numpy() + 1j * path_dict[key][1].numpy()
+            elif key in ['targets', 'sources']:
+                dict_filtered[key] = path_dict[key].numpy().T
             else:
                 dict_filtered[key] = path_dict[key].numpy()
     

@@ -117,8 +117,11 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int,
     # - vertices: DIM_TYPE_1 or DIM_TYPE_2
     # Sionna 1.x: (the same but without batch dimension)
     # Currently, we only support DIM_TYPE_2 (no multi antenna)
+    
+    n_rx = targets.shape[0]
 
-    for rel_rx_idx in range(batch_size):
+    for rel_rx_idx in range(n_rx):
+
         abs_idx_arr = np.where(np.all(rx_pos == targets[rel_rx_idx], axis=1))[0]
         if len(abs_idx_arr) == 0:
             # RX position not found in global RX list, skip
@@ -219,6 +222,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
     all_rx_pos = np.vstack([
         _get_path_key(paths_dict, 'targets', 'tgt_positions') for paths_dict in path_dict_list
     ])
+    
     _, unique_indices = np.unique(all_rx_pos, axis=0, return_index=True)
     rx_pos = all_rx_pos[np.sort(unique_indices)]  # Sort indices to maintain original order
     n_rx = len(rx_pos)

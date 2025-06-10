@@ -59,7 +59,7 @@ import numpy as np
 
 import deepmimo as dm  # type: ignore
 
-from deepmimo.pipelines.TxRxPlacement import gen_rx_grid, gen_tx_pos
+from deepmimo.pipelines.TxRxPlacement import gen_rx_grid, gen_tx_pos, gen_plane_grid
 from deepmimo.pipelines.utils.pipeline_utils import get_origin_coords, load_params_from_row
 from deepmimo.pipelines.blender_osm_export import fetch_osm_scene
 from deepmimo.pipelines.utils.geo_utils import get_city_name, fetch_satellite_view
@@ -150,10 +150,10 @@ p = {
 					   # Heuristic: 1.5 per GB of GPU VRAM, if using scattering, 
 					   # else 5-10 users per GB
 	'use_builtin_scene': True,  # Whether to use a builtin scene (True) or a custom scene (False)
-	'builtin_scene_path': 'simple_reflector', # 'simple_reflector', 'simple_street_canyon'
+	'builtin_scene_path': 'simple_street_canyon', # 'simple_reflector', 'simple_street_canyon'
 	'n_samples_per_src': 1_000_000,  # Number of ray sampling directions per source
 	'max_paths_per_src': 1_000_000,  # Maximum number of paths per source
-	'refraction': True,  # Whether to use refraction (True) or not (False)
+	'refraction': False,  # Whether to use refraction (True) or not (False)
 
 	# Ray-tracing parameters -> Efficient if they match the dataclass in SetupEditor.py
 	'carrier_freq': 3.5e9,  # Hz
@@ -205,6 +205,8 @@ for index in [1]:
 	osm_folder = os.path.join(OSM_ROOT, "simple_reflector")
 
 	rx_pos = np.array([[0, 10, 0], [0, 0, 5], [0, 10, 5]])
+	rx_pos = gen_plane_grid(0, 20, 0, 20, 1, 1.5)
+
 	tx_pos = np.array([[0, 0, 0]])
 
 	# RT Phase 4: Run Wireless InSite ray tracing
