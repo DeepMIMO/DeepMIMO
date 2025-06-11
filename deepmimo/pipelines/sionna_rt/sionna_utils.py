@@ -1,4 +1,11 @@
+"""
+Sionna Utils Module.
+
+This module contains utility functions for Sionna.
+"""
+
 from ...config import config
+import sionna
 from sionna.rt import (
     load_scene,
     PlanarArray,
@@ -6,6 +13,20 @@ from sionna.rt import (
     BackscatteringPattern,
     Scene
 )
+
+def is_sionna_v1():
+    try:
+        if hasattr(sionna, '__version__'):
+            version_str = sionna.__version__
+        elif hasattr(sionna, 'rt') and hasattr(sionna.rt, '__version__'):
+            version_str = sionna.rt.__version__
+        else:
+            print("Warning: Could not determine Sionna version, assuming v1.x+.")
+            return True
+        return int(version_str.split('.')[0]) >= 1
+    except Exception as e:
+        print(f"Warning: Sionna version check failed ({e}), assuming v1.x+.")
+        return True
 
 def set_materials(scene: Scene) -> Scene:
     """Set radio material properties for Sionna."""
@@ -44,7 +65,11 @@ def set_materials(scene: Scene) -> Scene:
 
 def create_base_scene(scene_path: str, center_frequency: float) -> Scene:
     """Create a base Sionna scene."""
-    scene = load_scene(scene_path)
+    if is_sionna_v1():
+        scene = load_scene(scene_path, merge_shapes=False) # sionna 1.x
+    else:
+        scene = load_scene(scene_path) # sionna 0.x
+
     scene.frequency = center_frequency
     scene.tx_array = PlanarArray(
         num_rows=1, 
