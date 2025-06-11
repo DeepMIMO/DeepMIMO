@@ -27,8 +27,6 @@ from typing import Tuple, List, Dict, Any
 
 from .. import converter_utils as cu
 
-from ...config import config
-
 # Define types at module level
 try:
     import sionna.rt
