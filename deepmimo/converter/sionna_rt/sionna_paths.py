@@ -10,7 +10,7 @@ from tqdm import tqdm
 from typing import Dict
 from ... import consts as c
 from .. import converter_utils as cu
-import sionna
+from ...config import config
 
 # Interaction Type Map for Sionna
 INTERACTIONS_MAP = {
@@ -21,19 +21,10 @@ INTERACTIONS_MAP = {
     4:  None,  # Sionna RIS is not supported yet
 }
 
-def is_sionna_v1():
-    try:
-        if hasattr(sionna, '__version__'):
-            version_str = sionna.__version__
-        elif hasattr(sionna, 'rt') and hasattr(sionna.rt, '__version__'):
-            version_str = sionna.rt.__version__
-        else:
-            print("Warning: Could not determine Sionna version, assuming v1.x+.")
-            return True
-        return int(version_str.split('.')[0]) >= 1
-    except Exception as e:
-        print(f"Warning: Sionna version check failed ({e}), assuming v1.x+.")
-        return True
+def _is_sionna_v1():
+    """Determine if Sionna version is 1.x or higher."""
+    sionna_version = config.get('sionna_version')
+    return sionna_version.startswith('1.')
 
 def transform_interaction_types(types: np.ndarray) -> np.ndarray:
     """Transform a (n_paths, max_depth) interaction types array into a (n_paths,) array
@@ -147,7 +138,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
     # - types:    DIM_TYPE_1 or DIM_TYPE_2 (but with max_depth instead of batch_size)
     # Currently, we only support DIM_TYPE_2 (no multi antenna)
     
-    if not is_sionna_v1():
+    if not _is_sionna_v1():
         a = a[b, ..., 0]
         tau = tau[b, ...]
         phi_r = phi_r[b, ...]
@@ -196,7 +187,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
         inter_pos_rx = vertices[:, rel_rx_idx, tx_idx, path_idxs, :].swapaxes(0,1)
         n_interactions = inter_pos_rx.shape[1]
         data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :n_interactions, :] = inter_pos_rx
-        if is_sionna_v1():
+        if _is_sionna_v1():
             # For Sionna v1, types is (max_depth, n_rx, n_tx, max_paths)
             # We need to get (n_paths, max_depth) for the current rx/tx pair
             path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0,1)
