@@ -60,6 +60,7 @@ def get_sionna_version():
         pass
     return None
 
+
 def export_paths(path_list):
     from packaging import version
     sionna_version = get_sionna_version()
@@ -297,12 +298,15 @@ def export_scene_buildings(scene: Scene) -> Tuple[np.ndarray, Dict]:
     
     vertex_offset = 0
     
+    sionna_v1 = get_sionna_version().startswith("1.")
     for obj_name, obj in scene._scene_objects.items():
     
         # Get vertices
         n_v = obj._mi_shape.vertex_count()
         obj_vertices = np.array(obj._mi_shape.vertex_position(np.arange(n_v)))
-        
+        if sionna_v1:
+            obj_vertices = obj_vertices.T
+
         # Robust shape check: skip empty
         if obj_vertices.size == 0:
             continue
