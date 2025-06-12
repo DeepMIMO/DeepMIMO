@@ -21,9 +21,8 @@ INTERACTIONS_MAP = {
     4:  None,  # Sionna RIS is not supported yet
 }
 
-def _is_sionna_v1():
+def _is_sionna_v1(sionna_version: str):
     """Determine if Sionna version is 1.x or higher."""
-    sionna_version = config.get('sionna_version')
     return sionna_version.startswith('1.')
 
 def _preallocate_data(n_rx: int) -> Dict:
@@ -52,7 +51,8 @@ def _preallocate_data(n_rx: int) -> Dict:
     return data
     
 def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
-                         batch_size: int, targets: np.ndarray, rx_pos: np.ndarray) -> int:
+                         batch_size: int, targets: np.ndarray, rx_pos: np.ndarray,
+                         sionna_version: str) -> int:
     """Process a batch of paths from Sionna format and store in DeepMIMO format.
     
     Args:
@@ -94,7 +94,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
     # - types:    DIM_TYPE_1 or DIM_TYPE_2 (but with max_depth instead of batch_size)
     # Currently, we only support DIM_TYPE_2 (no multi antenna)
     
-    if not _is_sionna_v1():
+    if not _is_sionna_v1(sionna_version):
         a = a[b, ..., 0]
         tau = tau[b, ...]
         phi_r = phi_r[b, ...]
@@ -143,7 +143,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
         inter_pos_rx = vertices[:, rel_rx_idx, tx_idx, path_idxs, :].swapaxes(0,1)
         n_interactions = inter_pos_rx.shape[1]
         data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :n_interactions, :] = inter_pos_rx
-        if _is_sionna_v1():
+        if _is_sionna_v1(sionna_version):
             # For Sionna v1, types is (max_depth, n_rx, n_tx, max_paths)
             # We need to get (n_paths, max_depth) for the current rx/tx pair
             path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0,1)
@@ -279,13 +279,14 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
     
     return result 
 
-def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
+def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_version: str) -> None:
     """Read and convert path data from Sionna format.
     
     Args:
         load_folder: Path to folder containing Sionna path files
         save_folder: Path to save converted path data
         txrx_dict: Dictionary containing TX/RX set information from read_txrx
+        sionna_version: Sionna version string
         
     Notes:
         - Each path dictionary can contain one or more transmitters
@@ -366,7 +367,8 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
             t = tx_idx_in_dict[0]
             batch_size = targets.shape[0]
             targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
-            inactive_count = _process_paths_batch(paths_dict, data, b, t, batch_size, targets, rx_pos)
+            inactive_count = _process_paths_batch(paths_dict, data, b, t, batch_size, 
+                                                  targets, rx_pos, sionna_version)
             if tx_idx == 0:
                 rx_inactive_idxs_count += inactive_count
             pbar.update(batch_size)

@@ -57,7 +57,7 @@ def _is_sionna_v1():
     else:
         return sionna_version.startswith("1.")
 
-def to_dict(paths: Paths) -> List[dict]:
+def _paths_to_dict(paths: Paths) -> List[dict]:
     """Exports paths to a filtered dictionary with only selected keys """
     members_names = dir(paths)
     members_objects = [getattr(paths, attr) for attr in members_names]
@@ -103,11 +103,12 @@ def export_paths(path_list):
         return dict_list
     else:
         # Sionna RT v0.19 and earlier
-        relevant_keys = ['sources', 'targets', 'a', 'tau', 'phi_r', 'phi_t', 'theta_r', 'theta_t', 'types', 'vertices']
+        relevant_keys = ['sources', 'targets', 'a', 'tau', 'phi_r', 'phi_t', 
+                         'theta_r', 'theta_t', 'types', 'vertices']
         path_list = [path_list] if type(path_list) != list else path_list
         paths_dict_list = []
         for path_obj in path_list:
-            path_dict = to_dict(path_obj)
+            path_dict = _paths_to_dict(path_obj)
             dict_filtered = {key: path_dict[key].numpy() for key in relevant_keys}
             paths_dict_list += [dict_filtered]
         return paths_dict_list
@@ -196,33 +197,41 @@ def to_float(val):
 def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, Any]:
     """ Extract parameters from Scene (and from compute_paths arguments)"""
     scene_dict = scene_to_dict(scene)
+
     # Compute wavelength from frequency
     c = 299792458.0  # speed of light in m/s
     frequency = to_float(scene_dict['frequency'])
     wavelength = c / frequency
+
     # Safely get antenna positions for rx_array and tx_array
     rx_array_obj = scene_dict['rx_array']
     tx_array_obj = scene_dict['tx_array']
+
     rx_array_ant_pos = rx_array_obj.positions(wavelength) if callable(rx_array_obj.positions) else rx_array_obj.positions
     tx_array_ant_pos = tx_array_obj.positions(wavelength) if callable(tx_array_obj.positions) else tx_array_obj.positions
     if hasattr(rx_array_ant_pos, 'numpy'):
         rx_array_ant_pos = rx_array_ant_pos.numpy()
     if hasattr(tx_array_ant_pos, 'numpy'):
         tx_array_ant_pos = tx_array_ant_pos.numpy()
+    
     # Safely get synthetic_array option (from scene_dict or compute_paths_kwargs)
     synthetic_array = scene_dict.get('synthetic_array', compute_paths_kwargs.get('synthetic_array', False))
     rt_params_dict = dict(
         bandwidth=scene_dict['bandwidth'].numpy(),
         frequency=scene_dict['frequency'].numpy(),
+
         rx_array_size=scene_dict['rx_array'].array_size,  # dual-pol if diff than num_ant
         rx_array_num_ant=scene_dict['rx_array'].num_ant,
         rx_array_ant_pos=rx_array_ant_pos,  # relative to ref.
+        
         tx_array_size=scene_dict['tx_array'].array_size, 
         tx_array_num_ant=scene_dict['tx_array'].num_ant,
         tx_array_ant_pos=tx_array_ant_pos,
+        
         synthetic_array=synthetic_array,  # record the option used
+        
         # custom
-        raytracer_version=None,  # sionna.__version__ may not be available
+        raytracer_version=_get_sionna_version(),
         doppler_available=0,
     )
     default_compute_paths_params = dict( # with Sionna default values
@@ -361,12 +370,10 @@ def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths,
         save_folder (str): Directory path where the exported files will be saved
 
     Note:
-        This function has been tested with Sionna v0.19.1 and v1.0.2.
+        - This function has been tested with Sionna v0.19.1 and v1.0.2.
+        - In Sionna 1.x, the paths are exported during RT, so no need to export them here
     """
-    if _is_sionna_v1():
-        paths_dict_list = path_list # export moved to pipeline (needs to be called during RT)
-    else:
-        paths_dict_list = export_paths(path_list)
+    paths_dict_list = path_list if _is_sionna_v1() else export_paths(path_list)
     
     materials_dict_list, material_indices = export_scene_materials(scene)
 
