@@ -26,48 +26,6 @@ def _is_sionna_v1():
     sionna_version = config.get('sionna_version')
     return sionna_version.startswith('1.')
 
-def transform_interaction_types(types: np.ndarray) -> np.ndarray:
-    """Transform a (n_paths, max_depth) interaction types array into a (n_paths,) array
-    where each element is an integer formed by concatenating the interaction type digits.
-    
-    Args:
-        types: Array of shape (n_paths, max_depth) containing interaction types:
-              0 for LoS, 1 for Reflection, 2 for Diffraction, 3 for Scattering
-              
-    Returns:
-        np.ndarray: Array of shape (n_paths,) where each element is an integer
-                   representing the concatenated interaction types.
-                   
-    Example:
-        [[0, 0, 0],      ->  [0,      # LoS
-         [1, 1, 0],           11,     # Two reflections
-         [1, 3, 0],           13,     # Reflection followed by scattering
-         [2, 0, 0]]           2]      # Single diffraction
-    """
-    n_paths = types.shape[0]
-    result = np.zeros(n_paths, dtype=np.float32)
-    
-    for i in range(n_paths):
-        # Get non-zero interactions (ignoring trailing zeros)
-        path = types[i]
-        if np.all(path == 0):
-            # All zeros means LoS
-            result[i] = c.INTERACTION_LOS
-            continue
-            
-        # Find first zero after a non-zero (if any)
-        non_zero_mask = path != 0
-        if np.any(non_zero_mask):
-            # Get indices where we have non-zero values
-            non_zero_indices = np.where(non_zero_mask)[0]
-            # Take all interactions up to the last non-zero
-            valid_interactions = path[: non_zero_indices[-1] + 1]
-            # Convert to string and remove any zeros
-            interaction_str = ''.join(str(int(x)) for x in valid_interactions if x != 0)
-            result[i] = float(interaction_str)
-            
-    return result
-
 def _preallocate_data(n_rx: int) -> Dict:
     """Pre-allocate data for path conversion.
     
@@ -93,8 +51,6 @@ def _preallocate_data(n_rx: int) -> Dict:
     
     return data
     
-    
-
 def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
                          batch_size: int, targets: np.ndarray, rx_pos: np.ndarray) -> int:
     """Process a batch of paths from Sionna format and store in DeepMIMO format.
@@ -191,9 +147,9 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
             # For Sionna v1, types is (max_depth, n_rx, n_tx, max_paths)
             # We need to get (n_paths, max_depth) for the current rx/tx pair
             path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0,1)
-            inter_types = transform_interaction_types(path_types)
+            inter_types = _transform_interaction_types(path_types)
         else:
-            inter_types = get_sionna_interaction_types(types[path_idxs], inter_pos_rx)
+            inter_types = _get_sionna_interaction_types(types[path_idxs], inter_pos_rx)
         
         data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = inter_types
         
@@ -208,6 +164,120 @@ def _get_path_key(paths_dict, key, fallback_key=None, default=None):
         return default
     else:
         raise KeyError(f"Neither '{key}' nor '{fallback_key}' found in paths_dict.")
+
+def _transform_interaction_types(types: np.ndarray) -> np.ndarray:
+    """Transform a (n_paths, max_depth) interaction types array into a (n_paths,) array
+    where each element is an integer formed by concatenating the interaction type digits.
+    
+    Args:
+        types: Array of shape (n_paths, max_depth) containing interaction types:
+              0 for LoS, 1 for Reflection, 2 for Diffraction, 3 for Scattering
+              
+    Returns:
+        np.ndarray: Array of shape (n_paths,) where each element is an integer
+                   representing the concatenated interaction types.
+                   
+    Example:
+        [[0, 0, 0],      ->  [0,      # LoS
+         [1, 1, 0],           11,     # Two reflections
+         [1, 3, 0],           13,     # Reflection followed by scattering
+         [2, 0, 0]]           2]      # Single diffraction
+    
+    Note: This function is only used for Sionna 1.x.
+    """
+    n_paths = types.shape[0]
+    result = np.zeros(n_paths, dtype=np.float32)
+    
+    for i in range(n_paths):
+        # Get non-zero interactions (ignoring trailing zeros)
+        path = types[i]
+        if np.all(path == 0):
+            # All zeros means LoS
+            result[i] = c.INTERACTION_LOS
+            continue
+            
+        # Find first zero after a non-zero (if any)
+        non_zero_mask = path != 0
+        if np.any(non_zero_mask):
+            # Get indices where we have non-zero values
+            non_zero_indices = np.where(non_zero_mask)[0]
+            # Take all interactions up to the last non-zero
+            valid_interactions = path[: non_zero_indices[-1] + 1]
+            # Convert to string and remove any zeros
+            interaction_str = ''.join(str(int(x)) for x in valid_interactions if x != 0)
+            result[i] = float(interaction_str)
+            
+    return result
+
+def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> np.ndarray:
+    """
+    Convert Sionna interaction types to DeepMIMO interaction codes.
+    
+    Args:
+        types: Array of interaction types from Sionna (N_PATHS,)
+        inter_pos: Array of interaction positions (N_PATHS x MAX_INTERACTIONS x 3)
+
+    Returns:
+        np.ndarray: Array of DeepMIMO interaction codes (N_PATHS,)
+    
+    Note: This function is only used for Sionna 0.x.
+    """
+    # Ensure types is a numpy array
+    types = np.asarray(types)
+    if types.ndim == 0:
+        types = np.array([types])
+    
+    # Get number of paths
+    n_paths = len(types)
+    result = np.zeros(n_paths, dtype=np.float32)
+    
+    # For each path
+    for path_idx in range(n_paths):
+        # Skip if no type (nan or 0)
+        if np.isnan(types[path_idx]) or types[path_idx] == 0:
+            continue
+            
+        sionna_type = int(types[path_idx])
+        
+        # Handle LoS case (type 0)
+        if sionna_type == 0:
+            result[path_idx] = c.INTERACTION_LOS
+            continue
+            
+        # Count number of actual interactions by checking non-nan positions
+        if inter_pos.ndim == 2:  # Single path case
+            n_interactions = np.nansum(~np.isnan(inter_pos[:, 0]))
+        else:  # Multiple paths case
+            n_interactions = np.nansum(~np.isnan(inter_pos[path_idx, :, 0]))
+            
+        if n_interactions == 0:  # Skip if no interactions
+            continue
+            
+        # Handle different Sionna interaction types
+        if sionna_type == 1:  # Pure reflection path
+            # Create string of '1's with length = number of reflections
+            code = '1' * n_interactions
+            result[path_idx] = np.float32(code)
+            
+        elif sionna_type == 2:  # Single diffraction path
+            # Always just '2' since Sionna only allows single diffraction
+            result[path_idx] = c.INTERACTION_DIFFRACTION
+            
+        elif sionna_type == 3:  # Scattering path with possible reflections
+            # Create string of '1's for reflections + '3' at the end for scattering
+            if n_interactions > 1:
+                code = '1' * (n_interactions - 1) + '3'
+            else:
+                code = '3'
+            result[path_idx] = np.float32(code)
+            
+        else:
+            if sionna_type == 4:
+                raise NotImplementedError('RIS code not supported yet')
+            else:
+                raise ValueError(f'Unknown Sionna interaction type: {sionna_type}')
+    
+    return result 
 
 def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
     """Read and convert path data from Sionna format.
@@ -344,70 +414,4 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict) -> None:
     txrx_dict['txrx_set_1']['num_points'] = n_rx
     txrx_dict['txrx_set_1']['num_active_points'] = n_rx - rx_inactive_idxs_count
 
-def get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> np.ndarray:
-    """
-    Convert Sionna interaction types to DeepMIMO interaction codes.
-    
-    Args:
-        types: Array of interaction types from Sionna (N_PATHS,)
-        inter_pos: Array of interaction positions (N_PATHS x MAX_INTERACTIONS x 3)
 
-    Returns:
-        np.ndarray: Array of DeepMIMO interaction codes (N_PATHS,)
-    """
-    # Ensure types is a numpy array
-    types = np.asarray(types)
-    if types.ndim == 0:
-        types = np.array([types])
-    
-    # Get number of paths
-    n_paths = len(types)
-    result = np.zeros(n_paths, dtype=np.float32)
-    
-    # For each path
-    for path_idx in range(n_paths):
-        # Skip if no type (nan or 0)
-        if np.isnan(types[path_idx]) or types[path_idx] == 0:
-            continue
-            
-        sionna_type = int(types[path_idx])
-        
-        # Handle LoS case (type 0)
-        if sionna_type == 0:
-            result[path_idx] = c.INTERACTION_LOS
-            continue
-            
-        # Count number of actual interactions by checking non-nan positions
-        if inter_pos.ndim == 2:  # Single path case
-            n_interactions = np.nansum(~np.isnan(inter_pos[:, 0]))
-        else:  # Multiple paths case
-            n_interactions = np.nansum(~np.isnan(inter_pos[path_idx, :, 0]))
-            
-        if n_interactions == 0:  # Skip if no interactions
-            continue
-            
-        # Handle different Sionna interaction types
-        if sionna_type == 1:  # Pure reflection path
-            # Create string of '1's with length = number of reflections
-            code = '1' * n_interactions
-            result[path_idx] = np.float32(code)
-            
-        elif sionna_type == 2:  # Single diffraction path
-            # Always just '2' since Sionna only allows single diffraction
-            result[path_idx] = c.INTERACTION_DIFFRACTION
-            
-        elif sionna_type == 3:  # Scattering path with possible reflections
-            # Create string of '1's for reflections + '3' at the end for scattering
-            if n_interactions > 1:
-                code = '1' * (n_interactions - 1) + '3'
-            else:
-                code = '3'
-            result[path_idx] = np.float32(code)
-            
-        else:
-            if sionna_type == 4:
-                raise NotImplementedError('RIS code not supported yet')
-            else:
-                raise ValueError(f'Unknown Sionna interaction type: {sionna_type}')
-    
-    return result 

@@ -35,19 +35,7 @@ try:
 except ImportError:
     print("Sionna is not installed. To use sionna_exporter, please install it.")
 
-def to_dict(paths: Paths) -> List[dict]:
-    """Exports paths to a filtered dictionary with only selected keys """
-    members_names = dir(paths)
-    members_objects = [getattr(paths, attr) for attr in members_names]
-    data = {attr_name[1:] : attr_obj for (attr_obj, attr_name)
-            in zip(members_objects,members_names)
-            if not callable(attr_obj) and
-                not isinstance(attr_obj, Scene) and
-                not attr_name.startswith("__") and
-                attr_name.startswith("_")}
-    return data
-
-def get_sionna_version():
+def _get_sionna_version():
     """Try to get Sionna or Sionna RT version string, or return None if not found."""
     try:
         import sionna
@@ -60,17 +48,30 @@ def get_sionna_version():
         pass
     return None
 
-
-def export_paths(path_list):
-    from packaging import version
-    sionna_version = get_sionna_version()
+def _is_sionna_v1():
+    """Check if Sionna is version 1.x"""
+    sionna_version = _get_sionna_version()
     if sionna_version is None:
         print("[DeepMIMO] Warning: Could not determine Sionna version. Assuming Sionna RT >= 1.0.0.")
-        is_new_sionna = True
+        return True
     else:
-        is_new_sionna = version.parse(sionna_version) >= version.parse("1.0.0")
+        return sionna_version.startswith("1.")
 
-    if is_new_sionna:
+def to_dict(paths: Paths) -> List[dict]:
+    """Exports paths to a filtered dictionary with only selected keys """
+    members_names = dir(paths)
+    members_objects = [getattr(paths, attr) for attr in members_names]
+    data = {attr_name[1:] : attr_obj for (attr_obj, attr_name)
+            in zip(members_objects,members_names)
+            if not callable(attr_obj) and
+                not isinstance(attr_obj, Scene) and
+                not attr_name.startswith("__") and
+                attr_name.startswith("_")}
+    return data
+
+def export_paths(path_list):
+    
+    if _is_sionna_v1():
         # Sionna RT v1.0.0 and later
         relevant_keys = [
             '_src_positions',  # replaces 'sources'
@@ -298,7 +299,7 @@ def export_scene_buildings(scene: Scene) -> Tuple[np.ndarray, Dict]:
     
     vertex_offset = 0
     
-    sionna_v1 = get_sionna_version().startswith("1.")
+    sionna_v1 = _is_sionna_v1()
     for obj_name, obj in scene._scene_objects.items():
     
         # Get vertices
@@ -360,58 +361,20 @@ def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths,
         save_folder (str): Directory path where the exported files will be saved
 
     Note:
-        This function has been tested with Sionna v0.19.1.
+        This function has been tested with Sionna v0.19.1 and v1.0.2.
     """
+    if _is_sionna_v1():
+        paths_dict_list = path_list # export moved to pipeline (needs to be called during RT)
+    else:
+        paths_dict_list = export_paths(path_list)
     
-    paths_dict_list = export_paths(path_list)
     materials_dict_list, material_indices = export_scene_materials(scene)
-    rt_params = export_scene_rt_params(scene, **my_compute_path_params)
-    vertice_matrix, obj_index_map = export_scene_buildings(scene)
-    
-    os.makedirs(save_folder, exist_ok=True)
-    
-    save_vars_dict = {
-        # filename: variable_to_save
-        'sionna_paths.pkl': paths_dict_list,
-        'sionna_materials.pkl': materials_dict_list,
-        'sionna_material_indices.pkl': material_indices,
-        'sionna_rt_params.pkl': rt_params,
-        'sionna_vertices.pkl': vertice_matrix,
-        'sionna_objects.pkl': obj_index_map,
-    }
-    
-    for filename, variable in save_vars_dict.items():
-        cu.save_pickle(variable, os.path.join(save_folder, filename))
 
-    return
-
-def export_to_deepmimo_v2(scene: Scene, path_list: List[Paths] | Paths, 
-                          my_compute_path_params: Dict, save_folder: str):
-    """ Export a complete Sionna simulation to a format that can be converted by DeepMIMO.
+    if _is_sionna_v1():
+        rt_params = export_scene_rt_params2(scene, **my_compute_path_params)
+    else:
+        rt_params = export_scene_rt_params(scene, **my_compute_path_params)
     
-    This function exports all necessary data from a Sionna ray tracing simulation to files
-    that can be converted into the DeepMIMO format. The exported data includes:
-    - Ray paths and their properties
-    - Scene materials and their properties 
-    - Ray tracing parameters used in the simulation
-    - Scene geometry (vertices and objects)
-
-    Args:
-        scene (Scene): The Sionna Scene object containing the simulation environment
-        path_list (List[Paths] | Paths): Ray paths computed by Sionna's ray tracer, either
-            for a single transmitter (Paths) or multiple transmitters (List[Paths])
-        my_compute_path_params (Dict): Dictionary containing the parameters used in
-            Sionna's compute_paths() function. This is needed since Sionna does not
-            save these parameters internally.
-        save_folder (str): Directory path where the exported files will be saved
-
-    Note:
-        This function has been tested with Sionna v1.0.0.
-    """
-    
-    paths_dict_list = path_list # export moved to pipeline (needs to be called during RT)
-    materials_dict_list, material_indices = export_scene_materials(scene)
-    rt_params = export_scene_rt_params2(scene, **my_compute_path_params) # some params are broken
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
     
     os.makedirs(save_folder, exist_ok=True)

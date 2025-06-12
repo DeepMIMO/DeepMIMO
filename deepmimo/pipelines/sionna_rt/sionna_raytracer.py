@@ -12,7 +12,7 @@ import numpy as np
 from tqdm import tqdm
 
 # Local imports
-from .sionna_utils import create_base_scene, set_materials
+from .sionna_utils import create_base_scene, set_materials, is_sionna_v1
 from ...converter.sionna_rt import sionna_exporter
 from ...config import config
 
@@ -161,11 +161,7 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
     # Save Sionna outputs
     print("Saving Sionna outputs")
     sionna_rt_folder = os.path.join(scene_folder, "sionna_export/")
-    if IS_LEGACY_VERSION:
-        sionna_exporter.export_to_deepmimo(scene, path_list, rt_params, sionna_rt_folder)
-    else:
-        sionna_exporter.export_to_deepmimo_v2(scene, path_list, rt_params, sionna_rt_folder)
-
+    sionna_exporter.export_to_deepmimo(scene, path_list, rt_params, sionna_rt_folder)
     return sionna_rt_folder
 
 import sionna.rt
