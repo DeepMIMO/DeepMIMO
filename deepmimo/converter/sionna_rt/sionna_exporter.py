@@ -113,38 +113,6 @@ def export_paths(path_list):
             paths_dict_list += [dict_filtered]
         return paths_dict_list
 
-def scene_to_dict(scene: Scene) -> Dict[str, Any]: 
-    """ Export a Sionna Scene to a dictionary, like to Paths.to_dict() """
-    members_names = dir(scene)
-    members_objects = []
-    for attr in members_names:
-        try:
-            obj = getattr(scene, attr)
-            members_objects.append(obj)
-        except AttributeError:
-            # Some attributes (e.g., _paths_solver) may not exist or may raise errors in Sionna RT >=1.0
-            continue  # Skip attributes that raise errors
-    data = {attr_name[1:] : attr_obj for (attr_obj, attr_name)
-            in zip(members_objects, members_names)
-            if not callable(attr_obj) and
-               not isinstance(attr_obj, Scene) and
-               not attr_name.startswith("__") and
-               attr_name.startswith("_")}
-    return data
-
-def scene_to_dict2(scene: Scene) -> Dict[str, Any]: 
-    """ Export a Sionna Scene to a dictionary, like to Paths.to_dict() """
-    members_names = dir(scene)
-    bug_attrs =  ['paths_solver']
-    members_objects = [getattr(scene, attr) for attr in members_names
-                       if attr not in bug_attrs]
-    data = {attr_name[1:] : attr_obj for (attr_obj, attr_name)
-            in zip(members_objects, members_names)
-            if not callable(attr_obj) and
-               not isinstance(attr_obj, sionna.rt.Scene) and
-               not attr_name.startswith("__")}
-    return data
-
 def export_scene_materials(scene: Scene) -> Tuple[List[Dict[str, Any]], List[int]]:
     """ Export the materials in a Sionna Scene to a list of dictionaries """
     obj_materials = []
@@ -183,49 +151,50 @@ def export_scene_materials(scene: Scene) -> Tuple[List[Dict[str, Any]], List[int
         materials_dict_list += [materials_dict]
     return materials_dict_list, obj_mat_indices
 
-def to_float(val):
-    """Robustly convert a value to float, handling numpy, drjit, etc."""
-    try:
-        return float(val)
-    except Exception:
-        if hasattr(val, 'item'):
-            return float(val.item())
-        if hasattr(val, 'numpy'):
-            return float(val.numpy())
-        return float(str(val))  # fallback
+
+def _scene_to_dict(scene: Scene) -> Dict[str, Any]: 
+    """ Export a Sionna Scene to a dictionary, like to Paths.to_dict() """
+    members_names = dir(scene)
+    bug_attrs =  ['paths_solver']
+    members_objects = [getattr(scene, attr) for attr in members_names
+                       if attr not in bug_attrs]
+    data = {attr_name[1:] : attr_obj for (attr_obj, attr_name)
+            in zip(members_objects, members_names)
+            if not callable(attr_obj) and
+               not isinstance(attr_obj, sionna.rt.Scene) and
+               not attr_name.startswith("__")}
+    return data
+
 
 def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, Any]:
     """ Extract parameters from Scene (and from compute_paths arguments)"""
-    scene_dict = scene_to_dict(scene)
-
-    # Compute wavelength from frequency
-    c = 299792458.0  # speed of light in m/s
-    frequency = to_float(scene_dict['frequency'])
-    wavelength = c / frequency
-
+    scene_dict = _scene_to_dict(scene)
+    
     # Safely get antenna positions for rx_array and tx_array
-    rx_array_obj = scene_dict['rx_array']
-    tx_array_obj = scene_dict['tx_array']
+    rx_array = scene_dict['rx_array']
+    tx_array = scene_dict['tx_array']
 
-    rx_array_ant_pos = rx_array_obj.positions(wavelength) if callable(rx_array_obj.positions) else rx_array_obj.positions
-    tx_array_ant_pos = tx_array_obj.positions(wavelength) if callable(tx_array_obj.positions) else tx_array_obj.positions
-    if hasattr(rx_array_ant_pos, 'numpy'):
-        rx_array_ant_pos = rx_array_ant_pos.numpy()
-    if hasattr(tx_array_ant_pos, 'numpy'):
-        tx_array_ant_pos = tx_array_ant_pos.numpy()
+    if _is_sionna_v1():
+        wavelength = scene.wavelength
+        rx_array_ant_pos = rx_array.positions(wavelength).numpy()  
+        tx_array_ant_pos = tx_array.positions(wavelength).numpy()
+    else:
+        rx_array_ant_pos = rx_array.positions
+        tx_array_ant_pos = tx_array.positions
     
     # Safely get synthetic_array option (from scene_dict or compute_paths_kwargs)
     synthetic_array = scene_dict.get('synthetic_array', compute_paths_kwargs.get('synthetic_array', False))
+    
     rt_params_dict = dict(
         bandwidth=scene_dict['bandwidth'].numpy(),
         frequency=scene_dict['frequency'].numpy(),
 
-        rx_array_size=scene_dict['rx_array'].array_size,  # dual-pol if diff than num_ant
-        rx_array_num_ant=scene_dict['rx_array'].num_ant,
+        rx_array_size=rx_array.array_size,  # dual-pol if diff than num_ant
+        rx_array_num_ant=rx_array.num_ant,
         rx_array_ant_pos=rx_array_ant_pos,  # relative to ref.
         
-        tx_array_size=scene_dict['tx_array'].array_size, 
-        tx_array_num_ant=scene_dict['tx_array'].num_ant,
+        tx_array_size=tx_array.array_size, 
+        tx_array_num_ant=tx_array.num_ant,
         tx_array_ant_pos=tx_array_ant_pos,
         
         synthetic_array=synthetic_array,  # record the option used
@@ -234,68 +203,45 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, An
         raytracer_version=_get_sionna_version(),
         doppler_available=0,
     )
-    default_compute_paths_params = dict( # with Sionna default values
-        max_depth=3, 
-        method='fibonacci',
-        num_samples=1000000,
-        los=True,
-        reflection=True,
-        diffraction=False,
-        scattering=False,
-        scat_keep_prob=0.001,
-        edge_diffraction=False,
-        scat_random_phases=True
-    )
-    default_compute_paths_params.update(compute_paths_kwargs)
-    return {**rt_params_dict, **default_compute_paths_params}
 
-def export_scene_rt_params2(scene: Scene, **compute_paths_kwargs) -> Dict[str, Any]:
-    """ Extract parameters from Scene (and from compute_paths arguments)"""
-    
-    scene_dict = scene_to_dict2(scene)
-    wavelength = scene.wavelength
-    rt_params_dict = dict(
-        bandwidth=scene_dict['bandwidth'].numpy(),
-        frequency=scene_dict['frequency'].numpy(),
-        
-        rx_array_size=scene_dict['rx_array'].array_size,  # dual-pol if diff than num_ant
-        rx_array_num_ant=scene_dict['rx_array'].num_ant,
-        rx_array_ant_pos=scene_dict['rx_array'].positions(wavelength).numpy(),  # relative to ref.
-        
-        tx_array_size=scene_dict['tx_array'].array_size, 
-        tx_array_num_ant=scene_dict['tx_array'].num_ant,
-        tx_array_ant_pos=scene_dict['tx_array'].positions(wavelength).numpy(),
-    
-        synthetic_array=compute_paths_kwargs['synthetic_array'],
-    
-        # custom
-        raytracer_version=sionna.rt.__version__,
-        doppler_available=0,
-    )
-
-    default_compute_paths_params = dict( # Sionna 1.0 default values
-        max_depth = 3,
-        max_num_paths_per_src = 1000000,
-        samples_per_src = 1000000,
-        synthetic_array = True,
-        los = True,
-        specular_reflection = True,
-        diffuse_reflection = False,
-        refraction = True,
-        seed = 42
-    )
+    if _is_sionna_v1():
+        default_compute_paths_params = dict( # Sionna 1.x default values
+            max_depth = 3,
+            max_num_paths_per_src = 1000000,
+            samples_per_src = 1000000,
+            synthetic_array = True,
+            los = True,
+            specular_reflection = True,
+            diffuse_reflection = False,
+            refraction = True,
+            seed = 42
+        )
+    else:
+        default_compute_paths_params = dict( # Sionna 0.x default values
+            max_depth=3, 
+            method='fibonacci',
+            num_samples=1000000,
+            los=True,
+            reflection=True,
+            diffraction=False,
+            scattering=False,
+            scat_keep_prob=0.001,
+            edge_diffraction=False,
+            scat_random_phases=True
+        )
 
     default_compute_paths_params.update(compute_paths_kwargs)
     raw_params = {**rt_params_dict, **default_compute_paths_params}
 
-    # Mapping from Sionna 1.0.2 to common parameters
-    param_mapping = {
+    # Mapping from Sionna 1.0.2 to common (0.19 / DeepMIMO) parameters
+    newer_params_mapping = {
         'num_samples': raw_params['samples_per_src'],
         'reflection': bool(raw_params['specular_reflection']),
         'diffraction': False, #bool(raw_params['diffraction']),
         'scattering': bool(raw_params['diffuse_reflection']),
-    }
-    return {**raw_params, **param_mapping}
+    } if _is_sionna_v1() else {}
+
+    return {**raw_params, **newer_params_mapping}
 
 def export_scene_buildings(scene: Scene) -> Tuple[np.ndarray, Dict]:
     """ Export the vertices and faces of buildings in a Sionna Scene.
@@ -374,14 +320,8 @@ def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths,
         - In Sionna 1.x, the paths are exported during RT, so no need to export them here
     """
     paths_dict_list = path_list if _is_sionna_v1() else export_paths(path_list)
-    
     materials_dict_list, material_indices = export_scene_materials(scene)
-
-    if _is_sionna_v1():
-        rt_params = export_scene_rt_params2(scene, **my_compute_path_params)
-    else:
-        rt_params = export_scene_rt_params(scene, **my_compute_path_params)
-    
+    rt_params = export_scene_rt_params(scene, **my_compute_path_params)
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
     
     os.makedirs(save_folder, exist_ok=True)
