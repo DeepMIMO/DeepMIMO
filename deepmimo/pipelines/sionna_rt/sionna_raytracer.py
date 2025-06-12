@@ -17,7 +17,7 @@ from ...converter.sionna_rt import sionna_exporter
 from ...config import config
 
 # Version check constant
-IS_LEGACY_VERSION = config.get('sionna_version').startswith('0.1')
+IS_LEGACY_VERSION = not is_sionna_v1()
 
 # Conditional TensorFlow import based on Sionna version
 if IS_LEGACY_VERSION:
@@ -186,7 +186,8 @@ def export_paths_to_cpu(paths_obj: Paths) -> dict:
     """Exports paths to a filtered dictionary with only selected keys.
     
     This function is (CURRENTLY) only applied to Sionna 1.x. 
-    (Sionna 0.x currently takes care of the conversion in the exporter - Need organizing!)
+    (Sionna 0.x takes care of the conversion in the exporter - Need organizing!)
+    TODO: MOVE THIS TO EXPORTER?
 
     Note:
     - in both versions:
