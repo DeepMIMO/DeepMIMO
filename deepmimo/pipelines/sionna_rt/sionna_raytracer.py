@@ -33,13 +33,15 @@ if IS_LEGACY_VERSION:
         tf = None
 
 try:
-    if IS_LEGACY_VERSION:
-        from sionna.rt import Transmitter, Receiver
-    else: # version 1.x
-        from sionna.rt import Transmitter, Receiver, PathSolver
-        import drjit as dr
+    import sionna.rt
 except ImportError:
-    raise ImportError("Sionna not found. Please install Sionna to use ray tracing functionality.")
+    raise ImportError("Sionna not found. Install Sionna to use ray tracing functionality.")
+
+from sionna.rt import Transmitter, Receiver
+
+if not IS_LEGACY_VERSION:
+    from sionna.rt import PathSolver
+    import drjit as dr
 
 class _DataLoader:
     """DataLoader class for Sionna RT that returns user indices for raytracing."""
@@ -73,7 +75,7 @@ def _compute_paths(scene, p_solver, compute_paths_rt_params):
         paths = p_solver(scene=scene, **compute_paths_rt_params)
     
     paths.normalize_delays = False
-    return paths if IS_LEGACY_VERSION else export_paths_to_cpu(paths)
+    return paths
 
 def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **rt_params: Any) -> str:
     """Run ray tracing for the scene."""
@@ -163,63 +165,3 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
     sionna_rt_folder = os.path.join(scene_folder, "sionna_export/")
     sionna_exporter.export_to_deepmimo(scene, path_list, rt_params, sionna_rt_folder)
     return sionna_rt_folder
-
-import sionna.rt
-
-Paths = sionna.rt.Paths
-Scene = sionna.rt.Scene
-
-def to_dict(paths: Paths) -> dict:
-    """Exports paths to a filtered dictionary with only selected keys """
-    members_names = dir(paths)
-    members_objects = [getattr(paths, attr) for attr in members_names]
-    data = {attr_name : attr_obj for (attr_obj, attr_name)
-            in zip(members_objects, members_names)
-            if not callable(attr_obj) and
-                not isinstance(attr_obj, Scene) and
-                not attr_name.startswith("__") and
-                not attr_name.startswith("_")}
-    return data
-
-
-def export_paths_to_cpu(paths_obj: Paths) -> dict:
-    """Exports paths to a filtered dictionary with only selected keys.
-    
-    This function is (CURRENTLY) only applied to Sionna 1.x. 
-    (Sionna 0.x takes care of the conversion in the exporter - Need organizing!)
-    TODO: MOVE THIS TO EXPORTER?
-
-    Note:
-    - in both versions:
-        - 'tau' is a float array
-        - 'phi_r' and 'phi_t' are float arrays
-        - 'theta_r' and 'theta_t' are float arrays
-        - 'sources' and 'targets' are lists of positions
-        - 'vertices' is a list of vertices
-        - 'rx_array' and 'tx_array' are arrays of positions
-    - Sionna 0.x:
-        - 'a' is a complex array
-        - 'types' is are the types of each interaction
-    - Sionna 1.x:
-        - 'a' is a tuple of real and imaginary parts
-        - 'interactions' is are the types of each interaction
-    """
-    relevant_keys = ['a', 'tau', 'phi_r', 'phi_t', 'theta_r', 'theta_t',
-                     'sources', 'targets', 'vertices']
-    relevant_keys += ['types'] if IS_LEGACY_VERSION else ['interactions']
-
-    path_dict = to_dict(paths_obj)
-    path_dict_keys = path_dict.keys()
-    
-    dict_filtered = {}
-    for key in relevant_keys:
-        if key in path_dict_keys:
-            if key == 'a' and not IS_LEGACY_VERSION:
-                # Compose complex array from real and imaginary parts
-                dict_filtered[key] = path_dict[key][0].numpy() + 1j * path_dict[key][1].numpy()
-            elif key in ['targets', 'sources']:
-                dict_filtered[key] = path_dict[key].numpy().T
-            else:
-                dict_filtered[key] = path_dict[key].numpy()
-    
-    return dict_filtered

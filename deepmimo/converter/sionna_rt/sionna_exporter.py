@@ -61,60 +61,73 @@ def _paths_to_dict(paths: Paths) -> List[dict]:
     """Exports paths to a filtered dictionary with only selected keys """
     members_names = dir(paths)
     members_objects = [getattr(paths, attr) for attr in members_names]
-    data = {attr_name[1:] : attr_obj for (attr_obj, attr_name)
+    data = {attr_name : attr_obj for (attr_obj, attr_name)
             in zip(members_objects,members_names)
             if not callable(attr_obj) and
                 not isinstance(attr_obj, Scene) and
                 not attr_name.startswith("__") and
-                attr_name.startswith("_")}
+                not attr_name.startswith("_")}
     return data
 
 def export_paths(path_list):
+    """Export paths to a filtered dictionary with only selected keys.
     
-    if _is_sionna_v1():
-        # Sionna RT v1.0.0 and later
-        relevant_keys = [
-            '_src_positions',  # replaces 'sources'
-            '_tgt_positions',  # replaces 'targets'
-            '_tau',
-            '_a_real',
-            '_a_imag',
-            '_theta_t',
-            '_phi_t',
-            '_theta_r',
-            '_phi_r',
-            '_doppler',
-        ]
-        dict_list = []
-        for paths in path_list:
-            path_dict = paths.__dict__
-            dict_filtered = {}
-            for key in relevant_keys:
-                if key in path_dict:
-                    arr = path_dict[key]
-                    if hasattr(arr, 'numpy'):
-                        arr = arr.numpy()
-                    dict_filtered[key] = arr
-            if '_a_real' in dict_filtered and '_a_imag' in dict_filtered:
-                dict_filtered['a'] = dict_filtered['_a_real'] + 1j * dict_filtered['_a_imag']
-                del dict_filtered['_a_real']
-                del dict_filtered['_a_imag']
-            dict_list.append(dict_filtered)
-        return dict_list
-    else:
-        # Sionna RT v0.19 and earlier
-        relevant_keys = ['sources', 'targets', 'a', 'tau', 'phi_r', 'phi_t', 
-                         'theta_r', 'theta_t', 'types', 'vertices']
-        path_list = [path_list] if type(path_list) != list else path_list
-        paths_dict_list = []
-        for path_obj in path_list:
-            path_dict = _paths_to_dict(path_obj)
-            dict_filtered = {key: path_dict[key].numpy() for key in relevant_keys}
-            paths_dict_list += [dict_filtered]
-        return paths_dict_list
+    Note:
+    - in both versions:
+        - 'tau' is a float array
+        - 'phi_r' and 'phi_t' are float arrays
+        - 'theta_r' and 'theta_t' are float arrays
+        - 'sources' and 'targets' are lists of positions
+        - 'vertices' is a list of vertices
+        - 'rx_array' and 'tx_array' are arrays of positions
+    - Sionna 0.x:
+        - 'a' is a complex array
+        - 'types' is are the types of each interaction
+    - Sionna 1.x:
+        - 'a' is a tuple of real and imaginary parts
+        - 'interactions' is are the types of each interaction
+        
+    Args:
+        paths (Paths): Sionna Paths object
+
+    Returns:
+        List[dict]: List of dictionaries with only selected keys
+    """
+
+    sionna_v1 = _is_sionna_v1()
+    relevant_keys = ['sources', 'targets', 'tau', 'phi_r', 'phi_t', 
+                     'theta_r', 'theta_t', 'vertices']
+    relevant_keys += ['interactions'] if _is_sionna_v1() else ['types']
+
+    path_list = [path_list] if type(path_list) != list else path_list
+    paths_dict_list = []
+    for path_obj in path_list:
+        path_dict = _paths_to_dict(path_obj)
+        dict_filtered = {key: path_dict[key].numpy() for key in relevant_keys}
+
+        # Process a (complex) array independently
+        if sionna_v1:
+            dict_filtered['a'] = path_dict['a'][0].numpy() + 1j * path_dict['a'][1].numpy()
+        else:
+            dict_filtered['a'] = path_dict['a'].numpy()
+
+        # Transpose targets and sources for Sionna 1.x
+        if sionna_v1:
+            for key in ['targets', 'sources']:
+                dict_filtered[key] = path_dict[key].numpy().T
+
+        paths_dict_list += [dict_filtered]
+    return paths_dict_list
 
 def export_scene_materials(scene: Scene) -> Tuple[List[Dict[str, Any]], List[int]]:
-    """ Export the materials in a Sionna Scene to a list of dictionaries """
+    """ Export the materials in a Sionna Scene to a list of dictionaries.
+    
+    Args:
+        scene (Scene): Sionna Scene object
+
+    Returns:
+        Tuple[List[Dict[str, Any]], List[int]]: List of dictionaries with material properties and indices
+    """
     obj_materials = []
     for _, obj in scene._scene_objects.items():
         obj_materials += [obj.radio_material]
@@ -151,7 +164,6 @@ def export_scene_materials(scene: Scene) -> Tuple[List[Dict[str, Any]], List[int
         materials_dict_list += [materials_dict]
     return materials_dict_list, obj_mat_indices
 
-
 def _scene_to_dict(scene: Scene) -> Dict[str, Any]: 
     """ Export a Sionna Scene to a dictionary, like to Paths.to_dict() """
     members_names = dir(scene)
@@ -164,7 +176,6 @@ def _scene_to_dict(scene: Scene) -> Dict[str, Any]:
                not isinstance(attr_obj, sionna.rt.Scene) and
                not attr_name.startswith("__")}
     return data
-
 
 def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, Any]:
     """ Extract parameters from Scene (and from compute_paths arguments)"""
@@ -319,7 +330,7 @@ def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths,
         - This function has been tested with Sionna v0.19.1 and v1.0.2.
         - In Sionna 1.x, the paths are exported during RT, so no need to export them here
     """
-    paths_dict_list = path_list if _is_sionna_v1() else export_paths(path_list)
+    paths_dict_list = export_paths(path_list) #if not _is_sionna_v1() else path_list
     materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
