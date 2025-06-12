@@ -4,7 +4,6 @@ Sionna Utils Module.
 This module contains utility functions for Sionna.
 """
 
-from ...config import config
 import sionna
 from sionna.rt import (
     load_scene,
@@ -58,7 +57,7 @@ def set_materials(scene: Scene) -> Scene:
             exit()
 
     # Add asphalt material
-    if config.get('sionna_version').startswith('0.19'):
+    if get_sionna_version().startswith('0.19'):
         asphalt_material = RadioMaterial(
             name="asphalt", 
             relative_permittivity=5.72, 

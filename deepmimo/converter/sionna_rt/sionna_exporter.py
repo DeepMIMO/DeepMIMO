@@ -26,6 +26,7 @@ import numpy as np
 from typing import Tuple, List, Dict, Any
 
 from .. import converter_utils as cu
+from ...pipelines.sionna_rt.sionna_utils import get_sionna_version , is_sionna_v1
 
 # Define types at module level
 try:
@@ -34,28 +35,6 @@ try:
     Scene = sionna.rt.Scene
 except ImportError:
     print("Sionna is not installed. To use sionna_exporter, please install it.")
-
-def _get_sionna_version():
-    """Try to get Sionna or Sionna RT version string, or return None if not found."""
-    try:
-        import sionna
-        if hasattr(sionna, '__version__'):
-            return sionna.__version__
-        import sionna.rt
-        if hasattr(sionna.rt, '__version__'):
-            return sionna.rt.__version__
-    except Exception:
-        pass
-    return None
-
-def _is_sionna_v1():
-    """Check if Sionna is version 1.x"""
-    sionna_version = _get_sionna_version()
-    if sionna_version is None:
-        print("[DeepMIMO] Warning: Could not determine Sionna version. Assuming Sionna RT >= 1.0.0.")
-        return True
-    else:
-        return sionna_version.startswith("1.")
 
 def _paths_to_dict(paths: Paths) -> List[dict]:
     """Exports paths to a filtered dictionary with only selected keys """
@@ -94,10 +73,10 @@ def export_paths(path_list):
         List[dict]: List of dictionaries with only selected keys
     """
 
-    sionna_v1 = _is_sionna_v1()
+    sionna_v1 = is_sionna_v1()
     relevant_keys = ['sources', 'targets', 'tau', 'phi_r', 'phi_t', 
                      'theta_r', 'theta_t', 'vertices']
-    relevant_keys += ['interactions'] if _is_sionna_v1() else ['types']
+    relevant_keys += ['interactions'] if sionna_v1 else ['types']
 
     path_list = [path_list] if type(path_list) != list else path_list
     paths_dict_list = []
@@ -184,8 +163,8 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, An
     # Safely get antenna positions for rx_array and tx_array
     rx_array = scene_dict['rx_array']
     tx_array = scene_dict['tx_array']
-
-    if _is_sionna_v1():
+    sionna_v1 = is_sionna_v1()
+    if sionna_v1:
         wavelength = scene.wavelength
         rx_array_ant_pos = rx_array.positions(wavelength).numpy()  
         tx_array_ant_pos = tx_array.positions(wavelength).numpy()
@@ -211,11 +190,11 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, An
         synthetic_array=synthetic_array,  # record the option used
         
         # custom
-        raytracer_version=_get_sionna_version(),
+        raytracer_version=get_sionna_version(),
         doppler_available=0,
     )
 
-    if _is_sionna_v1():
+    if sionna_v1:
         default_compute_paths_params = dict( # Sionna 1.x default values
             max_depth = 3,
             max_num_paths_per_src = 1000000,
@@ -250,7 +229,7 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, An
         'reflection': bool(raw_params['specular_reflection']),
         'diffraction': False, #bool(raw_params['diffraction']),
         'scattering': bool(raw_params['diffuse_reflection']),
-    } if _is_sionna_v1() else {}
+    } if sionna_v1 else {}
 
     return {**raw_params, **newer_params_mapping}
 
@@ -265,7 +244,7 @@ def export_scene_buildings(scene: Scene) -> Tuple[np.ndarray, Dict]:
     
     vertex_offset = 0
     
-    sionna_v1 = _is_sionna_v1()
+    sionna_v1 = is_sionna_v1()
     for obj_name, obj in scene._scene_objects.items():
     
         # Get vertices
@@ -330,7 +309,7 @@ def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths,
         - This function has been tested with Sionna v0.19.1 and v1.0.2.
         - In Sionna 1.x, the paths are exported during RT, so no need to export them here
     """
-    paths_dict_list = export_paths(path_list) #if not _is_sionna_v1() else path_list
+    paths_dict_list = export_paths(path_list)
     materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
