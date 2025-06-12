@@ -1,4 +1,12 @@
-"""Sionna Ray Tracing Function."""
+"""Sionna Ray Tracing Function.
+
+This module contains the raytracing function for Sionna.
+
+It is a wrapper around the Sionna RT API, and it is used to raytrace the scene.
+
+Pipeline untested for versions <0.19 and >1.0.2.
+
+"""
 
 
 # Standard library imports
@@ -12,16 +20,15 @@ import numpy as np
 from tqdm import tqdm
 
 # Local imports
-from .sionna_utils import create_base_scene, set_materials, is_sionna_v1
+from .sionna_utils import create_base_scene, set_materials, is_sionna_v1, get_sionna_version
 from ...converter.sionna_rt import sionna_exporter
-from ...config import config
 
 # Version check constant
 IS_LEGACY_VERSION = not is_sionna_v1()
 
 # Conditional TensorFlow import based on Sionna version
 if IS_LEGACY_VERSION:
-    if not config.get('sionna_version').startswith('0.19'):
+    if not get_sionna_version().startswith('0.19'):
         raise Warning("Pipeline untested for versions <0.19 and >1.0.2")
     try:
         import tensorflow as tf  # type: ignore

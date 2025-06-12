@@ -14,19 +14,31 @@ from sionna.rt import (
     Scene
 )
 
-def is_sionna_v1():
+def get_sionna_version() -> str | None:
+    """Try to get Sionna or Sionna RT version string, or return None if not found."""
     try:
+        import sionna
         if hasattr(sionna, '__version__'):
-            version_str = sionna.__version__
-        elif hasattr(sionna, 'rt') and hasattr(sionna.rt, '__version__'):
-            version_str = sionna.rt.__version__
-        else:
-            print("Warning: Could not determine Sionna version, assuming v1.x+.")
-            return True
-        return int(version_str.split('.')[0]) >= 1
-    except Exception as e:
-        print(f"Warning: Sionna version check failed ({e}), assuming v1.x+.")
+            return sionna.__version__
+        import sionna.rt
+        if hasattr(sionna.rt, '__version__'):
+            return sionna.rt.__version__
+    except Exception:
+        pass
+    return None
+
+def is_sionna_v1() -> bool:
+    """Check if Sionna is version 1.x.
+    
+    Returns:
+        bool: True if Sionna is version 1.x, False otherwise
+    """
+    sionna_version = get_sionna_version()
+    if sionna_version is None:
+        print("[DeepMIMO] Warning: Could not determine Sionna version. Assuming Sionna RT >= 1.0.0.")
         return True
+    else:
+        return sionna_version.startswith("1.")
 
 def set_materials(scene: Scene) -> Scene:
     """Set radio material properties for Sionna."""
