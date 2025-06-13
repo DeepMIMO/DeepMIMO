@@ -74,7 +74,7 @@ class _DataLoader:
         self.current_idx = end_idx
         return self.data[batch_indices]
 
-def _compute_paths(scene, p_solver, compute_paths_rt_params):
+def _compute_paths(scene, p_solver, compute_paths_rt_params, cpu_offload=True):
     """Helper function to compute paths based on Sionna version."""
     if IS_LEGACY_VERSION:
         paths = scene.compute_paths(**compute_paths_rt_params)
@@ -82,6 +82,11 @@ def _compute_paths(scene, p_solver, compute_paths_rt_params):
         paths = p_solver(scene=scene, **compute_paths_rt_params)
     
     paths.normalize_delays = False
+
+    # Export paths to CPU if requested
+    if cpu_offload and not IS_LEGACY_VERSION:
+        paths = sionna_exporter.export_paths(paths)[0]
+    
     return paths
 
 def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **rt_params: Any) -> str:
@@ -150,7 +155,7 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
         for b in range(num_bs):
             scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b]))
 
-        paths = _compute_paths(scene, p_solver, compute_paths_rt_params)
+        paths = _compute_paths(scene, p_solver, compute_paths_rt_params, rt_params['cpu_offload'])
         path_list.append(paths)
 
         for b in range(num_bs):
@@ -161,7 +166,7 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
         for i in batch:
             scene.add(Receiver(name=f"rx_{i}", position=rx_pos[i]))
         
-        paths = _compute_paths(scene, p_solver, compute_paths_rt_params)
+        paths = _compute_paths(scene, p_solver, compute_paths_rt_params, rt_params['cpu_offload'])
         path_list.append(paths)
         
         for i in batch:

@@ -86,8 +86,6 @@ from deepmimo.pipelines.utils.geo_utils import get_city_name, fetch_satellite_vi
 
 # Configure Ray Tracing Versions (before importing the pipeline modules)
 dm.config('wireless_insite_version', "4.0.1")  # E.g. '3.3.0', '4.0.1'
-dm.config('sionna_version', '0.19.1')  # E.g. '0.19.1', '1.0.2'
-# dm.config('sionna_version', '1.0.2')  # E.g. '0.19.1', '1.0.2'
 
 # from deepmimo.pipelines.wireless_insite.insite_raytracer import raytrace_insite
 from deepmimo.pipelines.sionna_rt.sionna_raytracer import raytrace_sionna
@@ -160,6 +158,8 @@ p = {
 	'n_samples_per_src': 1_000_000,  # Number of ray sampling directions per source
 	'max_paths_per_src': 1_000_000,  # Maximum number of paths per source
 	'refraction': False,  # Whether to use refraction (True) or not (False)
+	'cpu_offload': True,  # Whether to offload paths to CPU (True) or not (False)
+	                      # (slower, but does not accumulate VRAM usage)
 
 	# Ray-tracing parameters -> Efficient if they match the dataclass in SetupEditor.py
 	'carrier_freq': 3.5e9,  # Hz
@@ -210,10 +210,10 @@ for index in [1]:
 	print('Starting RT')
 	osm_folder = os.path.join(OSM_ROOT, "simple_reflector")
 
-	rx_pos = np.array([[0, 10, 0], [0, 0, 5], [0, 10, 5]])
-	rx_pos = gen_plane_grid(0, 20, 0, 20, 1, 1.5)
+	# rx_pos = np.array([[0, 10, 0], [0, 0, 5], [0, 10, 5]])
+	rx_pos = gen_plane_grid(0, 40, 0, 40, 2, 1.5)
 
-	tx_pos = np.array([[0, 0, 0]])
+	tx_pos = np.array([[0, 0, 10]])
 
 	# RT Phase 4: Run Wireless InSite ray tracing
 	# rt_path = raytrace_insite(osm_folder, tx_pos, rx_pos, **p)
@@ -224,8 +224,8 @@ for index in [1]:
 
 	# RT Phase 6: Test Conversion
 	dataset = dm.load(scen_name)
-	dataset.plot_coverage(dataset.los)
-	dataset.plot_coverage(dataset.pwr[:, 0])
+	dataset.plot_coverage(dataset.los, scat_sz=40)
+	dataset.plot_coverage(dataset.pwr[:, 0], scat_sz=40)
 	break
 
 	# RT Phase 7: Upload (zip rt source)
@@ -233,7 +233,3 @@ for index in [1]:
 	# dm.upload(scen_name, key=DEEPMIMO_API_KEY)
 	# dm.upload_images(scen_name, img_paths=[sat_view_path],  key=DEEPMIMO_API_KEY)
 	# dm.upload_rt_source(scen_name, rt_zip_path=dm.zip(rt_path), key=DEEPMIMO_API_KEY)
-
-# %%
-
-scen_name = dm.convert(rt_path, overwrite=True)

@@ -309,7 +309,7 @@ def export_to_deepmimo(scene: Scene, path_list: List[Paths] | Paths,
         - This function has been tested with Sionna v0.19.1 and v1.0.2.
         - In Sionna 1.x, the paths are exported during RT, so no need to export them here
     """
-    paths_dict_list = export_paths(path_list)
+    paths_dict_list = path_list if type(path_list[0]) == dict else export_paths(path_list)
     materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
