@@ -93,8 +93,8 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
     # Sionna 1.x: (the same but without batch dimension)
     # - types:    DIM_TYPE_1 or DIM_TYPE_2 (but with max_depth instead of batch_size)
     # Currently, we only support DIM_TYPE_2 (no multi antenna)
-    
-    if not _is_sionna_v1(sionna_version):
+    sionna_v1 = _is_sionna_v1(sionna_version)
+    if not sionna_v1:
         a = a[b, ..., 0]
         tau = tau[b, ...]
         phi_r = phi_r[b, ...]
@@ -124,11 +124,15 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
         abs_idx = abs_idx_arr[0]
 
         amp = a[rel_rx_idx, rx_ant_idx, tx_idx, tx_ant_idx, :]
-        path_idxs = np.where(amp != 0)[0][:c.MAX_PATHS]
-        n_paths = len(path_idxs)
+        non_zero_path_idxs = np.where(amp != 0)[0][:c.MAX_PATHS]
+        n_paths = len(non_zero_path_idxs)
         if n_paths == 0:
             inactive_count += 1
             continue
+        # Ensure that the paths are sorted by amplitude
+        sorted_path_idxs = np.argsort(np.abs(amp))[::-1]
+        path_idxs = sorted_path_idxs[:n_paths]
+        
         data[c.POWER_PARAM_NAME][abs_idx, :n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
         data[c.PHASE_PARAM_NAME][abs_idx, :n_paths] = np.angle(amp[path_idxs], deg=True)
         
@@ -143,7 +147,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
         inter_pos_rx = vertices[:, rel_rx_idx, tx_idx, path_idxs, :].swapaxes(0,1)
         n_interactions = inter_pos_rx.shape[1]
         data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :n_interactions, :] = inter_pos_rx
-        if _is_sionna_v1(sionna_version):
+        if sionna_v1:
             # For Sionna v1, types is (max_depth, n_rx, n_tx, max_paths)
             # We need to get (n_paths, max_depth) for the current rx/tx pair
             path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0,1)
