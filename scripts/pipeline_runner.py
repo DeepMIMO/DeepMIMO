@@ -258,5 +258,5 @@ for index in range(n_time):
 
 outer_folder = OSM_ROOT
 
-dataset_time = dm.convert(outer_folder)
-dataset
+dataset_time = dm.convert(outer_folder, scenario_name='scen1')
+# dataset

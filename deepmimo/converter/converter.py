@@ -8,7 +8,7 @@ a standardized scenario format.
 
 # Standard library imports
 import os
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 # Local imports
 from . import converter_utils as cu
@@ -63,7 +63,8 @@ def convert(path_to_rt_folder: str, **conversion_params: Dict[str, Any]) -> Opti
     else: # Possibly a time-varying scenario
         print(f'No converter match found for root directory: {path_to_rt_folder}')
         print('Checking subdirectories...')
-        subdirs = [os.path.join(path_to_rt_folder, d) for d in os.listdir(path_to_rt_folder) if os.path.isdir(os.path.join(path_to_rt_folder, d))]
+        subdirs = [os.path.join(path_to_rt_folder, d) for d in os.listdir(path_to_rt_folder)
+                   if os.path.isdir(os.path.join(path_to_rt_folder, d))]
         if len(subdirs) > 0:
             rt_converter = _find_converter_from_dir(subdirs[0])
         else:
@@ -71,15 +72,19 @@ def convert(path_to_rt_folder: str, **conversion_params: Dict[str, Any]) -> Opti
             return None
         
         if rt_converter is None:
-            print('No converter match found in subdirectories')
+            print('No converter match found in subdirectories.')
+            print('Make sure the folder contains ray tracing output files (.pkl, .aodt, .setup, etc.)')
+            print(f'Supported ray tracers: {c.SUPPORTED_RAYTRACERS}')
             return None
 
-        # Check if the folder contains subfolders
+        # The scenario is time-varying if the converter is found
+
+        # Replace the scenario_name string in the conversion_params by parent_folder
+        conversion_params['parent_folder'] = conversion_params.pop('scenario_name')
+
+        # Convert each subdirectory to a time snapshot
         for subdir in subdirs:
             scenario = rt_converter(subdir, **conversion_params)
-            # TODO: Make sure the rt_converter is not creating independent scenarios
-            # for each subdirectory (just in this case. )
-            
     
     if rt_converter is None:
         print("Unknown ray tracer type")

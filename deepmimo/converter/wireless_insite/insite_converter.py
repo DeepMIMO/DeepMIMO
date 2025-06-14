@@ -49,7 +49,8 @@ SOURCE_EXTS = SETUP_FILES + ['.kmz']  # Files to copy to ray tracing source zip
 
 def insite_rt_converter(rt_folder: str, copy_source: bool = False,
                         overwrite: Optional[bool] = None, vis_scene: bool = True, 
-                        scenario_name: str = '', print_params: bool = True) -> str:
+                        scenario_name: str = '', print_params: bool = True,
+                        parent_folder: str = '') -> str:
     """Convert Wireless InSite ray-tracing data to DeepMIMO format.
 
     This function handles the conversion of Wireless InSite ray-tracing simulation 
@@ -62,6 +63,10 @@ def insite_rt_converter(rt_folder: str, copy_source: bool = False,
         overwrite (Optional[bool]): Whether to overwrite existing files. Prompts if None. Defaults to None.
         vis_scene (bool): Whether to visualize the scene layout. Defaults to False.
         scenario_name (str): Custom name for output folder. Uses p2m folder name if empty.
+        print_params (bool): Whether to print the parameters to the console. Defaults to False.
+        parent_folder (str): Name of parent folder containing the scenario. Defaults to empty string.
+                             If empty, the scenario is saved in the DeepMIMO scenarios folder.
+                             This parameter is only used if the scenario is time-varying.
 
     Returns:
         str: Path to output folder containing converted DeepMIMO dataset.
@@ -75,12 +80,12 @@ def insite_rt_converter(rt_folder: str, copy_source: bool = False,
     scen_name = scenario_name if scenario_name else os.path.basename(rt_folder)
     
     # Get paths for input and output folders
-    output_folder = os.path.join(os.path.dirname(rt_folder), scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
+    temp_folder = os.path.join(os.path.dirname(rt_folder), scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
     
     # Create output folder
-    if os.path.exists(output_folder):
-        shutil.rmtree(output_folder)
-    os.makedirs(output_folder)
+    if os.path.exists(temp_folder):
+        shutil.rmtree(temp_folder)
+    os.makedirs(temp_folder)
     
     # Read ray tracing parameters
     rt_params = read_rt_params(rt_folder)
@@ -89,14 +94,14 @@ def insite_rt_converter(rt_folder: str, copy_source: bool = False,
     txrx_dict = read_txrx(rt_folder)
     
     # Read Paths (.p2m)
-    read_paths(rt_folder, output_folder, txrx_dict)
+    read_paths(rt_folder, temp_folder, txrx_dict)
     
     # Read Materials of all objects (.city, .ter, .veg)
     materials_dict = read_materials(rt_folder)
     
     # Read scene objects
     scene = read_scene(rt_folder)
-    scene_dict = scene.export_data(output_folder)
+    scene_dict = scene.export_data(temp_folder)
     
     # Visualize if requested
     if vis_scene:
@@ -110,13 +115,14 @@ def insite_rt_converter(rt_folder: str, copy_source: bool = False,
         c.MATERIALS_PARAM_NAME: materials_dict,
         c.SCENE_PARAM_NAME: scene_dict
     }
-    cu.save_params(params, output_folder)
+    cu.save_params(params, temp_folder)
     
     if print_params:
         pprint(params)
 
-    # Save scenario to deepmimo scenarios folder
-    scen_name = cu.save_scenario(output_folder, overwrite=overwrite)
+    # Save (move) scenario to deepmimo scenarios folder
+    scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
+    scen_name = cu.save_scenario(temp_folder, scenarios_folder, overwrite=overwrite)
     
     # Copy and zip ray tracing source files as well
     if copy_source:
