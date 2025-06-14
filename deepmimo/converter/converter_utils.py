@@ -131,7 +131,7 @@ def save_rt_source_files(sim_folder: str, source_exts: List[str]) -> None:
     return
 
 def save_scenario(sim_folder: str, scen_name: str = '', 
-                 overwrite: Optional[bool] = None) -> Optional[str]:
+                  overwrite: Optional[bool] = None) -> Optional[str]:
     """Save scenario to the DeepMIMO scenarios folder.
     
     Args:
@@ -142,7 +142,8 @@ def save_scenario(sim_folder: str, scen_name: str = '',
     Returns:
         Optional[str]: Name of the exported scenario.
     """
-    default_scen_name = os.path.basename(os.path.dirname(sim_folder.replace('_deepmimo', '')))
+    scen_folder = sim_folder.replace(c.DEEPMIMO_CONVERSION_SUFFIX, '')
+    default_scen_name = os.path.basename(os.path.dirname(scen_folder))
     scen_name = scen_name if scen_name else default_scen_name
     scen_path = get_scenario_folder(scen_name)
     if os.path.exists(scen_path):

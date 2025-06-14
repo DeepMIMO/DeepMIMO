@@ -75,7 +75,7 @@ def insite_rt_converter(rt_folder: str, copy_source: bool = False,
     scen_name = scenario_name if scenario_name else os.path.basename(rt_folder)
     
     # Get paths for input and output folders
-    output_folder = os.path.join(os.path.dirname(rt_folder), scen_name + '_deepmimo')
+    output_folder = os.path.join(os.path.dirname(rt_folder), scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
     
     # Create output folder
     if os.path.exists(output_folder):

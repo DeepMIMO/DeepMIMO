@@ -331,3 +331,6 @@ SCENARIO_NAME_INVALID_CHARS = ['/', '\\', ':', '*', '?', '"', "'", '<', '>', '|'
 
 # Padding for bounding box in meters (for terrain placement around OSM area)
 BBOX_PAD = 30
+
+# Temporary DeepMIMO conversion folder name suffix
+DEEPMIMO_CONVERSION_SUFFIX = '_deepmimo'

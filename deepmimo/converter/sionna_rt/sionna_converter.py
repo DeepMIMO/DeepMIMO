@@ -50,7 +50,7 @@ def sionna_rt_converter(rt_folder: str, copy_source: bool = False,
     scen_name = scenario_name if scenario_name else os.path.basename(rt_folder)
     
     # Setup output folder
-    output_folder = os.path.join(rt_folder, scen_name + '_deepmimo')
+    output_folder = os.path.join(rt_folder, scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
     if os.path.exists(output_folder):
         shutil.rmtree(output_folder)
     os.makedirs(output_folder)
