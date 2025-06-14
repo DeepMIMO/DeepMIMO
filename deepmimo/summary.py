@@ -37,6 +37,7 @@ from typing import Optional
 
 # Third-party imports
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Local imports
 from .general_utils import (
@@ -220,17 +221,33 @@ def plot_summary(scenario_name: str, save_imgs: bool = False) -> list[str]:
         n_bs = tx_set.num_points
         ax = dataset.scene.plot(title=False, proj_2d=True)
         bs_colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
-        for bs in range(n_bs):  
-            ax.scatter(dataset[bs].bs_pos[0,0], dataset[bs].bs_pos[0,1], 
+        for bs in range(n_bs):
+            if bs == 0 and n_bs == 1:
+                bs_dataset = dataset
+            else:
+                bs_dataset = dataset[bs]
+            ax.scatter(bs_dataset.bs_pos[0,0], bs_dataset.bs_pos[0,1], 
                        s=250, color=bs_colors[bs], label=f'BS {bs + 1}', marker='*')
 
-        # Get uniform indices (to undersample receivers for easier visualization)
-        rx_set_id = [s for s in txrx_sets if s.is_rx and not s.is_tx][0].id
-        first_rx_pair_idx = next(i for i, d in enumerate(dataset.txrx) if d['rx_set_id'] == rx_set_id)
-        idxs = dataset[first_rx_pair_idx].get_uniform_idxs([8,8])
-        ax.scatter(dataset[first_rx_pair_idx].rx_pos[idxs,0], 
-                   dataset[first_rx_pair_idx].rx_pos[idxs,1], 
-                   s=10, color='red', label='users', marker='o', alpha=0.2, zorder=0)
+        # Get txrx pair index from the first receiver-only txrx (which is like a rx grid)
+        if type(dataset.txrx) == list:
+            rx_set_id = [s for s in txrx_sets if s.is_rx and not s.is_tx][0].id
+            first_pair_with_rx_grid = \
+                next(txrx_pair_idx for txrx_pair_idx, txrx_dict in enumerate(dataset.txrx) 
+                     if txrx_dict['rx_set_id'] == rx_set_id)
+            rx_grid_dataset = dataset[first_pair_with_rx_grid]
+        else:
+            first_pair_with_rx_grid = 0
+            rx_grid_dataset = dataset
+        
+        # Select users to plot
+        if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > 5000:
+            idxs = rx_grid_dataset.get_uniform_idxs([8,8])
+        else:
+            idxs = np.arange(rx_grid_dataset.n_ue)
+
+        ax.scatter(rx_grid_dataset.rx_pos[idxs,0], rx_grid_dataset.rx_pos[idxs,1], 
+                s=10, color='red', label='users', marker='o', alpha=0.2, zorder=0)
 
         # Reorder legend handles and labels
         legend_args = {'ncol': 4 if n_bs == 1 else 3, 'loc': 'center',
@@ -271,4 +288,4 @@ def plot_summary(scenario_name: str, save_imgs: bool = False) -> list[str]:
     # img_paths.append(los_img_path)
 
 
-    return img_paths
+    return img_paths if img_paths else None

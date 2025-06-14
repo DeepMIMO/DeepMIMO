@@ -742,7 +742,7 @@ class Dataset(DotDict):
             'grid_spacing': grid_spacing
         }
 
-    def _is_valid_grid(self) -> bool:
+    def has_valid_grid(self) -> bool:
         """Check if the dataset has a valid grid structure.
         
         A valid grid means that:
