@@ -24,7 +24,7 @@ from .. import consts as c
 from ..general_utils import (get_mat_filename, load_dict_from_json, 
                              get_scenario_folder, get_params_path)
 from ..scene import Scene
-from .dataset import Dataset, MacroDataset
+from .dataset import Dataset, MacroDataset, DynamicDataset
 from ..materials import MaterialList
 
 # Channel generation
@@ -122,7 +122,7 @@ def load(scen_name: str, **load_params) -> Dataset | MacroDataset:
             snapshot_folder = os.path.join(scen_folder, scene_folders[snapshot_i])
             print(f'Scene {snapshot_i + 1}/{n_snapshots}')
             dataset_list += [_load_dataset(snapshot_folder, params, load_params)]
-        dataset = MacroDataset(dataset_list)
+        dataset = DynamicDataset(dataset_list, scen_name)
     else: # static (single scene)
         dataset = _load_dataset(scen_folder, params, load_params)
     return dataset

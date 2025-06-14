@@ -61,6 +61,9 @@ from .generator_utils import (
 # Converter utilities
 from ..converter import converter_utils as cu
 
+# Txrx set information
+from ..txrx import get_txrx_sets, TxRxSet
+
 # Parameters that should remain consistent across datasets in a MacroDataset
 SHARED_PARAMS = [
     c.SCENE_PARAM_NAME,           # Scene object
@@ -1031,6 +1034,10 @@ class Dataset(DotDict):
     # 9. Utilities and Computation Methods
     ###########################################
 
+    def _get_txrx_sets(self) -> list[TxRxSet]:
+        """Get the txrx sets for the dataset."""
+        return get_txrx_sets(self.name)
+    
     # Dictionary mapping attribute names to their computation methods
     # (in order of computation)
     _computed_attributes = {
@@ -1071,6 +1078,9 @@ class Dataset(DotDict):
         # Interactions
         c.INTER_STR_PARAM_NAME: '_compute_inter_str',
         c.INTER_INT_PARAM_NAME: '_compute_inter_int',
+
+        # Txrx set information
+        'txrx_sets': '_get_txrx_sets',
     }
 
     def info(self, param_name: str | None = None) -> None:
@@ -1100,9 +1110,9 @@ class MacroDataset:
     """
     
     # Methods that should only be called on the first dataset
-    SINGLE_ACCESS_METHODS = {
+    SINGLE_ACCESS_METHODS = [
         'info',  # Parameter info should only be shown once
-    }
+    ]
     
     # Methods that should be propagated to children - automatically populated from Dataset methods
     PROPAGATE_METHODS = {
@@ -1202,4 +1212,24 @@ class MacroDataset:
         """
         self.datasets.append(dataset)
         
+
+class DynamicDataset(MacroDataset):
+    """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
+    
+    SINGLE_ACCESS_METHODS = MacroDataset.SINGLE_ACCESS_METHODS + ['txrx_sets']
+
+    def __init__(self, datasets: list[MacroDataset], name: str):
+        """Initialize a dynamic dataset.
         
+        Args:
+            datasets: List of MacroDataset instances, each representing a time snapshot
+            name: Base name of the scenario (without time suffix)
+        """
+        super().__init__(datasets)
+        self.name = name  
+        
+    def __getattr__(self, name):
+        """Override __getattr__ to handle txrx_sets specially."""
+        if name == 'txrx_sets':
+            return get_txrx_sets(self.name)
+        return super().__getattr__(name)
