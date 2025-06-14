@@ -81,7 +81,8 @@ def convert(path_to_rt_folder: str, **conversion_params: Dict[str, Any]) -> Opti
 
         # Replace the scenario_name string in the conversion_params by parent_folder
         conversion_params['parent_folder'] = conversion_params.pop('scenario_name')
-
+        conversion_params['num_scenes'] = len(subdirs)
+        
         # Convert each subdirectory to a time snapshot
         for subdir in subdirs:
             scenario = rt_converter(subdir, **conversion_params)

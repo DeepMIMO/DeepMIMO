@@ -24,7 +24,7 @@ from .sionna_scene import read_scene
 def sionna_rt_converter(rt_folder: str, copy_source: bool = False,
                         overwrite: bool = None, vis_scene: bool = True, 
                         scenario_name: str = '', print_params: bool = False,
-                        parent_folder: str = '') -> str:
+                        parent_folder: str = '', num_scenes: int = 1) -> str:
     """Convert Sionna ray-tracing data to DeepMIMO format.
 
     This function handles the conversion of Sionna ray-tracing simulation 
@@ -41,7 +41,8 @@ def sionna_rt_converter(rt_folder: str, copy_source: bool = False,
         parent_folder (str): Name of parent folder containing the scenario. Defaults to empty string.
                              If empty, the scenario is saved in the DeepMIMO scenarios folder.
                              This parameter is only used if the scenario is time-varying.
-
+        num_scenes (int): Number of scenes in the scenario. Defaults to 1.
+                          This parameter is only used if the scenario is time-varying.
     Returns:
         str: Path to output folder containing converted DeepMIMO dataset.
         
@@ -75,7 +76,8 @@ def sionna_rt_converter(rt_folder: str, copy_source: bool = False,
     # Read Scene data
     scene = read_scene(rt_folder, material_indices)
     scene_dict = scene.export_data(temp_folder) if scene else {}
-    
+    scene_dict[c.SCENE_PARAM_NUMBER_SCENES] = num_scenes
+
     # Visualize if requested
     if vis_scene and scene:
         scene.plot()
