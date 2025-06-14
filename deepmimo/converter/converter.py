@@ -46,7 +46,9 @@ def convert(path_to_rt_folder: str, **conversion_params: Dict[str, Any]) -> Opti
     root directory and immediate subdirectories for the required files.
 
     Args:
-        path_to_rt_folder (str): Path to the folder containing raytracing data
+        path_to_rt_folder (str): Path to the folder containing raytracing data. 
+                                 If the folder contains multiple scenes, the function will
+                                 sort them with sorted() and convert each folder to a time snapshot.
         **conversion_params (Dict[str, Any]): Additional parameters for the conversion process
 
     Returns:
@@ -63,8 +65,8 @@ def convert(path_to_rt_folder: str, **conversion_params: Dict[str, Any]) -> Opti
     else: # Possibly a time-varying scenario
         print(f'No converter match found for root directory: {path_to_rt_folder}')
         print('Checking subdirectories...')
-        subdirs = [os.path.join(path_to_rt_folder, d) for d in os.listdir(path_to_rt_folder)
-                   if os.path.isdir(os.path.join(path_to_rt_folder, d))]
+        subdirs = sorted([os.path.join(path_to_rt_folder, d) for d in os.listdir(path_to_rt_folder)
+                          if os.path.isdir(os.path.join(path_to_rt_folder, d))])
         if len(subdirs) > 0:
             rt_converter = _find_converter_from_dir(subdirs[0])
         else:

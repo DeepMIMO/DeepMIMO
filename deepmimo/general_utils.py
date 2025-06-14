@@ -75,9 +75,29 @@ def get_params_path(scenario_name: str) -> str:
         
     Returns:
         str: Absolute path to the scenario's params file
+    
+    Raises:
+        FileNotFoundError: If the scenario folder or params file is not found
     """
     check_scen_name(scenario_name)
-    return os.path.join(get_scenario_folder(scenario_name), f'{c.PARAMS_FILENAME}.json')
+    scenario_folder = get_scenario_folder(scenario_name)
+    if not os.path.exists(scenario_folder):
+        raise FileNotFoundError(f"Scenario folder not found: {scenario_name}")
+    
+    # Check if there is a params file in the scenario folder
+    path = os.path.join(scenario_folder, f'{c.PARAMS_FILENAME}.json')
+    if not os.path.exists(path):
+        # Check if there are multiple scene folders
+        subdirs = [d for d in os.listdir(scenario_folder)
+                   if os.path.isdir(os.path.join(scenario_folder, d))]
+        if len(subdirs):
+            # Check if there is a params file in each subdirectory
+            path = os.path.join(scenario_folder, subdirs[0], f'{c.PARAMS_FILENAME}.json')
+
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"Params file not found for scenario: {scenario_name}")
+
+    return path
 
 def get_available_scenarios() -> list:
     """Get a list of all available scenarios in the scenarios directory.

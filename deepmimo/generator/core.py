@@ -110,31 +110,47 @@ def load(scen_name: str, **load_params) -> Dataset | MacroDataset:
     
     # Load parameters file
     params_file = get_params_path(scen_name)
-    if not os.path.exists(params_file):
-        raise ValueError(f'Parameters file not found in {scen_folder}')
     params = load_dict_from_json(params_file)
     
     # Load scenario data
     n_snapshots = params[c.SCENE_PARAM_NAME][c.SCENE_PARAM_NUMBER_SCENES]
-    if n_snapshots > 1: # dynamic
-        raise NotImplementedError('Dynamic scenarios not implemented yet')
-        # dataset = {}
-        # for snapshot_i in range(n_snapshots):
-        #     snapshot_folder = os.path.join(scen_folder, rt_params[c.PARAMSET_SCENARIO],
-        #                                    f'scene_{snapshot_i}')
-        #     print(f'Scene {snapshot_i + 1}/{n_snapshots}')
-        #     dataset[snapshot_i] = _load_raytracing_scene(snapshot_folder, rt_params, **load_params)
-    else: # static
-        dataset = _load_raytracing_scene(scen_folder, params[c.TXRX_PARAM_NAME], **load_params)
+    if n_snapshots > 1: # dynamic (multiple scenes)
+        dataset_list = []
+        scene_folders = sorted([d for d in os.listdir(scen_folder)
+                                if os.path.isdir(os.path.join(scen_folder, d))])
+        for snapshot_i in range(n_snapshots):
+            snapshot_folder = os.path.join(scen_folder, scene_folders[snapshot_i])
+            print(f'Scene {snapshot_i + 1}/{n_snapshots}')
+            dataset_list += [_load_dataset(snapshot_folder, params, load_params)]
+        dataset = MacroDataset(dataset_list)
+    else: # static (single scene)
+        dataset = _load_dataset(scen_folder, params, load_params)
+    return dataset
+
+def _load_dataset(folder: str, params: dict, load_params: dict) -> Dataset | MacroDataset:
+    """Load a single dataset from a scenario folder.
+    
+    Args:
+        folder: Path to the scenario folder
+        params: Dictionary containing scenario parameters
+        load_params: Dictionary containing parameters for loading the dataset
+        
+    Returns:
+        Dataset or MacroDataset: Loaded dataset with shared parameters set
+    """
+    dataset = _load_raytracing_scene(folder, params[c.TXRX_PARAM_NAME], **load_params)
     
     # Set shared parameters
-    dataset[c.NAME_PARAM_NAME] = scen_name
+    dataset[c.NAME_PARAM_NAME] = os.path.basename(folder)
+    # dataset[c.NAME_PARAM_NAME] = scen_name
+
     dataset[c.LOAD_PARAMS_PARAM_NAME] = load_params
     dataset[c.RT_PARAMS_PARAM_NAME] = params[c.RT_PARAMS_PARAM_NAME]
-    dataset[c.SCENE_PARAM_NAME] = Scene.from_data(scen_folder)
+    dataset[c.SCENE_PARAM_NAME] = Scene.from_data(folder)
     dataset[c.MATERIALS_PARAM_NAME] = MaterialList.from_dict(params[c.MATERIALS_PARAM_NAME])
 
     return dataset
+
 
 def _load_raytracing_scene(scene_folder: str, txrx_dict: dict, max_paths: int = c.MAX_PATHS,
                            tx_sets: Dict[int, list | str] | list | str = 'all',

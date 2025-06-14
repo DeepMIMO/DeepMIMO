@@ -1110,7 +1110,7 @@ class MacroDataset:
         if not name.startswith('__')  # Skip dunder methods
     }
     
-    def __init__(self, datasets=None):
+    def __init__(self, datasets: list[Dataset] | None = None):
         """Initialize with optional list of Dataset instances.
         
         Args:
