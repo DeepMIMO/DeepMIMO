@@ -178,10 +178,35 @@ p = {
 								  # (if True, positions have added the terrain height)
 	'bs2bs': False,  # Whether to compute path between BSs (True) or not (False)
 	
+	# Miscellaneous parameters
+	'create_scene_folder': False,  # Whether to create a scene folder (True) or not (False)
 }
 
+n_time = 10
+x_step = 1
+
+#%%
+# Generate user positions with 1-meter spacing along x-axis
+x_coords = np.arange(0, n_time * x_step, x_step)  # 0 to 9 meters with 1m spacing
+rx_pos_list = []
+for x in x_coords:
+    # Create array for two users at this x position
+    user_pos = np.array([
+        [x, 0, 1.5],    # User at y=0
+        [x, 5, 1.5]    # User at y=10
+    ])
+    rx_pos_list.append(user_pos)
+
+tx_pos = np.array([[0, 0, 10]])
+
 # for index, row in df.iterrows():
-for index in [1]:
+# for index in [1]:
+for index in range(n_time):
+
+	print(f"Processing time index: {index}")
+	p['name'] = f'simple_reflector_time_{index}'
+	osm_folder = os.path.join(OSM_ROOT, p['name'])
+	rx_pos = rx_pos_list[index]
 	# print(f"\n{'=' * 50}\nSTARTING SCENARIO {index + 1}/{len(df)}: {row['name']}\n{'=' * 50}")
 
 	# # RT Phase 1: Load GPS coordinates from CSV
@@ -208,12 +233,7 @@ for index in [1]:
 	# tx_pos = np.round(tx_pos, p['pos_prec'])
 	
 	print('Starting RT')
-	osm_folder = os.path.join(OSM_ROOT, "simple_reflector")
-
-	# rx_pos = np.array([[0, 10, 0], [0, 0, 5], [0, 10, 5]])
-	rx_pos = gen_plane_grid(0, 40, 0, 40, 2, 1.5)
-
-	tx_pos = np.array([[0, 0, 10]])
+	# osm_folder = os.path.join(OSM_ROOT, "simple_reflector")
 
 	# RT Phase 4: Run Wireless InSite ray tracing
 	# rt_path = raytrace_insite(osm_folder, tx_pos, rx_pos, **p)
@@ -226,10 +246,17 @@ for index in [1]:
 	dataset = dm.load(scen_name)
 	dataset.plot_coverage(dataset.los, scat_sz=40)
 	dataset.plot_coverage(dataset.pwr[:, 0], scat_sz=40)
-	break
+	# break
 
 	# RT Phase 7: Upload (zip rt source)
 	# scen_name = dm.zip(rt_path)
 	# dm.upload(scen_name, key=DEEPMIMO_API_KEY)
 	# dm.upload_images(scen_name, img_paths=[sat_view_path],  key=DEEPMIMO_API_KEY)
 	# dm.upload_rt_source(scen_name, rt_zip_path=dm.zip(rt_path), key=DEEPMIMO_API_KEY)
+
+#%%
+
+outer_folder = OSM_ROOT
+
+dataset_time = dm.convert(outer_folder)
+dataset

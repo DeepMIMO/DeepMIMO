@@ -89,19 +89,23 @@ def _compute_paths(scene, p_solver, compute_paths_rt_params, cpu_offload=True):
     
     return paths
 
-def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **rt_params: Any) -> str:
+def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **rt_params: Any) -> str:
     """Run ray tracing for the scene."""
-    # Create scene
-    scene_name = (f"sionna_{rt_params['carrier_freq']/1e9:.1f}GHz_"
+    
+    if rt_params['create_scene_folder']:
+        # Create scene
+        scene_name = (f"sionna_{rt_params['carrier_freq']/1e9:.1f}GHz_"
                     f"{rt_params['max_reflections']}R_{rt_params['max_diffractions']}D_"
                     f"{1 if rt_params['ds_enable'] else 0}S")
 
-    scene_folder = os.path.join(osm_folder, scene_name)
+        scene_folder = os.path.join(base_folder, scene_name)
+    else:
+        scene_folder = base_folder
     
     if rt_params['use_builtin_scene']:
         xml_path = getattr(sionna.rt.scene, rt_params['builtin_scene_path'])
     else:
-        xml_path = os.path.join(osm_folder, "scene.xml")  # Created by Blender OSM Export!
+        xml_path = os.path.join(base_folder, "scene.xml")  # Created by Blender OSM Export!
     
     print(f"XML scene path: {xml_path}")
     scene = create_base_scene(xml_path, rt_params['carrier_freq'])
@@ -174,6 +178,6 @@ def raytrace_sionna(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
     
     # Save Sionna outputs
     print("Saving Sionna outputs")
-    sionna_rt_folder = os.path.join(scene_folder, "sionna_export/")
-    sionna_exporter.export_to_deepmimo(scene, path_list, rt_params, sionna_rt_folder)
-    return sionna_rt_folder
+
+    sionna_exporter.export_to_deepmimo(scene, path_list, rt_params, scene_folder)
+    return scene_folder
