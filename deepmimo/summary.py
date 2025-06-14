@@ -44,8 +44,9 @@ from .general_utils import (
     get_params_path,
     load_dict_from_json,
 )
-from .txrx import get_txrx_sets
 from . import consts as c
+from .generator.dataset import Dataset, MacroDataset, DynamicDataset
+
 
 
 def summary(scen_name: str, print_summary: bool = True) -> Optional[str]:
@@ -175,7 +176,8 @@ def summary(scen_name: str, print_summary: bool = True) -> Optional[str]:
     return summary_str
 
 
-def plot_summary(scenario_name: str, save_imgs: bool = False) -> list[str]:
+def plot_summary(scenario_name: str | None = None, save_imgs: bool = False, 
+                 dataset: Dataset | MacroDataset | DynamicDataset | None = None) -> list[str]:
     """Make images for the scenario.
     
     Args:
@@ -193,7 +195,10 @@ def plot_summary(scenario_name: str, save_imgs: bool = False) -> list[str]:
         os.makedirs(temp_dir, exist_ok=True)
     
     # Load the dataset
-    dataset = load(scenario_name)
+    if dataset is None:
+        if scenario_name is None:
+            raise ValueError("Scenario name is required when dataset is not provided")
+        dataset = load(scenario_name)
     
     # Image paths
     img_paths = []
@@ -215,7 +220,7 @@ def plot_summary(scenario_name: str, save_imgs: bool = False) -> list[str]:
     # Image 2: Scenario summary (2D view)
     try:
         img2_path = os.path.join(temp_dir, 'scenario_summary.png')
-        txrx_sets = get_txrx_sets(scenario_name)
+        txrx_sets = dataset.txrx_sets
 
         tx_set = [s for s in txrx_sets if s.is_tx][0]
         n_bs = tx_set.num_points
