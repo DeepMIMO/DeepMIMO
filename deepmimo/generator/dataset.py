@@ -16,6 +16,9 @@ MacroDataset: For managing collections of related DeepMIMO datasets that *may* s
 - Loading parameters 
 - Ray-tracing parameters
 
+DynamicDataset: For dynamic datasets that consist of multiple (macro)datasets across time snapshots:
+- All txrx sets are the same for all time snapshots
+
 The Dataset class is organized into several logical sections:
 1. Core Dictionary Interface - Basic dictionary-like operations and key resolution
 2. Channel Computations - Channel matrices and array responses
@@ -63,6 +66,9 @@ from ..converter import converter_utils as cu
 
 # Txrx set information
 from ..txrx import get_txrx_sets, TxRxSet
+
+# Summary
+from ..summary import plot_summary
 
 # Parameters that should remain consistent across datasets in a MacroDataset
 SHARED_PARAMS = [
@@ -1029,6 +1035,10 @@ class Dataset(DotDict):
         default_kwargs.update(kwargs)
         return plot_rays(self.rx_pos[idx], self.tx_pos[0], self.inter_pos[idx],
                          self.inter[idx], **default_kwargs)
+    
+    def plot_summary(self, **kwargs):
+        """Plot the summary of the dataset."""
+        return plot_summary(dataset=self, **kwargs)
     
     ###########################################
     # 9. Utilities and Computation Methods

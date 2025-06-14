@@ -45,9 +45,6 @@ from .general_utils import (
     load_dict_from_json,
 )
 from . import consts as c
-from .generator.dataset import Dataset, MacroDataset, DynamicDataset
-
-
 
 def summary(scen_name: str, print_summary: bool = True) -> Optional[str]:
     """Print a summary of the dataset."""
@@ -177,11 +174,13 @@ def summary(scen_name: str, print_summary: bool = True) -> Optional[str]:
 
 
 def plot_summary(scenario_name: str | None = None, save_imgs: bool = False, 
-                 dataset: Dataset | MacroDataset | DynamicDataset | None = None) -> list[str]:
+                 dataset = None) -> list[str]:
     """Make images for the scenario.
     
     Args:
         scenario_name: Scenario name
+        dataset: Dataset, MacroDataset, or DynamicDataset. If provided, scenario_name is ignored.
+        save_imgs: Whether to save the images to the figures directory
     
     Returns:
         List of paths to generated images
