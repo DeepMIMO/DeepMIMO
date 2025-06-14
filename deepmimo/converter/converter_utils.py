@@ -130,8 +130,7 @@ def save_rt_source_files(sim_folder: str, source_exts: List[str]) -> None:
 
     return
 
-def save_scenario(sim_folder: str, scen_name: str = '', 
-                  overwrite: Optional[bool] = None) -> Optional[str]:
+def save_scenario(sim_folder: str, overwrite: Optional[bool] = None) -> Optional[str]:
     """Save scenario to the DeepMIMO scenarios folder.
     
     Args:
@@ -142,16 +141,19 @@ def save_scenario(sim_folder: str, scen_name: str = '',
     Returns:
         Optional[str]: Name of the exported scenario.
     """
-    scen_folder = sim_folder.replace(c.DEEPMIMO_CONVERSION_SUFFIX, '')
-    default_scen_name = os.path.basename(os.path.dirname(scen_folder))
-    scen_name = scen_name if scen_name else default_scen_name
+    # Remove conversion suffix
+    new_scen_folder = sim_folder.replace(c.DEEPMIMO_CONVERSION_SUFFIX, '')
+    # Get scenario name from DeepMIMO scenarios folder
+    scen_name = os.path.basename(new_scen_folder)
     scen_path = get_scenario_folder(scen_name)
+    # Check if scenario already exists
     if os.path.exists(scen_path):
         if overwrite is None:
             print(f'Scenario with name "{scen_name}" already exists in '
                   f'{c.SCENARIOS_FOLDER}. Delete? (Y/n)')
             ans = input()
             overwrite = False if 'n' in ans.lower() else True
+        # Delete scenario if overwrite is True
         if overwrite:
             shutil.rmtree(scen_path)
         else:

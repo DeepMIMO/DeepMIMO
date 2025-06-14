@@ -88,7 +88,7 @@ def sionna_rt_converter(rt_folder: str, copy_source: bool = False,
         pprint(params)
 
     # Save scenario to deepmimo scenarios folder
-    scen_name = cu.save_scenario(output_folder, scen_name=scenario_name, overwrite=overwrite)
+    scen_name = cu.save_scenario(output_folder, overwrite=overwrite)
     
     # Copy and zip ray tracing source files as well
     if copy_source:
