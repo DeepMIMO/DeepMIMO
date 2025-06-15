@@ -257,7 +257,7 @@ class PhysicalElement:
         self.object_id = object_id
         self.label = label if label in self.DEFAULT_LABELS else CAT_OBJECTS
         self.color = color
-        self.speed = speed
+        self.speed = speed # [m/s]
         self.name = name
         
         # Extract all vertices from faces for bounding box computation

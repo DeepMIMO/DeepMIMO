@@ -75,6 +75,15 @@ outer_folder = OSM_ROOT
 scen_name = dm.convert(outer_folder + '/simple_reflector_time_0', overwrite=True)
 dataset = dm.load(scen_name)
 
+#%%
+dataset.set_rx_vel(np.array([[0, 0, 0], [0, 0, 0]]))
+dataset.set_tx_vel(np.array([0, 0, 0]))
+
+dataset.scene.objects[0].speed = np.array([5, 0, 0]) # [m/s]
+dataset.scene.objects[0].speed_s = np.array([5, 0]) # [m/s]
+
+# dataset._clear_cache_doppler()
+dataset.doppler
 
 #%% Load a dynamic dataset
 outer_folder = OSM_ROOT
@@ -83,10 +92,15 @@ dyn_dataset_name = dm.convert(outer_folder, scenario_name='scen1',
 
 dyn_dataset = dm.load(dyn_dataset_name)
 
-
 #%% Plot summary
-dm.plot_summary(dataset=dyn_dataset[0], plot_idx=[1])
-dyn_dataset[0].plot_summary(plot_idx=[1])
 
-dm.plot_summary(dataset=dyn_dataset, plot_idx=[1])
 dyn_dataset.plot_summary(plot_idx=[1])
+
+#%%
+
+dataset._compute_interaction_angles()
+
+#%%
+
+a = dm.load('city_0_newyork_3p5')[0]
+a.num_interactions
