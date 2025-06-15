@@ -234,6 +234,12 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
             for bs in range(n_bs):
                 if bs == 0 and n_bs == 1:
                     bs_dataset = dataset
+                    # Workaround for DynamicDataset
+                    if type(bs_dataset.bs_pos) == list:
+                        bs_dataset = dataset[0]
+                        print('Warning: plot_summary not supported for DynamicDatasets. ')
+                        print('Plotting the summary of the first snapshot only. ')
+                        print('For all snapshots, use dataset.plot_summary() instead.')
                 else:
                     bs_dataset = dataset[bs]
                 ax.scatter(bs_dataset.bs_pos[0,0], bs_dataset.bs_pos[0,1], 
