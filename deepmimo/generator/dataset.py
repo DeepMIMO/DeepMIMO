@@ -1046,7 +1046,7 @@ class Dataset(DotDict):
 
     def _get_txrx_sets(self) -> list[TxRxSet]:
         """Get the txrx sets for the dataset."""
-        return get_txrx_sets(self.name)
+        return get_txrx_sets(self.get('parent_name', self.name))
     
     # Dictionary mapping attribute names to their computation methods
     # (in order of computation)
@@ -1237,7 +1237,10 @@ class DynamicDataset(MacroDataset):
         """
         super().__init__(datasets)
         self.name = name
-        self.names = [dataset.name for dataset in datasets] # Get the names of the datasets
+        self.names = [dataset.name for dataset in datasets]
+
+        for dataset in datasets:
+            dataset.parent_name = name
         
     def __getattr__(self, name):
         """Override __getattr__ to handle txrx_sets specially."""

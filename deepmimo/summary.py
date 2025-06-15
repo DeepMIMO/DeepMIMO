@@ -199,7 +199,7 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
         if scenario_name is None:
             raise ValueError("Scenario name is required when dataset is not provided")
         dataset = load(scenario_name)
-    
+        
     # Image paths
     img_paths = []
 
@@ -237,7 +237,7 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
                 else:
                     bs_dataset = dataset[bs]
                 ax.scatter(bs_dataset.bs_pos[0,0], bs_dataset.bs_pos[0,1], 
-                        s=250, color=bs_colors[bs], label=f'BS {bs + 1}', marker='*')
+                           s=250, color=bs_colors[bs], label=f'BS {bs + 1}', marker='*')
 
             # Get txrx pair index from the first receiver-only txrx (which is like a rx grid)
             if type(dataset.txrx) == list:
