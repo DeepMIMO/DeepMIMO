@@ -1077,19 +1077,31 @@ class Dataset(DotDict):
         freq = 1e9
         wavelength = 3e8 / freq
         
-        for ue_idx in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
-            for path_idx in range(self.num_paths):
-                if np.isnan(self.inter[ue_idx, path_idx]):
+        # Compute k_tx and k_rx for all users and paths
+        k_tx = np.zeros((self.n_ue, max_paths, 2))
+        k_rx = np.zeros((self.n_ue, max_paths, 2))
+        
+        # Compute wave vectors for all users and paths
+        k_tx[:, :, 0] = np.deg2rad(self.aod_az)   # azimuth of departure (tx angle)
+        k_tx[:, :, 1] = np.deg2rad(self.aod_el)   # elevation of departure (tx angle)
+        k_rx[:, :, 0] = -np.deg2rad(self.aoa_az)  # azimuth of arrival (rx angle)
+        k_rx[:, :, 1] = -np.deg2rad(self.aoa_el)  # elevation of arrival (rx angle)
+        
+        # Initialize velocity arrays
+        v_tx = np.zeros((1, 3))
+        v_rx = np.zeros((self.n_ue, 3))
+        
+        for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
+            for path_i in range(self.num_paths):
+                if np.isnan(self.inter[ue_i, path_i]):
                     continue
-                n_inter = self.num_interactions[ue_idx, path_idx]
-                
-                tx_doppler = k_tx * v_tx / wavelength
-                rx_doppler = k_rx * v_rx / wavelength
+                n_inter = self.num_interactions[ue_i, path_i]
+
+                # Compute doppler for this path
+                tx_doppler = np.dot(k_tx[ue_i, path_i], self.tx_vel) / wavelength
+                rx_doppler = np.dot(k_rx[ue_i, path_i], self.rx_vel[ue_i]) / wavelength
 
                 path_dopplers = []
-
-                velocities = np.zeros((n_inter+2, 3)) # +2 for tx and rx
-                angles = np.zeros((n_inter+2, 2))
 
                 ki = [] # for each interaction
                 for i in range(n_inter):  # i = interaction index(0, 1, ..., n_inter-1)
@@ -1107,6 +1119,21 @@ class Dataset(DotDict):
                 doppler[ue_idx, path_idx] = tx_doppler - rx_doppler + np.sum(path_dopplers)
 
         return doppler
+    
+    def _compute_interaction_angles(self) -> np.ndarray:
+        """Compute the outgoing angles for all users and paths."""
+        max_interactions = max(self.num_interactions)
+        interaction_angles = np.zeros((self.n_ue, self.num_paths, max_interactions, 2))
+
+        # Use the interaction positions to compute angles between each interaction
+        for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
+            for path_i in range(self.num_paths):
+                n_inter = self.num_interactions[ue_i, path_i]
+                for i in range(n_inter):
+                    pass #interaction_angles[ue_i, path_i, i] = self.inter[ue_i, path_i, i]
+
+        return interaction_angles
+    
 
     ###########################################
     # 10. Utilities and Computation Methods
