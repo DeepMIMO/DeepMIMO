@@ -1236,7 +1236,8 @@ class DynamicDataset(MacroDataset):
             name: Base name of the scenario (without time suffix)
         """
         super().__init__(datasets)
-        self.name = name  
+        self.name = name
+        self.names = [dataset.name for dataset in datasets] # Get the names of the datasets
         
     def __getattr__(self, name):
         """Override __getattr__ to handle txrx_sets specially."""
