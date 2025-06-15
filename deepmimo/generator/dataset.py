@@ -36,6 +36,7 @@ from typing import Dict, Optional, Any, List
 
 # Third-party imports
 import numpy as np
+from tqdm import tqdm
 
 # Base utilities
 from ..general_utils import DotDict
@@ -267,12 +268,18 @@ class Dataset(DotDict):
         
         n_paths_to_gen = params.num_paths
         
+        # Whether to enable the doppler shift per path in the channel
+        if params[c.PARAMSET_DOPPLER_EN]:
+            dopplers = self.doppler[..., :n_paths_to_gen]
+        else:
+            dopplers = np.zeros((self.n_ue, n_paths_to_gen))
+
         channel = _generate_MIMO_channel(
             array_response_product=array_response_product[..., :n_paths_to_gen],
             powers=self._power_linear_ant_gain[..., :n_paths_to_gen],
             delays=self.delay[..., :n_paths_to_gen],
             phases=self.phase[..., :n_paths_to_gen],
-            dopplers=self.doppler[..., :n_paths_to_gen],
+            dopplers=dopplers,
             ofdm_params=params.ofdm,
             freq_domain=params.freq_domain,
         )
@@ -1045,9 +1052,61 @@ class Dataset(DotDict):
     # 9. Doppler Computations
     ###########################################
     
+    def set_user_velocities(self, velocities: np.ndarray) -> None:
+        """Set the velocities of the users."""
+        self._clear_cache_doppler()
+        self.user_velocities = velocities # [n_ue, 3]
+    
+    def set_bs_velocities(self, velocities: np.ndarray) -> None:
+        """Set the velocities of the base stations."""
+        self._clear_cache_doppler()
+        self.bs_velocities = velocities # [n_bs, 3]
+
+    def _clear_cache_doppler(self) -> None:
+        """Clear all cached attributes that depend on doppler computation."""
+        super().__delitem__(c.DOPPLER_PARAM_NAME)
+    
     def _compute_doppler(self) -> np.ndarray:
         """Compute the doppler frequency shifts."""
-        return np.zeros((self.n_ue, self.num_paths))
+        self.doppler_enabled = False
+        max_paths = max(self.num_paths)
+        doppler = np.zeros((self.n_ue, max_paths)) + 2 
+        if not self.doppler_enabled:
+            return doppler
+        
+        freq = 1e9
+        wavelength = 3e8 / freq
+        
+        for ue_idx in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
+            for path_idx in range(self.num_paths):
+                if np.isnan(self.inter[ue_idx, path_idx]):
+                    continue
+                n_inter = self.num_interactions[ue_idx, path_idx]
+                
+                tx_doppler = k_tx * v_tx / wavelength
+                rx_doppler = k_rx * v_rx / wavelength
+
+                path_dopplers = []
+
+                velocities = np.zeros((n_inter+2, 3)) # +2 for tx and rx
+                angles = np.zeros((n_inter+2, 2))
+
+                ki = [] # for each interaction
+                for i in range(n_inter):  # i = interaction index(0, 1, ..., n_inter-1)
+                    # Get object index
+                    
+                    # Get velocity of the object / Rx / Tx
+                    
+                    # Get outgoing angle
+                    k_i = np.array([0, 0, 0])
+                    v_i = np.array([0, 0, 0])
+
+                    path_dopplers += [v_i * (k_i[i] - k_i[i-1]) / wavelength]
+                
+                # Compute doppler frequency shift
+                doppler[ue_idx, path_idx] = tx_doppler - rx_doppler + np.sum(path_dopplers)
+
+        return doppler
 
     ###########################################
     # 10. Utilities and Computation Methods

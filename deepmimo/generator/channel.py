@@ -278,11 +278,11 @@ def _generate_MIMO_channel(array_response_product: np.ndarray,
         power = powers[i, non_nan_mask]
         delays_user = delays[i, non_nan_mask]
         phases_user = phases[i, non_nan_mask]
+        dopplers_user = dopplers[i, non_nan_mask] # TODO: apply doppler shift per path..
         
         if freq_domain: # OFDM
             path_gains = path_gen.generate(pwr=power, toa=delays_user, phs=phases_user, Ts=Ts).T
-            channel[i] = np.nansum(array_product[..., None, :] * 
-                                   path_gains[None, None, :, :], axis=-1)
+            channel[i] = np.nansum(array_product[..., None, :] * path_gains[None, None, :, :], axis=-1)
         else: # TD channel
             path_gains = np.sqrt(power) * np.exp(1j*np.deg2rad(phases_user))
             channel[i, ..., :n_paths] = array_product * path_gains[None, None, :]
