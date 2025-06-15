@@ -48,7 +48,6 @@ class ChannelParameters(DotDict):
         },
         
         c.PARAMSET_DOPPLER_EN: 0,
-        c.PARAMSET_POLAR_EN: 0,
         c.PARAMSET_NUM_PATHS: c.MAX_PATHS, 
         
         c.PARAMSET_FD_CH: 1, # OFDM channel if 1, Time domain if 0

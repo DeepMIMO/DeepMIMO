@@ -121,9 +121,6 @@ CHANNEL_HELP_MESSAGES = {
     c.PARAMSET_DOPPLER_EN: 
         'Enable/disable Doppler effect simulation\n'
         '\t Default: False  |  Type: bool',
-    c.PARAMSET_POLAR_EN: 
-        'Enable/disable polarization modeling\n'
-        '\t Default: False  |  Type: bool',
     c.PARAMSET_NUM_PATHS: 
         'Maximum number of paths to consider per user\n'
         '\t Default: 10  |  Type: int  |  Units: number of paths',
