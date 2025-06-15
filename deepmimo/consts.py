@@ -210,6 +210,7 @@ INTER_INT_PARAM_NAME = 'inter_int'
 N_UE_PARAM_NAME = 'n_ue'
 NUM_INTERACTIONS_PARAM_NAME = 'num_interactions'
 NUM_PATHS_FOV_PARAM_NAME = '_num_paths_fov'  # Number of paths within FoV for each user
+DOPPLER_PARAM_NAME = 'doppler'  # Doppler frequency shifts [Hz] for each user and path
 
 # Rotated angles (after antenna rotation)
 AOA_AZ_ROT_PARAM_NAME = '_aoa_az_rot'       # Azimuth   angles after rotation (radians)

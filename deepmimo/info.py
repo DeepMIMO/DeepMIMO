@@ -82,6 +82,9 @@ COMPUTED_MATRICES_HELP = {
         '\tInteraction codes: 0 -> "", 1 -> "R", 2 -> "D", 3 -> "S", 4 -> "T"\n'
         '\tExample interaction integer to string: 121 -> "RDR"\n'
         '\t[num_rx, num_paths]',
+    c.DOPPLER_PARAM_NAME:
+        'Doppler frequency shifts [Hz] for each user and path\n'
+        '\t[num_rx, num_paths]',
 }
 
 # Dictionary of help messages for configuration/other parameters

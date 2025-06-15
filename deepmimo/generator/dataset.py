@@ -249,7 +249,7 @@ class Dataset(DotDict):
         
         Args:
             params: Channel generation parameters. If None, uses default parameters.
-                   See ChannelParameters class for details.
+                    See ChannelParameters class for details.
             
         Returns:
             numpy.ndarray: MIMO channel matrix with shape [n_users, n_rx_ant, n_tx_ant, n_subcarriers]
@@ -272,8 +272,9 @@ class Dataset(DotDict):
             powers=self._power_linear_ant_gain[..., :n_paths_to_gen],
             delays=self.delay[..., :n_paths_to_gen],
             phases=self.phase[..., :n_paths_to_gen],
+            dopplers=self.doppler[..., :n_paths_to_gen],
             ofdm_params=params.ofdm,
-            freq_domain=params.freq_domain
+            freq_domain=params.freq_domain,
         )
 
         self[c.CHANNEL_PARAM_NAME] = channel  # Cache the result
@@ -1041,7 +1042,15 @@ class Dataset(DotDict):
         return plot_summary(dataset=self, **kwargs)
     
     ###########################################
-    # 9. Utilities and Computation Methods
+    # 9. Doppler Computations
+    ###########################################
+    
+    def _compute_doppler(self) -> np.ndarray:
+        """Compute the doppler frequency shifts."""
+        return np.zeros((self.n_ue, self.num_paths))
+
+    ###########################################
+    # 10. Utilities and Computation Methods
     ###########################################
 
     def _get_txrx_sets(self) -> list[TxRxSet]:
@@ -1059,6 +1068,7 @@ class Dataset(DotDict):
         c.CHANNEL_PARAM_NAME: 'compute_channels',
         c.LOS_PARAM_NAME: '_compute_los',
         c.CH_PARAMS_PARAM_NAME: 'set_channel_params',
+        c.DOPPLER_PARAM_NAME: '_compute_doppler',
         
         # Power linear
         c.PWR_LINEAR_PARAM_NAME: '_compute_power_linear',

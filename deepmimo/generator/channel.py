@@ -200,8 +200,9 @@ def _generate_MIMO_channel(array_response_product: np.ndarray,
                            powers: np.ndarray,
                            delays: np.ndarray,
                            phases: np.ndarray,
+                           dopplers: np.ndarray,
                            ofdm_params: Dict,
-                           freq_domain: bool = True) -> np.ndarray:
+                           freq_domain: bool = True,) -> np.ndarray:
     """Generate MIMO channel matrices.
     
     This function generates MIMO channel matrices based on path information and
@@ -213,9 +214,10 @@ def _generate_MIMO_channel(array_response_product: np.ndarray,
         powers: Linear path powers [W] with antenna gains applied [n_users, n_paths]
         toas: Times of arrival [n_users, n_paths]
         phases: Path phases [n_users, n_paths]
+        dopplers: Doppler frequency shifts [Hz] for each user and path.
         ofdm_params: OFDM parameters
         freq_domain: Whether to generate frequency domain channel. Defaults to True.
-        
+
     Returns:
         numpy.ndarray: MIMO channel matrices with shape (n_users, n_rx_ant, n_tx_ant, n_paths/subcarriers)
     """
