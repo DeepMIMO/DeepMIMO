@@ -16,6 +16,9 @@ MacroDataset: For managing collections of related DeepMIMO datasets that *may* s
 - Loading parameters 
 - Ray-tracing parameters
 
+DynamicDataset: For dynamic datasets that consist of multiple (macro)datasets across time snapshots:
+- All txrx sets are the same for all time snapshots
+
 The Dataset class is organized into several logical sections:
 1. Core Dictionary Interface - Basic dictionary-like operations and key resolution
 2. Channel Computations - Channel matrices and array responses
@@ -60,6 +63,12 @@ from .generator_utils import (
 
 # Converter utilities
 from ..converter import converter_utils as cu
+
+# Txrx set information
+from ..txrx import get_txrx_sets, TxRxSet
+
+# Summary
+from ..summary import plot_summary
 
 # Parameters that should remain consistent across datasets in a MacroDataset
 SHARED_PARAMS = [
@@ -733,8 +742,8 @@ class Dataset(DotDict):
         
         grid_size = np.array([len(x_positions), len(y_positions)])
         grid_spacing = np.array([
-            np.mean(np.diff(x_positions)),
-            np.mean(np.diff(y_positions))
+            np.mean(np.diff(x_positions)) if len(x_positions) > 1 else 0,
+            np.mean(np.diff(y_positions)) if len(y_positions) > 1 else 0
         ])
         
         return {
@@ -742,7 +751,7 @@ class Dataset(DotDict):
             'grid_spacing': grid_spacing
         }
 
-    def _is_valid_grid(self) -> bool:
+    def has_valid_grid(self) -> bool:
         """Check if the dataset has a valid grid structure.
         
         A valid grid means that:
@@ -1027,10 +1036,18 @@ class Dataset(DotDict):
         return plot_rays(self.rx_pos[idx], self.tx_pos[0], self.inter_pos[idx],
                          self.inter[idx], **default_kwargs)
     
+    def plot_summary(self, **kwargs):
+        """Plot the summary of the dataset."""
+        return plot_summary(dataset=self, **kwargs)
+    
     ###########################################
     # 9. Utilities and Computation Methods
     ###########################################
 
+    def _get_txrx_sets(self) -> list[TxRxSet]:
+        """Get the txrx sets for the dataset."""
+        return get_txrx_sets(self.get('parent_name', self.name))
+    
     # Dictionary mapping attribute names to their computation methods
     # (in order of computation)
     _computed_attributes = {
@@ -1071,6 +1088,9 @@ class Dataset(DotDict):
         # Interactions
         c.INTER_STR_PARAM_NAME: '_compute_inter_str',
         c.INTER_INT_PARAM_NAME: '_compute_inter_int',
+
+        # Txrx set information
+        'txrx_sets': '_get_txrx_sets',
     }
 
     def info(self, param_name: str | None = None) -> None:
@@ -1100,9 +1120,9 @@ class MacroDataset:
     """
     
     # Methods that should only be called on the first dataset
-    SINGLE_ACCESS_METHODS = {
+    SINGLE_ACCESS_METHODS = [
         'info',  # Parameter info should only be shown once
-    }
+    ]
     
     # Methods that should be propagated to children - automatically populated from Dataset methods
     PROPAGATE_METHODS = {
@@ -1110,7 +1130,7 @@ class MacroDataset:
         if not name.startswith('__')  # Skip dunder methods
     }
     
-    def __init__(self, datasets=None):
+    def __init__(self, datasets: list[Dataset] | None = None):
         """Initialize with optional list of Dataset instances.
         
         Args:
@@ -1202,4 +1222,28 @@ class MacroDataset:
         """
         self.datasets.append(dataset)
         
+
+class DynamicDataset(MacroDataset):
+    """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
+    
+    SINGLE_ACCESS_METHODS = MacroDataset.SINGLE_ACCESS_METHODS + ['txrx_sets']
+
+    def __init__(self, datasets: list[MacroDataset], name: str):
+        """Initialize a dynamic dataset.
         
+        Args:
+            datasets: List of MacroDataset instances, each representing a time snapshot
+            name: Base name of the scenario (without time suffix)
+        """
+        super().__init__(datasets)
+        self.name = name
+        self.names = [dataset.name for dataset in datasets]
+
+        for dataset in datasets:
+            dataset.parent_name = name
+        
+    def __getattr__(self, name):
+        """Override __getattr__ to handle txrx_sets specially."""
+        if name == 'txrx_sets':
+            return get_txrx_sets(self.name)
+        return super().__getattr__(name)

@@ -37,7 +37,8 @@ def find_files_to_delete(base_path, safe_mode=True,
         if len(sub_subfolders) > 1:
             print(f"Warning: Multiple subfolders found in {subfolder}, using first one")
             if delete_extra_deepmimo:
-                dm_folder = [sub_subfolder for sub_subfolder in sub_subfolders if sub_subfolder.endswith('_deepmimo')][0]
+                dm_folder = [sub_subfolder for sub_subfolder in sub_subfolders 
+                             if sub_subfolder.endswith(c.DEEPMIMO_CONVERSION_SUFFIX)][0]
                 if safe_mode:
                     print(f"Would delete folder: {dm_folder}")
                 else:
