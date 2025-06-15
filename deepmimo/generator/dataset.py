@@ -1052,19 +1052,58 @@ class Dataset(DotDict):
     # 9. Doppler Computations
     ###########################################
     
+    def _cartesian_to_spherical(self, cartesian_coords: np.ndarray) -> np.ndarray:
+        """Convert Cartesian coordinates to spherical coordinates.
+        
+        Args:
+            cartesian_coords: Array of shape [n_points, 3] containing Cartesian coordinates (x, y, z)
+            
+        Returns:
+            Array of shape [n_points, 2] containing spherical coordinates (azimuth, elevation) in radians
+        """
+        spherical_coords = np.zeros((cartesian_coords.shape[0], 2))
+        spherical_coords[:, 0] = np.arctan2(cartesian_coords[:, 1], cartesian_coords[:, 0])  # azimuth
+        spherical_coords[:, 1] = np.arctan2(cartesian_coords[:, 2], 
+                                          np.sqrt(cartesian_coords[:, 0]**2 + cartesian_coords[:, 1]**2))  # elevation
+        return spherical_coords
+
     def set_rx_vel(self, velocities: np.ndarray) -> np.ndarray:
-        """Set the velocities of the users."""
+        """Set the velocities of the users.
+        
+        Args:
+            velocities: The velocities of the users in cartesian coordinates. [m/s]
+        
+        Returns:
+            The velocities of the users in spherical coordinates.
+        """
         self._clear_cache_doppler()
-        self.rx_vel = np.zeros((self.n_ue, 2)) # [n_ue, 2] (spherical coordinates)
-
-
-        # TODO: convert from cartesian to spherical coordinates
-        self._rx_vel_s = np.zeros((self.n_ue, 2))
+        
+        if velocities.ndim == 1:
+            # [3,] -> [n_ue, 3]
+            self.rx_vel = np.repeat(velocities[None, :], self.n_ue, axis=0)
+        else:
+            if velocities.shape[1] != 3:
+                raise ValueError('Velocities must be in cartesian coordinates (n_ue, 3)')
+            if velocities.shape[0] != self.n_ue:
+                raise ValueError('Number of users must match number of velocities (n_ue, 3)')
+            
+            self.rx_vel = velocities
+        
+        # Convert to spherical coordinates
+        self.rx_vel_s = self._cartesian_to_spherical(self.rx_vel)
+        return self.rx_vel_s
+        # self.rx_vel = np.zeros((self.n_ue, 2))
 
     def set_tx_vel(self, velocities: np.ndarray) -> np.ndarray:
         """Set the velocities of the base stations."""
         self._clear_cache_doppler()
-        self.tx_vel = np.zeros((2,)) # [2] (spherical coordinates)
+        if velocities.ndim != 1:
+            raise ValueError('Tx velocity must be in a single cartesian coordinate (2,)')
+        
+        self.tx_vel = velocities
+        self.tx_vel_s = self._cartesian_to_spherical(self.tx_vel[None, :])
+        self.tx_vel_s = self.tx_vel_s[0]
+        return self.tx_vel_s
 
     def _clear_cache_doppler(self) -> None:
         """Clear all cached attributes that depend on doppler computation."""
@@ -1107,13 +1146,12 @@ class Dataset(DotDict):
                     continue
                 n_inter = self.num_interactions[ue_i, path_i]
 
-                # Compute doppler for this path
-                tx_doppler = np.dot(k_tx[ue_i, path_i], self.tx_vel) / wavelength
-                rx_doppler = np.dot(k_rx[ue_i, path_i], self.rx_vel[ue_i]) / wavelength
+                # Compute doppler for this path (using spherical coordinates)
+                tx_doppler = np.dot(k_tx[ue_i, path_i], self.tx_vel_s) / wavelength
+                rx_doppler = np.dot(k_rx[ue_i, path_i], self.rx_vel_s[ue_i]) / wavelength
 
                 path_dopplers = []
 
-                ki = [] # for each interaction
                 for i in range(1, int(n_inter)):  # i = interaction index(0, 1, ..., n_inter-1)
                     # Get object index
                     
