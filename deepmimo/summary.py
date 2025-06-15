@@ -174,14 +174,15 @@ def summary(scen_name: str, print_summary: bool = True) -> Optional[str]:
 
 
 def plot_summary(scenario_name: str | None = None, save_imgs: bool = False, 
-                 dataset = None) -> list[str]:
+                 dataset = None, plot_idx: list[int] | None = None) -> list[str]:
     """Make images for the scenario.
     
     Args:
         scenario_name: Scenario name
         dataset: Dataset, MacroDataset, or DynamicDataset. If provided, scenario_name is ignored.
         save_imgs: Whether to save the images to the figures directory
-    
+        plot_idx: List of indices of summaries to plot. If None, all summaries are plotted.
+
     Returns:
         List of paths to generated images
     """
@@ -201,85 +202,90 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
     
     # Image paths
     img_paths = []
+
+    if plot_idx is None:
+        plot_idx = [0, 1]  # currently only 2 plots are supported
     
     # Image 1: 3D Scene
-    try:
-        scene_img_path = os.path.join(temp_dir, 'scene.png')
-        dataset.scene.plot()
-        if save_imgs:
-            plt.savefig(scene_img_path, dpi=100, bbox_inches='tight')
-            plt.close()
-            img_paths.append(scene_img_path)
-        else:
-            plt.show()
+    if 0 in plot_idx:
+        try:
+            scene_img_path = os.path.join(temp_dir, 'scene.png')
+            dataset.scene.plot()
+            if save_imgs:
+                plt.savefig(scene_img_path, dpi=100, bbox_inches='tight')
+                plt.close()
+                img_paths.append(scene_img_path)
+            else:
+                plt.show()
 
-    except Exception as e:
-        print(f"Error generating image 1: {str(e)}")
+        except Exception as e:
+            print(f"Error generating image 1: {str(e)}")
     
     # Image 2: Scenario summary (2D view)
-    try:
-        img2_path = os.path.join(temp_dir, 'scenario_summary.png')
-        txrx_sets = dataset.txrx_sets
+    if 1 in plot_idx:
+        try:
+            img2_path = os.path.join(temp_dir, 'scenario_summary.png')
+            txrx_sets = dataset.txrx_sets
 
-        tx_set = [s for s in txrx_sets if s.is_tx][0]
-        n_bs = tx_set.num_points
-        ax = dataset.scene.plot(title=False, proj_2d=True)
-        bs_colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
-        for bs in range(n_bs):
-            if bs == 0 and n_bs == 1:
-                bs_dataset = dataset
+            tx_set = [s for s in txrx_sets if s.is_tx][0]
+            n_bs = tx_set.num_points
+            ax = dataset.scene.plot(title=False, proj_2d=True)
+            bs_colors = ['red', 'blue', 'green', 'yellow', 'purple', 'orange']
+            for bs in range(n_bs):
+                if bs == 0 and n_bs == 1:
+                    bs_dataset = dataset
+                else:
+                    bs_dataset = dataset[bs]
+                ax.scatter(bs_dataset.bs_pos[0,0], bs_dataset.bs_pos[0,1], 
+                        s=250, color=bs_colors[bs], label=f'BS {bs + 1}', marker='*')
+
+            # Get txrx pair index from the first receiver-only txrx (which is like a rx grid)
+            if type(dataset.txrx) == list:
+                rx_set_id = [s for s in txrx_sets if s.is_rx and not s.is_tx][0].id
+                first_pair_with_rx_grid = \
+                    next(txrx_pair_idx for txrx_pair_idx, txrx_dict in enumerate(dataset.txrx) 
+                        if txrx_dict['rx_set_id'] == rx_set_id)
+                rx_grid_dataset = dataset[first_pair_with_rx_grid]
             else:
-                bs_dataset = dataset[bs]
-            ax.scatter(bs_dataset.bs_pos[0,0], bs_dataset.bs_pos[0,1], 
-                       s=250, color=bs_colors[bs], label=f'BS {bs + 1}', marker='*')
+                first_pair_with_rx_grid = 0
+                rx_grid_dataset = dataset
+            
+            # Select users to plot
+            if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > 5000:
+                idxs = rx_grid_dataset.get_uniform_idxs([8,8])
+            else:
+                idxs = np.arange(rx_grid_dataset.n_ue)
 
-        # Get txrx pair index from the first receiver-only txrx (which is like a rx grid)
-        if type(dataset.txrx) == list:
-            rx_set_id = [s for s in txrx_sets if s.is_rx and not s.is_tx][0].id
-            first_pair_with_rx_grid = \
-                next(txrx_pair_idx for txrx_pair_idx, txrx_dict in enumerate(dataset.txrx) 
-                     if txrx_dict['rx_set_id'] == rx_set_id)
-            rx_grid_dataset = dataset[first_pair_with_rx_grid]
-        else:
-            first_pair_with_rx_grid = 0
-            rx_grid_dataset = dataset
-        
-        # Select users to plot
-        if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > 5000:
-            idxs = rx_grid_dataset.get_uniform_idxs([8,8])
-        else:
-            idxs = np.arange(rx_grid_dataset.n_ue)
+            ax.scatter(rx_grid_dataset.rx_pos[idxs,0], rx_grid_dataset.rx_pos[idxs,1], 
+                    s=10, color='red', label='users', marker='o', alpha=0.2, zorder=0)
 
-        ax.scatter(rx_grid_dataset.rx_pos[idxs,0], rx_grid_dataset.rx_pos[idxs,1], 
-                s=10, color='red', label='users', marker='o', alpha=0.2, zorder=0)
+            # Reorder legend handles and labels
+            legend_args = {'ncol': 4 if n_bs == 1 else 3, 'loc': 'center',
+                        'bbox_to_anchor': (0.5, 1.0), 'fontsize': 15}
+            if n_bs == 3:
+                order = [2, 0, 3, 1, 4, 5]
+            elif n_bs == 2:
+                order = [2, 0, 3, 1, 4]
+            else:
+                order = [0, 1, 2, 3]
+            l1 = ax.legend(**legend_args)
+            l2 = ax.legend([l1.legend_handles[i] for i in order], 
+                        [l1.get_texts()[i].get_text() for i in order],
+                        **legend_args)
+            l2.set_zorder(1e9)
+            for handle, text in zip(l2.legend_handles, l2.get_texts()):
+                if text.get_text() == 'users':  # Match by label
+                    handle.set_sizes([100])  # marker area (not radius)
 
-        # Reorder legend handles and labels
-        legend_args = {'ncol': 4 if n_bs == 1 else 3, 'loc': 'center',
-                       'bbox_to_anchor': (0.5, 1.0), 'fontsize': 15}
-        if n_bs == 3:
-            order = [2, 0, 3, 1, 4, 5]
-        elif n_bs == 2:
-            order = [2, 0, 3, 1, 4]
-        else:
-            order = [0, 1, 2, 3]
-        l1 = ax.legend(**legend_args)
-        l2 = ax.legend([l1.legend_handles[i] for i in order], 
-                       [l1.get_texts()[i].get_text() for i in order],
-                       **legend_args)
-        l2.set_zorder(1e9)
-        for handle, text in zip(l2.legend_handles, l2.get_texts()):
-            if text.get_text() == 'users':  # Match by label
-                handle.set_sizes([100])  # marker area (not radius)
-
-        if save_imgs:
-            plt.savefig(img2_path, dpi=100, bbox_inches='tight')
-            plt.close()
-            img_paths.append(img2_path)
-        else:
-            plt.show()
-        
-    except Exception as e:
-        print(f"Error generating images 2: {str(e)}")
+            if save_imgs:
+                plt.savefig(img2_path, dpi=100, bbox_inches='tight')
+                plt.close()
+                img_paths.append(img2_path)
+            else:
+                plt.show()
+            
+        except Exception as e:
+            print(f"Error generating images 2: {str(e)}")
     
     # ISSUE: LoS is BS specific. Are we going to show the LoS for each BS?
     
