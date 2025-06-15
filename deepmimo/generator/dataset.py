@@ -1052,24 +1052,31 @@ class Dataset(DotDict):
     # 9. Doppler Computations
     ###########################################
     
-    def set_user_velocities(self, velocities: np.ndarray) -> None:
+    def set_rx_vel(self, velocities: np.ndarray) -> np.ndarray:
         """Set the velocities of the users."""
         self._clear_cache_doppler()
-        self.user_velocities = velocities # [n_ue, 3]
-    
-    def set_bs_velocities(self, velocities: np.ndarray) -> None:
+        self.rx_vel = np.zeros((self.n_ue, 2)) # [n_ue, 2] (spherical coordinates)
+
+
+        # TODO: convert from cartesian to spherical coordinates
+        self._rx_vel_s = np.zeros((self.n_ue, 2))
+
+    def set_tx_vel(self, velocities: np.ndarray) -> np.ndarray:
         """Set the velocities of the base stations."""
         self._clear_cache_doppler()
-        self.bs_velocities = velocities # [n_bs, 3]
+        self.tx_vel = np.zeros((2,)) # [2] (spherical coordinates)
 
     def _clear_cache_doppler(self) -> None:
         """Clear all cached attributes that depend on doppler computation."""
-        super().__delitem__(c.DOPPLER_PARAM_NAME)
+        try:
+            super().__delitem__(c.DOPPLER_PARAM_NAME)
+        except KeyError:
+            print('Doppler cache is already cleared')
     
     def _compute_doppler(self) -> np.ndarray:
         """Compute the doppler frequency shifts."""
-        self.doppler_enabled = False
-        max_paths = max(self.num_paths)
+        self.doppler_enabled = True
+        max_paths = np.nanmax(self.num_paths)
         doppler = np.zeros((self.n_ue, max_paths)) + 2 
         if not self.doppler_enabled:
             return doppler
@@ -1087,12 +1094,15 @@ class Dataset(DotDict):
         k_rx[:, :, 0] = -np.deg2rad(self.aoa_az)  # azimuth of arrival (rx angle)
         k_rx[:, :, 1] = -np.deg2rad(self.aoa_el)  # elevation of arrival (rx angle)
         
+        k_i = self._compute_interaction_angles() # [n_ue, max_paths, max_interactions, 2]
+
         # Initialize velocity arrays
         v_tx = np.zeros((1, 3))
         v_rx = np.zeros((self.n_ue, 3))
         
         for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
-            for path_i in range(self.num_paths):
+            n_paths = self.num_paths[ue_i]
+            for path_i in range(n_paths):
                 if np.isnan(self.inter[ue_i, path_i]):
                     continue
                 n_inter = self.num_interactions[ue_i, path_i]
@@ -1104,33 +1114,98 @@ class Dataset(DotDict):
                 path_dopplers = []
 
                 ki = [] # for each interaction
-                for i in range(n_inter):  # i = interaction index(0, 1, ..., n_inter-1)
+                for i in range(1, int(n_inter)):  # i = interaction index(0, 1, ..., n_inter-1)
                     # Get object index
                     
                     # Get velocity of the object / Rx / Tx
                     
                     # Get outgoing angle
-                    k_i = np.array([0, 0, 0])
-                    v_i = np.array([0, 0, 0])
+                    v_i = np.array([0, 0]) # TODO: get the velocity of the object
 
-                    path_dopplers += [v_i * (k_i[i] - k_i[i-1]) / wavelength]
+                    ki_diff = k_i[ue_i, path_i, i] - k_i[ue_i, path_i, i-1]
+                    path_dopplers += [np.dot(v_i, ki_diff) / wavelength]
                 
                 # Compute doppler frequency shift
-                doppler[ue_idx, path_idx] = tx_doppler - rx_doppler + np.sum(path_dopplers)
+                doppler[ue_i, path_i] = tx_doppler - rx_doppler + np.sum(path_dopplers)
 
         return doppler
     
     def _compute_interaction_angles(self) -> np.ndarray:
-        """Compute the outgoing angles for all users and paths."""
-        max_interactions = max(self.num_interactions)
-        interaction_angles = np.zeros((self.n_ue, self.num_paths, max_interactions, 2))
+        """Compute the outgoing angles for all users and paths.
+        
+        For each path, computes N-1 angles where N is the number of interactions.
+        Each angle represents the direction of propagation between consecutive interactions.
+        The angles are returned in radians as [azimuth, elevation].
+        
+        Returns:
+            np.ndarray: Array of shape [n_users, n_paths, max_interactions, 2] containing
+                       the azimuth and elevation angles between interactions in radians.
+        """
+        max_interactions = np.nanmax(self.num_interactions).astype(int)
+        max_paths = np.nanmax(self.num_paths).astype(int)
+        interaction_angles = np.zeros((self.n_ue, max_paths, max_interactions, 2))
 
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
-            for path_i in range(self.num_paths):
+            for path_i in range(max_paths):
                 n_inter = self.num_interactions[ue_i, path_i]
-                for i in range(n_inter):
-                    pass #interaction_angles[ue_i, path_i, i] = self.inter[ue_i, path_i, i]
+                
+                # Skip if no interactions
+                if np.isnan(n_inter) or n_inter <= 1:
+                    continue
+                    
+                # For each pair of consecutive interactions, compute the angle
+                for i in range(int(n_inter) - 1):
+                    # Get positions of current and next interaction
+                    pos1 = self.inter_pos[ue_i, path_i, i]  # Current interaction
+                    pos2 = self.inter_pos[ue_i, path_i, i + 1]  # Next interaction
+                    
+                    # Compute vector between interactions
+                    vec = pos2 - pos1
+                    
+                    # Compute azimuth (in x-y plane)
+                    azimuth = np.arctan2(vec[1], vec[0])
+                    
+                    # Compute elevation (angle from x-y plane)
+                    # First get horizontal distance
+                    horizontal_dist = np.sqrt(vec[0]**2 + vec[1]**2)
+                    elevation = np.arctan2(vec[2], horizontal_dist)
+                    
+                    # Store angles in radians
+                    interaction_angles[ue_i, path_i, i] = [azimuth, elevation]
+        
+        # TODO: Use vectorized version
+        # # Get all interaction positions
+        # # Shape: [n_users, n_paths, max_interactions, 3]
+        # inter_pos = self.inter_pos
+
+        # # Create mask for valid interactions
+        # # Shape: [n_users, n_paths, max_interactions]
+        # valid_mask = np.arange(max_interactions)[None, None, :] < self.num_interactions[..., None]
+
+        # # Get vectors between consecutive interactions
+        # # Shape: [n_users, n_paths, max_interactions-1, 3]
+        # vec = inter_pos[..., 1:, :] - inter_pos[..., :-1, :]
+
+        # # Compute horizontal distance for elevation calculation
+        # # Shape: [n_users, n_paths, max_interactions-1]
+        # horizontal_dist = np.sqrt(vec[..., 0]**2 + vec[..., 1]**2)
+
+        # # Compute azimuth (in x-y plane)
+        # # Shape: [n_users, n_paths, max_interactions-1]
+        # azimuth = np.arctan2(vec[..., 1], vec[..., 0])
+
+        # # Compute elevation (angle from x-y plane)
+        # # Shape: [n_users, n_paths, max_interactions-1]
+        # elevation = np.arctan2(vec[..., 2], horizontal_dist)
+
+        # # Stack angles and store in output array
+        # # Shape: [n_users, n_paths, max_interactions-1, 2]
+        # angles = np.stack([azimuth, elevation], axis=-1)
+
+        # # Store angles in output array, only for valid interactions
+        # valid_mask_prev = valid_mask[..., :-1]  # Shift mask to match angles
+        # interaction_angles[..., :-1, :] = np.where(valid_mask_prev[..., None], angles, 0)
 
         return interaction_angles
     
