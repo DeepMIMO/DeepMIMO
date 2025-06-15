@@ -191,7 +191,6 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, An
         
         # custom
         raytracer_version=get_sionna_version(),
-        doppler_available=0,
     )
 
     if sionna_v1:
