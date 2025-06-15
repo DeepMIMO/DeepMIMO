@@ -742,8 +742,8 @@ class Dataset(DotDict):
         
         grid_size = np.array([len(x_positions), len(y_positions)])
         grid_spacing = np.array([
-            np.mean(np.diff(x_positions)),
-            np.mean(np.diff(y_positions))
+            np.mean(np.diff(x_positions)) if len(x_positions) > 1 else 0,
+            np.mean(np.diff(y_positions)) if len(y_positions) > 1 else 0
         ])
         
         return {
