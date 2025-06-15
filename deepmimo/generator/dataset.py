@@ -1133,12 +1133,13 @@ class Dataset(DotDict):
         k_rx[:, :, 0] = -np.deg2rad(self.aoa_az)  # azimuth of arrival (rx angle)
         k_rx[:, :, 1] = -np.deg2rad(self.aoa_el)  # elevation of arrival (rx angle)
         
-        k_i = self._compute_interaction_angles() # [n_ue, max_paths, max_interactions, 2]
+        k_i = self._compute_inter_angles() # [n_ue, max_paths, max_interactions, 2]
 
         # Initialize velocity arrays
         v_tx = np.zeros((1, 3))
         v_rx = np.zeros((self.n_ue, 3))
         
+        inter_objects = self._compute_inter_objects()
         for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
             n_paths = self.num_paths[ue_i]
             for path_i in range(n_paths):
@@ -1150,17 +1151,21 @@ class Dataset(DotDict):
                 tx_doppler = np.dot(k_tx[ue_i, path_i], self.tx_vel_s) / wavelength
                 rx_doppler = np.dot(k_rx[ue_i, path_i], self.rx_vel_s[ue_i]) / wavelength
 
-                path_dopplers = []
+                path_dopplers = [0]
 
                 for i in range(1, int(n_inter)):  # i = interaction index(0, 1, ..., n_inter-1)
                     # Get object index
+                    inter_obj_idx = inter_objects[ue_i, path_i, i]
+                    if np.isnan(inter_obj_idx):
+                        continue
                     
-                    # Get velocity of the object / Rx / Tx
-                    
-                    # Get outgoing angle
-                    v_i = np.array([0, 0]) # TODO: get the velocity of the object
+                    # Get object velocity
+                    v_i = self.scene.objects[int(inter_obj_idx)].speed_s # [m/s]
 
+                    # Get outgoing angle difference (between consecutive interactions)
+                    # (comes from the taylor expansion of the doppler shift)
                     ki_diff = k_i[ue_i, path_i, i] - k_i[ue_i, path_i, i-1]
+
                     path_dopplers += [np.dot(v_i, ki_diff) / wavelength]
                 
                 # Compute doppler frequency shift
@@ -1168,7 +1173,7 @@ class Dataset(DotDict):
 
         return doppler
     
-    def _compute_interaction_angles(self) -> np.ndarray:
+    def _compute_inter_angles(self) -> np.ndarray:
         """Compute the outgoing angles for all users and paths.
         
         For each path, computes N-1 angles where N is the number of interactions.
@@ -1181,7 +1186,7 @@ class Dataset(DotDict):
         """
         max_interactions = np.nanmax(self.num_interactions).astype(int)
         max_paths = np.nanmax(self.num_paths).astype(int)
-        interaction_angles = np.zeros((self.n_ue, max_paths, max_interactions, 2))
+        inter_angles = np.zeros((self.n_ue, max_paths, max_interactions, 2))
 
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
@@ -1210,7 +1215,7 @@ class Dataset(DotDict):
                     elevation = np.arctan2(vec[2], horizontal_dist)
                     
                     # Store angles in radians
-                    interaction_angles[ue_i, path_i, i] = [azimuth, elevation]
+                    inter_angles[ue_i, path_i, i] = [azimuth, elevation]
         
         # TODO: Use vectorized version
         # # Get all interaction positions
@@ -1243,10 +1248,57 @@ class Dataset(DotDict):
 
         # # Store angles in output array, only for valid interactions
         # valid_mask_prev = valid_mask[..., :-1]  # Shift mask to match angles
-        # interaction_angles[..., :-1, :] = np.where(valid_mask_prev[..., None], angles, 0)
+        # inter_angles[..., :-1, :] = np.where(valid_mask_prev[..., None], angles, 0)
 
-        return interaction_angles
+        return inter_angles
     
+    def _compute_inter_objects(self) -> np.ndarray:
+        """Compute the objects that interact with each path of each user.
+        
+        For each path, computes N-1 objects where N is the number of interactions.
+        Each object represents the object that the path interacts with.
+        The objects are returned in radians as [azimuth, elevation].
+        """
+        max_interactions = np.nanmax(self.num_interactions).astype(int)
+        max_paths = np.nanmax(self.num_paths).astype(int)
+        inter_objects = np.zeros((self.n_ue, max_paths, max_interactions)) * np.nan
+
+        obj_centers = np.array([obj.bounding_box.center for obj in self.scene.objects
+                                if obj.label != 'terrain'])
+        
+        # TODO: add mapping back to the full list of objects
+
+        # TODO: add index for the terrain
+        # if the z coord of the interaction = z of the terrain, then the object is the terrain
+
+
+        # Use the interaction positions to compute angles between each interaction
+        for ue_i in tqdm(range(self.n_ue), desc='Computing interaction objects per UE'):
+            for path_i in range(max_paths):
+                n_inter = self.num_interactions[ue_i, path_i]
+                
+                # Skip if no interactions
+                if np.isnan(n_inter) or n_inter <= 1:
+                    continue
+                
+                # For each pair of consecutive interactions, compute the object
+                for i in range(int(n_inter) - 1):
+                    # Get positions of current and next interaction
+                    i_pos = self.inter_pos[ue_i, path_i, i]  # Current interaction position
+                    print(f'i_pos: {i_pos}')
+
+                    # Get the distance between the interaction and the object
+                    dist = np.linalg.norm(obj_centers - i_pos, axis=1)
+                    print(f'dist: {dist}')
+
+                    # Get the object index
+                    obj_idx = np.argmin(dist)
+                    print(f'obj_idx: {obj_idx}')
+                    inter_objects[ue_i, path_i, i] = obj_idx
+                    
+        return inter_objects
+                    
+                    
 
     ###########################################
     # 10. Utilities and Computation Methods

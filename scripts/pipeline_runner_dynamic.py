@@ -79,11 +79,29 @@ dataset = dm.load(scen_name)
 dataset.set_rx_vel(np.array([[0, 0, 0], [0, 0, 0]]))
 dataset.set_tx_vel(np.array([0, 0, 0]))
 
-dataset.scene.objects[0].speed = np.array([5, 0, 0]) # [m/s]
-dataset.scene.objects[0].speed_s = np.array([5, 0]) # [m/s]
+dataset.scene.objects[1].speed = np.array([5, 0, 0]) # [m/s]
+dataset.scene.objects[1].speed_s = np.array([5, 0]) # [m/s]
+
+dataset.scene.objects[3].speed = np.array([10, 0, 0]) # [m/s]
+dataset.scene.objects[3].speed_s = np.array([10, 0]) # [m/s]
 
 # dataset._clear_cache_doppler()
 dataset.doppler
+
+#%%
+centers = np.array([obj.bounding_box.center for obj in dataset.scene.objects
+                    if obj.label != 'terrain'])
+np.set_printoptions(precision=1, suppress=True)
+centers
+
+dataset._compute_inter_objects()
+
+#%%
+import matplotlib.pyplot as plt
+dataset.plot_rays(1, proj_3D=False)
+plt.xlim((-10,10))
+dataset.scene.plot(proj_2d=True)
+plt.ylim((-10,10))
 
 #%% Load a dynamic dataset
 outer_folder = OSM_ROOT

@@ -129,6 +129,14 @@ class BoundingBox:
     def height(self) -> float:
         """Get the height (Z dimension) of the bounding box."""
         return self.z_max - self.z_min
+    
+    @property
+    def center(self) -> np.ndarray:
+        """Get the center of the bounding box."""
+        return np.array([
+            (self.x_max + self.x_min) / 2,
+            (self.y_max + self.y_min) / 2, 
+            (self.z_max + self.z_min) / 2])
 
 class Face:
     """Represents a single face (surface) of a physical object.
