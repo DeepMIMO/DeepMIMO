@@ -435,20 +435,22 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     """Convert spherical coordinates to Cartesian coordinates.
     
     Args:
-        spherical_coords: Array of shape [n_points, 3] containing spherical coordinates (r, azimuth, elevation) in radians
-            where r is the magnitude (distance from origin)
+        spherical_coords: Array containing spherical coordinates (r, azimuth, elevation) in radians
+            where r is the magnitude (distance from origin). Can have any number of leading dimensions,
+            but the last dimension must be 3.
         
     Returns:
-        Array of shape [n_points, 3] containing Cartesian coordinates (x, y, z)
+        Array of same shape as input containing Cartesian coordinates (x, y, z)
     """
-    cartesian_coords = np.zeros((spherical_coords.shape[0], 3))
-    r = spherical_coords[:, 0]
-    azimuth = spherical_coords[:, 1]
-    elevation = spherical_coords[:, 2]
+    # Preserve input shape
+    cartesian_coords = np.zeros_like(spherical_coords)
+    r = spherical_coords[..., 0]
+    azimuth = spherical_coords[..., 1]
+    elevation = spherical_coords[..., 2]
     
-    cartesian_coords[:, 0] = r * np.cos(elevation) * np.cos(azimuth)  # x
-    cartesian_coords[:, 1] = r * np.cos(elevation) * np.sin(azimuth)  # y
-    cartesian_coords[:, 2] = r * np.sin(elevation)                    # z
+    cartesian_coords[..., 0] = r * np.cos(elevation) * np.cos(azimuth)  # x
+    cartesian_coords[..., 1] = r * np.cos(elevation) * np.sin(azimuth)  # y
+    cartesian_coords[..., 2] = r * np.sin(elevation)                    # z
     
     return cartesian_coords
 

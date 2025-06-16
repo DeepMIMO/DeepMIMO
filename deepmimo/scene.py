@@ -264,8 +264,7 @@ class PhysicalElement:
         self.label = label if label in self.DEFAULT_LABELS else CAT_OBJECTS
         self.color = color
         self.name = name
-        self._speed = np.zeros(3)  # Initialize speed as zero vector
-        self.vel: np.ndarray = np.zeros(3)  # Velocity vector in spherical coordinates
+        self._vel: np.ndarray = np.zeros(3)  # Speed vector in Cartesian coordinates [m/s]
         
         # Extract all vertices from faces for bounding box computation
         all_vertices = np.vstack([face.vertices for face in faces])
@@ -437,13 +436,13 @@ class PhysicalElement:
         return self._materials
 
     @property
-    def speed(self) -> np.ndarray:
+    def vel(self) -> np.ndarray:
         """Get the speed vector of the object in Cartesian coordinates [m/s]."""
-        return self._speed
+        return self._vel
 
-    @speed.setter
-    def speed(self, value: np.ndarray | list | tuple):
-        """Set the speed vector of the object.
+    @vel.setter
+    def vel(self, value: np.ndarray | list | tuple) -> None:
+        """Set the velocity vector of the object.
         
         Args:
             value: Either a float (magnitude only) or a 3D vector [m/s]
@@ -452,12 +451,9 @@ class PhysicalElement:
         if type(value) == list or type(value) == tuple:
             value = np.array(value)
         if value.shape != (3,):
-            raise ValueError("Speed must be a 3D vector (x, y, z) in meters per second")
-        self._speed = value
-            
-        # Update spherical velocity vector
-        self.vel = cartesian_to_spherical(self._speed.reshape(1, 3))[0] # [azimuth, elevation]
-
+            raise ValueError("Velocity must be a 3D vector (x, y, z) in meters per second")
+        self._vel = value
+        
     def __repr__(self) -> str:
         """Return a concise string representation of the physical element.
         

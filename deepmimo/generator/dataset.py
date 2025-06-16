@@ -39,7 +39,7 @@ import numpy as np
 from tqdm import tqdm
 
 # Base utilities
-from ..general_utils import DotDict, cartesian_to_spherical
+from ..general_utils import DotDict, spherical_to_cartesian
 from .. import consts as c
 from ..info import info
 from .visualization import plot_coverage, plot_rays
@@ -1077,8 +1077,6 @@ class Dataset(DotDict):
             
             self.rx_vel = velocities
         
-        # Convert to spherical coordinates
-        self._v_rx = cartesian_to_spherical(self.rx_vel) # spherical coordinates [azimuth, elevation]
         return self.rx_vel
 
     def set_tx_vel(self, velocities: np.ndarray | list | tuple) -> np.ndarray:
@@ -1089,10 +1087,9 @@ class Dataset(DotDict):
             velocities = np.array(velocities)
 
         if velocities.ndim != 1:
-            raise ValueError('Tx velocity must be in a single cartesian coordinate (2,)')
+            raise ValueError('Tx velocity must be in a single cartesian coordinate (3,)')
         
         self.tx_vel = velocities
-        self._v_tx = cartesian_to_spherical(self.tx_vel[None, :])[0] # spherical coordinates [azimuth, elevation]
         return self.tx_vel
 
     def _clear_cache_doppler(self) -> None:
@@ -1112,19 +1109,20 @@ class Dataset(DotDict):
         
         wavelength = 3e8 / self.rt_params.frequency # [m]
         
-        # Compute k_tx and k_rx for all users and paths
-        k_tx = np.zeros((self.n_ue, max_paths, 3))
-        k_rx = np.zeros((self.n_ue, max_paths, 3))
-        
-        # Compute wave vectors for all users and paths
-        k_tx[:, :, 0] = 1 # magnitude
-        k_tx[:, :, 1] = np.deg2rad(self.aod_az)   # azimuth of departure (tx angle)
-        k_tx[:, :, 2] = np.deg2rad(self.aod_el)   # elevation of departure (tx angle)
-        k_rx[:, :, 0] = 1 # magnitude
-        k_rx[:, :, 1] = -np.deg2rad(self.aoa_az)  # azimuth of arrival (rx angle)
-        k_rx[:, :, 2] = -np.deg2rad(self.aoa_el)  # elevation of arrival (rx angle)
-        
-        k_i = self._compute_inter_angles() # [n_ue, max_paths, max_interactions, 2]
+        # Compute outgoing wave directions for all users and paths, at rx, tx, and interactions
+        ones = np.ones((self.n_ue, max_paths, 1))
+        tx_coord_cat = np.concatenate((ones, 
+                                       np.deg2rad(self.aod_az)[..., None], 
+                                       np.deg2rad(self.aod_el)[..., None]), axis=-1)
+        rx_coord_cat = np.concatenate((ones,
+                                       -np.deg2rad(self.aoa_az)[..., None],
+                                       -np.deg2rad(self.aoa_el)[..., None]), axis=-1)
+        # TODO: check that it matches our conventions for spherical coordinates
+
+        k_tx = spherical_to_cartesian(tx_coord_cat) # [n_ue, max_paths, 3]
+        k_rx = spherical_to_cartesian(rx_coord_cat) # [n_ue, max_paths, 3]
+
+        k_i = self._compute_inter_angles() # [n_ue, max_paths, max_interactions, 3]
 
         inter_objects = self._compute_inter_objects()
         for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
@@ -1135,8 +1133,8 @@ class Dataset(DotDict):
                 n_inter = self.num_interactions[ue_i, path_i]
 
                 # Compute doppler for this path (using spherical coordinates)
-                tx_doppler = np.dot(k_tx[ue_i, path_i], self._v_tx) / wavelength
-                rx_doppler = np.dot(k_rx[ue_i, path_i], self._v_rx[ue_i]) / wavelength
+                tx_doppler = np.dot(k_tx[ue_i, path_i], self.tx_vel) / wavelength
+                rx_doppler = np.dot(k_rx[ue_i, path_i], self.rx_vel[ue_i]) / wavelength
 
                 path_dopplers = [0]
 
@@ -1152,8 +1150,7 @@ class Dataset(DotDict):
                     # Get outgoing angle difference (between consecutive interactions)
                     # (comes from the taylor expansion of the doppler shift)
                     ki_diff = k_i[ue_i, path_i, i] - k_i[ue_i, path_i, i-1]
-                    ki_diff[0] = 1 # magnitude
-                    
+
                     path_dopplers += [np.dot(v_i, ki_diff) / wavelength]
                 
                 # Compute doppler frequency shift
@@ -1170,7 +1167,7 @@ class Dataset(DotDict):
         
         Returns:
             np.ndarray: Array of shape [n_users, n_paths, max_interactions, 3] containing
-                       the azimuth and elevation angles between interactions in radians.
+                        the unit vectors between interactions (x, y, z / Cartesian coordinates)
         """
         max_interactions = np.nanmax(self.num_interactions).astype(int)
         max_paths = np.nanmax(self.num_paths).astype(int)
@@ -1193,51 +1190,13 @@ class Dataset(DotDict):
                     
                     # Compute vector between interactions
                     vec = pos2 - pos1
-                    
-                    # Compute azimuth (in x-y plane)
-                    azimuth = np.arctan2(vec[1], vec[0])
-                    
-                    # Compute elevation (angle from x-y plane)
-                    # First get horizontal distance
-                    horizontal_dist = np.sqrt(vec[0]**2 + vec[1]**2)
-                    elevation = np.arctan2(vec[2], horizontal_dist)
-                    
-                    # Store angles in radians
-                    inter_angles[ue_i, path_i, i] = [1, azimuth, elevation]
+
+                    # Store unit vector
+                    inter_angles[ue_i, path_i, i] = vec / np.linalg.norm(vec)
         
         # TODO: Use vectorized version
-        # # Get all interaction positions
-        # # Shape: [n_users, n_paths, max_interactions, 3]
-        # inter_pos = self.inter_pos
-
-        # # Create mask for valid interactions
-        # # Shape: [n_users, n_paths, max_interactions]
-        # valid_mask = np.arange(max_interactions)[None, None, :] < self.num_interactions[..., None]
-
-        # # Get vectors between consecutive interactions
-        # # Shape: [n_users, n_paths, max_interactions-1, 3]
-        # vec = inter_pos[..., 1:, :] - inter_pos[..., :-1, :]
-
-        # # Compute horizontal distance for elevation calculation
-        # # Shape: [n_users, n_paths, max_interactions-1]
-        # horizontal_dist = np.sqrt(vec[..., 0]**2 + vec[..., 1]**2)
-
-        # # Compute azimuth (in x-y plane)
-        # # Shape: [n_users, n_paths, max_interactions-1]
-        # azimuth = np.arctan2(vec[..., 1], vec[..., 0])
-
-        # # Compute elevation (angle from x-y plane)
-        # # Shape: [n_users, n_paths, max_interactions-1]
-        # elevation = np.arctan2(vec[..., 2], horizontal_dist)
-
-        # # Stack angles and store in output array
-        # # Shape: [n_users, n_paths, max_interactions-1, 2]
-        # angles = np.stack([azimuth, elevation], axis=-1)
-
-        # # Store angles in output array, only for valid interactions
-        # valid_mask_prev = valid_mask[..., :-1]  # Shift mask to match angles
-        # inter_angles[..., :-1, :] = np.where(valid_mask_prev[..., None], angles, 0)
-
+        # TODO: (if we don't vectorize, at least put division outside of loop
+        # k_i = k_i / np.linalg.norm(k_i, axis=-1, keepdims=True)
         return inter_angles
     
     def _compute_inter_objects(self) -> np.ndarray:
