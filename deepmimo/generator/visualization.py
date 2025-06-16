@@ -385,7 +385,7 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
                     point_color = inter_obj_colors.get(inter_objects[path_idx, i], 'gray')
                     point_label = inter_obj_labels.get(inter_objects[path_idx, i], 'unknown obj?')
                 else:
-                    print('Unclassified interaction point')
+                    print(f'Unclassified interaction point: path {path_idx}, inter {i}')
                     point_color = 'black'
                     point_label = None
                 

@@ -1038,7 +1038,7 @@ class Dataset(DotDict):
         """
         if kwargs.get('color_by_inter_obj', False):
             inter_objs = self.inter_objects[idx]
-            inter_obj_labels = {obj_id: obj.label for obj_id, obj in enumerate(self.scene.objects)}
+            inter_obj_labels = {obj_id: obj.name for obj_id, obj in enumerate(self.scene.objects)}
         else:
             inter_objs = None
             inter_obj_labels = None
@@ -1238,7 +1238,7 @@ class Dataset(DotDict):
                 n_inter = self.num_interactions[ue_i, path_i]
                 
                 # Skip if no interactions
-                if np.isnan(n_inter) or n_inter <= 1:
+                if np.isnan(n_inter) or n_inter == 0:
                     continue
                 
                 # For each pair of consecutive interactions, compute the object
