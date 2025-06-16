@@ -211,7 +211,7 @@ N_UE_PARAM_NAME = 'n_ue'
 NUM_INTERACTIONS_PARAM_NAME = 'num_interactions'
 NUM_PATHS_FOV_PARAM_NAME = '_num_paths_fov'  # Number of paths within FoV for each user
 DOPPLER_PARAM_NAME = 'doppler'  # Doppler frequency shifts [Hz] for each user and path
-INTER_OBJECTS_PARAM_NAME = 'inter_objects'  # Unit vectors between interactions and objects
+INTER_OBJECTS_PARAM_NAME = 'inter_obj'  # Object ids at each interaction point
 
 # Rotated angles (after antenna rotation)
 AOA_AZ_ROT_PARAM_NAME = '_aoa_az_rot'       # Azimuth   angles after rotation (radians)
@@ -317,6 +317,11 @@ DATASET_ALIASES = {
     'bounce_pos': INTERACTIONS_POS_PARAM_NAME,
     'interaction_positions': INTERACTIONS_POS_PARAM_NAME,
     'interaction_locations': INTERACTIONS_POS_PARAM_NAME,
+    
+    # Interaction object aliases
+    'inter_objects': INTER_OBJECTS_PARAM_NAME,
+    'inter_object_ids': INTER_OBJECTS_PARAM_NAME,
+    'inter_obj_ids': INTER_OBJECTS_PARAM_NAME,
 
     # TxRx aliases
     'tx_rx': TXRX_PARAM_NAME,

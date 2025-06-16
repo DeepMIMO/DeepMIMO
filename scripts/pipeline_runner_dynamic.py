@@ -76,14 +76,11 @@ scen_name = dm.convert(outer_folder + '/simple_reflector_time_0', overwrite=True
 dataset = dm.load(scen_name)
 
 #%%
-dataset.set_rx_vel(np.array([[0, 0, 0], [0, 0, 0]]))
-dataset.set_tx_vel(np.array([0, 0, 0]))
+dataset.set_rx_vel([[5, 0, 0], [0, 0, 0]])
+dataset.set_tx_vel([0, 0, 0])
 
-dataset.scene.objects[1].speed = np.array([5, 0, 0]) # [m/s]
-dataset.scene.objects[1].speed_s = np.array([5, 0]) # [m/s]
-
-dataset.scene.objects[3].speed = np.array([10, 0, 0]) # [m/s]
-dataset.scene.objects[3].speed_s = np.array([10, 0]) # [m/s]
+dataset.scene.objects[1].vel = [0, 5, 0] # [m/s]
+dataset.scene.objects[3].vel = [10, 0, 0] # [m/s]
 
 # dataset._clear_cache_doppler()
 dataset.doppler
@@ -91,10 +88,24 @@ dataset.doppler
 #%%
 centers = np.array([obj.bounding_box.center for obj in dataset.scene.objects
                     if obj.label != 'terrain'])
-np.set_printoptions(precision=1, suppress=True)
+np.set_printoptions(precision=4, suppress=True)
 centers
 
 dataset._compute_inter_objects()
+
+#%%
+
+i = 1	
+default_kwargs = {
+	'proj_3D': True,
+	'color_by_type': True,
+	'inter_objects': None, 
+	# 'inter_objects': dataset.inter_objects[i], 
+}
+dm.plot_rays(dataset.rx_pos[i], dataset.tx_pos[0], dataset.inter_pos[i],
+			 dataset.inter[i], **default_kwargs)
+
+# dataset.plot_rays(1, color_by_inter_obj=True)
 
 #%%
 import matplotlib.pyplot as plt

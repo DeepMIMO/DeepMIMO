@@ -1036,9 +1036,19 @@ class Dataset(DotDict):
         Args:
             **kwargs: Additional keyword arguments to pass to the plot_rays function.
         """
+        if kwargs.get('color_by_inter_obj', False):
+            inter_objs = self.inter_objects[idx]
+            inter_obj_labels = {obj_id: obj.label for obj_id, obj in enumerate(self.scene.objects)}
+            kwargs.pop('color_by_inter_obj', None)
+        else:
+            inter_objs = None
+            inter_obj_labels = None
+
         default_kwargs = {
             'proj_3D': True,
             'color_by_type': True,
+            'inter_objects': inter_objs,
+            'inter_obj_labels': inter_obj_labels,
         }
         default_kwargs.update(kwargs)
         return plot_rays(self.rx_pos[idx], self.tx_pos[0], self.inter_pos[idx],

@@ -271,7 +271,9 @@ def export_xyz_csv(data: Dict[str, Any], z_var: np.ndarray, outfile: str = '',
 
 def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
               inter: np.ndarray, figsize: tuple = (10,8), dpi: int = 100,
-              proj_3D: bool = True, color_by_type: bool = True) -> Tuple[Figure, Axes]:
+              proj_3D: bool = True, color_by_type: bool = True,
+              inter_objects: Optional[np.ndarray] = None,
+              inter_obj_labels: Optional[list[str]] = None) -> Tuple[Figure, Axes]:
     """Plot ray paths between transmitter and receiver with interaction points.
     
     For a given user, plots all ray paths connecting TX and RX through their
@@ -290,7 +292,11 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
         dpi (int, optional): Resolution in dots per inch. Defaults to 300.
         proj_3D (bool, optional): Whether to create 3D projection. Defaults to True.
         color_by_type (bool, optional): Whether to color interaction points by their type. Defaults to False.
-
+        inter_objects (Optional[np.ndarray], optional): Object ids at each interaction point. Defaults to None.
+            If provided, will color the interaction points by the object id, and
+            ignore the interaction type.
+        inter_obj_labels (Optional[list[str]], optional): Labels for the interaction objects. Defaults to None.
+            If provided, will use these labels instead of the object ids.
     Returns:
         Tuple containing:
         - matplotlib Figure object
@@ -336,6 +342,12 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
         -1: 'Unknown'
     }
     
+    if inter_objects is not None:
+        unique_objs = np.unique(inter_objects)
+        inter_obj_colors = {obj_id: f'C{i}' for i, obj_id in enumerate(unique_objs)}
+        if inter_obj_labels is None:
+            inter_obj_labels = {obj_id: str(int(obj_id)) for obj_id in unique_objs}
+
     # For each ray path up to number of valid paths
     for path_idx in range(n_valid_paths):
         # Get valid interaction points for this path (excluding NaN values)
@@ -365,10 +377,13 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
         # Plot interaction points
         if len(path_interactions) > 0:  # If there are interaction points
             for i, pos in enumerate(path_interactions):
-                if color_by_type and i < len(path_types):
+                if color_by_type and i < len(path_types) and inter_objects is None:
                     # Get color based on interaction type at this position
                     point_color = interaction_colors.get(path_types[i], 'gray')
                     point_label = interaction_names.get(path_types[i], 'Unknown')
+                elif inter_objects is not None:
+                    point_color = inter_obj_colors.get(inter_objects[path_idx, i], 'gray')
+                    point_label = inter_obj_labels.get(inter_objects[path_idx, i], 'unknown obj?')
                 else:
                     point_color = 'blue'
                     point_label = None
@@ -384,9 +399,17 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
     ax.set_ylabel('y (m)')
     if proj_3D:
         ax.set_zlabel('z (m)')
+
     # Only show legend if color_by_type is True or if there are TX/RX points
-    if color_by_type:
+    if color_by_type and inter_objects is None:
         # Remove duplicate labels
+        handles, labels = ax.get_legend_handles_labels()
+        by_label = dict(zip(labels, handles))
+        legend = ax.legend(by_label.values(), by_label.keys())
+    elif inter_objects is not None:
+        # TODO: if this is correct, do only the above
+
+        # Remove duplicate labels 
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         legend = ax.legend(by_label.values(), by_label.keys())
