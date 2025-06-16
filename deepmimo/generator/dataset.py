@@ -1134,7 +1134,7 @@ class Dataset(DotDict):
         if not self.doppler_enabled:
             return doppler
         
-        wavelength = 3e8 / self.rt_params.frequency # [m]
+        wavelength = c.SPEED_OF_LIGHT / self.rt_params.frequency # [m]
         
         # Compute outgoing wave directions for all users and paths, at rx, tx, and interactions
         ones = np.ones((self.n_ue, max_paths, 1))

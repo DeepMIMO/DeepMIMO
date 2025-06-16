@@ -331,6 +331,9 @@ DATASET_ALIASES = {
 # 10. Other Constants
 #==============================================================================
 
+# Speed of light in m/s
+SPEED_OF_LIGHT = 299_792_458
+
 # Invalid characters in scenario names
 SCENARIO_NAME_INVALID_CHARS = ['/', '\\', ':', '*', '?', '"', "'", '<', '>', '|', 
                                '\n']
