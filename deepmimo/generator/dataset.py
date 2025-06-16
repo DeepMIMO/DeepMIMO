@@ -1261,17 +1261,20 @@ class Dataset(DotDict):
         """
         max_interactions = np.nanmax(self.num_interactions).astype(int)
         max_paths = np.nanmax(self.num_paths).astype(int)
-        inter_objects = np.zeros((self.n_ue, max_paths, max_interactions)) * np.nan
+        inter_obj_ids = np.zeros((self.n_ue, max_paths, max_interactions)) * np.nan
 
-        obj_centers = np.array([obj.bounding_box.center for obj in self.scene.objects
-                                if obj.label != 'terrain'])
+        # Ensure there is only one terrain object
+        terrain_objs = [obj for obj in self.scene.objects if obj.label == 'terrain']
+        if len(terrain_objs) > 1:
+            raise ValueError('There should be only one terrain object')
+        terrain_obj = terrain_objs[0]
+        terrain_z_coord = terrain_obj.bounding_box.z_max # [m]
         
-        # TODO: add mapping back to the full list of objects
-
-        # TODO: add index for the terrain
-        # if the z coord of the interaction = z of the terrain, then the object is the terrain
-
-
+        non_terrain_objs = [obj for obj in self.scene.objects if obj.label != 'terrain']
+        
+        obj_centers = np.array([obj.bounding_box.center for obj in non_terrain_objs])
+        obj_ids = np.array([obj.object_id for obj in non_terrain_objs])
+        
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction objects per UE'):
             for path_i in range(max_paths):
@@ -1282,11 +1285,15 @@ class Dataset(DotDict):
                     continue
                 
                 # For each pair of consecutive interactions, compute the object
-                for i in range(int(n_inter) - 1):
+                for i in range(int(n_inter)):
                     # Get positions of current and next interaction
                     i_pos = self.inter_pos[ue_i, path_i, i]  # Current interaction position
                     print(f'i_pos: {i_pos}')
-
+                    if np.isclose(i_pos[2], terrain_z_coord, rtol=0, atol=1e-3): # 1cm tolerance
+                        inter_obj_ids[ue_i, path_i, i] = terrain_obj.object_id
+                        print(f'interaction {i} is with terrain')
+                        continue
+                    
                     # Get the distance between the interaction and the object
                     dist = np.linalg.norm(obj_centers - i_pos, axis=1)
                     print(f'dist: {dist}')
@@ -1294,9 +1301,9 @@ class Dataset(DotDict):
                     # Get the object index
                     obj_idx = np.argmin(dist)
                     print(f'obj_idx: {obj_idx}')
-                    inter_objects[ue_i, path_i, i] = obj_idx
+                    inter_obj_ids[ue_i, path_i, i] = obj_ids[obj_idx]
                     
-        return inter_objects
+        return inter_obj_ids
                     
                     
 
