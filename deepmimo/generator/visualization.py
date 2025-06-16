@@ -385,7 +385,8 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
                     point_color = inter_obj_colors.get(inter_objects[path_idx, i], 'gray')
                     point_label = inter_obj_labels.get(inter_objects[path_idx, i], 'unknown obj?')
                 else:
-                    point_color = 'blue'
+                    print('Unclassified interaction point')
+                    point_color = 'black'
                     point_label = None
                 
                 plot_point(pos, c=point_color, marker='o', s=20, label=point_label, zorder=2)
@@ -401,15 +402,8 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
         ax.set_zlabel('z (m)')
 
     # Only show legend if color_by_type is True or if there are TX/RX points
-    if color_by_type and inter_objects is None:
+    if color_by_type or inter_objects is not None:
         # Remove duplicate labels
-        handles, labels = ax.get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
-        legend = ax.legend(by_label.values(), by_label.keys())
-    elif inter_objects is not None:
-        # TODO: if this is correct, do only the above
-
-        # Remove duplicate labels 
         handles, labels = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles))
         legend = ax.legend(by_label.values(), by_label.keys())
@@ -418,7 +412,6 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
     
     # Put legend outside the plot
     legend.set_bbox_to_anchor((1, 0.9))
-    # legend.set_loc('center left')
     
     # Set equal aspect ratio for better visualization
     if not proj_3D:

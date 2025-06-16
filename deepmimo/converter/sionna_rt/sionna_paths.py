@@ -146,6 +146,8 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
         # Interaction positions and types
         inter_pos_rx = vertices[:, rel_rx_idx, tx_idx, path_idxs, :].swapaxes(0,1)
         n_interactions = inter_pos_rx.shape[1]
+        inter_pos_rx[inter_pos_rx == 0] = np.nan
+        # NOTE: this is a workaround to handle no interaction positions
         data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :n_interactions, :] = inter_pos_rx
         if sionna_v1:
             # For Sionna v1, types is (max_depth, n_rx, n_tx, max_paths)

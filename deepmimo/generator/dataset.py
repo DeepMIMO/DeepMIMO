@@ -1039,10 +1039,10 @@ class Dataset(DotDict):
         if kwargs.get('color_by_inter_obj', False):
             inter_objs = self.inter_objects[idx]
             inter_obj_labels = {obj_id: obj.label for obj_id, obj in enumerate(self.scene.objects)}
-            kwargs.pop('color_by_inter_obj', None)
         else:
             inter_objs = None
             inter_obj_labels = None
+        kwargs.pop('color_by_inter_obj', None)
 
         default_kwargs = {
             'proj_3D': True,
