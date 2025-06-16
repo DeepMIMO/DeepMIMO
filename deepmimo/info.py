@@ -85,6 +85,9 @@ COMPUTED_MATRICES_HELP = {
     c.DOPPLER_PARAM_NAME:
         'Doppler frequency shifts [Hz] for each user and path\n'
         '\t[num_rx, num_paths]',
+    c.INTER_OBJECTS_PARAM_NAME:
+        'Object ids at each interaction point\n'
+        '\t[num_rx, num_paths, max_interactions]',
 }
 
 # Dictionary of help messages for configuration/other parameters

@@ -1270,6 +1270,7 @@ class Dataset(DotDict):
         c.LOS_PARAM_NAME: '_compute_los',
         c.CH_PARAMS_PARAM_NAME: 'set_channel_params',
         c.DOPPLER_PARAM_NAME: '_compute_doppler',
+        c.INTER_OBJECTS_PARAM_NAME: '_compute_inter_objects',
         
         # Power linear
         c.PWR_LINEAR_PARAM_NAME: '_compute_power_linear',
