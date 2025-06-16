@@ -47,7 +47,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from .materials import MaterialList
 from .consts import SCENE_PARAM_NUMBER_SCENES
-from .general_utils import load_dict_from_json, save_dict_as_json
+from .general_utils import load_dict_from_json, save_dict_as_json, cartesian_to_spherical
 #------------------------------------------------------------------------------
 # Constants
 #------------------------------------------------------------------------------
@@ -249,8 +249,7 @@ class PhysicalElement:
     DEFAULT_LABELS = {CAT_BUILDINGS, CAT_TERRAIN, CAT_VEGETATION, CAT_FLOORPLANS, CAT_OBJECTS}
     
     def __init__(self, faces: List[Face], object_id: int = -1, 
-                 label: str = CAT_OBJECTS, color: str = '', speed: float = 0.0,
-                 name: str = ''):
+                 label: str = CAT_OBJECTS, color: str = '', name: str = ''):
         """Initialize a physical object from its faces.
         
         Args:
@@ -258,15 +257,15 @@ class PhysicalElement:
             object_id: Unique identifier for the object (default: -1)
             label: Label identifying the type of object (default: 'objects')
             color: Color for visualization (default: '', which means use default color)
-            speed: Speed of the object (default: 0.0)
             name: Optional name for the object (default: '')
         """
         self._faces = faces
         self.object_id = object_id
         self.label = label if label in self.DEFAULT_LABELS else CAT_OBJECTS
         self.color = color
-        self.speed = speed # [m/s]
         self.name = name
+        self._speed = np.zeros(3)  # Initialize speed as zero vector
+        self.vel: np.ndarray = np.zeros(3)  # Velocity vector in spherical coordinates
         
         # Extract all vertices from faces for bounding box computation
         all_vertices = np.vstack([face.vertices for face in faces])
@@ -436,6 +435,28 @@ class PhysicalElement:
         if self._materials is None:
             self._materials = list({face.material_idx for face in self._faces})
         return self._materials
+
+    @property
+    def speed(self) -> np.ndarray:
+        """Get the speed vector of the object in Cartesian coordinates [m/s]."""
+        return self._speed
+
+    @speed.setter
+    def speed(self, value: np.ndarray | list | tuple):
+        """Set the speed vector of the object.
+        
+        Args:
+            value: Either a float (magnitude only) or a 3D vector [m/s]
+        """
+        # Ensure value is a 3D vector
+        if type(value) == list or type(value) == tuple:
+            value = np.array(value)
+        if value.shape != (3,):
+            raise ValueError("Speed must be a 3D vector (x, y, z) in meters per second")
+        self._speed = value
+            
+        # Update spherical velocity vector
+        self.vel = cartesian_to_spherical(self._speed.reshape(1, 3))[0] # [azimuth, elevation]
 
     def __repr__(self) -> str:
         """Return a concise string representation of the physical element.

@@ -39,7 +39,7 @@ import numpy as np
 from tqdm import tqdm
 
 # Base utilities
-from ..general_utils import DotDict
+from ..general_utils import DotDict, cartesian_to_spherical
 from .. import consts as c
 from ..info import info
 from .visualization import plot_coverage, plot_rays
@@ -1052,22 +1052,7 @@ class Dataset(DotDict):
     # 9. Doppler Computations
     ###########################################
     
-    def _cartesian_to_spherical(self, cartesian_coords: np.ndarray) -> np.ndarray:
-        """Convert Cartesian coordinates to spherical coordinates.
-        
-        Args:
-            cartesian_coords: Array of shape [n_points, 3] containing Cartesian coordinates (x, y, z)
-            
-        Returns:
-            Array of shape [n_points, 2] containing spherical coordinates (azimuth, elevation) in radians
-        """
-        spherical_coords = np.zeros((cartesian_coords.shape[0], 2))
-        spherical_coords[:, 0] = np.arctan2(cartesian_coords[:, 1], cartesian_coords[:, 0])  # azimuth
-        spherical_coords[:, 1] = np.arctan2(cartesian_coords[:, 2], 
-                                          np.sqrt(cartesian_coords[:, 0]**2 + cartesian_coords[:, 1]**2))  # elevation
-        return spherical_coords
-
-    def set_rx_vel(self, velocities: np.ndarray) -> np.ndarray:
+    def set_rx_vel(self, velocities: np.ndarray | list | tuple) -> np.ndarray:
         """Set the velocities of the users.
         
         Args:
@@ -1077,7 +1062,10 @@ class Dataset(DotDict):
             The velocities of the users in spherical coordinates.
         """
         self._clear_cache_doppler()
-        
+
+        if type(velocities) == list or type(velocities) == tuple:
+            velocities = np.array(velocities)
+
         if velocities.ndim == 1:
             # [3,] -> [n_ue, 3]
             self.rx_vel = np.repeat(velocities[None, :], self.n_ue, axis=0)
@@ -1090,20 +1078,22 @@ class Dataset(DotDict):
             self.rx_vel = velocities
         
         # Convert to spherical coordinates
-        self.rx_vel_s = self._cartesian_to_spherical(self.rx_vel)
-        return self.rx_vel_s
-        # self.rx_vel = np.zeros((self.n_ue, 2))
+        self._v_rx = cartesian_to_spherical(self.rx_vel) # spherical coordinates [azimuth, elevation]
+        return self.rx_vel
 
-    def set_tx_vel(self, velocities: np.ndarray) -> np.ndarray:
+    def set_tx_vel(self, velocities: np.ndarray | list | tuple) -> np.ndarray:
         """Set the velocities of the base stations."""
         self._clear_cache_doppler()
+
+        if type(velocities) == list or type(velocities) == tuple:
+            velocities = np.array(velocities)
+
         if velocities.ndim != 1:
             raise ValueError('Tx velocity must be in a single cartesian coordinate (2,)')
         
         self.tx_vel = velocities
-        self.tx_vel_s = self._cartesian_to_spherical(self.tx_vel[None, :])
-        self.tx_vel_s = self.tx_vel_s[0]
-        return self.tx_vel_s
+        self._v_tx = cartesian_to_spherical(self.tx_vel[None, :])[0] # spherical coordinates [azimuth, elevation]
+        return self.tx_vel
 
     def _clear_cache_doppler(self) -> None:
         """Clear all cached attributes that depend on doppler computation."""
@@ -1120,25 +1110,22 @@ class Dataset(DotDict):
         if not self.doppler_enabled:
             return doppler
         
-        freq = 1e9
-        wavelength = 3e8 / freq
+        wavelength = 3e8 / self.rt_params.frequency # [m]
         
         # Compute k_tx and k_rx for all users and paths
-        k_tx = np.zeros((self.n_ue, max_paths, 2))
-        k_rx = np.zeros((self.n_ue, max_paths, 2))
+        k_tx = np.zeros((self.n_ue, max_paths, 3))
+        k_rx = np.zeros((self.n_ue, max_paths, 3))
         
         # Compute wave vectors for all users and paths
-        k_tx[:, :, 0] = np.deg2rad(self.aod_az)   # azimuth of departure (tx angle)
-        k_tx[:, :, 1] = np.deg2rad(self.aod_el)   # elevation of departure (tx angle)
-        k_rx[:, :, 0] = -np.deg2rad(self.aoa_az)  # azimuth of arrival (rx angle)
-        k_rx[:, :, 1] = -np.deg2rad(self.aoa_el)  # elevation of arrival (rx angle)
+        k_tx[:, :, 0] = 1 # magnitude
+        k_tx[:, :, 1] = np.deg2rad(self.aod_az)   # azimuth of departure (tx angle)
+        k_tx[:, :, 2] = np.deg2rad(self.aod_el)   # elevation of departure (tx angle)
+        k_rx[:, :, 0] = 1 # magnitude
+        k_rx[:, :, 1] = -np.deg2rad(self.aoa_az)  # azimuth of arrival (rx angle)
+        k_rx[:, :, 2] = -np.deg2rad(self.aoa_el)  # elevation of arrival (rx angle)
         
         k_i = self._compute_inter_angles() # [n_ue, max_paths, max_interactions, 2]
 
-        # Initialize velocity arrays
-        v_tx = np.zeros((1, 3))
-        v_rx = np.zeros((self.n_ue, 3))
-        
         inter_objects = self._compute_inter_objects()
         for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
             n_paths = self.num_paths[ue_i]
@@ -1148,8 +1135,8 @@ class Dataset(DotDict):
                 n_inter = self.num_interactions[ue_i, path_i]
 
                 # Compute doppler for this path (using spherical coordinates)
-                tx_doppler = np.dot(k_tx[ue_i, path_i], self.tx_vel_s) / wavelength
-                rx_doppler = np.dot(k_rx[ue_i, path_i], self.rx_vel_s[ue_i]) / wavelength
+                tx_doppler = np.dot(k_tx[ue_i, path_i], self._v_tx) / wavelength
+                rx_doppler = np.dot(k_rx[ue_i, path_i], self._v_rx[ue_i]) / wavelength
 
                 path_dopplers = [0]
 
@@ -1160,12 +1147,13 @@ class Dataset(DotDict):
                         continue
                     
                     # Get object velocity
-                    v_i = self.scene.objects[int(inter_obj_idx)].speed_s # [m/s]
+                    v_i = self.scene.objects[int(inter_obj_idx)].vel # [m/s]
 
                     # Get outgoing angle difference (between consecutive interactions)
                     # (comes from the taylor expansion of the doppler shift)
                     ki_diff = k_i[ue_i, path_i, i] - k_i[ue_i, path_i, i-1]
-
+                    ki_diff[0] = 1 # magnitude
+                    
                     path_dopplers += [np.dot(v_i, ki_diff) / wavelength]
                 
                 # Compute doppler frequency shift
@@ -1181,12 +1169,12 @@ class Dataset(DotDict):
         The angles are returned in radians as [azimuth, elevation].
         
         Returns:
-            np.ndarray: Array of shape [n_users, n_paths, max_interactions, 2] containing
+            np.ndarray: Array of shape [n_users, n_paths, max_interactions, 3] containing
                        the azimuth and elevation angles between interactions in radians.
         """
         max_interactions = np.nanmax(self.num_interactions).astype(int)
         max_paths = np.nanmax(self.num_paths).astype(int)
-        inter_angles = np.zeros((self.n_ue, max_paths, max_interactions, 2))
+        inter_angles = np.zeros((self.n_ue, max_paths, max_interactions, 3))
 
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
@@ -1215,7 +1203,7 @@ class Dataset(DotDict):
                     elevation = np.arctan2(vec[2], horizontal_dist)
                     
                     # Store angles in radians
-                    inter_angles[ue_i, path_i, i] = [azimuth, elevation]
+                    inter_angles[ue_i, path_i, i] = [1, azimuth, elevation]
         
         # TODO: Use vectorized version
         # # Get all interaction positions
@@ -1288,24 +1276,20 @@ class Dataset(DotDict):
                 for i in range(int(n_inter)):
                     # Get positions of current and next interaction
                     i_pos = self.inter_pos[ue_i, path_i, i]  # Current interaction position
-                    print(f'i_pos: {i_pos}')
+                    
+                    # Check if the interaction is with the terrain
                     if np.isclose(i_pos[2], terrain_z_coord, rtol=0, atol=1e-3): # 1cm tolerance
                         inter_obj_ids[ue_i, path_i, i] = terrain_obj.object_id
-                        print(f'interaction {i} is with terrain')
                         continue
                     
                     # Get the distance between the interaction and the object
                     dist = np.linalg.norm(obj_centers - i_pos, axis=1)
-                    print(f'dist: {dist}')
 
                     # Get the object index
                     obj_idx = np.argmin(dist)
-                    print(f'obj_idx: {obj_idx}')
                     inter_obj_ids[ue_i, path_i, i] = obj_ids[obj_idx]
                     
         return inter_obj_ids
-                    
-                    
 
     ###########################################
     # 10. Utilities and Computation Methods

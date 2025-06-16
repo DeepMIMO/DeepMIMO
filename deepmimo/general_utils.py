@@ -404,6 +404,55 @@ def unzip(path_to_zip: str) -> str:
     return extracted_path
 
 # ============================================================================
+# Coordinate Utilities
+# ============================================================================
+
+def cartesian_to_spherical(cartesian_coords: np.ndarray) -> np.ndarray:
+    """Convert Cartesian coordinates to spherical coordinates.
+    
+    Args:
+        cartesian_coords: Array of shape [n_points, 3] containing Cartesian coordinates (x, y, z)
+        
+    Returns:
+        Array of shape [n_points, 3] containing spherical coordinates (r, azimuth, elevation) in radians
+        where r is the magnitude (distance from origin)
+    """
+    spherical_coords = np.zeros((cartesian_coords.shape[0], 3))
+    
+    # Calculate magnitude (r) - distance from origin
+    spherical_coords[:, 0] = np.sqrt(np.sum(cartesian_coords**2, axis=1))
+    
+    # Calculate azimuth (φ) - angle in xy plane
+    spherical_coords[:, 1] = np.arctan2(cartesian_coords[:, 1], cartesian_coords[:, 0])
+    
+    # Calculate elevation (θ) - angle from xy plane
+    r_xy = np.sqrt(cartesian_coords[:, 0]**2 + cartesian_coords[:, 1]**2)
+    spherical_coords[:, 2] = np.arctan2(cartesian_coords[:, 2], r_xy)
+    
+    return spherical_coords
+
+def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
+    """Convert spherical coordinates to Cartesian coordinates.
+    
+    Args:
+        spherical_coords: Array of shape [n_points, 3] containing spherical coordinates (r, azimuth, elevation) in radians
+            where r is the magnitude (distance from origin)
+        
+    Returns:
+        Array of shape [n_points, 3] containing Cartesian coordinates (x, y, z)
+    """
+    cartesian_coords = np.zeros((spherical_coords.shape[0], 3))
+    r = spherical_coords[:, 0]
+    azimuth = spherical_coords[:, 1]
+    elevation = spherical_coords[:, 2]
+    
+    cartesian_coords[:, 0] = r * np.cos(elevation) * np.cos(azimuth)  # x
+    cartesian_coords[:, 1] = r * np.cos(elevation) * np.sin(azimuth)  # y
+    cartesian_coords[:, 2] = r * np.sin(elevation)                    # z
+    
+    return cartesian_coords
+
+# ============================================================================
 # Other Utilities
 # ============================================================================
 
@@ -426,5 +475,4 @@ def compare_two_dicts(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> bool:
             if key in dict2:
                 additional_keys = additional_keys | compare_two_dicts(dict1[key], dict2[key])
     return additional_keys
-
 
