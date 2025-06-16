@@ -1066,6 +1066,8 @@ class Dataset(DotDict):
     def rx_vel(self) -> np.ndarray:
         """Get the velocities of the users."""
         # check if this exists, and initialize to zeros if not
+        if not self.hasattr('_rx_vel'):
+            self._rx_vel = np.zeros((self.n_ue, 3))
         return self._rx_vel
 
     @rx_vel.setter
@@ -1079,10 +1081,10 @@ class Dataset(DotDict):
             The velocities of the users in spherical coordinates.
         """
         self._clear_cache_doppler()
-        print(f'setting rx_vel to {velocities}')
+        
         if type(velocities) == list or type(velocities) == tuple:
             velocities = np.array(velocities)
-        print(f'velocities shape: {velocities.shape}')
+            
         if velocities.ndim == 1:
             # [3,] -> [n_ue, 3]
             self._rx_vel = np.repeat(velocities[None, :], self.n_ue, axis=0)
@@ -1093,12 +1095,14 @@ class Dataset(DotDict):
                 raise ValueError('Number of users must match number of velocities (n_ue, 3)')
             
             self._rx_vel = velocities
-        print(f'rx_vel shape: {self._rx_vel.shape}')
+            
         return
 
     @property
     def tx_vel(self) -> np.ndarray:
         """Get the velocities of the base stations."""
+        if not self.hasattr('_tx_vel'):
+            self._tx_vel = np.zeros(3)
         return self._tx_vel
 
     @tx_vel.setter

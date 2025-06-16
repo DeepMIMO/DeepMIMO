@@ -256,6 +256,20 @@ class DotDict(Mapping[K, V]):
         """Get value for key, returning default if key doesn't exist."""
         return self._data.get(key, default)
 
+    def hasattr(self, key: str) -> bool:
+        """Safely check if a key exists in the dictionary.
+        
+        This method provides a safe way to check for attribute existence
+        without raising KeyError, similar to Python's built-in hasattr().
+        
+        Args:
+            key: The key to check for
+            
+        Returns:
+            bool: True if the key exists, False otherwise
+        """
+        return key in self._data
+
     def to_dict(self) -> Dict:
         """Convert DotDict back to a regular dictionary.
 
