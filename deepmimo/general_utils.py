@@ -183,11 +183,27 @@ class DotDict(Mapping[K, V]):
             raise AttributeError(key)
 
     def __setattr__(self, key: str, value: Any) -> None:
-        """Enable dot notation assignment."""
+        """Enable dot notation assignment with property support.
+        
+        This method first checks if the attribute is a property with a setter.
+        If it is, it uses the property setter. Otherwise, it falls back to
+        storing the value in the internal dictionary.
+        """
         if key == "_data":
             super().__setattr__(key, value)
+            return
+
+        # Get the class attribute
+        attr = getattr(type(self), key, None)
+        
+        # If it's a property with a setter, use it
+        if isinstance(attr, property) and attr.fset is not None:
+            attr.fset(self, value)
         else:
-            self[key] = value
+            # Otherwise store in internal dictionary
+            if isinstance(value, dict) and not isinstance(value, DotDict):
+                value = DotDict(value)
+            self._data[key] = value
 
     def __getitem__(self, key: str) -> Any:
         """Enable dictionary-style access."""
