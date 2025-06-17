@@ -2,7 +2,7 @@
 
 This document details the key conventions used in DeepMIMO.
 
-## Coordinate System
+## Cartisian Coordinate System
 
 The coordinate system follows:
 
@@ -15,17 +15,19 @@ The coordinate system follows:
 
 ## Angle Conventions 
 
-Angles follow these conventions:
+Angles follow the spherical system conventions, see ![Spherical Coordinate System](https://en.wikipedia.org/wiki/Spherical_coordinate_system). 
 
-- All angles are in degrees (not radians)
+Additionally, all angles are in degrees (not radians)
+
 - Azimuth angle (φ):
   - 0° points along positive x-axis
-  - Increases counter-clockwise in x-y plane
+  - Increases counter-clockwise (looking from above, right-hand rule) in x-y plane
   - Range: [0°, 360°)
+
 - Elevation angle (θ):
-  - 0° is in x-y plane
-  - 90° points along positive z-axis
-  - Range: [-90°, 90°]
+  - 0° points along positive z-axis
+  - 90° is in x-y plane
+  - Range: [0°, 180°)
 
 ## Array Elements and Channel Indexing
 
