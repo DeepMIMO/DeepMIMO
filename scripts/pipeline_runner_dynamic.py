@@ -27,6 +27,8 @@ from scripts.pipeline_params import *
 # Absolute (!) Paths
 OSM_ROOT = os.path.join(os.getcwd(), "osm_root")
 
+np.set_printoptions(precision=3, suppress=True)
+
 #%% User position generation
 
 n_time = 10
@@ -55,14 +57,13 @@ for index in range(n_time):
 	print('Starting RT')
 	# osm_folder = os.path.join(OSM_ROOT, "simple_reflector")
 
-	# RT Phase 4: Run Wireless InSite ray tracing
-	# rt_path = raytrace_insite(osm_folder, tx_pos, rx_pos, **p)
+	# Run Ray Tracing
 	rt_path = raytrace_sionna(osm_folder, tx_pos, rx_pos, **p)
 
-	# RT Phase 5: Convert to DeepMIMO format
+	# Convert to DeepMIMO format
 	scen_name = dm.convert(rt_path, overwrite=True)
 
-	# RT Phase 6: Test Conversion
+	# Test Conversion
 	dataset = dm.load(scen_name)
 	dataset.plot_coverage(dataset.los, scat_sz=40)
 	dataset.plot_coverage(dataset.pwr[:, 0], scat_sz=40)
@@ -76,47 +77,11 @@ outer_folder = OSM_ROOT
 scen_name = dm.convert(outer_folder + '/simple_reflector_time_0', overwrite=True)
 dataset = dm.load(scen_name)
 
-#%%
-
+#%% Set manual velocities
 # dataset.rx_vel = [[0, 0, 5], [0, 0, 0]]
 # dataset.tx_vel = [0, 0, 0]
 dataset.set_obj_vel(obj_idx=[1, 3, 6], vel=[[0, 5, 0], [0, 5, 6], [0, 0, 3]])
 print(dataset.doppler[0])
-
-#%%
-centers = np.array([obj.bounding_box.center for obj in dataset.scene.objects
-                    if obj.label != 'terrain'])
-np.set_printoptions(precision=4, suppress=True)
-centers
-
-dataset._compute_inter_objects()
-
-#%%
-
-dataset._compute_inter_angles()
-
-#%%
-
-i = 1
-# dm.plot_rays(dataset.rx_pos[i], dataset.tx_pos[0], dataset.inter_pos[i],
-# 			 dataset.inter[i], **default_kwargs)
-
-dataset.plot_rays(1, color_by_inter_obj=True)
-
-#%%
-
-path_idxs = [0, 3, 5]
-inter_obj_labels = {obj_id: obj.name for obj_id, obj in enumerate(dataset.scene.objects)}
-dm.plot_rays(dataset.rx_pos[i], dataset.tx_pos[0], dataset.inter_pos[i, path_idxs],
-			 dataset.inter[i, path_idxs], 
-			 inter_objects=dataset.inter_objects[i, path_idxs],
-             inter_obj_labels=inter_obj_labels)
-plt.xlim((-10,10))
-
-#%%
-import matplotlib.pyplot as plt
-dataset.plot_rays(1, color_by_inter_obj=True, proj_3D=False)
-plt.xlim((-10,10))
 
 #%% Load a dynamic dataset
 outer_folder = OSM_ROOT
@@ -124,25 +89,3 @@ dyn_dataset_name = dm.convert(outer_folder, scenario_name='scen1',
                                     overwrite=True, vis_scene=False)
 
 dyn_dataset = dm.load(dyn_dataset_name)
-
-#%% Plot summary
-
-dyn_dataset.plot_summary(plot_idx=[1])
-
-#%%
-
-dataset._compute_interaction_angles()
-
-#%%
-
-a = dm.load('city_0_newyork_3p5')[0]
-a.num_interactions
-
-#%%
-
-# Possibility 1: interactions should have more nans instead of those 0s, and one should be able to count how many paths are enabled based NaNs
-# Possibility 2: we need to pass num_paths
-
-a = dm.load('asu_campus_3p5')
-
-a.plot_rays(10, color_by_inter_obj=True)

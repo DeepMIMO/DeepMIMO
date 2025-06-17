@@ -410,7 +410,6 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
                             tx_set_idx=0, # BS INDEX
                             tx_idx=tx_idx, # ANTENNA INDEX
                             rx_set_idx=0)  # Same RX & TX set
-                # TODO: TX IDX NEEDS TO CHANGE FOR DIFF ANTENNAS
     
     if bs_bs_paths:
         txrx_dict['txrx_set_0']['is_rx'] = True  # add BS set also as RX

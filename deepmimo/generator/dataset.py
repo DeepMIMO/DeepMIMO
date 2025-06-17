@@ -1064,7 +1064,11 @@ class Dataset(DotDict):
     
     @property
     def rx_vel(self) -> np.ndarray:
-        """Get the velocities of the users."""
+        """Get the velocities of the users.
+
+        Returns:
+            np.ndarray: The velocities of the users in cartesian coordinates. [n_ue, 3] [m/s]
+        """
         # check if this exists, and initialize to zeros if not
         if not self.hasattr('_rx_vel'):
             self._rx_vel = np.zeros((self.n_ue, 3))
@@ -1100,14 +1104,25 @@ class Dataset(DotDict):
 
     @property
     def tx_vel(self) -> np.ndarray:
-        """Get the velocities of the base stations."""
+        """Get the velocities of the base stations.
+
+        Returns:
+            np.ndarray: The velocities of the base stations in cartesian coordinates. [3,] [m/s]
+        """
         if not self.hasattr('_tx_vel'):
             self._tx_vel = np.zeros(3)
         return self._tx_vel
 
     @tx_vel.setter
     def tx_vel(self, velocities: np.ndarray | list | tuple) -> np.ndarray:
-        """Set the velocities of the base stations."""
+        """Set the velocities of the base stations.
+        
+        Args:
+            velocities: The velocities of the base stations in cartesian coordinates. [m/s]
+        
+        Returns:
+            The velocities of the base stations in cartesian coordinates. [3,] [m/s]
+        """
         self._clear_cache_doppler()
 
         if type(velocities) == list or type(velocities) == tuple:
@@ -1126,6 +1141,9 @@ class Dataset(DotDict):
         Args:
             obj_idx: The index of the object to update.
             vel: The velocity of the object in 3D cartesian coordinates. [m/s]
+
+        Returns:
+            None
         """
         if type(vel) == list or type(vel) == tuple:
             vel = np.array(vel)
@@ -1154,6 +1172,8 @@ class Dataset(DotDict):
         
         NOTE: this Doppler computation is matching the Sionna Doppler computation.
         
+        Returns:
+            np.ndarray: The doppler frequency shifts. [n_ue, max_paths] [Hz]
         """
         self.doppler_enabled = True
         max_paths = np.nanmax(self.num_paths)
@@ -1172,13 +1192,10 @@ class Dataset(DotDict):
                                         np.deg2rad(self.aoa_el)[..., None],
                                         np.deg2rad(self.aoa_az)[..., None]), axis=-1)
 
-        # TODO: do we want to change the angle reference when converting from Sionna?
         k_tx = spherical_to_cartesian(tx_coord_cat) # [n_ue, max_paths, 3]
         k_rx = spherical_to_cartesian(rx_coord_cat) # [n_ue, max_paths, 3]
 
         k_i = self._compute_inter_angles() # [n_ue, max_paths, max_interactions, 3]
-        # append k_tx in the beginning and k_rx in the end
-        # k_i = np.concatenate((k_tx[..., None, :], k_i, k_rx[..., None, :]), axis=-2)
 
         inter_objects = self._compute_inter_objects()
         for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
@@ -1223,7 +1240,7 @@ class Dataset(DotDict):
         
         Returns:
             np.ndarray: Array of shape [n_users, n_paths, max_interactions, 3] containing
-                        the unit vectors between interactions (x, y, z / Cartesian coordinates)
+                        the unit vectors between interactions (x, y, z)
         """
         max_interactions = np.nanmax(self.num_interactions).astype(int)
         max_paths = np.nanmax(self.num_paths).astype(int)
@@ -1257,9 +1274,6 @@ class Dataset(DotDict):
                     # Store unit vector
                     inter_angles[ue_i, path_i, i+1] = vec / np.linalg.norm(vec)
         
-        # TODO: Use vectorized version
-        # TODO: (if we don't vectorize, at least put division outside of loop
-        # k_i = k_i / np.linalg.norm(k_i, axis=-1, keepdims=True)
         return inter_angles
     
     def _compute_inter_objects(self) -> np.ndarray:
@@ -1267,7 +1281,10 @@ class Dataset(DotDict):
         
         For each path, computes N-1 objects where N is the number of interactions.
         Each object represents the object that the path interacts with.
-        The objects are returned in radians as [azimuth, elevation].
+        The objects are returned as the object index.
+
+        Returns:
+            np.ndarray: The objects that interact with each path of each user. [n_ue, max_paths, max_interactions]
         """
         max_interactions = np.nanmax(self.num_interactions).astype(int)
         max_paths = np.nanmax(self.num_paths).astype(int)
@@ -1318,7 +1335,11 @@ class Dataset(DotDict):
     ###########################################
 
     def _get_txrx_sets(self) -> list[TxRxSet]:
-        """Get the txrx sets for the dataset."""
+        """Get the txrx sets for the dataset.
+
+        Returns:
+            list[TxRxSet]: The txrx sets for the dataset.
+        """
         return get_txrx_sets(self.get('parent_name', self.name))
     
     # Dictionary mapping attribute names to their computation methods
