@@ -11,7 +11,7 @@ Pipeline untested for versions <0.19 and >1.0.2.
 
 # Standard library imports
 import os
-from typing import Any
+from typing import Any, Optional, Callable
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow (excessive) logging
 
@@ -74,8 +74,20 @@ class _DataLoader:
         self.current_idx = end_idx
         return self.data[batch_indices]
 
-def _compute_paths(scene, p_solver, compute_paths_rt_params, cpu_offload=True):
-    """Helper function to compute paths based on Sionna version."""
+def _compute_paths(scene: sionna.rt.Scene, p_solver: Optional[PathSolver], compute_paths_rt_params: dict, 
+                   cpu_offload: bool = True, path_inspection_func: Optional[Callable] = None):
+    """Helper function to compute paths based on Sionna version.
+
+    Args:
+        scene: The scene to compute paths for.
+        p_solver: The path solver to use.
+        compute_paths_rt_params: The parameters to pass to the path solver.
+        cpu_offload: Whether to offload the paths to the CPU.
+        path_inspection_func: A function to inspect the paths after computation.
+
+    Returns:
+        The paths object in a format that can be saved to pickle. 
+    """
     scene.receivers['rx_0'].velocity = [0, 0, 0]
     scene.receivers['rx_1'].velocity = [0, 0, 0]
     scene.transmitters['BS_0'].velocity = [0, 0, 0]
@@ -92,33 +104,8 @@ def _compute_paths(scene, p_solver, compute_paths_rt_params, cpu_offload=True):
     
     paths.normalize_delays = False
 
-    if True:
-        i = 0
-        # print(paths.doppler.numpy()[i,0,:])
-        # print(f'doppler shape: {paths.doppler.shape}')
-        # print(paths.tau.numpy()[i,0,:])
-        complex_a = paths.a[0][i,0,0,0,:].numpy() + 1j * paths.a[1][i,0,0,0,:].numpy()
-        path_idxs = np.argsort(np.abs(complex_a))[::-1]
-        print('reordered doppler & delay')
-        # a1 = np.take_along_axis(a, paths_idxs_a, axis=0)
-        # doppler_reordered = paths.doppler[:,0,path_idxs]
-        print('doppler')
-        print(paths.doppler.numpy()[i,0,path_idxs])
-
-        # print('primitives')
-        # print(paths.primitives.numpy()[:, i,0,path_idxs].swapaxes(0, -1))
-        # print('vertices')
-        # print(paths.vertices.numpy()[:, i, 0, path_idxs, :].swapaxes(0, -2))
-        # print('delay')
-        # print(paths.tau.numpy()[i,0,path_idxs])
-        # print('theta_r')
-        # print(paths.theta_r.numpy()[i,0,path_idxs])
-        # print('phi_r')
-        # print(paths.phi_r.numpy()[i,0,path_idxs])
-        # print('theta_t')
-        # print(paths.theta_t.numpy()[i,0,path_idxs])
-        # print('phi_t')
-        # print(paths.phi_t.numpy()[i,0,path_idxs])
+    if path_inspection_func is not None:
+        path_inspection_func(paths)
 
     # Export paths to CPU if requested
     if cpu_offload and not IS_LEGACY_VERSION:
@@ -196,7 +183,9 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
         for b in range(num_bs):
             scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b]))
 
-        paths = _compute_paths(scene, p_solver, compute_paths_rt_params, rt_params['cpu_offload'])
+        paths = _compute_paths(scene, p_solver, compute_paths_rt_params, 
+                               cpu_offload=rt_params['cpu_offload'], 
+                               path_inspection_func=rt_params['path_inspection_func'])
         path_list.append(paths)
 
         for b in range(num_bs):
@@ -208,7 +197,9 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
         for i in batch:
             scene.add(Receiver(name=f"rx_{i}", position=rx_pos[i]))
         
-        paths = _compute_paths(scene, p_solver, compute_paths_rt_params, rt_params['cpu_offload'])
+        paths = _compute_paths(scene, p_solver, compute_paths_rt_params, 
+                               cpu_offload=rt_params['cpu_offload'], 
+                               path_inspection_func=rt_params['path_inspection_func'])
         path_list.append(paths)
         
         for i in batch:

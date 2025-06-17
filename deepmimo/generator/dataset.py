@@ -1170,10 +1170,11 @@ class Dataset(DotDict):
     def _compute_doppler(self) -> np.ndarray:
         """Compute the doppler frequency shifts.
         
-        NOTE: this Doppler computation is matching the Sionna Doppler computation.
-        
         Returns:
             np.ndarray: The doppler frequency shifts. [n_ue, max_paths] [Hz]
+
+        NOTE: this Doppler computation is matching the Sionna Doppler computation.
+              See Sionna.rt.Paths.doppler in: https://nvlabs.github.io/sionna/rt/api/paths.html
         """
         self.doppler_enabled = True
         max_paths = np.nanmax(self.num_paths)

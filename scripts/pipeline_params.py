@@ -105,27 +105,6 @@ p = {
 	'road_material': ROAD_MATERIAL_PATH,
 	'terrain_material': TERRAIN_MATERIAL_PATH,
 
-	# Sionna specific parameters
-	'los': True,  # Whether to use LOS paths (True) or not (False)
-	'synthetic_array': True,  # Whether to use a synthetic array (True) or a real array (False)
-	'batch_size': 15,  # Number of users to compute at a time
-					   # Heuristic: 1.5 per GB of GPU VRAM, if using scattering, 
-					   # else 5-10 users per GB
-	'use_builtin_scene': True,  # Whether to use a builtin scene (True) or a custom scene (False)
-	'builtin_scene_path': 'simple_street_canyon', # 'simple_reflector', 'simple_street_canyon'
-	
-	# Sionna 0.x parameters
-	'scat_random_phases': True,
-	'edge_diffraction': False,
-	'scat_keep_prob': 0.001,
-
-	# Sionna 1.x parameters
-	'n_samples_per_src': 1_000_000,  # Number of ray sampling directions per source
-	'max_paths_per_src': 1_000_000,  # Maximum number of paths per source
-	'refraction': False,  # Whether to use refraction (True) or not (False)
-	'cpu_offload': True,  # Whether to offload paths to CPU (True) or not (False)
-	                      # (slower, but does not accumulate VRAM usage)
-
 	# Ray-tracing parameters -> Efficient if they match the dataclass in SetupEditor.py
 	'carrier_freq': 3.5e9,  # Hz
 	'bandwidth': 10e6,  # Hz
@@ -148,4 +127,28 @@ p = {
                                    # inside OSM_ROOT with params in the name.
 	                               # Set to False for Dynamic Datasets 
                                    # (no extra folders -> direct access)
+								   
+	# Sionna specific parameters
+	'los': True,  # Whether to use LOS paths (True) or not (False)
+	'synthetic_array': True,  # Whether to use a synthetic array (True) or a real array (False)
+	'batch_size': 15,  # Number of users to compute at a time
+					   # Heuristic: 1.5 per GB of GPU VRAM, if using scattering, 
+					   # else 5-10 users per GB
+	'use_builtin_scene': True,  # Whether to use a builtin scene (True) or a custom scene (False)
+	'builtin_scene_path': 'simple_street_canyon', # 'simple_reflector', 'simple_street_canyon'
+	'path_inspection_func': None,  # Function to inspect the paths after computation 
+	                               # (before filtering or saving)
+	
+	# Sionna 0.x parameters
+	'scat_random_phases': True,
+	'edge_diffraction': False,
+	'scat_keep_prob': 0.001,
+
+	# Sionna 1.x parameters
+	'n_samples_per_src': 1_000_000,  # Number of ray sampling directions per source
+	'max_paths_per_src': 1_000_000,  # Maximum number of paths per source
+	'refraction': False,  # Whether to use refraction (True) or not (False)
+	'cpu_offload': True,  # Whether to offload paths to CPU (True) or not (False)
+	                      # (slower, but does not accumulate VRAM usage)
+
 }
