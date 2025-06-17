@@ -76,12 +76,49 @@ class _DataLoader:
 
 def _compute_paths(scene, p_solver, compute_paths_rt_params, cpu_offload=True):
     """Helper function to compute paths based on Sionna version."""
+    scene.receivers['rx_0'].velocity = [0, 0, 0]
+    scene.receivers['rx_1'].velocity = [0, 0, 0]
+    scene.transmitters['BS_0'].velocity = [0, 0, 0]
+
+    import mitsuba as mi
+    scene.objects['building_6'].velocity = mi.Vector3f([0, 5, 0])
+    # scene.objects['building_4'].velocity = mi.Vector3f([0, 8, 0])
+    # scene.objects['floor'].velocity = mi.Vector3f([0, 0, 5])
+
     if IS_LEGACY_VERSION:
         paths = scene.compute_paths(**compute_paths_rt_params)
     else:  # version 1.x
         paths = p_solver(scene=scene, **compute_paths_rt_params)
     
     paths.normalize_delays = False
+
+    if True:
+        i = 0
+        # print(paths.doppler.numpy()[i,0,:])
+        # print(f'doppler shape: {paths.doppler.shape}')
+        # print(paths.tau.numpy()[i,0,:])
+        complex_a = paths.a[0][i,0,0,0,:].numpy() + 1j * paths.a[1][i,0,0,0,:].numpy()
+        path_idxs = np.argsort(np.abs(complex_a))[::-1]
+        print('reordered doppler & delay')
+        # a1 = np.take_along_axis(a, paths_idxs_a, axis=0)
+        # doppler_reordered = paths.doppler[:,0,path_idxs]
+        print('doppler')
+        print(paths.doppler.numpy()[i,0,path_idxs])
+
+        # print('primitives')
+        # print(paths.primitives.numpy()[:, i,0,path_idxs].swapaxes(0, -1))
+        # print('vertices')
+        # print(paths.vertices.numpy()[:, i, 0, path_idxs, :].swapaxes(0, -2))
+        # print('delay')
+        # print(paths.tau.numpy()[i,0,path_idxs])
+        # print('theta_r')
+        # print(paths.theta_r.numpy()[i,0,path_idxs])
+        # print('phi_r')
+        # print(paths.phi_r.numpy()[i,0,path_idxs])
+        # print('theta_t')
+        # print(paths.theta_t.numpy()[i,0,path_idxs])
+        # print('phi_t')
+        # print(paths.phi_t.numpy()[i,0,path_idxs])
 
     # Export paths to CPU if requested
     if cpu_offload and not IS_LEGACY_VERSION:
@@ -164,6 +201,7 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
 
         for b in range(num_bs):
             scene.remove(f"rx_{b}")
+        
 
     # Ray-tracing BS-UE paths
     for batch in tqdm(data_loader, desc="Ray-tracing BS-UE paths", unit='batch'):

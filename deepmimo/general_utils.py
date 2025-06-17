@@ -465,9 +465,15 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     """Convert spherical coordinates to Cartesian coordinates.
     
     Args:
-        spherical_coords: Array containing spherical coordinates (r, azimuth, elevation) in radians
+        spherical_coords: Array containing spherical coordinates (r, elevation, azimuth) in radians
             where r is the magnitude (distance from origin). Can have any number of leading dimensions,
             but the last dimension must be 3.
+            Reference: https://en.wikipedia.org/wiki/Spherical_coordinate_system
+            Note: before calling this function, we need to transform the DeepMIMO coordinate
+            system into the one used in Sionna/Wikipedia.
+            DeepMIMO uses the elevation angle from the xy plane, not the z axis. 
+            Sionna/Wikipedia uses the elevation angle from the z axis.
+            Therefore, we need to... 
         
     Returns:
         Array of same shape as input containing Cartesian coordinates (x, y, z)
@@ -475,12 +481,12 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     # Preserve input shape
     cartesian_coords = np.zeros_like(spherical_coords)
     r = spherical_coords[..., 0]
-    azimuth = spherical_coords[..., 1]
-    elevation = spherical_coords[..., 2]
+    elevation = spherical_coords[..., 1]
+    azimuth = spherical_coords[..., 2]
     
-    cartesian_coords[..., 0] = r * np.cos(elevation) * np.cos(azimuth)  # x
-    cartesian_coords[..., 1] = r * np.cos(elevation) * np.sin(azimuth)  # y
-    cartesian_coords[..., 2] = r * np.sin(elevation)                    # z
+    cartesian_coords[..., 0] = r * np.sin(elevation) * np.cos(azimuth)  # x
+    cartesian_coords[..., 1] = r * np.sin(elevation) * np.sin(azimuth)  # y
+    cartesian_coords[..., 2] = r * np.cos(elevation)                    # z
     
     return cartesian_coords
 

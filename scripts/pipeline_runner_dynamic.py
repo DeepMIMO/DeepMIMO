@@ -66,6 +66,7 @@ for index in range(n_time):
 	dataset = dm.load(scen_name)
 	dataset.plot_coverage(dataset.los, scat_sz=40)
 	dataset.plot_coverage(dataset.pwr[:, 0], scat_sz=40)
+	break
     
 
 #%% Load a single scenario
@@ -76,14 +77,22 @@ scen_name = dm.convert(outer_folder + '/simple_reflector_time_0', overwrite=True
 dataset = dm.load(scen_name)
 
 #%%
-dataset.set_rx_vel([[5, 0, 0], [0, 0, 0]])
-dataset.set_tx_vel([0, 0, 0])
 
-dataset.scene.objects[1].vel = [0, 5, 0] # [m/s]
-dataset.scene.objects[3].vel = [10, 0, 0] # [m/s]
+# Now set the velocities using the property setters
+dataset.rx_vel = [[0, 0, 5], [0, 0, 0]]
+# dataset.tx_vel = [0, 0, 0]
+
+# dataset.scene.objects[1].vel = [0, 5, 0] # [m/s]
+# dataset.scene.objects[3].vel = [10, 0, 0] # [m/s]
 
 # dataset._clear_cache_doppler()
 dataset.doppler
+
+#%%
+# dataset.scene.objects[1].vel = [0, 5, 0] # [m/s]
+# dataset.scene.objects[3].vel = [0, 8, 0] # [m/s]
+dataset.set_obj_vel(obj_idx=[1,3, 6], vel=[[0, 5, 0], [0, 0, 0], [0, 0, 0]])
+print(dataset.doppler[0])
 
 #%%
 centers = np.array([obj.bounding_box.center for obj in dataset.scene.objects
@@ -95,24 +104,18 @@ dataset._compute_inter_objects()
 
 #%%
 
-i = 1	
-default_kwargs = {
-	'proj_3D': True,
-	'color_by_type': True,
-	'inter_objects': None, 
-	# 'inter_objects': dataset.inter_objects[i], 
-}
-dm.plot_rays(dataset.rx_pos[i], dataset.tx_pos[0], dataset.inter_pos[i],
-			 dataset.inter[i], **default_kwargs)
-
-# dataset.plot_rays(1, color_by_inter_obj=True)
+i = 1
+# dm.plot_rays(dataset.rx_pos[i], dataset.tx_pos[0], dataset.inter_pos[i],
+# 			 dataset.inter[i], **default_kwargs)
+import matplotlib.pyplot as plt
+%matplotlib agg
+dataset.plot_rays(1, color_by_inter_obj=True)
+plt.show()
 
 #%%
 import matplotlib.pyplot as plt
-dataset.plot_rays(1, proj_3D=False)
+dataset.plot_rays(1, color_by_inter_obj=True, proj_3D=False)
 plt.xlim((-10,10))
-dataset.scene.plot(proj_2d=True)
-plt.ylim((-10,10))
 
 #%% Load a dynamic dataset
 outer_folder = OSM_ROOT
@@ -133,3 +136,12 @@ dataset._compute_interaction_angles()
 
 a = dm.load('city_0_newyork_3p5')[0]
 a.num_interactions
+
+#%%
+
+# Possibility 1: interactions should have more nans instead of those 0s, and one should be able to count how many paths are enabled based NaNs
+# Possibility 2: we need to pass num_paths
+
+a = dm.load('asu_campus_3p5')
+
+a.plot_rays(10, color_by_inter_obj=True)

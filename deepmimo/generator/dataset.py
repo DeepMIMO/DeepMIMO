@@ -1119,6 +1119,29 @@ class Dataset(DotDict):
         self._tx_vel = velocities
         return
 
+    def set_obj_vel(self, obj_idx: int | list[int], 
+                    vel: list[float] | list[list[float]] | np.ndarray) -> None:
+        """Update the velocity of an object.
+        
+        Args:
+            obj_idx: The index of the object to update.
+            vel: The velocity of the object in 3D cartesian coordinates. [m/s]
+        """
+        if type(vel) == list or type(vel) == tuple:
+            vel = np.array(vel)
+        if vel.ndim == 1:
+            vel = np.repeat(vel[None, :], len(obj_idx), axis=0)
+        if vel.shape[0] != len(obj_idx):
+            raise ValueError('Number of velocities must match number of objects')
+        
+        if type(obj_idx) == int:
+            obj_idx = [obj_idx]
+        for idx, obj_id in enumerate(obj_idx):
+            self.scene.objects[obj_id].vel = vel[idx]
+
+        self._clear_cache_doppler()
+        return
+
     def _clear_cache_doppler(self) -> None:
         """Clear all cached attributes that depend on doppler computation."""
         try:
@@ -1127,7 +1150,11 @@ class Dataset(DotDict):
             print('Doppler cache is already cleared')
     
     def _compute_doppler(self) -> np.ndarray:
-        """Compute the doppler frequency shifts."""
+        """Compute the doppler frequency shifts.
+        
+        NOTE: this Doppler computation is matching the Sionna Doppler computation.
+        
+        """
         self.doppler_enabled = True
         max_paths = np.nanmax(self.num_paths)
         doppler = np.zeros((self.n_ue, max_paths)) + 2 
@@ -1139,17 +1166,19 @@ class Dataset(DotDict):
         # Compute outgoing wave directions for all users and paths, at rx, tx, and interactions
         ones = np.ones((self.n_ue, max_paths, 1))
         tx_coord_cat = np.concatenate((ones, 
-                                       np.deg2rad(self.aod_az)[..., None], 
-                                       np.deg2rad(self.aod_el)[..., None]), axis=-1)
-        rx_coord_cat = np.concatenate((ones,
-                                       -np.deg2rad(self.aoa_az)[..., None],
-                                       -np.deg2rad(self.aoa_el)[..., None]), axis=-1)
-        # TODO: check that it matches our conventions for spherical coordinates
+                                       np.deg2rad(self.aod_el)[..., None],
+                                       np.deg2rad(self.aod_az)[..., None]), axis=-1)
+        rx_coord_cat = -np.concatenate((ones,
+                                        np.deg2rad(self.aoa_el)[..., None],
+                                        np.deg2rad(self.aoa_az)[..., None]), axis=-1)
 
+        # TODO: do we want to change the angle reference when converting from Sionna?
         k_tx = spherical_to_cartesian(tx_coord_cat) # [n_ue, max_paths, 3]
         k_rx = spherical_to_cartesian(rx_coord_cat) # [n_ue, max_paths, 3]
 
         k_i = self._compute_inter_angles() # [n_ue, max_paths, max_interactions, 3]
+        # append k_tx in the beginning and k_rx in the end
+        k_i = np.concatenate((k_tx[..., None, :], k_i, k_rx[..., None, :]), axis=-2)
 
         inter_objects = self._compute_inter_objects()
         for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
@@ -1165,7 +1194,7 @@ class Dataset(DotDict):
 
                 path_dopplers = [0]
 
-                for i in range(1, int(n_inter)):  # i = interaction index(0, 1, ..., n_inter-1)
+                for i in range(int(n_inter)):  # i = interaction index(0, 1, ..., n_inter-1)
                     # Get object index
                     inter_obj_idx = inter_objects[ue_i, path_i, i]
                     if np.isnan(inter_obj_idx):
@@ -1176,7 +1205,7 @@ class Dataset(DotDict):
 
                     # Get outgoing angle difference (between consecutive interactions)
                     # (comes from the taylor expansion of the doppler shift)
-                    ki_diff = k_i[ue_i, path_i, i] - k_i[ue_i, path_i, i-1]
+                    ki_diff = k_i[ue_i, path_i, i+1] - k_i[ue_i, path_i, i]
 
                     path_dopplers += [np.dot(v_i, ki_diff) / wavelength]
                 
@@ -1198,7 +1227,7 @@ class Dataset(DotDict):
         """
         max_interactions = np.nanmax(self.num_interactions).astype(int)
         max_paths = np.nanmax(self.num_paths).astype(int)
-        inter_angles = np.zeros((self.n_ue, max_paths, max_interactions, 3))
+        inter_angles = np.zeros((self.n_ue, max_paths, max_interactions-1, 3))
 
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
