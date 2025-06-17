@@ -82,8 +82,8 @@ def _compute_paths(scene, p_solver, compute_paths_rt_params, cpu_offload=True):
 
     import mitsuba as mi
     scene.objects['building_6'].velocity = mi.Vector3f([0, 5, 0])
-    # scene.objects['building_4'].velocity = mi.Vector3f([0, 8, 0])
-    # scene.objects['floor'].velocity = mi.Vector3f([0, 0, 5])
+    scene.objects['building_4'].velocity = mi.Vector3f([0, 5, 6])
+    scene.objects['floor'].velocity = mi.Vector3f([0, 0, 3])
 
     if IS_LEGACY_VERSION:
         paths = scene.compute_paths(**compute_paths_rt_params)

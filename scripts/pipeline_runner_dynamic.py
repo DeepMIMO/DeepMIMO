@@ -78,20 +78,9 @@ dataset = dm.load(scen_name)
 
 #%%
 
-# Now set the velocities using the property setters
-dataset.rx_vel = [[0, 0, 5], [0, 0, 0]]
+# dataset.rx_vel = [[0, 0, 5], [0, 0, 0]]
 # dataset.tx_vel = [0, 0, 0]
-
-# dataset.scene.objects[1].vel = [0, 5, 0] # [m/s]
-# dataset.scene.objects[3].vel = [10, 0, 0] # [m/s]
-
-# dataset._clear_cache_doppler()
-dataset.doppler
-
-#%%
-# dataset.scene.objects[1].vel = [0, 5, 0] # [m/s]
-# dataset.scene.objects[3].vel = [0, 8, 0] # [m/s]
-dataset.set_obj_vel(obj_idx=[1,3, 6], vel=[[0, 5, 0], [0, 0, 0], [0, 0, 0]])
+dataset.set_obj_vel(obj_idx=[1, 3, 6], vel=[[0, 5, 0], [0, 5, 6], [0, 0, 3]])
 print(dataset.doppler[0])
 
 #%%
@@ -104,13 +93,25 @@ dataset._compute_inter_objects()
 
 #%%
 
+dataset._compute_inter_angles()
+
+#%%
+
 i = 1
 # dm.plot_rays(dataset.rx_pos[i], dataset.tx_pos[0], dataset.inter_pos[i],
 # 			 dataset.inter[i], **default_kwargs)
-import matplotlib.pyplot as plt
-%matplotlib agg
+
 dataset.plot_rays(1, color_by_inter_obj=True)
-plt.show()
+
+#%%
+
+path_idxs = [0, 3, 5]
+inter_obj_labels = {obj_id: obj.name for obj_id, obj in enumerate(dataset.scene.objects)}
+dm.plot_rays(dataset.rx_pos[i], dataset.tx_pos[0], dataset.inter_pos[i, path_idxs],
+			 dataset.inter[i, path_idxs], 
+			 inter_objects=dataset.inter_objects[i, path_idxs],
+             inter_obj_labels=inter_obj_labels)
+plt.xlim((-10,10))
 
 #%%
 import matplotlib.pyplot as plt

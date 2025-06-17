@@ -1178,7 +1178,7 @@ class Dataset(DotDict):
 
         k_i = self._compute_inter_angles() # [n_ue, max_paths, max_interactions, 3]
         # append k_tx in the beginning and k_rx in the end
-        k_i = np.concatenate((k_tx[..., None, :], k_i, k_rx[..., None, :]), axis=-2)
+        # k_i = np.concatenate((k_tx[..., None, :], k_i, k_rx[..., None, :]), axis=-2)
 
         inter_objects = self._compute_inter_objects()
         for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
@@ -1227,7 +1227,7 @@ class Dataset(DotDict):
         """
         max_interactions = np.nanmax(self.num_interactions).astype(int)
         max_paths = np.nanmax(self.num_paths).astype(int)
-        inter_angles = np.zeros((self.n_ue, max_paths, max_interactions-1, 3))
+        inter_angles = np.zeros((self.n_ue, max_paths, max_interactions+1, 3))
 
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
@@ -1235,20 +1235,27 @@ class Dataset(DotDict):
                 n_inter = self.num_interactions[ue_i, path_i]
                 
                 # Skip if no interactions
-                if np.isnan(n_inter) or n_inter <= 1:
+                if np.isnan(n_inter) or n_inter == 0:
                     continue
-                    
+                
                 # For each pair of consecutive interactions, compute the angle
-                for i in range(int(n_inter) - 1):
+                for i in range(-1, int(n_inter)):
                     # Get positions of current and next interaction
-                    pos1 = self.inter_pos[ue_i, path_i, i]  # Current interaction
-                    pos2 = self.inter_pos[ue_i, path_i, i + 1]  # Next interaction
+                    if i == -1:
+                        pos1 = self.tx_pos
+                    else:
+                        pos1 = self.inter_pos[ue_i, path_i, i]
+                    
+                    if i == n_inter - 1:
+                        pos2 = self.rx_pos[ue_i]
+                    else:
+                        pos2 = self.inter_pos[ue_i, path_i, i + 1]
                     
                     # Compute vector between interactions
                     vec = pos2 - pos1
 
                     # Store unit vector
-                    inter_angles[ue_i, path_i, i] = vec / np.linalg.norm(vec)
+                    inter_angles[ue_i, path_i, i+1] = vec / np.linalg.norm(vec)
         
         # TODO: Use vectorized version
         # TODO: (if we don't vectorize, at least put division outside of loop
