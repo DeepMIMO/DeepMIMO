@@ -151,8 +151,10 @@ p = {
 	'cpu_offload': True,  # Whether to offload paths to CPU (True) or not (False)
 	                      # (slower, but does not accumulate VRAM usage)
 	'rx_ori': None,  # [n_ue, 3] [rad]  # (azimuth, elevation, roll)
+	'rx_vel': None,  # [n_ue, 3] [m/s] # (x, y, z)
 	'tx_ori': None,  # [n_bs, 3] [rad]  # (azimuth, elevation, roll)
+	'tx_vel': None,  # [n_bs, 3] [m/s] # (x, y, z)
 	'obj_pos': None,  # [n_obj, 3] [m]  # (x, y, z)
 	'obj_ori': None,  # [n_obj, 3] [rad] # (azimuth, elevation, roll)
-	
+	'obj_vel': None,  # [n_obj, 3] [m/s] # (x, y, z)
 }

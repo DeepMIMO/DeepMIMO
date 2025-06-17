@@ -49,6 +49,8 @@ from sionna.rt import Transmitter, Receiver
 if not IS_LEGACY_VERSION:
     from sionna.rt import PathSolver
     import drjit as dr
+else:
+    PathSolver = None
 
 class _DataLoader:
     """DataLoader class for Sionna RT that returns user indices for raytracing."""
@@ -133,7 +135,8 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
         for i, obj in enumerate(scene.objects):
             obj.position = rt_params['obj_pos'][i]
             obj.orientation = rt_params['obj_ori'][i]
-            
+            obj.velocity = rt_params['obj_vel'][i]
+
     # Map general parameters to Sionna RT parameters
     if IS_LEGACY_VERSION:
         compute_paths_rt_params = {
@@ -164,7 +167,9 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
     num_bs = len(tx_pos)
     for b in range(num_bs): 
         pwr_dbm = tf.Variable(0, dtype=tf.float32) if IS_LEGACY_VERSION else 0
-        tx = Transmitter(position=tx_pos[b], name=f"BS_{b}", power_dbm=pwr_dbm)
+        vel_dict = {} if IS_LEGACY_VERSION else {'velocity': rt_params['tx_vel'][b]}
+        tx = Transmitter(position=tx_pos[b], orientation=rt_params['tx_ori'][b], 
+                         name=f"BS_{b}", power_dbm=pwr_dbm, **vel_dict)
         scene.add(tx)
         print(f"Added BS_{b} at position {tx_pos[b]}")
 
@@ -179,7 +184,9 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
         # Ray-tracing BS-BS paths
         print("Ray-tracing BS-BS paths")
         for b in range(num_bs):
-            scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b], orientation=rt_params['tx_ori'][b]))
+            vel_dict = {} if IS_LEGACY_VERSION else {'velocity': rt_params['tx_vel'][b]}
+            scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b], 
+                               orientation=rt_params['tx_ori'][b], **vel_dict))
 
         paths = _compute_paths(scene, p_solver, compute_paths_rt_params, 
                                cpu_offload=rt_params['cpu_offload'], 
@@ -193,8 +200,10 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
     # Ray-tracing BS-UE paths
     for batch in tqdm(data_loader, desc="Ray-tracing BS-UE paths", unit='batch'):
         for i in batch:
-            scene.add(Receiver(name=f"rx_{i}", position=rx_pos[i], orientation=rt_params['rx_ori'][i]))
-        
+            vel_dict = {} if IS_LEGACY_VERSION else {'velocity': rt_params['rx_vel'][i]}
+            scene.add(Receiver(name=f"rx_{i}", position=rx_pos[i], 
+                               orientation=rt_params['rx_ori'][i], **vel_dict))
+            
         paths = _compute_paths(scene, p_solver, compute_paths_rt_params, 
                                cpu_offload=rt_params['cpu_offload'], 
                                path_inspection_func=rt_params['path_inspection_func'])

@@ -80,10 +80,13 @@ for index in range(n_time):
 	# Define extra user parameters
 	p['rx_ori'] = np.array([[0, 0, 0], [0, 0, 0]])
 	p['tx_ori'] = np.array([0, 0, 0])
+	p['rx_vel'] = np.array([[0, 0, 0], [0, 0, 0]])
+	p['tx_vel'] = np.array([0, 0, 0])
 
 	# Define extra object parameters (should match the scene.objects)
 	p['obj_pos'] = None # np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
 	p['obj_ori'] = None # np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+	p['obj_vel'] = None # np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
 
 	print(f"Processing time index: {index}")
 	p['name'] = f'simple_reflector_time_{index}'
