@@ -73,7 +73,17 @@ for x in x_coords:
 
 tx_pos = np.array([[0, 0, 10]])
 
+#%% Set parameters
+
 for index in range(n_time):
+
+	# Define extra user parameters
+	p['rx_ori'] = np.array([[0, 0, 0], [0, 0, 0]])
+	p['tx_ori'] = np.array([0, 0, 0])
+
+	# Define extra object parameters (should match the scene.objects)
+	p['obj_pos'] = None # np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+	p['obj_ori'] = None # np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
 
 	print(f"Processing time index: {index}")
 	p['name'] = f'simple_reflector_time_{index}'

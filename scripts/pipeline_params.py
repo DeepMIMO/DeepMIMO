@@ -127,7 +127,7 @@ p = {
                                    # inside OSM_ROOT with params in the name.
 	                               # Set to False for Dynamic Datasets 
                                    # (no extra folders -> direct access)
-								   
+
 	# Sionna specific parameters
 	'los': True,  # Whether to use LOS paths (True) or not (False)
 	'synthetic_array': True,  # Whether to use a synthetic array (True) or a real array (False)
@@ -150,5 +150,9 @@ p = {
 	'refraction': False,  # Whether to use refraction (True) or not (False)
 	'cpu_offload': True,  # Whether to offload paths to CPU (True) or not (False)
 	                      # (slower, but does not accumulate VRAM usage)
-
+	'rx_ori': None,  # [n_ue, 3] [rad]  # (azimuth, elevation, roll)
+	'tx_ori': None,  # [n_bs, 3] [rad]  # (azimuth, elevation, roll)
+	'obj_pos': None,  # [n_obj, 3] [m]  # (x, y, z)
+	'obj_ori': None,  # [n_obj, 3] [rad] # (azimuth, elevation, roll)
+	
 }

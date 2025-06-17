@@ -88,14 +88,6 @@ def _compute_paths(scene: sionna.rt.Scene, p_solver: Optional[PathSolver], compu
     Returns:
         The paths object in a format that can be saved to pickle. 
     """
-    scene.receivers['rx_0'].velocity = [0, 0, 0]
-    scene.receivers['rx_1'].velocity = [0, 0, 0]
-    scene.transmitters['BS_0'].velocity = [0, 0, 0]
-
-    import mitsuba as mi
-    scene.objects['building_6'].velocity = mi.Vector3f([0, 5, 0])
-    scene.objects['building_4'].velocity = mi.Vector3f([0, 5, 6])
-    scene.objects['floor'].velocity = mi.Vector3f([0, 0, 3])
 
     if IS_LEGACY_VERSION:
         paths = scene.compute_paths(**compute_paths_rt_params)
@@ -136,6 +128,12 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
     if not rt_params['use_builtin_scene']:
         scene = set_materials(scene)
     
+    # Change objects in the scene
+    if rt_params['obj_pos'] is not None:
+        for i, obj in enumerate(scene.objects):
+            obj.position = rt_params['obj_pos'][i]
+            obj.orientation = rt_params['obj_ori'][i]
+            
     # Map general parameters to Sionna RT parameters
     if IS_LEGACY_VERSION:
         compute_paths_rt_params = {
@@ -181,7 +179,7 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
         # Ray-tracing BS-BS paths
         print("Ray-tracing BS-BS paths")
         for b in range(num_bs):
-            scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b]))
+            scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b], orientation=rt_params['tx_ori'][b]))
 
         paths = _compute_paths(scene, p_solver, compute_paths_rt_params, 
                                cpu_offload=rt_params['cpu_offload'], 
@@ -195,7 +193,7 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
     # Ray-tracing BS-UE paths
     for batch in tqdm(data_loader, desc="Ray-tracing BS-UE paths", unit='batch'):
         for i in batch:
-            scene.add(Receiver(name=f"rx_{i}", position=rx_pos[i]))
+            scene.add(Receiver(name=f"rx_{i}", position=rx_pos[i], orientation=rt_params['rx_ori'][i]))
         
         paths = _compute_paths(scene, p_solver, compute_paths_rt_params, 
                                cpu_offload=rt_params['cpu_offload'], 
