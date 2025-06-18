@@ -664,6 +664,14 @@ class Dataset(DotDict):
         # Count non-NaN values (NaN indicates filtered out, possibly by FoV)
         return (~np.isnan(aoa)).sum(axis=1)
 
+    def _compute_max_paths(self) -> int:
+        """Compute the maximum number of paths for any user."""
+        return np.nanmax(self.num_paths).astype(int)
+    
+    def _compute_max_interactions(self) -> int:
+        """Compute the maximum number of interactions for any path of any user."""
+        return np.nanmax(self.num_interactions).astype(int)
+
     def _compute_num_interactions(self) -> np.ndarray:
         """Compute number of interactions for each path of each user."""
         result = np.zeros_like(self.inter)
@@ -1141,6 +1149,28 @@ class Dataset(DotDict):
         
         self._tx_vel = velocities
         return
+    def set_doppler(self, doppler: float | list[float] | np.ndarray) -> None:
+        """Set the doppler frequency shifts.
+        
+        Args:
+            doppler: The doppler frequency shifts. [n_ue, max_paths] [Hz]
+            There are 3 options for the shape of the doppler array:
+            1. 1 value for all paths and users. [1, 1] [Hz]
+            2. a value for each user. [n_ue, 1] [Hz]
+            3. a value for each user and each path. [n_ue, max_paths] [Hz]
+        """
+        if type(doppler) == float or type(doppler) == int:
+            doppler = np.array([doppler])
+        if type(doppler) == list:
+            doppler = np.array(doppler)
+        if doppler.ndim == 0:
+            doppler = np.repeat(doppler[None, None], self.n_ue * self.max_paths, axis=0)
+        if doppler.ndim == 1:
+            doppler = np.repeat(doppler[None, :], self.n_ue * self.max_paths, axis=0)
+        if doppler.ndim == 2:
+            doppler = np.repeat(doppler[None, :, :], self.n_ue, axis=0)
+        self.doppler = doppler
+        return
 
     def set_obj_vel(self, obj_idx: int | list[int], 
                     vel: list[float] | list[list[float]] | np.ndarray) -> None:
@@ -1185,15 +1215,14 @@ class Dataset(DotDict):
               See Sionna.rt.Paths.doppler in: https://nvlabs.github.io/sionna/rt/api/paths.html
         """
         self.doppler_enabled = True
-        max_paths = np.nanmax(self.num_paths)
-        doppler = np.zeros((self.n_ue, max_paths)) + 2 
+        doppler = np.zeros((self.n_ue, self.max_paths)) + 2 
         if not self.doppler_enabled:
             return doppler
         
         wavelength = c.SPEED_OF_LIGHT / self.rt_params.frequency # [m]
         
         # Compute outgoing wave directions for all users and paths, at rx, tx, and interactions
-        ones = np.ones((self.n_ue, max_paths, 1))
+        ones = np.ones((self.n_ue, self.max_paths, 1))
         tx_coord_cat = np.concatenate((ones, 
                                        np.deg2rad(self.aod_el)[..., None],
                                        np.deg2rad(self.aod_az)[..., None]), axis=-1)
@@ -1251,13 +1280,11 @@ class Dataset(DotDict):
             np.ndarray: Array of shape [n_users, n_paths, max_interactions, 3] containing
                         the unit vectors between interactions (x, y, z)
         """
-        max_interactions = np.nanmax(self.num_interactions).astype(int)
-        max_paths = np.nanmax(self.num_paths).astype(int)
-        inter_angles = np.zeros((self.n_ue, max_paths, max_interactions+1, 3))
+        inter_angles = np.zeros((self.n_ue, self.max_paths, self.max_interactions+1, 3))
 
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
-            for path_i in range(max_paths):
+            for path_i in range(self.max_paths):
                 n_inter = self.num_interactions[ue_i, path_i]
                 
                 # Skip if no interactions
@@ -1295,9 +1322,7 @@ class Dataset(DotDict):
         Returns:
             np.ndarray: The objects that interact with each path of each user. [n_ue, max_paths, max_interactions]
         """
-        max_interactions = np.nanmax(self.num_interactions).astype(int)
-        max_paths = np.nanmax(self.num_paths).astype(int)
-        inter_obj_ids = np.zeros((self.n_ue, max_paths, max_interactions)) * np.nan
+        inter_obj_ids = np.zeros((self.n_ue, self.max_paths, self.max_interactions)) * np.nan
 
         # Ensure there is only one terrain object
         terrain_objs = [obj for obj in self.scene.objects if obj.label == 'terrain']
@@ -1313,7 +1338,7 @@ class Dataset(DotDict):
         
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction objects per UE'):
-            for path_i in range(max_paths):
+            for path_i in range(self.max_paths):
                 n_inter = self.num_interactions[ue_i, path_i]
                 
                 # Skip if no interactions
@@ -1356,7 +1381,9 @@ class Dataset(DotDict):
     _computed_attributes = {
         c.N_UE_PARAM_NAME: '_compute_n_ue',
         c.NUM_PATHS_PARAM_NAME: '_compute_num_paths',
+        c.MAX_PATHS_PARAM_NAME: '_compute_max_paths',
         c.NUM_INTERACTIONS_PARAM_NAME: '_compute_num_interactions',
+        c.MAX_INTERACTIONS_PARAM_NAME: '_compute_max_interactions',
         c.DIST_PARAM_NAME: '_compute_distances',
         c.PATHLOSS_PARAM_NAME: 'compute_pathloss',
         c.CHANNEL_PARAM_NAME: 'compute_channels',
