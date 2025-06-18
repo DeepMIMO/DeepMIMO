@@ -116,12 +116,6 @@ outer_folder = OSM_ROOT
 scen_name = dm.convert(outer_folder + '/simple_reflector_time_0', overwrite=True)
 dataset = dm.load(scen_name)
 
-#%% Set manual velocities
-# dataset.rx_vel = [[0, 0, 5], [0, 0, 0]]
-# dataset.tx_vel = [0, 0, 0]
-dataset.set_obj_vel(obj_idx=[1, 3, 6], vel=[[0, 5, 0], [0, 5, 6], [0, 0, 3]])
-print(dataset.doppler[0])
-
 #%% Load a dynamic dataset
 outer_folder = OSM_ROOT
 dyn_dataset_name = dm.convert(outer_folder, scenario_name='scen1', 
@@ -129,15 +123,27 @@ dyn_dataset_name = dm.convert(outer_folder, scenario_name='scen1',
 
 dyn_dataset = dm.load(dyn_dataset_name)
 
-#%%
+#%% Example 3: Dynamic Dataset
 
-import numpy as np
-import deepmimo as dm  # type: ignore
+# NOTE: requires a dynamic dataset to test. Currently there are no Dynamic Datasets
+
+# Uniform snapshots
+dyn_dataset.set_timestamps(10) # [seconds between scenes]
+
+print(f'timestamps: {dyn_dataset.timestamps}')
+print(f'rx_vel: {dyn_dataset.rx_vel}')
+print(f'tx_vel: {dyn_dataset.tx_vel}')
+print(f'obj_vel: {[obj.vel for obj in dyn_dataset.scene.objects]}')
+
+# dataset.compute_channels(dm.ChannelParameters(enable_doppler = True))
 
 #%%
-a = dm.load('asu_campus_3p5')
-a.set_doppler(10)
-params = dm.ChannelParameters()
-params.freq_domain = False
-params.enable_doppler = True
-a.compute_channels(params=params)
+# Non-uniform snapshots
+dyn_dataset.set_timestamps([0, 1.5, 2.3, 4.4]) # [timestamps of each scene]
+
+print(f'timestamps: {dyn_dataset.timestamps}')
+print(f'rx_vel: {dyn_dataset.rx_vel}')
+print(f'tx_vel: {dyn_dataset.tx_vel}')
+print(f'obj_vel: {[obj.vel for obj in dyn_dataset.scene.objects]}')
+
+# dataset.compute_channels(dm.ChannelParameters(enable_doppler = True))

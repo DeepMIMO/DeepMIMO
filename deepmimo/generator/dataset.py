@@ -1560,7 +1560,7 @@ class MacroDataset:
 class DynamicDataset(MacroDataset):
     """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
     
-    SINGLE_ACCESS_METHODS = MacroDataset.SINGLE_ACCESS_METHODS + ['txrx_sets']
+    SINGLE_ACCESS_METHODS = MacroDataset.SINGLE_ACCESS_METHODS + ['txrx_sets', 'scene']
 
     def __init__(self, datasets: list[MacroDataset], name: str):
         """Initialize a dynamic dataset.
@@ -1572,6 +1572,7 @@ class DynamicDataset(MacroDataset):
         super().__init__(datasets)
         self.name = name
         self.names = [dataset.name for dataset in datasets]
+        self.n_scenes = len(datasets)
 
         for dataset in datasets:
             dataset.parent_name = name
@@ -1581,3 +1582,38 @@ class DynamicDataset(MacroDataset):
         if name == 'txrx_sets':
             return get_txrx_sets(self.name)
         return super().__getattr__(name)
+    
+    def set_timestamps(self, timestamps: int | float | list[int | float] | np.ndarray) -> None:
+        """Set the timestamps for the dataset.
+
+        Args:
+            timestamps: Timestamps for the dataset. 
+        """
+        self.timestamps = np.zeros(self.n_scenes)
+        
+        if isinstance(timestamps, (float, int)):
+            self.timestamps = np.arange(0, timestamps * self.n_scenes, timestamps)
+        elif isinstance(timestamps, list):
+            self.timestamps = np.array(timestamps)
+        
+        if len(self.timestamps) != self.n_scenes:
+            raise ValueError(f'Time reference must be a single value or a list of {self.n_scenes} values')
+        
+        if self.timestamps.ndim != 1:
+            raise ValueError(f'Time reference must be single dimension.')
+        
+        # self._recompute_speeds()
+
+        return
+
+    def _recompute_speeds(self) -> None:
+        """Recompute the speeds of the dataset.
+
+        This method is used to recompute the speeds of the dataset.
+        It is used to recompute the speeds of the dataset.
+        It is used to recompute the speeds of the dataset.
+        """
+        self.rx_vel = self.rx_vel
+        self.tx_vel = self.tx_vel
+        self.obj_vel = [obj.vel for obj in self.scene.objects]
+        return
