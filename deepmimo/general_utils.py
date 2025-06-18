@@ -546,3 +546,37 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     cartesian_coords[..., 2] = r * np.cos(elevation)                    # z
     
     return cartesian_coords
+
+# ============================================================================
+# Delegating List Utilities
+# ============================================================================
+
+class DelegatingList(list):
+    """A list subclass that delegates method calls to each item in the list.
+    
+    When a method is called on this class, it will be called on each item in the list
+    and the results will be returned as a list.
+    """
+    def __getattr__(self, name):
+        """Delegate attribute access to each item in the list.
+        
+        If the attribute is a method, it will be called on each item and results returned as a list.
+        If the attribute is a property, a list of property values will be returned.
+        If the attribute is a list-like object, it will be wrapped in a DelegatingList.
+        """
+        if not self:
+            raise AttributeError(f"Empty list has no attribute '{name}'")
+            
+        # Get the attribute from the first item to check if it's a method
+        first_attr = getattr(self[0], name)
+        
+        if callable(first_attr):
+            # If it's a method, return a function that calls it on all items
+            def method(*args, **kwargs):
+                results = [getattr(item, name)(*args, **kwargs) for item in self]
+                return DelegatingList(results)
+            return method
+        else:
+            # If it's a property, get values from all items
+            results = [getattr(item, name) for item in self]
+            return DelegatingList(results)

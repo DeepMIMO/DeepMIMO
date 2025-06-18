@@ -39,7 +39,7 @@ import numpy as np
 from tqdm import tqdm
 
 # Base utilities
-from ..general_utils import DotDict, spherical_to_cartesian
+from ..general_utils import DotDict, spherical_to_cartesian, DelegatingList
 from .. import consts as c
 from ..info import info
 from .visualization import plot_coverage, plot_rays
@@ -1557,36 +1557,6 @@ class MacroDataset:
         self.datasets.append(dataset)
         
 
-class DelegatingList(list):
-    """A list subclass that delegates method calls to each item in the list.
-    
-    When a method is called on this class, it will be called on each item in the list
-    and the results will be returned as a list.
-    """
-    def __getattr__(self, name):
-        """Delegate attribute access to each item in the list.
-        
-        If the attribute is a method, it will be called on each item and results returned as a list.
-        If the attribute is a property, a list of property values will be returned.
-        If the attribute is a list-like object, it will be wrapped in a DelegatingList.
-        """
-        # Get the attribute from the first item to check if it's a method
-        first_attr = getattr(self[0], name)
-        
-        if callable(first_attr):
-            # If it's a method, return a function that calls it on all items
-            def method(*args, **kwargs):
-                return [getattr(item, name)(*args, **kwargs) for item in self]
-            return method
-        else:
-            # If it's a property, get values from all items
-            results = [getattr(item, name) for item in self]
-            
-            # If all results are lists or have __iter__, wrap each in DelegatingList
-            if all(hasattr(r, '__iter__') and not isinstance(r, (str, bytes)) for r in results):
-                return [DelegatingList(r) for r in results]
-            return results
-
 class DynamicDataset(MacroDataset):
     """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
     
@@ -1641,10 +1611,37 @@ class DynamicDataset(MacroDataset):
             raise ValueError(f'Time reference must be single dimension.')
         
         # self._recompute_speeds()
+        # Needs position difference and time difference to compute speeds
+
+        for i in range(1, self.n_scenes - 1):
+            time_diff = (self.timestamps[i] - self.timestamps[i - 1])
+            dataset_curr = self.datasets[i]
+            dataset_prev = self.datasets[i - 1]
+            rx_pos_diff = dataset_curr.rx_pos - dataset_prev.rx_pos
+            tx_pos_diff = dataset_curr.tx_pos - dataset_prev.tx_pos
+            obj_pos_diff = dataset_curr.scene.objects.pos - dataset_prev.scene.objects.pos
+            dataset_curr.rx_vel = rx_pos_diff / time_diff
+            dataset_curr.tx_vel = tx_pos_diff / time_diff
+            dataset_curr.scene.objects.vel = obj_pos_diff / time_diff
+
+            # For the first and last pair of scenes, assume that the position and time differences 
+            # are the same as for the second and second-from-last pair of scenes, respectively.
+            if i == 1:
+                i2 = 0
+            elif i == self.n_scenes - 2:
+                i2 = self.n_scenes - 1
+            else:
+                i2 = None
+
+            if i2 is not None:
+                dataset_2 = self.datasets[i2]
+                dataset_2.rx_vel = dataset_curr.rx_vel
+                dataset_2.tx_vel = dataset_curr.tx_vel
+                dataset_2.scene.objects.vel = dataset_curr.scene.objects.vel
 
         return
 
-    def _recompute_speeds(self) -> None:
+    def _compute_speeds(self, pos_diff) -> None:
         """Recompute the speeds of the dataset.
 
         This method is used to recompute the speeds of the dataset.

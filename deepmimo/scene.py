@@ -47,7 +47,13 @@ from dataclasses import dataclass
 from pathlib import Path
 from .materials import MaterialList
 from .consts import SCENE_PARAM_NUMBER_SCENES
-from .general_utils import load_dict_from_json, save_dict_as_json, cartesian_to_spherical
+from .general_utils import (
+    load_dict_from_json,
+    save_dict_as_json,
+    cartesian_to_spherical,
+    DelegatingList
+)
+
 #------------------------------------------------------------------------------
 # Constants
 #------------------------------------------------------------------------------
@@ -551,7 +557,7 @@ class Scene:
     
     def __init__(self):
         """Initialize an empty scene."""
-        self.objects: List[PhysicalElement] = []
+        self.objects = DelegatingList()
         self.visualization_settings = self.DEFAULT_VISUALIZATION_SETTINGS.copy()
         
         # Matrix storage tracking
@@ -564,7 +570,7 @@ class Scene:
         }
         self._objects_by_material: Dict[int, List[PhysicalElement]] = {}
         self._materials: Optional[MaterialList] = None
-
+        
     @property
     def bounding_box(self) -> BoundingBox:
         """Get the bounding box containing all objects."""
