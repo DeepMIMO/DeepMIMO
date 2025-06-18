@@ -1568,6 +1568,7 @@ class DelegatingList(list):
         
         If the attribute is a method, it will be called on each item and results returned as a list.
         If the attribute is a property, a list of property values will be returned.
+        If the attribute is a list-like object, it will be wrapped in a DelegatingList.
         """
         # Get the attribute from the first item to check if it's a method
         first_attr = getattr(self[0], name)
@@ -1578,8 +1579,13 @@ class DelegatingList(list):
                 return [getattr(item, name)(*args, **kwargs) for item in self]
             return method
         else:
-            # If it's a property, return a list of values
-            return [getattr(item, name) for item in self]
+            # If it's a property, get values from all items
+            results = [getattr(item, name) for item in self]
+            
+            # If all results are lists or have __iter__, wrap each in DelegatingList
+            if all(hasattr(r, '__iter__') and not isinstance(r, (str, bytes)) for r in results):
+                return [DelegatingList(r) for r in results]
+            return results
 
 class DynamicDataset(MacroDataset):
     """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
