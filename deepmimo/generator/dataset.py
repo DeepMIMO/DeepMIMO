@@ -1560,8 +1560,6 @@ class MacroDataset:
 class DynamicDataset(MacroDataset):
     """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
     
-    SINGLE_ACCESS_METHODS = MacroDataset.SINGLE_ACCESS_METHODS + ['txrx_sets', 'scene']
-
     def __init__(self, datasets: list[MacroDataset], name: str):
         """Initialize a dynamic dataset.
         
@@ -1576,6 +1574,16 @@ class DynamicDataset(MacroDataset):
 
         for dataset in datasets:
             dataset.parent_name = name
+            
+    def _get_single(self, key):
+        """Override _get_single to handle scene differently from other shared parameters.
+        
+        For scene, return a list of scenes from all datasets.
+        For other shared parameters, use parent class behavior.
+        """
+        if key == 'scene':
+            return [dataset.scene for dataset in self.datasets]
+        return super()._get_single(key)
         
     def __getattr__(self, name):
         """Override __getattr__ to handle txrx_sets specially."""
