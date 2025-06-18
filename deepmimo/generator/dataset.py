@@ -271,9 +271,9 @@ class Dataset(DotDict):
         # Whether to enable the doppler shift per path in the channel
         n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
         default_doppler = np.zeros((self.n_ue, n_paths))
-        use_doppler = False
+        use_doppler = hasattr(self, 'doppler')
 
-        if params[c.PARAMSET_DOPPLER_EN]:
+        if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
             all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
             # Enable doppler if any velocity component is non-zero
             use_doppler = self.tx_vel.any() or self.rx_vel.any() or all_obj_vel.any()
