@@ -269,16 +269,24 @@ class Dataset(DotDict):
         n_paths_to_gen = params.num_paths
         
         # Whether to enable the doppler shift per path in the channel
+        n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
+        default_doppler = np.zeros((self.n_ue, n_paths))
+        use_doppler = False
+
         if params[c.PARAMSET_DOPPLER_EN]:
-            dopplers = self.doppler[..., :n_paths_to_gen]
-        else:
-            dopplers = np.zeros((self.n_ue, n_paths_to_gen))
+            all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
+            # Enable doppler if any velocity component is non-zero
+            use_doppler = self.tx_vel.any() or self.rx_vel.any() or all_obj_vel.any()
+            if not use_doppler:
+                print("No doppler in channel generation because all velocities are zero")
+
+        dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
 
         channel = _generate_MIMO_channel(
-            array_response_product=array_response_product[..., :n_paths_to_gen],
-            powers=self._power_linear_ant_gain[..., :n_paths_to_gen],
-            delays=self.delay[..., :n_paths_to_gen],
-            phases=self.phase[..., :n_paths_to_gen],
+            array_response_product=array_response_product[..., :n_paths],
+            powers=self._power_linear_ant_gain[..., :n_paths],
+            delays=self.delay[..., :n_paths],
+            phases=self.phase[..., :n_paths],
             dopplers=dopplers,
             ofdm_params=params.ofdm,
             freq_domain=params.freq_domain,

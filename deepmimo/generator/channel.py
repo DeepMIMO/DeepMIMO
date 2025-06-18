@@ -164,9 +164,9 @@ class OFDM_PathGenerator:
         
         self.delay_d = np.arange(self.OFDM_params[c.PARAMSET_OFDM_SC_NUM])
         self.delay_to_OFDM = np.exp(-1j * 2 * np.pi / self.total_subcarriers * 
-                                   np.outer(self.delay_d, self.subcarriers))
+                                    np.outer(self.delay_d, self.subcarriers))
     
-    def generate(self, pwr: np.ndarray, toa: np.ndarray, phs: np.ndarray, Ts: float) -> np.ndarray:
+    def generate(self, pwr: np.ndarray, toa: np.ndarray, phs: np.ndarray, Ts: float, dopplers: np.ndarray) -> np.ndarray:
         """Generate OFDM paths.
         
         Args:
@@ -178,22 +178,25 @@ class OFDM_PathGenerator:
         Returns:
             array: Generated OFDM paths
         """
-        power = pwr.reshape(-1, 1)
-        delay_n = toa.reshape(-1, 1) / Ts
-        phase = phs.reshape(-1, 1)
+        # Add a new dimension to the end of the array to allow for broadcasting
+        power = pwr[..., None]
+        delay_n = toa[..., None] / Ts
+        phase = phs[..., None]
+        doppler_n = dopplers[..., None]
     
         # Ignore paths over CP
         paths_over_FFT = (delay_n >= self.OFDM_params[c.PARAMSET_OFDM_SC_NUM])
         power[paths_over_FFT] = 0
         delay_n[paths_over_FFT] = self.OFDM_params[c.PARAMSET_OFDM_SC_NUM]
+        doppler_n[paths_over_FFT] = 0
         
         # Reshape path_const to be compatible with broadcasting
-        path_const = np.sqrt(power / self.total_subcarriers) * np.exp(1j * np.deg2rad(phase))
+        path_const = np.sqrt(power / self.total_subcarriers) * np.exp(1j * (np.deg2rad(phase) + 2 * np.pi * doppler_n))
         if self.OFDM_params[c.PARAMSET_OFDM_LPF]: # Low-pass filter (LPF) convolution
             path_const = path_const * np.sinc(self.delay_d - delay_n) @ self.delay_to_OFDM
         else: # Path construction without LPF
             path_const = path_const * np.exp(-1j * (2 * np.pi / self.total_subcarriers) * 
-                                           np.outer(delay_n.ravel(), self.subcarriers))
+                                             np.outer(delay_n.ravel(), self.subcarriers))
         return path_const
 
 def _generate_MIMO_channel(array_response_product: np.ndarray,
@@ -202,7 +205,7 @@ def _generate_MIMO_channel(array_response_product: np.ndarray,
                            phases: np.ndarray,
                            dopplers: np.ndarray,
                            ofdm_params: Dict,
-                           freq_domain: bool = True,) -> np.ndarray:
+                           freq_domain: bool = True) -> np.ndarray:
     """Generate MIMO channel matrices.
     
     This function generates MIMO channel matrices based on path information and
@@ -278,13 +281,13 @@ def _generate_MIMO_channel(array_response_product: np.ndarray,
         power = powers[i, non_nan_mask]
         delays_user = delays[i, non_nan_mask]
         phases_user = phases[i, non_nan_mask]
-        dopplers_user = dopplers[i, non_nan_mask] # TODO: apply doppler shift per path..
+        dopplers_user = dopplers[i, non_nan_mask]
         
         if freq_domain: # OFDM
-            path_gains = path_gen.generate(pwr=power, toa=delays_user, phs=phases_user, Ts=Ts).T
+            path_gains = path_gen.generate(pwr=power, toa=delays_user, phs=phases_user, Ts=Ts, dopplers=dopplers_user).T
             channel[i] = np.nansum(array_product[..., None, :] * path_gains[None, None, :, :], axis=-1)
         else: # TD channel
-            path_gains = np.sqrt(power) * np.exp(1j*np.deg2rad(phases_user))
+            path_gains = np.sqrt(power) * np.exp(1j * (np.deg2rad(phases_user) + 2 * np.pi * dopplers_user))
             channel[i, ..., :n_paths] = array_product * path_gains[None, None, :]
 
-    return channel 
+    return channel

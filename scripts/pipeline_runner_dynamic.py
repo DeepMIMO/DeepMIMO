@@ -128,3 +128,13 @@ dyn_dataset_name = dm.convert(outer_folder, scenario_name='scen1',
                                     overwrite=True, vis_scene=False)
 
 dyn_dataset = dm.load(dyn_dataset_name)
+
+#%%
+
+import deepmimo as dm  # type: ignore
+
+a = dm.load('asu_campus_3p5')
+params = dm.ChannelParameters()
+params.freq_domain = False
+params.enable_doppler = True
+a.compute_channels(params=params)
