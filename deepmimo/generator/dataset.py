@@ -1619,10 +1619,11 @@ class DynamicDataset(MacroDataset):
             dataset_prev = self.datasets[i - 1]
             rx_pos_diff = dataset_curr.rx_pos - dataset_prev.rx_pos
             tx_pos_diff = dataset_curr.tx_pos - dataset_prev.tx_pos
-            obj_pos_diff = dataset_curr.scene.objects.pos - dataset_prev.scene.objects.pos
+            obj_pos_diff = (np.vstack(dataset_curr.scene.objects.position) -
+                            np.vstack(dataset_prev.scene.objects.position))
             dataset_curr.rx_vel = rx_pos_diff / time_diff
             dataset_curr.tx_vel = tx_pos_diff / time_diff
-            dataset_curr.scene.objects.vel = obj_pos_diff / time_diff
+            dataset_curr.scene.objects.vel = [v for v in obj_pos_diff / time_diff]
 
             # For the first and last pair of scenes, assume that the position and time differences 
             # are the same as for the second and second-from-last pair of scenes, respectively.

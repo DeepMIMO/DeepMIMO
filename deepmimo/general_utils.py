@@ -580,3 +580,26 @@ class DelegatingList(list):
             # If it's a property, get values from all items
             results = [getattr(item, name) for item in self]
             return DelegatingList(results)
+
+    def __setattr__(self, name, value):
+        """Delegate attribute assignment to each item in the list.
+        
+        If value is a list/iterable, each item in the list gets the corresponding value.
+        Otherwise, all items get the same value.
+        """
+        if name in self.__dict__:
+            # Handle internal attributes
+            super().__setattr__(name, value)
+            return
+
+        if not self:
+            raise AttributeError(f"Empty list has no attribute '{name}'")
+
+        # If value is iterable and has the same length as self, assign each value
+        if hasattr(value, '__iter__') and not isinstance(value, (str, bytes)) and len(value) == len(self):
+            for item, val in __builtins__['zip'](self, value):
+                setattr(item, name, val)
+        else:
+            # Otherwise assign the same value to all items
+            for item in self:
+                setattr(item, name, value)
