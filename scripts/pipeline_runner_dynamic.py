@@ -139,7 +139,7 @@ print(f'obj_vel: {[obj.vel for obj in dyn_dataset.scene.objects]}')
 
 #%%
 # Non-uniform snapshots
-dyn_dataset.set_timestamps([0, 1.5, 2.3, 4.4]) # [timestamps of each scene]
+dyn_dataset.set_timestamps([0, 1.5, 2.3, 4.4, 5.8, 7.1, 8.9, 10.2, 11.7, 13.0]) # [timestamps of each scene]
 
 print(f'timestamps: {dyn_dataset.timestamps}')
 print(f'rx_vel: {dyn_dataset.rx_vel}')
