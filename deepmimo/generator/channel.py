@@ -12,10 +12,10 @@ based on path information from ray-tracing and antenna configurations.
 
 import numpy as np
 from tqdm import tqdm
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 from copy import deepcopy
 from .. import consts as c
-from ..general_utils import DotDict, compare_two_dicts
+from ..general_utils import DotDict, compare_two_dicts, deep_dict_merge
 
 class ChannelParameters(DotDict):
     """Class for managing channel generation parameters.
@@ -28,6 +28,16 @@ class ChannelParameters(DotDict):
     
     The parameters can be accessed directly using dot notation (e.g. params.bs_antenna.shape)
     or using dictionary notation (e.g. params['bs_antenna']['shape']).
+    
+    Examples:
+        # Initialize with default parameters
+        params = ChannelParameters()
+        
+        # Initialize with specific parameters
+        params = ChannelParameters(enable_doppler=True, freq_domain=True)
+        
+        # Initialize with nested parameters
+        params = ChannelParameters(bs_antenna={'shape': [4, 4]})  # Other bs_antenna fields preserved
     """
     # Default channel generation parameters
     DEFAULT_PARAMS = {
@@ -61,18 +71,26 @@ class ChannelParameters(DotDict):
         }
     }
 
-    def __init__(self, data: Optional[Dict] = None):
+    def __init__(self, data: Optional[Dict] = None, **kwargs):
         """Initialize channel generation parameters.
         
         Args:
             data: Optional dictionary containing channel parameters to override defaults
+            **kwargs: Additional parameters to override defaults. 
+                These will be merged with data if provided.
+                For nested parameters, provide them as dictionaries (e.g. bs_antenna={'shape': [4,4]})
+                Only specified fields will be overridden, other fields will keep their default values.
         """
         # Initialize with deep copy of defaults
         super().__init__(deepcopy(self.DEFAULT_PARAMS))
         
         # Update with provided data if any
         if data is not None:
-            self.update(data)
+            self.update(deep_dict_merge(self, data))
+            
+        # Update with kwargs if any provided
+        if kwargs:
+            self.update(deep_dict_merge(self, kwargs))
 
     def validate(self, n_ues: int) -> 'ChannelParameters':
         """Validate channel generation parameters.

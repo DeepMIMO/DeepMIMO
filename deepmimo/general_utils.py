@@ -13,6 +13,7 @@ the DeepMIMO toolkit.
 import numpy as np
 from pprint import pformat
 from typing import Dict, Any, TypeVar, Mapping, Optional
+from copy import deepcopy
 from . import consts as c
 import os
 from tqdm import tqdm
@@ -140,6 +141,62 @@ def load_dict_from_json(file_path: str) -> Dict[str, Any]:
     """
     with open(file_path, 'r') as f:
         return json.load(f)
+
+def deep_dict_merge(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
+    """Deep merge two dictionaries, preserving values from dict1 for keys not in dict2.
+    
+    This function recursively merges two dictionaries, keeping values from dict1
+    for keys that are not present in dict2. For keys present in both dictionaries,
+    if both values are dictionaries, they are recursively merged. Otherwise, the
+    value from dict2 is used.
+    
+    Args:
+        dict1: Base dictionary to merge into
+        dict2: Dictionary with values to override
+        
+    Returns:
+        Merged dictionary
+        
+    Example:
+        >>> dict1 = {'a': 1, 'b': {'c': 2, 'd': 3}}
+        >>> dict2 = {'b': {'c': 4}}
+        >>> deep_dict_merge(dict1, dict2)
+        {'a': 1, 'b': {'c': 4, 'd': 3}}
+    """
+    # Convert DotDict instances to regular dictionaries
+    if hasattr(dict1, 'to_dict'):
+        dict1 = dict1.to_dict()
+    if hasattr(dict2, 'to_dict'):
+        dict2 = dict2.to_dict()
+        
+    result = deepcopy(dict1)
+    for key, value in dict2.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_dict_merge(result[key], value)
+        else:
+            result[key] = value
+    return result
+
+def compare_two_dicts(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> bool:
+    """Compare two dictionaries for equality.
+            
+    This function performs a deep comparison of two dictionaries, handling
+    nested dictionaries.
+    
+    Args:
+        dict1 (dict): First dictionary to compare
+        dict2 (dict): Second dictionary to compare
+
+    Returns:
+        set: Set of keys in dict1 that are not in dict2
+    """
+    additional_keys = dict1.keys() - dict2.keys()
+    for key, item in dict1.items():
+        if isinstance(item, dict):
+            if key in dict2:
+                additional_keys = additional_keys | compare_two_dicts(dict1[key], dict2[key])
+    return additional_keys
+
 
 class DotDict(Mapping[K, V]):
     """A dictionary subclass that supports dot notation access to nested dictionaries.
@@ -489,28 +546,3 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     cartesian_coords[..., 2] = r * np.cos(elevation)                    # z
     
     return cartesian_coords
-
-# ============================================================================
-# Other Utilities
-# ============================================================================
-
-def compare_two_dicts(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> bool:
-    """Compare two dictionaries for equality.
-            
-    This function performs a deep comparison of two dictionaries, handling
-    nested dictionaries.
-    
-    Args:
-        dict1 (dict): First dictionary to compare
-        dict2 (dict): Second dictionary to compare
-
-    Returns:
-        set: Set of keys in dict1 that are not in dict2
-    """
-    additional_keys = dict1.keys() - dict2.keys()
-    for key, item in dict1.items():
-        if isinstance(item, dict):
-            if key in dict2:
-                additional_keys = additional_keys | compare_two_dicts(dict1[key], dict2[key])
-    return additional_keys
-
