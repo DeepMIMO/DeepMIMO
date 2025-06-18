@@ -1205,7 +1205,8 @@ class Dataset(DotDict):
         try:
             super().__delitem__(c.DOPPLER_PARAM_NAME)
         except KeyError:
-            print('Doppler cache is already cleared')
+            pass  # Doppler cache is already cleared
+            
     
     def _compute_doppler(self) -> np.ndarray:
         """Compute the doppler frequency shifts.
@@ -1595,7 +1596,10 @@ class DynamicDataset(MacroDataset):
         """Set the timestamps for the dataset.
 
         Args:
-            timestamps: Timestamps for the dataset. 
+            timestamps(int | float | list[int | float] | np.ndarray): 
+                Timestamps for each scene in the dataset. Can be:
+                - Single value: Creates evenly spaced timestamps
+                - List/array: Custom timestamps for each scene
         """
         self.timestamps = np.zeros(self.n_scenes)
         
@@ -1609,10 +1613,12 @@ class DynamicDataset(MacroDataset):
         
         if self.timestamps.ndim != 1:
             raise ValueError(f'Time reference must be single dimension.')
-        
-        # self._recompute_speeds()
-        # Needs position difference and time difference to compute speeds
 
+        self._compute_speeds()
+    
+    def _compute_speeds(self) -> None:
+        """Compute the speeds of each scene based on the position and time differences.""" 
+        # Compute position & time differences to compute speeds for each scene
         for i in range(1, self.n_scenes - 1):
             time_diff = (self.timestamps[i] - self.timestamps[i - 1])
             dataset_curr = self.datasets[i]
@@ -1622,7 +1628,7 @@ class DynamicDataset(MacroDataset):
             obj_pos_diff = (np.vstack(dataset_curr.scene.objects.position) -
                             np.vstack(dataset_prev.scene.objects.position))
             dataset_curr.rx_vel = rx_pos_diff / time_diff
-            dataset_curr.tx_vel = tx_pos_diff / time_diff
+            dataset_curr.tx_vel = tx_pos_diff[0] / time_diff
             dataset_curr.scene.objects.vel = [v for v in obj_pos_diff / time_diff]
 
             # For the first and last pair of scenes, assume that the position and time differences 
@@ -1639,17 +1645,6 @@ class DynamicDataset(MacroDataset):
                 dataset_2.rx_vel = dataset_curr.rx_vel
                 dataset_2.tx_vel = dataset_curr.tx_vel
                 dataset_2.scene.objects.vel = dataset_curr.scene.objects.vel
-
+        
         return
-
-    def _compute_speeds(self, pos_diff) -> None:
-        """Recompute the speeds of the dataset.
-
-        This method is used to recompute the speeds of the dataset.
-        It is used to recompute the speeds of the dataset.
-        It is used to recompute the speeds of the dataset.
-        """
-        self.rx_vel = self.rx_vel
-        self.tx_vel = self.tx_vel
-        self.obj_vel = [obj.vel for obj in self.scene.objects]
-        return
+    
