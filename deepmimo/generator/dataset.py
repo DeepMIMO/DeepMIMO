@@ -1149,26 +1149,28 @@ class Dataset(DotDict):
         
         self._tx_vel = velocities
         return
+    
     def set_doppler(self, doppler: float | list[float] | np.ndarray) -> None:
         """Set the doppler frequency shifts.
         
         Args:
             doppler: The doppler frequency shifts. [n_ue, max_paths] [Hz]
-            There are 3 options for the shape of the doppler array:
-            1. 1 value for all paths and users. [1, 1] [Hz]
-            2. a value for each user. [n_ue, 1] [Hz]
-            3. a value for each user and each path. [n_ue, max_paths] [Hz]
+                There are 3 options for the shape of the doppler array:
+                1. 1 value for all paths and users. [1,] [Hz]
+                2. a value for each user. [n_ue,] [Hz]
+                3. a value for each user and each path. [n_ue, max_paths] [Hz]
         """
-        if type(doppler) == float or type(doppler) == int:
-            doppler = np.array([doppler])
-        if type(doppler) == list:
-            doppler = np.array(doppler)
-        if doppler.ndim == 0:
-            doppler = np.repeat(doppler[None, None], self.n_ue * self.max_paths, axis=0)
-        if doppler.ndim == 1:
-            doppler = np.repeat(doppler[None, :], self.n_ue * self.max_paths, axis=0)
-        if doppler.ndim == 2:
-            doppler = np.repeat(doppler[None, :, :], self.n_ue, axis=0)
+        doppler = np.array([doppler]) if type(doppler) in [float, int] else np.array(doppler)
+
+        if doppler.ndim == 1 and doppler.shape[0] == 1:
+            doppler = np.ones((self.n_ue, self.max_paths)) * doppler[0]
+        elif doppler.ndim == 1 and doppler.shape[0] == self.n_ue:
+            doppler = np.repeat(doppler[None, :], self.max_paths, axis=1).reshape((self.n_ue, self.max_paths))
+        elif doppler.ndim == 2 and doppler.shape[0] == self.n_ue and doppler.shape[1] == self.max_paths:
+            pass
+        else:
+            raise ValueError(f'Invalid doppler shape: {doppler.shape}')
+        
         self.doppler = doppler
         return
 
@@ -1277,10 +1279,10 @@ class Dataset(DotDict):
         The angles are returned in radians as [azimuth, elevation].
         
         Returns:
-            np.ndarray: Array of shape [n_users, n_paths, max_interactions, 3] containing
+            np.ndarray: Array of shape [n_users, n_paths, max_interactions+1, 3] containing
                         the unit vectors between interactions (x, y, z)
         """
-        inter_angles = np.zeros((self.n_ue, self.max_paths, self.max_interactions+1, 3))
+        inter_angles = np.zeros((self.n_ue, self.max_paths, self.max_inter+1, 3))
 
         # Use the interaction positions to compute angles between each interaction
         for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
@@ -1322,7 +1324,7 @@ class Dataset(DotDict):
         Returns:
             np.ndarray: The objects that interact with each path of each user. [n_ue, max_paths, max_interactions]
         """
-        inter_obj_ids = np.zeros((self.n_ue, self.max_paths, self.max_interactions)) * np.nan
+        inter_obj_ids = np.zeros((self.n_ue, self.max_paths, self.max_inter)) * np.nan
 
         # Ensure there is only one terrain object
         terrain_objs = [obj for obj in self.scene.objects if obj.label == 'terrain']

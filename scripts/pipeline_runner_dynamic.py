@@ -131,9 +131,12 @@ dyn_dataset = dm.load(dyn_dataset_name)
 
 #%%
 
+import numpy as np
 import deepmimo as dm  # type: ignore
 
+#%%
 a = dm.load('asu_campus_3p5')
+a.set_doppler(10)
 params = dm.ChannelParameters()
 params.freq_domain = False
 params.enable_doppler = True

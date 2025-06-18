@@ -203,7 +203,7 @@ CH_PARAMS_PARAM_NAME = 'ch_params'  # Channel generation parameters
 LOS_PARAM_NAME = 'los'
 NUM_PATHS_PARAM_NAME = 'num_paths'
 MAX_PATHS_PARAM_NAME = 'max_paths'
-MAX_INTERACTIONS_PARAM_NAME = 'max_interactions'
+MAX_INTERACTIONS_PARAM_NAME = 'max_inter'
 PWR_LINEAR_PARAM_NAME = 'power_linear'
 PATHLOSS_PARAM_NAME = 'pathloss'
 DIST_PARAM_NAME = 'distance'
@@ -308,6 +308,9 @@ DATASET_ALIASES = {
     
     # Path count aliases
     'n_paths': NUM_PATHS_PARAM_NAME,
+    
+    # Max interactions aliases
+    'max_interactions': MAX_INTERACTIONS_PARAM_NAME,
     
     # Time of arrival aliases
     'toa': DELAY_PARAM_NAME,
