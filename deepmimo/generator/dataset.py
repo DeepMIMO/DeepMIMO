@@ -1557,6 +1557,30 @@ class MacroDataset:
         self.datasets.append(dataset)
         
 
+class DelegatingList(list):
+    """A list subclass that delegates method calls to each item in the list.
+    
+    When a method is called on this class, it will be called on each item in the list
+    and the results will be returned as a list.
+    """
+    def __getattr__(self, name):
+        """Delegate attribute access to each item in the list.
+        
+        If the attribute is a method, it will be called on each item and results returned as a list.
+        If the attribute is a property, a list of property values will be returned.
+        """
+        # Get the attribute from the first item to check if it's a method
+        first_attr = getattr(self[0], name)
+        
+        if callable(first_attr):
+            # If it's a method, return a function that calls it on all items
+            def method(*args, **kwargs):
+                return [getattr(item, name)(*args, **kwargs) for item in self]
+            return method
+        else:
+            # If it's a property, return a list of values
+            return [getattr(item, name) for item in self]
+
 class DynamicDataset(MacroDataset):
     """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
     
@@ -1578,11 +1602,11 @@ class DynamicDataset(MacroDataset):
     def _get_single(self, key):
         """Override _get_single to handle scene differently from other shared parameters.
         
-        For scene, return a list of scenes from all datasets.
+        For scene, return a DelegatingList of scenes from all datasets.
         For other shared parameters, use parent class behavior.
         """
         if key == 'scene':
-            return [dataset.scene for dataset in self.datasets]
+            return DelegatingList([dataset.scene for dataset in self.datasets])
         return super()._get_single(key)
         
     def __getattr__(self, name):
