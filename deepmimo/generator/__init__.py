@@ -11,5 +11,6 @@ __all__ = [
     'get_idxs_with_limits',
     'LinearPath',
     'steering_vector',
-    'get_uniform_idxs'
+    'get_uniform_idxs',
+    'DeepMIMOArray'
 ] 

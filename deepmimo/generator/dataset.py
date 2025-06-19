@@ -43,6 +43,7 @@ from ..general_utils import DotDict, spherical_to_cartesian, DelegatingList
 from .. import consts as c
 from ..info import info
 from .visualization import plot_coverage, plot_rays
+from .array_wrapper import DeepMIMOArray
 
 # Channel generation
 from .channel import _generate_MIMO_channel, ChannelParameters
@@ -129,10 +130,6 @@ class Dataset(DotDict):
         (See aliases dictionary for complete mapping)
     """
     
-    ###########################################
-    # 1. Core Interface
-    ###########################################
-    
     def __init__(self, data: Optional[Dict[str, Any]] = None):
         """Initialize dataset with optional data.
         
@@ -140,20 +137,49 @@ class Dataset(DotDict):
             data: Initial dataset dictionary. If None, creates empty dataset.
         """
         super().__init__(data or {})
-
-    def __getattr__(self, key: str) -> Any:
-        """Enable dot notation access."""
-        try:
-            return super().__getitem__(key)
-        except KeyError:
-            return self._resolve_key(key)
+    
+    ###########################################
+    # 1. Core Interface
+    ###########################################
+    
+    # List of arrays that should be wrapped with DeepMIMOArray
+    WRAPPABLE_ARRAYS = [
+        'power', 'phase', 'delay', 'aoa_az', 'aoa_el', 'aod_az', 'aod_el',
+        'inter', 'los', 'channel', 'power_linear', 'pathloss', 'distance',
+        'num_paths', 'inter_str', 'doppler', 'inter_obj'
+    ]
+    
+    def _wrap_array(self, key: str, value: Any) -> Any:
+        """Wrap numpy arrays with DeepMIMOArray if appropriate.
+        
+        Args:
+            key: The key/name of the array
+            value: The array value to potentially wrap
+            
+        Returns:
+            The original value or a wrapped DeepMIMOArray
+        """
+        if isinstance(value, np.ndarray) and key in self.WRAPPABLE_ARRAYS:
+            # Only wrap arrays that have num_rx in first dimension
+            if value.shape[0] == self.n_ue and not isinstance(value, DeepMIMOArray):
+                return DeepMIMOArray(value, self)
+        return value
 
     def __getitem__(self, key: str) -> Any:
-        """Get an item from the dataset, computing it if necessary."""
+        """Get an item from the dataset, computing it if necessary and wrapping if appropriate."""
         try:
-            return super().__getitem__(key)
+            value = super().__getitem__(key)
         except KeyError:
-            return self._resolve_key(key)
+            value = self._resolve_key(key)
+        return self._wrap_array(key, value)
+            
+    def __getattr__(self, key: str) -> Any:
+        """Enable dot notation access with array wrapping."""
+        try:
+            value = super().__getitem__(key)
+        except KeyError:
+            value = self._resolve_key(key)
+        return self._wrap_array(key, value)
 
     def _resolve_key(self, key: str) -> Any:
         """Resolve a key through the lookup chain.
@@ -235,7 +261,7 @@ class Dataset(DotDict):
         
         return params
     
-    def compute_channels(self, params: Optional[ChannelParameters] = None) -> np.ndarray:
+    def compute_channels(self, params: Optional[ChannelParameters] = None, **kwargs) -> np.ndarray:
         """Compute MIMO channel matrices for all users.
         
         This is the main public method for computing channel matrices. It handles all the
@@ -251,13 +277,19 @@ class Dataset(DotDict):
         Args:
             params: Channel generation parameters. If None, uses default parameters.
                     See ChannelParameters class for details.
+            **kwargs: Additional keyword arguments to pass to ChannelParameters constructor
+                    if params is None. Ignored if params is provided. 
+                    If provided, overrides existing channel parameters (e.g. set_channel_params).
             
         Returns:
             numpy.ndarray: MIMO channel matrix with shape [n_users, n_rx_ant, n_tx_ant, n_subcarriers]
                           if freq_domain=True, otherwise [n_users, n_rx_ant, n_tx_ant, n_paths]
         """
         if params is None:
-            params = ChannelParameters() if self.ch_params is None else self.ch_params
+            if kwargs:
+                params = ChannelParameters(**kwargs)
+            else:
+                params = self.ch_params if self.ch_params is not None else ChannelParameters()
 
         self.set_channel_params(params)
 
