@@ -45,6 +45,7 @@ from .general_utils import (
     load_dict_from_json,
 )
 from . import consts as c
+import time
 
 def summary(scen_name: str, print_summary: bool = True) -> Optional[str]:
     """Print a summary of the dataset."""
@@ -207,11 +208,12 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
         plot_idx = [0, 1]  # currently only 2 plots are supported
     elif isinstance(plot_idx, int):
         plot_idx = [plot_idx]
-    
+        
+    timestamp = int(time.time()*1000)
     # Image 1: 3D Scene
     if 0 in plot_idx:
         try:
-            scene_img_path = os.path.join(temp_dir, 'scene.png')
+            scene_img_path = os.path.join(temp_dir, f'scene_{timestamp:016d}.png')
             dataset.scene.plot()
             if save_imgs:
                 plt.savefig(scene_img_path, dpi=100, bbox_inches='tight')
@@ -226,7 +228,7 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
     # Image 2: Scenario summary (2D view)
     if 1 in plot_idx:
         try:
-            img2_path = os.path.join(temp_dir, 'scenario_summary.png')
+            img2_path = os.path.join(temp_dir, f'scenario_summary_{timestamp:016d}.png')
             txrx_sets = dataset.txrx_sets
 
             tx_set = [s for s in txrx_sets if s.is_tx][0]
