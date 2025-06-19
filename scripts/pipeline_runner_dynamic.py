@@ -38,8 +38,8 @@ def path_inspection(paths):
 	# print(paths.doppler.numpy()[i,0,:])
 	# print(f'doppler shape: {paths.doppler.shape}')
 	# print(paths.tau.numpy()[i,0,:])
-	complex_a = paths.a[0][i,0,0,0,:].numpy() + 1j * paths.a[1][i,0,0,0,:].numpy()
-	path_idxs = np.argsort(np.abs(complex_a))[::-1]
+	# complex_a = paths.a[0][i,0,0,0,:].numpy() + 1j * paths.a[1][i,0,0,0,:].numpy()
+	# path_idxs = np.argsort(np.abs(complex_a))[::-1]
 	print('reordered doppler & delay')
 	# print('delay')
 	# print(paths.tau.numpy()[i,0,path_idxs])
@@ -57,49 +57,47 @@ def scene_edit(scene):
 	"""
 	Edit the scene before ray tracing.
 	"""
+	import mitsuba as mi
+	import sionna.rt
 	objs = [obj for obj_id, obj in scene.objects.items()]
-	scene.edit(remove=objs[:5])
+	scene.edit(remove=objs[3])
+	scene.edit(remove=objs[1])
+	car_material = sionna.rt.ITURadioMaterial("car-material", "metal", thickness=0.01, color=(0.8, 0.1, 0.1))
+	car_obj = sionna.rt.SceneObject(fname=sionna.rt.scene.low_poly_car, name=f"car", radio_material=car_material)
+	scene.edit(add=car_obj)
+	car_obj.scaling = 5.0
+	car_obj.position = mi.Vector3f(np.array([0, 0, 0]))
+	# print(f'scene.objects: {scene.objects}')
 
-p['path_inspection_func'] = path_inspection
+p['path_inspection_func'] = None #path_inspection
 p['scene_edit_func'] = scene_edit
 
-#%% User position generation
-
-n_time = 10
-x_step = 1
-
-# Generate user positions with 1-meter spacing along x-axis
-x_coords = np.arange(0, n_time * x_step, x_step)  # 0 to 9 meters with 1m spacing
-rx_pos_list = []
-for x in x_coords:
-    # Create array for two users at this x position
-    user_pos = np.array([
-        [x, 0, 1.5],    # User at y=0
-        [x, 5, 1.5]    # User at y=10
-    ])
-    rx_pos_list.append(user_pos)
-
-tx_pos = np.array([[0, 0, 10]])
-
 #%% Set parameters
+n_steps = 11
+x1_coords = np.linspace(-20, 20, n_steps)
+x2_coords = np.linspace(10, -10, n_steps)
 
-for index in range(n_time):
+for timestep in range(n_steps):
 
-	# Define extra user parameters
-	p['rx_ori'] = np.array([[0, 0, 0], [0, 0, 0]])
-	p['tx_ori'] = np.array([0, 0, 0])
-	p['rx_vel'] = np.array([[0, 0, 0], [0, 0, 0]])
-	p['tx_vel'] = np.array([0, 0, 0])
+	# Define extra user parameters (these just need to match the number of users)
+
+	rx_pos = np.array([[x1_coords[timestep], -50, 1.5],
+	                   [x2_coords[timestep], -55, 1.5]])
+	tx_pos = np.array([[0, 50, 1.5]])
+	p['rx_ori'] = None # np.array([[0, 0, 0], [0, 0, 0]])
+	p['tx_ori'] = None # np.array([0, 0, 0])
+	p['rx_vel'] = None # np.array([[0, 0, 0], [0, 0, 0]])
+	p['tx_vel'] = None # np.array([0, 0, 0])
 
 	# Define extra object parameters (should match the scene.objects)
-	p['obj_pos'] = None # np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
-	p['obj_ori'] = None # np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
-	p['obj_vel'] = None # np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0]])
+	p['obj_idx'] = ['car']
+	p['obj_pos'] = [np.array([-50, 0, 0]) + np.array([10, 0, 0]) * timestep]
+	# p['obj_ori'] = None # np.array([[0, 0, 0]])
+	# p['obj_vel'] = None # np.array([[0, 0, 0]])
 
-	print(f"Processing time index: {index}")
-	p['name'] = f'simple_reflector_time_{index}'
+	print(f"Processing time index: {timestep}")
+	p['name'] = f'simple_reflector_time_{timestep:02d}'  # 02d for 2 digits (needed for sorting)
 	osm_folder = os.path.join(OSM_ROOT, p['name'])
-	rx_pos = rx_pos_list[index]
 	
 	print('Starting RT')
 	# osm_folder = os.path.join(OSM_ROOT, "simple_reflector")
@@ -108,13 +106,14 @@ for index in range(n_time):
 	rt_path = raytrace_sionna(osm_folder, tx_pos, rx_pos, **p)
 
 	# Convert to DeepMIMO format
-	scen_name = dm.convert(rt_path, overwrite=True)
+	scen_name = dm.convert(rt_path, overwrite=True, vis_scene=False)
 
 	# Test Conversion
 	dataset = dm.load(scen_name)
-	dataset.plot_coverage(dataset.los, scat_sz=40)
-	dataset.plot_coverage(dataset.pwr[:, 0], scat_sz=40)
-	break
+	dataset.scene.plot(proj_2d=True)
+	# dataset.plot_coverage(dataset.los, scat_sz=40)
+	# dataset.plot_coverage(dataset.pwr[:, 0], scat_sz=40)
+	# break
     
 
 #%% Load a single scenario

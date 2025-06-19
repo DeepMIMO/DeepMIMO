@@ -174,14 +174,14 @@ def summary(scen_name: str, print_summary: bool = True) -> Optional[str]:
 
 
 def plot_summary(scenario_name: str | None = None, save_imgs: bool = False, 
-                 dataset = None, plot_idx: list[int] | None = None) -> list[str]:
+                 dataset = None, plot_idx: int | list[int] | None = None) -> list[str]:
     """Make images for the scenario.
     
     Args:
         scenario_name: Scenario name
         dataset: Dataset, MacroDataset, or DynamicDataset. If provided, scenario_name is ignored.
         save_imgs: Whether to save the images to the figures directory
-        plot_idx: List of indices of summaries to plot. If None, all summaries are plotted.
+        plot_idx: Index or list of indices of summaries to plot. If None, all summaries are plotted.
 
     Returns:
         List of paths to generated images
@@ -205,6 +205,8 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
 
     if plot_idx is None:
         plot_idx = [0, 1]  # currently only 2 plots are supported
+    elif isinstance(plot_idx, int):
+        plot_idx = [plot_idx]
     
     # Image 1: 3D Scene
     if 0 in plot_idx:

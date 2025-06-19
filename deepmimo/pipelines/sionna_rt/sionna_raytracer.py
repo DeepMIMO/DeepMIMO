@@ -17,6 +17,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow (excessive) logg
 
 # Third-party imports
 import numpy as np
+import mitsuba as mi
 from tqdm import tqdm
 
 # Local imports
@@ -130,16 +131,20 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
     if not rt_params['use_builtin_scene']:
         scene = set_materials(scene)
     
-    # Change objects in the scene
-    if rt_params['obj_pos'] is not None:
-        for i, obj in enumerate(scene.objects):
-            obj.position = rt_params['obj_pos'][i]
-            obj.orientation = rt_params['obj_ori'][i]
-            obj.velocity = rt_params['obj_vel'][i]
-    
     if rt_params['scene_edit_func'] is not None:
         rt_params['scene_edit_func'](scene)
 
+    # Change objects in the scene
+    if rt_params['obj_idx'] is not None:
+        for i, obj_idx in enumerate(rt_params['obj_idx']):
+            obj = scene.objects[obj_idx]
+            if rt_params['obj_pos'] is not None:
+                obj.position = mi.Vector3f(rt_params['obj_pos'][i])
+            if rt_params['obj_ori'] is not None:
+                obj.orientation = mi.Vector3f(rt_params['obj_ori'][i])
+            if rt_params['obj_vel'] is not None:
+                obj.velocity = mi.Vector3f(rt_params['obj_vel'][i])
+    
     # Map general parameters to Sionna RT parameters
     if IS_LEGACY_VERSION:
         compute_paths_rt_params = {
@@ -166,12 +171,16 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
             "refraction": rt_params['refraction']
         }
 
+    # Helper function to get None or index of array if not None
+    none_or_index = lambda x, i: None if x is None else x[i]
+
     # Add BSs
     num_bs = len(tx_pos)
     for b in range(num_bs): 
         pwr_dbm = tf.Variable(0, dtype=tf.float32) if IS_LEGACY_VERSION else 0
-        vel_dict = {} if IS_LEGACY_VERSION else {'velocity': rt_params['tx_vel'][b]}
-        tx = Transmitter(position=tx_pos[b], orientation=rt_params['tx_ori'][b], 
+        vel_dict = {} if IS_LEGACY_VERSION else {'velocity': none_or_index(rt_params['tx_vel'], b)}
+        tx = Transmitter(position=tx_pos[b], 
+                         orientation=none_or_index(rt_params['tx_ori'], b), 
                          name=f"BS_{b}", power_dbm=pwr_dbm, **vel_dict)
         scene.add(tx)
         print(f"Added BS_{b} at position {tx_pos[b]}")
@@ -187,9 +196,10 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
         # Ray-tracing BS-BS paths
         print("Ray-tracing BS-BS paths")
         for b in range(num_bs):
-            vel_dict = {} if IS_LEGACY_VERSION else {'velocity': rt_params['tx_vel'][b]}
+            vel_dict = {} if IS_LEGACY_VERSION else {'velocity': none_or_index(rt_params['tx_vel'], b)}
             scene.add(Receiver(name=f"rx_{b}", position=tx_pos[b], 
-                               orientation=rt_params['tx_ori'][b], **vel_dict))
+                               orientation=none_or_index(rt_params['tx_ori'], b), 
+                               **vel_dict))
 
         paths = _compute_paths(scene, p_solver, compute_paths_rt_params, 
                                cpu_offload=rt_params['cpu_offload'], 
@@ -203,10 +213,11 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
     # Ray-tracing BS-UE paths
     for batch in tqdm(data_loader, desc="Ray-tracing BS-UE paths", unit='batch'):
         for i in batch:
-            vel_dict = {} if IS_LEGACY_VERSION else {'velocity': rt_params['rx_vel'][i]}
+            vel_dict = {} if IS_LEGACY_VERSION else {'velocity': none_or_index(rt_params['rx_vel'], i)}
             scene.add(Receiver(name=f"rx_{i}", position=rx_pos[i], 
-                               orientation=rt_params['rx_ori'][i], **vel_dict))
-            
+                               orientation=none_or_index(rt_params['rx_ori'], i),
+                               **vel_dict))
+        
         paths = _compute_paths(scene, p_solver, compute_paths_rt_params, 
                                cpu_offload=rt_params['cpu_offload'], 
                                path_inspection_func=rt_params['path_inspection_func'])
