@@ -136,6 +136,9 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
             obj.position = rt_params['obj_pos'][i]
             obj.orientation = rt_params['obj_ori'][i]
             obj.velocity = rt_params['obj_vel'][i]
+    
+    if rt_params['scene_edit_func'] is not None:
+        rt_params['scene_edit_func'](scene)
 
     # Map general parameters to Sionna RT parameters
     if IS_LEGACY_VERSION:

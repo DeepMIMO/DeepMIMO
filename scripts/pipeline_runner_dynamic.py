@@ -53,7 +53,15 @@ def path_inspection(paths):
 	# print('vertices')
 	# print(paths.vertices.numpy()[:, i, 0, path_idxs, :].swapaxes(0, -2))
 
+def scene_edit(scene):
+	"""
+	Edit the scene before ray tracing.
+	"""
+	objs = [obj for obj_id, obj in scene.objects.items()]
+	scene.edit(remove=objs[:5])
+
 p['path_inspection_func'] = path_inspection
+p['scene_edit_func'] = scene_edit
 
 #%% User position generation
 

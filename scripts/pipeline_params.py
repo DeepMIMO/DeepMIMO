@@ -138,6 +138,7 @@ p = {
 	'builtin_scene_path': 'simple_street_canyon', # 'simple_reflector', 'simple_street_canyon'
 	'path_inspection_func': None,  # Function to inspect the paths after computation 
 	                               # (before filtering or saving)
+	'scene_edit_func': None,  # Function to edit the scene before ray tracing
 	
 	# Sionna 0.x parameters
 	'scat_random_phases': True,
