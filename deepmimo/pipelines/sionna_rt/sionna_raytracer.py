@@ -179,9 +179,9 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
     for b in range(num_bs): 
         pwr_dbm = tf.Variable(0, dtype=tf.float32) if IS_LEGACY_VERSION else 0
         vel_dict = {} if IS_LEGACY_VERSION else {'velocity': none_or_index(rt_params['tx_vel'], b)}
-        tx = Transmitter(position=tx_pos[b], 
+        tx = Transmitter(name=f"BS_{b}", position=tx_pos[b], 
                          orientation=none_or_index(rt_params['tx_ori'], b), 
-                         name=f"BS_{b}", power_dbm=pwr_dbm, **vel_dict)
+                         power_dbm=pwr_dbm, **vel_dict)
         scene.add(tx)
         print(f"Added BS_{b} at position {tx_pos[b]}")
 

@@ -27,7 +27,7 @@ from scripts.pipeline_params import *
 # Absolute (!) Paths
 OSM_ROOT = os.path.join(os.getcwd(), "osm_root")
 
-np.set_printoptions(precision=3, suppress=True)
+np.set_printoptions(precision=2, suppress=True)
 
 
 def path_inspection(paths):
@@ -38,11 +38,11 @@ def path_inspection(paths):
 	# print(paths.doppler.numpy()[i,0,:])
 	# print(f'doppler shape: {paths.doppler.shape}')
 	# print(paths.tau.numpy()[i,0,:])
-	# complex_a = paths.a[0][i,0,0,0,:].numpy() + 1j * paths.a[1][i,0,0,0,:].numpy()
-	# path_idxs = np.argsort(np.abs(complex_a))[::-1]
+	complex_a = paths.a[0][i,0,0,0,:].numpy() + 1j * paths.a[1][i,0,0,0,:].numpy()
+	path_idxs = np.argsort(np.abs(complex_a))[::-1]
 	print('reordered doppler & delay')
 	# print('delay')
-	# print(paths.tau.numpy()[i,0,path_idxs])
+	print(paths.tau.numpy()[i,0,path_idxs])
 	# a1 = np.take_along_axis(a, paths_idxs_a, axis=0)
 	# doppler_reordered = paths.doppler[:,0,path_idxs]
 	print('doppler')
@@ -62,14 +62,17 @@ def scene_edit(scene):
 	objs = [obj for obj_id, obj in scene.objects.items()]
 	scene.edit(remove=objs[3])
 	scene.edit(remove=objs[1])
-	car_material = sionna.rt.ITURadioMaterial("car-material", "metal", thickness=0.01, color=(0.8, 0.1, 0.1))
-	car_obj = sionna.rt.SceneObject(fname=sionna.rt.scene.low_poly_car, name=f"car", radio_material=car_material)
+	car_material = sionna.rt.ITURadioMaterial("car-material", "metal", 
+	                                          thickness=0.01, color=(0.8, 0.1, 0.1))
+	car_obj = sionna.rt.SceneObject(fname=sionna.rt.scene.low_poly_car, 
+	                                name=f"car", radio_material=car_material)
 	scene.edit(add=car_obj)
 	car_obj.scaling = 5.0
 	car_obj.position = mi.Vector3f(np.array([0, 0, 0]))
 	# print(f'scene.objects: {scene.objects}')
 
-p['path_inspection_func'] = None #path_inspection
+
+p['path_inspection_func'] = path_inspection
 p['scene_edit_func'] = scene_edit
 
 #%% Set parameters
@@ -78,12 +81,11 @@ x1_coords = np.linspace(-20, 20, n_steps)
 x2_coords = np.linspace(10, -10, n_steps)
 
 for timestep in range(n_steps):
-
 	# Define extra user parameters (these just need to match the number of users)
 
 	rx_pos = np.array([[x1_coords[timestep], -50, 1.5],
 	                   [x2_coords[timestep], -55, 1.5]])
-	tx_pos = np.array([[0, 50, 1.5]])
+	tx_pos = np.array([[0, 50, 10.5]])
 	p['rx_ori'] = None # np.array([[0, 0, 0], [0, 0, 0]])
 	p['tx_ori'] = None # np.array([0, 0, 0])
 	p['rx_vel'] = None # np.array([[0, 0, 0], [0, 0, 0]])
@@ -113,26 +115,23 @@ for timestep in range(n_steps):
 	dataset.scene.plot(proj_2d=True)
 	# dataset.plot_coverage(dataset.los, scat_sz=40)
 	# dataset.plot_coverage(dataset.pwr[:, 0], scat_sz=40)
-	# break
     
 
 #%% Load a single scenario
 
 outer_folder = OSM_ROOT
 
-scen_name = dm.convert(outer_folder + '/simple_reflector_time_0', overwrite=True)
+scen_name = dm.convert(outer_folder + '/simple_reflector_time_05', overwrite=True)
 dataset = dm.load(scen_name)
 
 #%% Load a dynamic dataset
 outer_folder = OSM_ROOT
 dyn_dataset_name = dm.convert(outer_folder, scenario_name='scen1', 
-                                    overwrite=True, vis_scene=False)
+                              overwrite=True, vis_scene=False)
 
 dyn_dataset = dm.load(dyn_dataset_name)
 
 #%% Example 3: Dynamic Dataset
-
-# NOTE: requires a dynamic dataset to test. Currently there are no Dynamic Datasets
 
 # Uniform snapshots
 dyn_dataset.set_timestamps(10) # [seconds between scenes]
@@ -144,9 +143,8 @@ print(f'obj_vel: {[obj.vel for obj in dyn_dataset.scene.objects]}')
 
 # dataset.compute_channels(dm.ChannelParameters(enable_doppler = True))
 
-#%%
-# Non-uniform snapshots
-dyn_dataset.set_timestamps([0, 1.5, 2.3, 4.4, 5.8, 7.1, 8.9, 10.2, 11.7, 13.0]) # [timestamps of each scene]
+#%% Non-uniform snapshots
+dyn_dataset.set_timestamps([0, 1.5, 2.3, 4.4, 5.8, 7.1, 8.9, 10.2, 11.7, 13.0, 13.1]) # [timestamps of each scene]
 
 print(f'timestamps: {dyn_dataset.timestamps}')
 print(f'rx_vel: {dyn_dataset.rx_vel}')
@@ -154,3 +152,4 @@ print(f'tx_vel: {dyn_dataset.tx_vel}')
 print(f'obj_vel: {[obj.vel for obj in dyn_dataset.scene.objects]}')
 
 # dataset.compute_channels(dm.ChannelParameters(enable_doppler = True))
+
