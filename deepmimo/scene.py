@@ -707,12 +707,17 @@ class Scene:
         Args:
             base_folder: Base folder containing matrix files
         """
-        # Load matrices
-        vertices = loadmat(f"{base_folder}/vertices.mat")['vertices']
-        objects_metadata = load_dict_from_json(f"{base_folder}/objects.json")
-        
         scene = cls()
-        
+        try:
+            vertices = loadmat(f"{base_folder}/vertices.mat")['vertices']
+            objects_metadata = load_dict_from_json(f"{base_folder}/objects.json")
+        except FileNotFoundError:
+            print(f"FileNotFoundError: {base_folder}/vertices.mat or {base_folder}/objects.json not found")
+            vertices = np.array([])
+            objects_metadata = []
+        except Exception as e:
+            raise Exception(f"Error loading scene from {base_folder}: {e}")
+
         # Create objects using metadata
         for object_data in objects_metadata:
             obj = PhysicalElement.from_dict(object_data, vertices)
