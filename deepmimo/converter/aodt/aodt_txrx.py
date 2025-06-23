@@ -162,7 +162,7 @@ def read_txrx(rt_folder: str) -> Dict[str, Any]:
             'mech_azimuth': float(ru['mech_azimuth']),
             'scs': int(ru['subcarrier_spacing']),
             'fft_size': int(ru['fft_size']),
-            'panel': panels.get(ru['panel'], None),
+            'panel': [panels[i] for i in ru['panel']][0], # use only first panel
             'du_id': int(ru['du_id']) if not pd.isna(ru['du_id']) else None,
             'du_manual_assign': bool(ru['du_manual_assign'])
         }
@@ -178,7 +178,7 @@ def read_txrx(rt_folder: str) -> Dict[str, Any]:
             'power': float(ue['radiated_power']),
             'height': float(ue['height']),
             'mech_tilt': float(ue['mech_tilt']),
-            'panel': panels.get(ue['panel'], None),
+            'panel': [panels[i] for i in ue['panel']][0],
             'indoor': bool(ue['is_indoor_mobility']),
             'bler_target': float(ue['bler_target']),
             'mobility': {
