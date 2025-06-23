@@ -31,6 +31,7 @@ scripts/b2_direct_upload.py
 logging_*.txt
 **/.ipynb_checkpoints/
 aodt_scripts/*
+RT_SOURCES/*
 
 # Others
 building_*
