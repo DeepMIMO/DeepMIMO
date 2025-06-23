@@ -167,7 +167,10 @@ def validate_isotropic_patterns(rt_folder: str, panels: Dict[str, Any]) -> None:
             raise ValueError(f"Pattern ID {pattern_id} not found in patterns.parquet")
         
         pattern_type = pattern.iloc[0]['pattern_type']
-        if pattern_type not in [0,2]:  # TODO: put this back to != 0
+        if pattern_type == 2:
+            print(f"WARNING: Pattern ID {pattern_id} uses halfwave dipole antenna (type=2)."
+                  "Ray tracing results may be inaccurate.")
+        elif pattern_type != 0:
             pattern_desc = PATTERN_TYPES.get(pattern_type, "custom" if pattern_type >= 100 else "unknown")
             raise ValueError(
                 f"Pattern ID {pattern_id} uses {pattern_desc} antenna (type={pattern_type}). "
