@@ -26,7 +26,7 @@ def _find_converter_from_dir(directory: str) -> Optional[Callable]:
         Optional[Callable]: The converter function if a converter is found, or None if no converter is found
     """
     files_in_dir = os.listdir(directory)
-    if cu.ext_in_list('.aodt', files_in_dir):
+    if cu.ext_in_list('.parquet', files_in_dir):
         print("Using AODT converter")
         return aodt_rt_converter
     elif cu.ext_in_list('.pkl', files_in_dir):
