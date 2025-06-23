@@ -48,7 +48,7 @@ def export_database_to_parquet(client, host, database, output_dir, filter_tables
     """Export a database to parquet files."""
     tables = get_all_tables(client, database)
     ignore_tables = ['cfrs', 'training_result', 'world', 'csi_report'
-                     'telemetry', 'patterns', 'dus', 'ran_config']
+                     'telemetry', 'dus', 'ran_config']
     if filter_tables:
         tables_to_export = [t for t in tables if t not in ignore_tables]
     else:

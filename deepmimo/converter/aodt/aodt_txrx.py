@@ -2,17 +2,27 @@
 AODT Transmitter/Receiver Configuration Module.
 
 This module handles reading and processing:
-1. Distributed Unit (DU) configurations from dus.parquet
-2. Radio Unit (RU) configurations from rus.parquet
-3. User Equipment (UE) configurations from ues.parquet
-4. Antenna panel configurations from panels.parquet
-5. Antenna patterns from patterns.parquet
+1. Radio Unit (RU) configurations from rus.parquet
+2. User Equipment (UE) configurations from ues.parquet
+3. Antenna panel configurations from panels.parquet
+4. Antenna patterns from patterns.parquet
 """
 
 import os
 import pandas as pd
 import numpy as np
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List, Tuple
+from ...txrx import TxRxSet
+from . import aodt_utils as au
+
+# AODT antenna pattern types and their descriptions
+PATTERN_TYPES = {
+    0: "isotropic",        # Radiates equally in all directions
+    1: "infinitesimal",    # Theoretical point source
+    2: "halfwave dipole",  # Standard λ/2 dipole antenna
+    3: "rectangular microstrip"  # Patch antenna
+    # ≥100: Custom pattern
+}
 
 def read_panels(rt_folder: str) -> Dict[str, Any]:
     """Read antenna panel configurations.
@@ -54,88 +64,130 @@ def read_panels(rt_folder: str) -> Dict[str, Any]:
         panels[panel['panel_id']] = panel_dict
     return panels
 
-def read_patterns(rt_folder: str) -> Dict[str, Any]:
-    """Read antenna patterns.
-
+def convert_to_deepmimo_txrxset(tx_rx_data: Dict[str, Any], is_tx: bool, id_: int) -> TxRxSet:
+    """Convert AODT TX/RX data to DeepMIMO TxRxSet format.
+    
     Args:
-        rt_folder (str): Path to folder containing patterns.parquet.
-
+        tx_rx_data (Dict[str, Any]): Dictionary containing TX/RX configuration
+        is_tx (bool): Whether this is a transmitter (True) or receiver (False)
+        id_ (int): Unique identifier for the DeepMIMO set
+        
     Returns:
-        Dict[str, Any]: Dictionary mapping pattern IDs to configurations.
+        TxRxSet: DeepMIMO format TX/RX set
     """
+    # Get panel configuration
+    panel = tx_rx_data['panel']
+    array_config = panel['array_config']
+    
+    # Calculate total number of antenna elements
+    num_ant = array_config['num_horz'] * array_config['num_vert']
+    if panel['dual_polarized']:
+        num_ant *= 2
+    
+    # Create antenna positions array
+    ant_positions = []
+    for i in range(array_config['num_horz']):
+        for j in range(array_config['num_vert']):
+            x = i * array_config['spacing_horz']
+            y = j * array_config['spacing_vert']
+            ant_positions.append([x, y, 0])
+            if panel['dual_polarized']:
+                ant_positions.append([x, y, 0])  # Same position, different polarization
+    
+    # Create TxRxSet
+    return TxRxSet(
+        name=f"{'tx' if is_tx else 'rx'}_{tx_rx_data['id']}",
+        id_orig=tx_rx_data['id'],
+        id=id_,
+        is_tx=is_tx,
+        is_rx=not is_tx,
+        num_points=1,  # Each TX/RX is a single point
+        num_active_points=1,
+        num_ant=num_ant,
+        dual_pol=panel['dual_polarized'],
+        ant_rel_positions=ant_positions,
+        array_orientation=[
+            float(tx_rx_data['mech_azimuth']), 
+            float(tx_rx_data['mech_tilt']), 
+            float(panel['array_config']['roll_angle_first'])
+        ]
+    )
+
+def validate_isotropic_patterns(rt_folder: str, panels: Dict[str, Any]) -> None:
+    """Validate that all antenna patterns are isotropic (type 0).
+    
+    This function performs two checks:
+    1. Each panel must have exactly one pattern ID
+    2. Each unique pattern ID must correspond to an isotropic pattern
+    
+    Pattern types in AODT:
+        0: Isotropic - Radiates equally in all directions
+        1: Infinitesimal - Theoretical point source
+        2: Halfwave Dipole - Standard λ/2 dipole antenna
+        3: Rectangular Microstrip - Patch antenna
+        ≥100: Custom pattern
+    
+    Args:
+        rt_folder (str): Path to folder containing patterns.parquet
+        panels (Dict[str, Any]): Dictionary of panel configurations
+        
+    Raises:
+        FileNotFoundError: If patterns.parquet is not found
+        ValueError: If:
+            - patterns.parquet is empty
+            - Any panel has multiple pattern IDs
+            - Any pattern ID is not found
+            - Any pattern is not isotropic (type != 0)
+    """
+    # Read patterns file
     patterns_file = os.path.join(rt_folder, 'patterns.parquet')
     if not os.path.exists(patterns_file):
-        return {}
+        raise FileNotFoundError(f"patterns.parquet not found in {rt_folder}")
+    
+    patterns_df = pd.read_parquet(patterns_file)
+    if len(patterns_df) == 0:
+        raise ValueError("patterns.parquet is empty")
+    
+    # Check that each panel has exactly one pattern ID
+    for panel_id, panel in panels.items():
+        unique_pattern_ids = np.unique(panel['pattern_indices'])
+        if len(unique_pattern_ids) != 1:
+            raise ValueError(f"Panel {panel_id} has {len(unique_pattern_ids)} patterns. Expected exactly 1.")
+    
+    # Get all unique pattern IDs across all panels
+    unique_pattern_ids = {
+        panel['pattern_indices'][0]  # Safe to use [0] after above check
+        for panel in panels.values()
+    }
+    
+    # Check that each pattern ID corresponds to an isotropic pattern
+    for pattern_id in unique_pattern_ids:
+        pattern = patterns_df[patterns_df['pattern_id'] == pattern_id]
+        if len(pattern) == 0:
+            raise ValueError(f"Pattern ID {pattern_id} not found in patterns.parquet")
+        
+        pattern_type = pattern.iloc[0]['pattern_type']
+        if pattern_type not in [0,2]:  # TODO: put this back to != 0
+            pattern_desc = PATTERN_TYPES.get(pattern_type, "custom" if pattern_type >= 100 else "unknown")
+            raise ValueError(
+                f"Pattern ID {pattern_id} uses {pattern_desc} antenna (type={pattern_type}). "
+                "Only isotropic antennas (type=0) are supported."
+            )
 
-    df = pd.read_parquet(patterns_file)
-    if len(df) == 0:
-        return {}
-
-    patterns = {}
-    for _, pattern in df.iterrows():
-        pattern_dict = {
-            'type': pattern['pattern_type'],
-            'e_theta': np.array(pattern['e_theta_re']) + 1j * np.array(pattern['e_theta_im']),
-            'e_phi': np.array(pattern['e_phi_re']) + 1j * np.array(pattern['e_phi_im'])
-        }
-        patterns[pattern['pattern_id']] = pattern_dict
-    return patterns
-
-def read_dus(rt_folder: str) -> Dict[str, Any]:
-    """Read DU configurations.
-
+def read_transmitters(rt_folder: str, panels: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Read and process Radio Units (RUs) from parquet file.
+    
     Args:
-        rt_folder (str): Path to folder containing dus.parquet.
-
+        rt_folder (str): Path to folder containing rus.parquet
+        panels (Dict[str, Any]): Dictionary of panel configurations
+        
     Returns:
-        Dict[str, Any]: Dictionary mapping DU IDs to configurations.
-    """
-    dus_file = os.path.join(rt_folder, 'dus.parquet')
-    if not os.path.exists(dus_file):
-        return {}
-
-    df = pd.read_parquet(dus_file)
-    if len(df) == 0:
-        return {}
-
-    dus = {}
-    for _, du in df.iterrows():
-        du_dict = {
-            'scs': int(du['subcarrier_spacing']),
-            'fft_size': int(du['fft_size']),
-            'num_antennas': int(du['num_antennas']),
-            'max_bw': float(du['max_channel_bandwidth']),
-            'position': np.array(du['position'])
-        }
-        dus[du['ID']] = du_dict
-    return dus
-
-def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
-    """Read transmitter and receiver configurations.
-
-    Args:
-        rt_folder (str): Path to folder containing configuration files.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing TX/RX configurations including:
-            panels: Dictionary of antenna panel configurations
-            patterns: Dictionary of antenna patterns
-            dus: Dictionary of DU configurations
-            transmitters: List of transmitter (RU) dictionaries
-            receivers: List of receiver (UE) dictionaries
-
+        List[Dict[str, Any]]: List of processed transmitter configurations
+        
     Raises:
-        FileNotFoundError: If required files are not found.
-        ValueError: If required parameters are missing.
+        FileNotFoundError: If rus.parquet is not found
+        ValueError: If rus.parquet is empty
     """
-    # Read antenna configurations
-    panels = read_panels(rt_folder)
-    patterns = read_patterns(rt_folder)
-    dus = read_dus(rt_folder)
-
-    # Read frequency from rt_params
-    rt_params['frequency'] = panels[0]['reference_freq']
-
     # Read RUs file
     rus_file = os.path.join(rt_folder, 'rus.parquet')
     if not os.path.exists(rus_file):
@@ -144,16 +196,7 @@ def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
     rus_df = pd.read_parquet(rus_file)
     if len(rus_df) == 0:
         raise ValueError("rus.parquet is empty")
-
-    # Read UEs file
-    ues_file = os.path.join(rt_folder, 'ues.parquet')
-    if not os.path.exists(ues_file):
-        raise FileNotFoundError(f"ues.parquet not found in {rt_folder}")
     
-    ues_df = pd.read_parquet(ues_file)
-    if len(ues_df) == 0:
-        raise ValueError("ues.parquet is empty")
-
     # Process RUs
     transmitters = []
     for _, ru in rus_df.iterrows():
@@ -170,10 +213,45 @@ def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
             'du_manual_assign': bool(ru['du_manual_assign'])
         }
         transmitters.append(tx)
+    return transmitters
 
+def read_receivers(rt_folder: str, panels: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Read and process User Equipment (UEs) from parquet file.
+    
+    Args:
+        rt_folder (str): Path to folder containing ues.parquet
+        panels (Dict[str, Any]): Dictionary of panel configurations
+        
+    Returns:
+        List[Dict[str, Any]]: List of processed receiver configurations
+        
+    Raises:
+        FileNotFoundError: If ues.parquet is not found
+        ValueError: If ues.parquet is empty
+    """
+    # Read UEs file
+    ues_file = os.path.join(rt_folder, 'ues.parquet')
+    if not os.path.exists(ues_file):
+        raise FileNotFoundError(f"ues.parquet not found in {rt_folder}")
+    
+    ues_df = pd.read_parquet(ues_file)
+    if len(ues_df) == 0:
+        raise ValueError("ues.parquet is empty")
+    
     # Process UEs
+    time_idx = 0 # TODO: this should be passed as a parameter for Dynamic scenes
     receivers = []
     for _, ue in ues_df.iterrows():
+        # Get initial orientation (azimuth) from route if available
+        route_orientations = ue['route_orientations'][time_idx]
+        
+        # Convert orientations to array using aodt_utils
+        orientations_array = au.process_points(route_orientations)
+        # Take first orientation's azimuth
+        initial_azimuth = float(orientations_array[0, 0])
+        initial_azimuth = 0.0  # TODO: this is a temporary fix. 
+                               # The orientations are not clear...
+        
         rx = {
             'id': int(ue['ID']),
             'is_manual': bool(ue['is_manual']),
@@ -181,6 +259,7 @@ def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
             'power': float(ue['radiated_power']),
             'height': float(ue['height']),
             'mech_tilt': float(ue['mech_tilt']),
+            'mech_azimuth': initial_azimuth,  # Using initial orientation from route
             'panel': [panels[i] for i in ue['panel']][0],
             'indoor': bool(ue['is_indoor_mobility']),
             'bler_target': float(ue['bler_target']),
@@ -200,18 +279,55 @@ def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
                 },
                 'route': {
                     'positions': np.array(ue['route_positions']),
-                    'orientations': np.array(ue['route_orientations']),
+                    'orientations': np.array(route_orientations),
                     'speeds': np.array(ue['route_speeds']),
                     'times': np.array(ue['route_times'])
                 }
             }
         }
         receivers.append(rx)
+    return receivers
 
-    return {
-        'panels': panels,
-        'patterns': patterns,
-        'dus': dus,
-        'transmitters': transmitters,
-        'receivers': receivers
-    } 
+def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
+    """Read transmitter and receiver configurations.
+
+    Args:
+        rt_folder (str): Path to folder containing configuration files.
+        rt_params (Dict[str, Any]): Ray tracing parameters dictionary.
+
+    Returns:
+        Dict[str, Any]: Dictionary containing TX/RX configurations in DeepMIMO format.
+
+    Raises:
+        FileNotFoundError: If required files are not found.
+        ValueError: If required parameters are missing.
+    """
+    # Read antenna configurations
+    panels = read_panels(rt_folder)
+    
+    # Validate that all patterns are isotropic
+    validate_isotropic_patterns(rt_folder, panels)
+
+    # Update frequency in rt_params from first panel
+    first_panel_id = next(iter(panels))
+    rt_params['frequency'] = panels[first_panel_id]['reference_freq']
+
+    # Read and process transmitters and receivers
+    transmitters = read_transmitters(rt_folder, panels)
+    receivers = read_receivers(rt_folder, panels)
+
+    # Convert to DeepMIMO format
+    txrx_dict = {}
+    
+    # Convert transmitters
+    for i, tx in enumerate(transmitters):
+        txrx_set = convert_to_deepmimo_txrxset(tx, is_tx=True, id_=i)
+        txrx_dict[f'txrx_set_{i}'] = txrx_set.to_dict()
+    
+    # Convert receivers
+    rx_start_id = len(transmitters)
+    for i, rx in enumerate(receivers):
+        txrx_set = convert_to_deepmimo_txrxset(rx, is_tx=False, id_=rx_start_id + i)
+        txrx_dict[f'txrx_set_{rx_start_id + i}'] = txrx_set.to_dict()
+
+    return txrx_dict 

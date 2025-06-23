@@ -13,6 +13,7 @@ from typing import Dict, Any, List
 from ... import consts as c
 from ... import general_utils as gu
 from .. import converter_utils as cu
+from . import aodt_utils as au
 
 # AODT interaction type mapping
 AODT_INTERACTIONS_MAP = {
@@ -23,28 +24,6 @@ AODT_INTERACTIONS_MAP = {
     4: None,  # reception - not counted as interaction
     5: c.INTERACTION_TRANSMISSION  # transmission
 }
-
-def _dict_to_array(point_dict: Dict[str, float]) -> np.ndarray:
-    """Convert a dictionary of coordinates to a numpy array.
-    
-    Args:
-        point_dict: Dictionary containing coordinates with keys '1', '2', '3'
-        
-    Returns:
-        np.ndarray: Array of shape (3,) containing [x, y, z] coordinates
-    """
-    return np.array([point_dict['1'], point_dict['2'], point_dict['3']], dtype=c.FP_TYPE)
-
-def _process_points(points_list: List[Dict[str, float]]) -> np.ndarray:
-    """Convert a list of point dictionaries to a numpy array.
-    
-    Args:
-        points_list: List of dictionaries, each containing coordinates with keys '1', '2', '3'
-        
-    Returns:
-        np.ndarray: Array of shape (N, 3) containing N points
-    """
-    return np.array([_dict_to_array(point) for point in points_list], dtype=c.FP_TYPE)
 
 def _transform_interaction_types(types: np.ndarray) -> float:
     """Transform AODT interaction types array into a single DeepMIMO interaction code.
@@ -170,7 +149,7 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
                 # Process paths first to get positions and angles
                 for path_idx, path in enumerate(paths.itertuples()):
                     # Process interaction points
-                    interaction_points = _process_points(path.points)
+                    interaction_points = au.process_points(path.points)
                     
                     # First point is TX, last point is RX
                     if path_idx == 0:  # Only need to set positions once per UE
