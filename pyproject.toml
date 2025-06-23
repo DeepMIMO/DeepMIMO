@@ -24,7 +24,7 @@ classifiers = [
 dependencies = [
     "matplotlib>=3.8.2",
     "numpy>=1.19.5",
-    "scipy>=1.6.2,<=1.15.2",
+    "scipy>=1.6.2,<=1.15.2", # only used for saving matrices compatible with matlab
     "tqdm>=4.59.0",
 ]
 
@@ -56,6 +56,11 @@ doc = [
     # Themes
     "sphinx-rtd-theme>=2.0.0",                   # RTD theme
     "furo",                                      # Works with 2024.8.6
+]
+
+aodt = [
+    "pandas",   # to read parquet files
+    "pyarrow",  # backend for pandas parquet reading 
 ]
 
 sionna1 = [
