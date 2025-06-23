@@ -44,10 +44,14 @@ def export_table_to_parquet(client, host, database, table_name, output_dir):
         print(f"Error exporting {table_name}: {str(e)}")
         raise
 
-def export_database_to_parquet(client, host, database, output_dir):
+def export_database_to_parquet(client, host, database, output_dir, filter_tables=True):
     """Export a database to parquet files."""
     tables = get_all_tables(client, database)
-    ignore_tables = ['cfrs']
-    filter_tables = [t for t in tables if t not in ignore_tables]
-    for table in filter_tables:
+    ignore_tables = ['cfrs', 'training_result', 'world', 'csi_report'
+                     'telemetry', 'patterns', 'dus', 'ran_config']
+    if filter_tables:
+        tables_to_export = [t for t in tables if t not in ignore_tables]
+    else:
+        tables_to_export = tables
+    for table in tables_to_export:
         export_table_to_parquet(client, host, database, table, output_dir)
