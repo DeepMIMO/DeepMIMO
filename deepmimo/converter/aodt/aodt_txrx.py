@@ -110,7 +110,7 @@ def read_dus(rt_folder: str) -> Dict[str, Any]:
         dus[du['ID']] = du_dict
     return dus
 
-def read_txrx(rt_folder: str) -> Dict[str, Any]:
+def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
     """Read transmitter and receiver configurations.
 
     Args:
@@ -132,6 +132,9 @@ def read_txrx(rt_folder: str) -> Dict[str, Any]:
     panels = read_panels(rt_folder)
     patterns = read_patterns(rt_folder)
     dus = read_dus(rt_folder)
+
+    # Read frequency from rt_params
+    rt_params['frequency'] = panels[0]['reference_freq']
 
     # Read RUs file
     rus_file = os.path.join(rt_folder, 'rus.parquet')

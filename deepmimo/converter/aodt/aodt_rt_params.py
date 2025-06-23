@@ -1,142 +1,141 @@
 """
-AODT Ray Tracing Parameters Module.
+AODT Ray Tracing Parameters.
 
-This module handles reading and processing:
-1. Ray tracing parameters from scenario.parquet
-2. RAN configuration from ran_config.parquet
+This module provides parameter handling for AODT (Aerial Optical Digital Twin) ray tracing simulations.
+
+This module provides:
+- Parameter parsing from AODT parquet files
+- Standardized parameter representation
+- Parameter validation and conversion utilities
+- Default parameter configuration
+
+The module serves as the interface between AODT's parameter format
+and DeepMIMO's standardized ray tracing parameters.
 """
 
 import os
 import pandas as pd
-from typing import Dict, Any
+from dataclasses import dataclass
+from typing import Dict
+from pathlib import Path
 
-def read_ran_config(rt_folder: str) -> Dict[str, Any]:
-    """Read RAN configuration parameters.
+from ...rt_params import RayTracingParameters
+from ...consts import RAYTRACER_NAME_AODT
+from ...config import config
 
-    Args:
-        rt_folder (str): Path to folder containing ran_config.parquet.
 
-    Returns:
-        Dict[str, Any]: Dictionary containing RAN configuration parameters.
+def read_rt_params(rt_folder: str) -> Dict:
+    """Read AODT RT parameters from a folder."""
+    return AODTRayTracingParameters.read_rt_params(rt_folder).to_dict()
+
+
+@dataclass
+class AODTRayTracingParameters(RayTracingParameters):
+    """AODT ray tracing parameter representation.
+    
+    This class extends the base RayTracingParameters with AODT-specific
+    settings for ray tracing configuration and interaction handling.
+    
+    Attributes:
+        raytracer_name (str): Name of ray tracing engine (from constants)
+        raytracer_version (str): Version of ray tracing engine
+        frequency (float): Center frequency in Hz
+        max_path_depth (int): Maximum number of interactions (R + D + S + T)
+        max_reflections (int): Maximum number of reflections (R)
+        max_diffractions (int): Maximum number of diffractions (D)
+        max_scattering (int): Maximum number of diffuse scattering events (S)
+        max_transmissions (int): Maximum number of transmissions (T)
+        diffuse_reflections (int): Reflections allowed in paths with diffuse scattering
+        diffuse_diffractions (int): Diffractions allowed in paths with diffuse scattering
+        diffuse_transmissions (int): Transmissions allowed in paths with diffuse scattering
+        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering at final interaction
+        diffuse_random_phases (bool): Whether to use random phases for diffuse scattering
+        terrain_reflection (bool): Whether to allow reflections on terrain
+        terrain_diffraction (bool): Whether to allow diffractions on terrain
+        terrain_scattering (bool): Whether to allow scattering on terrain
+        num_rays (int): Number of rays to launch per antenna
+        ray_casting_method (str): Method for casting rays ('uniform' or other)
+        synthetic_array (bool): Whether to use a synthetic array
+        ray_casting_range_az (float): Ray casting range in azimuth (degrees)
+        ray_casting_range_el (float): Ray casting range in elevation (degrees)
+        raw_params (Dict): Original parameters from AODT
+        
+    Notes:
+        All required parameters must come before optional ones in dataclasses.
+        First come the base class required parameters (inherited), then the class-specific
+        required parameters, then all optional parameters.
     """
-    ran_file = os.path.join(rt_folder, 'ran_config.parquet')
-    if not os.path.exists(ran_file):
-        return {}
-
-    df = pd.read_parquet(ran_file)
-    if len(df) == 0:
-        return {}
-
-    # Get first row since parameters are the same for all rows
-    params = df.iloc[0]
-
-    ran_params = {
-        'tdd_pattern': params['tdd_pattern'],
-        'srs_slots': params['srs_slots'],
-        'pusch_slots': params['pusch_slots'],
-        'harq': {
-            'dl_enabled': bool(params['dl_harq_enabled']),
-            'ul_enabled': bool(params['ul_harq_enabled'])
-        },
-        'csi': {
-            'beamforming': bool(params['beamforming_csi']),
-            'mac': bool(params['mac_csi'])
-        },
-        'pusch_channel_estimation': bool(params['pusch_channel_estimation']),
-        'scheduler_mode': params['scheduler_mode'],
-        'mu_mimo_enabled': bool(params['mu_mimo_enabled']),
-        'snr_thresholds': {
-            'dl_srs': float(params['dl_srs_snr_thr']),
-            'ul_srs': float(params['ul_srs_snr_thr'])
-        },
-        'chan_corr_thresholds': {
-            'dl': float(params['dl_chan_corr_thr']),
-            'ul': float(params['ul_chan_corr_thr'])
-        },
-        'beamforming': {
-            'enabled': bool(params['beamforming_enabled']),
-            'scheme': params['beamforming_scheme']
+    
+    @classmethod
+    def read_rt_params(cls, rt_folder: str | Path) -> 'AODTRayTracingParameters':
+        """Read AODT RT parameters and return a parameters object.
+        
+        Args:
+            rt_folder (str | Path): Path to folder containing AODT parameter files
+            
+        Returns:
+            AODTRayTracingParameters: Object containing standardized parameters
+            
+        Raises:
+            FileNotFoundError: If parameter files not found
+            ValueError: If required parameters are missing or invalid
+        """
+        # Load scenario parameters
+        scenario_file = os.path.join(rt_folder, 'scenario.parquet')
+        if not os.path.exists(scenario_file):
+            raise FileNotFoundError(f"scenario.parquet not found in {rt_folder}")
+            
+        df = pd.read_parquet(scenario_file)
+        if len(df) == 0:
+            raise ValueError("scenario.parquet is empty")
+            
+        # Get first row since parameters are the same for all rows
+        params = df.iloc[0]
+        
+        # Store raw parameters
+        raw_params = params.to_dict()
+        
+        # Create standardized parameters
+        params_dict = {
+            # Ray Tracing Engine info
+            'raytracer_name': RAYTRACER_NAME_AODT,
+            'raytracer_version': config.get('aodt_version', '1.0'),
+            
+            # Frequency
+            'frequency': 0, # panel frequency - needs to be set in the future
+            
+            # Ray tracing interaction settings
+            'max_path_depth': int(params['num_scene_interactions_per_ray']),
+            'max_reflections': int(params['num_scene_interactions_per_ray']),  # AODT allows all interactions to be reflections
+            'max_diffractions': 1,  # AODT only allows one diffraction per path
+            'max_scattering': 1,  # AODT only allows one scattering per path
+            'max_transmissions': int(params['num_scene_interactions_per_ray']),  # AODT allows all interactions to be transmissions
+            
+            # Details on diffraction, scattering, and transmission
+            'diffuse_reflections': 1,  # AODT specify this in the documentation
+            'diffuse_diffractions': 0,  # AODT doesn't specify this
+            'diffuse_transmissions': 0,  # AODT doesn't specify this
+            'diffuse_final_interaction_only': False,  # AODT allows diffuse scattering at any interaction
+            'diffuse_random_phases': False,  # AODT doesn't specify this
+            
+            # Terrain interaction settings
+            'terrain_reflection': True,  # AODT allows reflections on any surface
+            'terrain_diffraction': False,  # AODT allows diffractions on any surface
+            'terrain_scattering': True,  # AODT allows scattering on any surface
+            
+            # Ray casting settings
+            'num_rays': int(params['num_emitted_rays_in_thousands'] * 1000),
+            'ray_casting_method': 'uniform',  # AODT uses uniform ray casting
+            'synthetic_array': True,  # AODT does not use synthetic arrays, but we take only one element
+            'ray_casting_range_az': 360.0,  # AODT casts rays in all directions
+            'ray_casting_range_el': 180.0,  # AODT casts rays in all directions
+            
+            # GPS Bounding Box
+            'gps_bbox': (0, 0, 0, 0),  # AODT doesn't provide this yet
+            
+            # Store raw parameters
+            'raw_params': raw_params,
         }
-    }
-
-    return ran_params
-
-def read_rt_params(rt_folder: str) -> Dict[str, Any]:
-    """Read ray tracing parameters from scenario.parquet.
-
-    Args:
-        rt_folder (str): Path to folder containing scenario.parquet.
-
-    Returns:
-        Dict[str, Any]: Dictionary containing ray tracing parameters including:
-            - num_emitted_rays: Number of emitted rays (in thousands)
-            - num_scene_interactions: Maximum interactions per ray
-            - max_paths: Maximum paths per RU-UE pair
-            - ray_sparsity: Ray sparsity parameter
-            - rx_sphere_radius: Receiver sphere radius in meters
-            - diffuse_type: Type of diffuse scattering
-            - enable_wideband: Whether wideband CFRs are enabled
-            - duration: Simulation duration
-            - interval: Time interval between snapshots
-            - seed: Random seed if simulation is seeded
-            - ue_params: UE-related parameters
-                - num_ues: Number of UEs
-                - height: UE height
-                - speed: Min/max speed
-                - indoor_percentage: Percentage of indoor UEs
-            - simulation: Simulation parameters
-                - num_batches: Number of batches
-                - slots_per_batch: Slots per batch
-                - symbols_per_slot: Symbols per slot
-            - ran_config: RAN configuration parameters
-
-    Raises:
-        FileNotFoundError: If scenario.parquet is not found.
-        ValueError: If required parameters are missing.
-    """
-    scen_file_name = 'scenario.parquet'
-    scenario_file = os.path.join(rt_folder, scen_file_name)
-    if not os.path.exists(scenario_file):
-        raise FileNotFoundError(f"{scen_file_name} not found in {rt_folder}")
-
-    # Read scenario parameters
-    df = pd.read_parquet(scenario_file)
-    if len(df) == 0:
-        raise ValueError(f"{scen_file_name} is empty")
-
-    # Get first row since parameters are the same for all rows
-    params = df.iloc[0]
-
-    # Read RAN configuration
-    ran_params = read_ran_config(rt_folder)
-
-    # Convert parameters to dictionary
-    rt_params = {
-        'num_emitted_rays': int(params['num_emitted_rays_in_thousands'] * 1000),
-        'num_scene_interactions': int(params['num_scene_interactions_per_ray']),
-        'max_paths': int(params['max_paths_per_ru_ue_pair']),
-        'ray_sparsity': float(params['ray_sparsity']),
-        'rx_sphere_radius': float(params['rx_sphere_radius_m']),
-        'diffuse_type': str(params['diffuse_type']),
-        'enable_wideband': bool(params['enable_wideband_cfrs']),
-        'duration': float(params['duration']),
-        'interval': float(params['interval']),
-        'seed': int(params['seed']) if params['is_seeded'] else None,
-        'ue_params': {
-            'num_ues': int(params['num_ues']),
-            'height': float(params['ue_height']),
-            'speed': {
-                'min': float(params['ue_min_speed']),
-                'max': float(params['ue_max_speed'])
-            },
-            'indoor_percentage': float(params['percentage_indoor_ues'])
-        },
-        'simulation': {
-            'num_batches': int(params['num_batches']),
-            'slots_per_batch': int(params['slots_per_batch']),
-            'symbols_per_slot': int(params['symbols_per_slot'])
-        },
-        'ran_config': ran_params
-    }
-
-    return rt_params 
+        
+        # Create and return parameters object
+        return cls.from_dict(params_dict) 

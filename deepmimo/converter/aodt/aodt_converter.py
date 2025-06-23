@@ -74,7 +74,7 @@ def aodt_rt_converter(rt_folder: str, copy_source: bool = False,
     rt_params = read_rt_params(rt_folder)
 
     # Read TXRX configurations from rus.parquet and ues.parquet
-    txrx_dict = read_txrx(rt_folder)
+    txrx_dict = read_txrx(rt_folder, rt_params)
 
     # Read Paths from raypaths.parquet
     read_paths(rt_folder, temp_folder, txrx_dict)
