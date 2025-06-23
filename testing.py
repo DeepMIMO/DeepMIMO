@@ -203,10 +203,15 @@ dm_aodt_rt_path = dm.aodt.exporter(db_name='aerial_2025_6_22_16_10_16',
 import deepmimo as dm
 import pandas as pd
 
-folder = 'aodt_scripts/aerial_2025_6_22_16_10_16'
-df = pd.read_parquet(os.path.join(folder, 'db_info.parquet'))
+aodt_scen_name = 'aerial_2025_6_22_16_10_16'
+folder = f'aodt_scripts/{aodt_scen_name}'
+# df = pd.read_parquet(os.path.join(folder, 'db_info.parquet'))
 
-df.head()
+# df.head()
+
+dm.convert(folder, overwrite=True)
+
+aodt_scen = dm.load(aodt_scen_name)
 
 #%%
 
@@ -220,8 +225,6 @@ for file in os.listdir(folder):
 
 
 #%%
-
-dm.convert(folder, overwrite=True)
 
 
 
