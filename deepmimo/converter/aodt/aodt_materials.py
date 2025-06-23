@@ -2,7 +2,7 @@
 AODT Materials Module.
 
 This module handles reading and processing material properties from materials.parquet,
-including ITU-R P.2040 parameters and scattering properties.
+following ITU-R P.2040 standard for building materials and structures.
 """
 
 import os
@@ -28,6 +28,14 @@ def read_materials(rt_folder: str) -> Dict[str, Any]:
                 - alpha_i: Imaginary part of exponent
                 - lambda_r: Real part of wavelength factor
             - thickness: Material thickness in meters
+
+    References:
+        [1] ITU, "Effects of building materials and structures on radio wave 
+            propagation above about 100 MHz", Recommendation P.2040-3, August 2023.
+        [2] V. Degli-Esposti et al., "Measurement and modelling of scattering 
+            from buildings," IEEE Trans. Antennas Propag., vol. 55, no. 1, 2007.
+        [3] E. M. Vitucci et al., "A Reciprocal Heuristic Model for Diffuse 
+            Scattering From Walls and Surfaces," IEEE Trans. Antennas Propag., 2023.
 
     Raises:
         FileNotFoundError: If materials.parquet is not found.

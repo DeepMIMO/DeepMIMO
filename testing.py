@@ -185,3 +185,48 @@ for subfolder in subfolders[:-5]:
     ax.set_title(scen_name + ': ' + ax.get_title())
     plt.show()
 
+#%%
+
+from clickhouse_driver import Client
+client = Client('localhost')
+client.execute('SHOW DATABASES')
+
+# Export: Load the files into the database and make the table requests from there.
+dm_aodt_rt_path = dm.aodt.exporter(db_name='aerial_2025_6_22_16_10_16', 
+                                   clickhouse_client_obj=client)
+
+# Convert: Read the parquet files into a deepmimo dataset
+# aodt_scen_name = dm.convert(dm_aodt_rt_path)
+# aodt_dataset = dm.load(aodt_scen_name)
+
+#%%
+import deepmimo as dm
+import pandas as pd
+
+folder = 'aodt_scripts/aerial_2025_6_22_16_10_16'
+df = pd.read_parquet(os.path.join(folder, 'db_info.parquet'))
+
+df.head()
+
+#%%
+
+for file in os.listdir(folder):
+    if file.endswith('.parquet'):
+        df = pd.read_parquet(os.path.join(folder, file))
+        # print(df.head())
+        print(f'file: {file}, columns: {df.columns}')
+        if df.empty:
+            print(f'WARNING: {file} is empty')
+
+
+#%%
+
+dm.convert(folder, overwrite=True)
+
+
+
+
+
+
+
+

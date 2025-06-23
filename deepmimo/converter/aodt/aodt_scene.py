@@ -3,6 +3,9 @@ AODT Scene Module.
 
 This module handles reading and processing scene geometry from world.parquet,
 including primitive paths, materials, and RF properties.
+
+The scene geometry follows the NVIDIA Omniverse USD format, where each primitive
+is defined by its path in the stage hierarchy.
 """
 
 import os
@@ -11,13 +14,30 @@ import numpy as np
 from typing import Dict, Any, Optional
 
 class AODTScene:
-    """Class representing an AODT scene with geometry and RF properties."""
+    """Class representing an AODT scene with geometry and RF properties.
+
+    The scene contains primitives (geometry objects) with associated materials
+    and RF properties like diffuse scattering and diffraction.
+
+    Limitations:
+    - Maximum 5 scattering events per ray
+    - Maximum 10 scattering events including transmission per ray
+    - Only direct diffuse scattering (diffuse vertex in line-of-sight)
+    - Only specular reflections can occur with transmissions
+    - Diffraction can only occur once per ray
+    """
 
     def __init__(self, world_df: pd.DataFrame):
         """Initialize scene from world dataframe.
 
         Args:
-            world_df (pd.DataFrame): DataFrame containing scene data.
+            world_df (pd.DataFrame): DataFrame containing scene data with columns:
+                - prim_path: USD primitive path
+                - material: Material name
+                - is_rf_active: Whether primitive affects RF
+                - is_rf_diffuse: Whether primitive enables diffuse scattering
+                - is_rf_diffraction: Whether primitive enables diffraction
+                - is_rf_transmission: Whether primitive enables transmission
         """
         self.primitives = []
         self.materials = []
