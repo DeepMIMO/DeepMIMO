@@ -4,13 +4,106 @@ AODT Ray Paths Module.
 This module handles reading and processing:
 1. Ray path data from raypaths.parquet
 2. Channel Impulse Response (CIR) from cirs.parquet
-3. Channel Frequency Response (CFR) from cfrs.parquet
 """
 
 import os
 import numpy as np
 import pandas as pd
-from typing import Dict, Any
+from typing import Dict, Any, List
+from ... import consts as c
+from ... import general_utils as gu
+from .. import converter_utils as cu
+
+# AODT interaction type mapping
+AODT_INTERACTIONS_MAP = {
+    0: None,  # emission - not counted as interaction
+    1: c.INTERACTION_REFLECTION,  # reflection
+    2: c.INTERACTION_DIFFRACTION,  # diffraction
+    3: c.INTERACTION_SCATTERING,  # diffuse scattering
+    4: None,  # reception - not counted as interaction
+    5: c.INTERACTION_TRANSMISSION  # transmission
+}
+
+def _dict_to_array(point_dict: Dict[str, float]) -> np.ndarray:
+    """Convert a dictionary of coordinates to a numpy array.
+    
+    Args:
+        point_dict: Dictionary containing coordinates with keys '1', '2', '3'
+        
+    Returns:
+        np.ndarray: Array of shape (3,) containing [x, y, z] coordinates
+    """
+    return np.array([point_dict['1'], point_dict['2'], point_dict['3']], dtype=c.FP_TYPE)
+
+def _process_points(points_list: List[Dict[str, float]]) -> np.ndarray:
+    """Convert a list of point dictionaries to a numpy array.
+    
+    Args:
+        points_list: List of dictionaries, each containing coordinates with keys '1', '2', '3'
+        
+    Returns:
+        np.ndarray: Array of shape (N, 3) containing N points
+    """
+    return np.array([_dict_to_array(point) for point in points_list], dtype=c.FP_TYPE)
+
+def _transform_interaction_types(types: np.ndarray) -> float:
+    """Transform AODT interaction types array into a single DeepMIMO interaction code.
+    
+    Args:
+        types: Array of AODT interaction types where:
+              - First element is always 0 (emission)
+              - Last element is always 4 (reception)
+              - Middle elements can be:
+                1 (reflection), 2 (diffraction), 3 (diffuse), 5 (transmission)
+              
+    Returns:
+        float: Single number representing concatenated interaction types.
+               For example: [0, 1, 2, 1, 4] -> 121 (reflection-diffraction-reflection)
+               LoS paths return c.INTERACTION_LOS
+               
+    Example:
+        [0, 1, 1, 4] -> 11 (two reflections)
+        [0, 2, 4] -> 2 (single diffraction)
+        [0, 4] -> 0 (LoS)
+    """
+    # If only emission and reception, it's LoS
+    if len(types) <= 2:
+        return c.INTERACTION_LOS
+        
+    # Take only middle interactions (exclude first and last)
+    interactions = types[1:-1]
+    
+    # Map AODT types to DeepMIMO types and concatenate
+    mapped = [str(AODT_INTERACTIONS_MAP[t]) for t in interactions if AODT_INTERACTIONS_MAP[t] is not None]
+    if not mapped:  # If all interactions were mapped to None
+        return c.INTERACTION_LOS
+        
+    return float(''.join(mapped))
+
+def _preallocate_data(n_rx: int) -> Dict:
+    """Pre-allocate data for path conversion.
+    
+    Args:
+        n_rx: Number of RXs
+
+    Returns:
+        data: Dictionary containing pre-allocated data
+    """
+    data = {
+        c.RX_POS_PARAM_NAME: np.zeros((n_rx, 3), dtype=c.FP_TYPE),
+        c.TX_POS_PARAM_NAME: np.zeros((1, 3), dtype=c.FP_TYPE),
+        c.AOA_AZ_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
+        c.AOA_EL_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
+        c.AOD_AZ_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
+        c.AOD_EL_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
+        c.DELAY_PARAM_NAME:  np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
+        c.POWER_PARAM_NAME:  np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
+        c.PHASE_PARAM_NAME:  np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
+        c.INTERACTIONS_PARAM_NAME:  np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
+        c.INTERACTIONS_POS_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS, c.MAX_INTER_PER_PATH, 3), dtype=c.FP_TYPE) * np.nan,
+    }
+    
+    return data
 
 def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) -> None:
     """Read and process ray paths and channel responses.
@@ -24,117 +117,110 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
         FileNotFoundError: If required files are not found.
         ValueError: If required parameters are missing.
     """
-    # Create output folders
-    paths_folder = os.path.join(output_folder, 'paths')
-    channels_folder = os.path.join(output_folder, 'channels')
-    os.makedirs(paths_folder, exist_ok=True)
-    os.makedirs(channels_folder, exist_ok=True)
-
-    # Read paths data
+    # Read both parquet files
     paths_file = os.path.join(rt_folder, 'raypaths.parquet')
-    if os.path.exists(paths_file):
-        df = pd.read_parquet(paths_file)
-        if len(df) > 0:
-            process_raypaths(df, paths_folder)
-
-    # Read CIR data
     cirs_file = os.path.join(rt_folder, 'cirs.parquet')
-    if os.path.exists(cirs_file):
-        df = pd.read_parquet(cirs_file)
-        if len(df) > 0:
-            process_cirs(df, channels_folder)
-
-    # Read CFR data
-    cfrs_file = os.path.join(rt_folder, 'cfrs.parquet')
-    if os.path.exists(cfrs_file):
-        df = pd.read_parquet(cfrs_file)
-        if len(df) > 0:
-            process_cfrs(df, channels_folder)
-
-def process_raypaths(df: pd.DataFrame, output_folder: str) -> None:
-    """Process ray paths data.
     
-    Args:
-        df (pd.DataFrame): DataFrame containing ray paths.
-        output_folder (str): Output folder path.
-    """
-    for time_idx in df['time_idx'].unique():
-        time_df = df[df['time_idx'] == time_idx]
+    if not os.path.exists(paths_file) or not os.path.exists(cirs_file):
+        raise FileNotFoundError("Both raypaths.parquet and cirs.parquet are required")
         
-        for ru_id in time_df['ru_id'].unique():
-            ru_df = time_df[time_df['ru_id'] == ru_id]
-            
-            for ue_id in ru_df['ue_id'].unique():
-                paths = ru_df[ru_df['ue_id'] == ue_id].iloc[0]
-                
-                path_data = {
-                    'interaction_points': np.array(paths['points']),
-                    'interaction_types': np.array(paths['interaction_types']),
-                    'interaction_normals': np.array(paths['normals']),
-                    'path_powers': np.array(paths['tap_power'])
-                }
-
-                filename = f'paths_t{time_idx}_ru{ru_id}_ue{ue_id}.npz'
-                np.savez(os.path.join(output_folder, filename), **path_data)
-
-def process_cirs(df: pd.DataFrame, output_folder: str) -> None:
-    """Process Channel Impulse Response data.
+    paths_df = pd.read_parquet(paths_file)
+    cirs_df = pd.read_parquet(cirs_file)
     
-    Args:
-        df (pd.DataFrame): DataFrame containing CIRs.
-        output_folder (str): Output folder path.
-    """
-    for time_idx in df['time_idx'].unique():
-        time_df = df[df['time_idx'] == time_idx]
-        
-        for ru_id in time_df['ru_id'].unique():
-            ru_df = time_df[time_df['ru_id'] == ru_id]
-            
-            for ue_id in ru_df['ue_id'].unique():
-                cirs = ru_df[ru_df['ue_id'] == ue_id]
-                
-                # Group by antenna elements
-                for ru_ant_el in cirs['ru_ant_el'].unique():
-                    for ue_ant_el in cirs['ue_ant_el'].unique():
-                        ant_cirs = cirs[
-                            (cirs['ru_ant_el'] == ru_ant_el) & 
-                            (cirs['ue_ant_el'] == ue_ant_el)
-                        ]
-                        
-                        # Combine real and imaginary parts
-                        cir_data = np.array(ant_cirs['cir_re']) + 1j * np.array(ant_cirs['cir_im'])
-                        cir_delays = np.array(ant_cirs['cir_delay'])
-                        
-                        filename = f'cir_t{time_idx}_ru{ru_id}_ue{ue_id}_ruant{ru_ant_el}_ueant{ue_ant_el}.npz'
-                        np.savez(os.path.join(output_folder, filename), 
-                                cir=cir_data, delays=cir_delays)
+    if len(paths_df) == 0 or len(cirs_df) == 0:
+        raise ValueError("Empty parquet files")
 
-def process_cfrs(df: pd.DataFrame, output_folder: str) -> None:
-    """Process Channel Frequency Response data.
+    # Create output folder
+    os.makedirs(output_folder, exist_ok=True)
+
+    # Check if we have single UE with multiple TX/RX pairs
+    unique_ues = paths_df['ue_id'].unique()
+    is_single_ue_multi_pair = len(unique_ues) == 1 and len(cirs_df['ue_ant_el']) > 1
     
-    Args:
-        df (pd.DataFrame): DataFrame containing CFRs.
-        output_folder (str): Output folder path.
-    """
-    for time_idx in df['time_idx'].unique():
-        time_df = df[df['time_idx'] == time_idx]
+    if is_single_ue_multi_pair:
+        print(f"\nDetected single UE ({unique_ues[0]}) with multiple TX/RX pairs.")
+        print("Currently using only first TX/RX pair. Multi-pair support coming soon.")
+        # TODO: In the future, we'll process all pairs here
+        # For now, just filter to first RU
         
-        for ru_id in time_df['ru_id'].unique():
-            ru_df = time_df[time_df['ru_id'] == ru_id]
+    # TODO: this time_idx should be passed as a parameter for Dynamic scenes
+    for time_idx in paths_df['time_idx'].unique():
+        paths_time_df = paths_df[paths_df['time_idx'] == time_idx]
+        cirs_time_df = cirs_df[cirs_df['time_idx'] == time_idx]
+        
+        for ru_id in paths_time_df['ru_id'].unique():
+            paths_ru_df = paths_time_df[paths_time_df['ru_id'] == ru_id]
+            cirs_ru_df = cirs_time_df[cirs_time_df['ru_id'] == ru_id]
             
-            for ue_id in ru_df['ue_id'].unique():
-                cfrs = ru_df[ru_df['ue_id'] == ue_id]
+            # Get number of UEs (receivers) for this RU
+            ue_ids = paths_ru_df['ue_id'].unique()
+            n_rx = len(ue_ids)
+            data = _preallocate_data(n_rx)
+            
+            # Process each UE (receiver)
+            for rx_idx, ue_id in enumerate(ue_ids):
+                # Get all paths and CIRs for this RU-UE pair
+                paths = paths_ru_df[paths_ru_df['ue_id'] == ue_id]
+                cirs = cirs_ru_df[cirs_ru_df['ue_id'] == ue_id]
                 
-                # Group by antenna elements
-                for ru_ant_el in cfrs['ru_ant_el'].unique():
-                    for ue_ant_el in cfrs['ue_ant_el'].unique():
-                        ant_cfrs = cfrs[
-                            (cfrs['ru_ant_el'] == ru_ant_el) & 
-                            (cfrs['ue_ant_el'] == ue_ant_el)
-                        ]
-                        
-                        # Combine real and imaginary parts
-                        cfr_data = np.array(ant_cfrs['cfr_re']) + 1j * np.array(ant_cfrs['cfr_im'])
-                        
-                        filename = f'cfr_t{time_idx}_ru{ru_id}_ue{ue_id}_ruant{ru_ant_el}_ueant{ue_ant_el}.npz'
-                        np.savez(os.path.join(output_folder, filename), cfr=cfr_data) 
+                if len(cirs) == 0:
+                    print(f"Warning: No CIR data for RU {ru_id} UE {ue_id}")
+                    continue
+                
+                # Process paths first to get positions and angles
+                for path_idx, path in enumerate(paths.itertuples()):
+                    # Process interaction points
+                    interaction_points = _process_points(path.points)
+                    
+                    # First point is TX, last point is RX
+                    if path_idx == 0:  # Only need to set positions once per UE
+                        tx_pos = interaction_points[0]
+                        rx_pos = interaction_points[-1]
+                        if rx_idx == 0:  # Only set TX position once for first UE
+                            data[c.TX_POS_PARAM_NAME][0] = tx_pos
+                        data[c.RX_POS_PARAM_NAME][rx_idx] = rx_pos
+                    
+                    # Calculate angles
+                    # Departure angles - vector from TX to first interaction point
+                    departure_vector = interaction_points[1] - tx_pos
+                    departure_angles = gu.cartesian_to_spherical(departure_vector.reshape(1, -1))[0]
+                    data[c.AOD_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[1])
+                    data[c.AOD_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[2])
+                    
+                    # Arrival angles - vector from last interaction point to RX
+                    arrival_vector = rx_pos - interaction_points[-2]
+                    arrival_angles = gu.cartesian_to_spherical(arrival_vector.reshape(1, -1))[0]
+                    data[c.AOA_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[1])
+                    data[c.AOA_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[2])
+                    
+                    # Store interaction data - skip first (TX) and last (RX) points
+                    actual_interactions = interaction_points[1:-1]
+                    if len(actual_interactions) > 0:
+                        data[c.INTERACTIONS_POS_PARAM_NAME][rx_idx, path_idx, :len(actual_interactions), :] = actual_interactions
+                    
+                    # Transform interaction types to DeepMIMO format
+                    data[c.INTERACTIONS_PARAM_NAME][rx_idx, path_idx] = _transform_interaction_types(path.interaction_types)
+                
+                # Now process CIRs for power, phase and delay
+                # Group by antenna elements (for now just take first antenna pair)
+                ru_ant_el = cirs['ru_ant_el'].iloc[0]
+                ue_ant_el = cirs['ue_ant_el'].iloc[0]
+                ant_cirs = cirs[
+                    (cirs['ru_ant_el'] == ru_ant_el) & 
+                    (cirs['ue_ant_el'] == ue_ant_el)
+                ]
+                
+                # Combine real and imaginary parts
+                cir_data = ant_cirs['cir_re'].to_numpy()[0] + 1j * ant_cirs['cir_im'].to_numpy()[0]
+                
+                # Calculate power and phase from complex CIR
+                cir_power = 20 * np.log10(np.abs(cir_data))
+                data[c.POWER_PARAM_NAME][rx_idx, :len(cir_data)] = cir_power
+                data[c.PHASE_PARAM_NAME][rx_idx, :len(cir_data)] = np.angle(cir_data, deg=True)
+                data[c.DELAY_PARAM_NAME][rx_idx, :len(cir_data)] = ant_cirs['cir_delay'].to_numpy()[0]
+                
+                # Note: path.tap_power matches np.abs(cir_data)**2, for the first antenna element
+                
+            # Save data for all UEs of this RU
+            for key in data.keys():
+                cu.save_mat(data[key], key, output_folder, 0, ru_id, 1)  # Using 1 as rx_set_idx for now
