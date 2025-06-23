@@ -47,5 +47,7 @@ def export_table_to_parquet(client, host, database, table_name, output_dir):
 def export_database_to_parquet(client, host, database, output_dir):
     """Export a database to parquet files."""
     tables = get_all_tables(client, database)
-    for table in tables:
+    ignore_tables = ['cfrs']
+    filter_tables = [t for t in tables if t not in ignore_tables]
+    for table in filter_tables:
         export_table_to_parquet(client, host, database, table, output_dir)
