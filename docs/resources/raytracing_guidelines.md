@@ -45,3 +45,13 @@ In Sionna:
     each paths dictionary must contain those same 3 TXs)
   - RX positions can vary across path dictionaries and are processed sequentially
     (e.g., first batch has RXs 0-9, second has 10-22, etc.)
+
+
+In AODT:
+- set the antenna pattern to ISOTROPIC
+
+Aligning AODT and Sionna:
+* RU position - AODT has an extra 1.25m. Need to add this to Sionna or remove from AODT
+* UE orientations - default is 45º tilt (and sometimes not updated in DB)
+* antenna - if ISO, make RU and UE orientations match (vertical). With halfwave dipole, no issue.
+* tx power - not included in Sionna, but included in AODT
