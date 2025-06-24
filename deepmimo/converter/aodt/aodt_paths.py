@@ -168,6 +168,9 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
                     # Process interaction points
                     interaction_points = au.process_points(path.points)
                     
+                    # Convert from cm to m
+                    interaction_points = interaction_points / 100.0
+                    
                     # First point is TX, last point is RX
                     if path_idx == 0:  # Only need to set positions once per UE
                         tx_pos = interaction_points[0]
