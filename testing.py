@@ -10,7 +10,7 @@ from api_keys import DEEPMIMO_API_KEY
 #%% V4 Conversion
 
 # Example usage
-rt_folder = './P2Ms/asu_campus'
+rt_folder = './RT_SOURCES/asu_campus'
 # rt_folder = './P2Ms/simple_street_canyon_test'
 # rt_folder = 'C:/Users/jmora/Documents/GitHub/AutoRayTracing/all_runs/run_02-02-2025_15H45M26S/scen_0/DeepMIMO_folder'
 # rt_folder = 'C:/Users/jmora/Documents/GitHub/AutoRayTracing/all_runs/run_02-02-2025_15H45M26S/scen_0/sionna_test'
@@ -208,10 +208,11 @@ folder = f'aodt_scripts/{aodt_scen_name}'
 # df = pd.read_parquet(os.path.join(folder, 'db_info.parquet'))
 
 # df.head()
-
 dm.convert(folder, overwrite=True)
 
 aodt_scen = dm.load(aodt_scen_name)
+# TODO: save a single file for all ues (aodt_paths)
+
 
 #%%
 

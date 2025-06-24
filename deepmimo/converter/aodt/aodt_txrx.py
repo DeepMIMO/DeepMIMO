@@ -94,6 +94,9 @@ def convert_to_deepmimo_txrxset(tx_rx_data: Dict[str, Any], is_tx: bool, id_: in
             if panel['dual_polarized']:
                 ant_positions.append([x, y, 0])  # Same position, different polarization
     
+    # Get number of points (default to 1 for transmitters)
+    num_points = tx_rx_data.get('num_points', 1)
+    
     # Create TxRxSet
     return TxRxSet(
         name=f"{'tx' if is_tx else 'rx'}_{tx_rx_data['id']}",
@@ -101,8 +104,8 @@ def convert_to_deepmimo_txrxset(tx_rx_data: Dict[str, Any], is_tx: bool, id_: in
         id=id_,
         is_tx=is_tx,
         is_rx=not is_tx,
-        num_points=1,  # Each TX/RX is a single point
-        num_active_points=1,
+        num_points=num_points,  # Use actual number of points
+        num_active_points=num_points,  # Initially all points are active
         num_ant=num_ant,
         dual_pol=panel['dual_polarized'],
         ant_rel_positions=ant_positions,
@@ -254,6 +257,9 @@ def read_receivers(rt_folder: str, panels: Dict[str, Any]) -> List[Dict[str, Any
         initial_azimuth = float(orientations_array[0, 0])
         initial_azimuth = 0.0  # TODO: this is a temporary fix. 
                                # The orientations are not clear...
+        # raise issue if ue has multiple panels
+        if len(ue['panel']) > 1:
+            raise ValueError(f"UE {ue['ID']} has multiple panels: {ue['panel']}")
         
         rx = {
             'id': int(ue['ID']),
@@ -327,10 +333,27 @@ def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
         txrx_set = convert_to_deepmimo_txrxset(tx, is_tx=True, id_=i)
         txrx_dict[f'txrx_set_{i}'] = txrx_set.to_dict()
     
-    # Convert receivers
+    # Convert all receivers into a single set
     rx_start_id = len(transmitters)
-    for i, rx in enumerate(receivers):
-        txrx_set = convert_to_deepmimo_txrxset(rx, is_tx=False, id_=rx_start_id + i)
-        txrx_dict[f'txrx_set_{rx_start_id + i}'] = txrx_set.to_dict()
+    
+    # Use first receiver's data for configuration
+    first_rx = receivers[0]
+    
+    # Get initial positions from route data (time_idx = 0)
+    time_idx = 0  # TODO: this should be passed as a parameter for Dynamic scenes
+    rx_positions = [au.process_points(rx['mobility']['route']['positions'][time_idx])[0] 
+                    for rx in receivers]
+    
+    rx_data = {
+        'id': first_rx['id'],  # Use first RX's ID
+        'panel': first_rx['panel'],
+        'mech_tilt': first_rx['mech_tilt'],
+        'mech_azimuth': first_rx['mech_azimuth'],
+        'positions': rx_positions,  # Store all positions from route data
+        'num_points': len(receivers)  # Total number of receivers
+    }
+    
+    txrx_set = convert_to_deepmimo_txrxset(rx_data, is_tx=False, id_=rx_start_id)
+    txrx_dict[f'txrx_set_{rx_start_id}'] = txrx_set.to_dict()
 
     return txrx_dict 

@@ -121,7 +121,24 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
         print("Currently using only first TX/RX pair. Multi-pair support coming soon.")
         # TODO: In the future, we'll process all pairs here
         # For now, just filter to first RU
-        
+    
+    # Build mapping from RU/UE IDs to txrx_set IDs
+    tx_id_map = {}  # ru_id -> (tx_set_id, tx_idx)
+    rx_id_map = {}  # ue_id -> rx_idx
+    
+    # Map transmitters
+    for key, txrx_set in txrx_dict.items():
+        if txrx_set['is_tx']:
+            tx_id_map[txrx_set['id_orig']] = (txrx_set['id'], 0)  # tx_idx is always 0 since each TX is its own set
+    
+    # Get the single receiver set
+    rx_set = next(v for v in txrx_dict.values() if v['is_rx'])
+    rx_set_id = rx_set['id']
+    
+    # Map receivers to their indices in the order they appear in paths_df
+    for idx, ue_id in enumerate(paths_df['ue_id'].unique()):
+        rx_id_map[ue_id] = idx
+    
     # TODO: this time_idx should be passed as a parameter for Dynamic scenes
     for time_idx in paths_df['time_idx'].unique():
         paths_time_df = paths_df[paths_df['time_idx'] == time_idx]
@@ -197,9 +214,13 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
                 data[c.POWER_PARAM_NAME][rx_idx, :len(cir_data)] = cir_power
                 data[c.PHASE_PARAM_NAME][rx_idx, :len(cir_data)] = np.angle(cir_data, deg=True)
                 data[c.DELAY_PARAM_NAME][rx_idx, :len(cir_data)] = ant_cirs['cir_delay'].to_numpy()[0]
-                
-                # Note: path.tap_power matches np.abs(cir_data)**2, for the first antenna element
-                
+            
+            # Get TX/RX set IDs for saving
+            tx_set_id, tx_idx = tx_id_map[ru_id]
+            
+            # Compress data before saving
+            data = cu.compress_path_data(data)
+            
             # Save data for all UEs of this RU
             for key in data.keys():
-                cu.save_mat(data[key], key, output_folder, 0, ru_id, 1)  # Using 1 as rx_set_idx for now
+                cu.save_mat(data[key], key, output_folder, tx_set_id, tx_idx, rx_set_id)
