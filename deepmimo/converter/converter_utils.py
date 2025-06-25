@@ -193,8 +193,7 @@ def comp_next_pwr_10(arr: np.ndarray) -> np.ndarray:
     
     return result
 
-def get_max_paths(arr: Dict[str, np.ndarray], angle_key: str = c.AOA_AZ_PARAM_NAME,
-                  max_paths: int = 25) -> int:
+def get_max_paths(arr: Dict[str, np.ndarray], angle_key: str = c.AOA_AZ_PARAM_NAME) -> int:
     """Find maximum number of valid paths in the dataset.
     
     This function determines the maximum number of valid paths by finding
@@ -203,15 +202,20 @@ def get_max_paths(arr: Dict[str, np.ndarray], angle_key: str = c.AOA_AZ_PARAM_NA
     Args:
         arr (Dict[str, np.ndarray]): Dictionary containing path information arrays
         angle_key (str): Key to use for checking valid paths. Defaults to AOA_AZ
-        max_paths (int): Maximum number of paths to consider. Defaults to 25
         
     Returns:
-        int: Maximum number of valid paths, or max_paths if all paths contain data
+        int: Maximum number of valid paths, or actual number of paths if all contain data
     """
     # The first path index with all entries at NaN
     all_nans_per_path_idx = np.all(np.isnan(arr[angle_key]), axis=0)
     n_max_paths = np.where(all_nans_per_path_idx)[0]
-    return n_max_paths[0] if len(n_max_paths) else max_paths
+    
+    if len(n_max_paths):
+        # Found first all-NaN path index
+        return n_max_paths[0]
+    else:
+        # All paths contain data, return actual number of paths
+        return arr[angle_key].shape[1]
 
 def save_params(params_dict: Dict[str, Any], output_folder: str) -> None:
     """Save parameters dictionary to JSON format.
