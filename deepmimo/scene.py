@@ -924,29 +924,6 @@ def _get_faces_convex_hull(vertices: np.ndarray) -> List[List[Tuple[float, float
     Returns:
         List of faces, where each face is a list of (x,y,z) vertex coordinates
     """
-    # For roads or thin objects, use a different approach
-    # Check if object is flat by comparing height variation to object dimensions
-    height_variation = np.std(vertices[:, 2])
-    xy_extent = np.max(vertices[:, :2], axis=0) - np.min(vertices[:, :2], axis=0)
-    min_xy_extent = np.min(xy_extent[xy_extent > 0])  # Smallest non-zero extent
-    if height_variation < 0.1 * min_xy_extent:  # If height variation is small relative to xy dimensions
-        # Project to 2D, get convex hull of outline
-        points_2d = vertices[:, :2]
-        try:
-            hull = ConvexHull(points_2d)
-            # Create face using original z-coordinates
-            face_vertices = [(vertices[i, 0], vertices[i, 1], vertices[i, 2]) 
-                           for i in hull.vertices]
-        except Exception as e:
-            if np.linalg.matrix_rank(points_2d - points_2d[0]) < 2:
-                print('Convex hull failed - collinear vertices')
-                return None
-            else:
-                raise e
-        
-        return [face_vertices]  # Single face for flat objects
-
-    # For regular 3D objects, use the original approach
     # Extract base points (x,y coordinates)
     points_2d = vertices[:, :2]
     
