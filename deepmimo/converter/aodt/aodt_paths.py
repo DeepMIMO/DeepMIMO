@@ -16,6 +16,16 @@ from .. import converter_utils as cu
 from . import aodt_utils as au
 
 # AODT interaction type mapping
+AODT_TYPE_TO_NUM = {
+    'emission': 0,
+    'reflection': 1,
+    'diffraction': 2,
+    'scattering': 3,
+    'diffuse': 3,  # alias for scattering
+    'reception': 4,
+    'transmission': 5
+}
+
 AODT_INTERACTIONS_MAP = {
     0: None,  # emission - not counted as interaction
     1: c.INTERACTION_REFLECTION,  # reflection
@@ -30,10 +40,10 @@ def _transform_interaction_types(types: np.ndarray) -> float:
     
     Args:
         types: Array of AODT interaction types where:
-              - First element is always 0 (emission)
-              - Last element is always 4 (reception)
+              - First element is always 'emission'
+              - Last element is always 'reception'
               - Middle elements can be:
-                1 (reflection), 2 (diffraction), 3 (diffuse), 5 (transmission)
+                'reflection', 'diffraction', 'scattering'/'diffuse', 'transmission'
               
     Returns:
         float: Single number representing concatenated interaction types.
@@ -41,9 +51,9 @@ def _transform_interaction_types(types: np.ndarray) -> float:
                LoS paths return c.INTERACTION_LOS
                
     Example:
-        [0, 1, 1, 4] -> 11 (two reflections)
-        [0, 2, 4] -> 2 (single diffraction)
-        [0, 4] -> 0 (LoS)
+        ['emission', 'reflection', 'reflection', 'reception'] -> 11 (two reflections)
+        ['emission', 'diffraction', 'reception'] -> 2 (single diffraction)
+        ['emission', 'reception'] -> 0 (LoS)
     """
     # If only emission and reception, it's LoS
     if len(types) <= 2:
@@ -52,18 +62,27 @@ def _transform_interaction_types(types: np.ndarray) -> float:
     # Take only middle interactions (exclude first and last)
     interactions = types[1:-1]
     
+    # Convert string types to numeric codes
+    try:
+        numeric_types = [AODT_TYPE_TO_NUM[t.lower()] for t in interactions]
+    except KeyError as e:
+        print(f"Unknown interaction type: {e}")
+        print(f"Available types: {list(AODT_TYPE_TO_NUM.keys())}")
+        raise
+        
     # Map AODT types to DeepMIMO types and concatenate
-    mapped = [str(AODT_INTERACTIONS_MAP[t]) for t in interactions if AODT_INTERACTIONS_MAP[t] is not None]
+    mapped = [str(AODT_INTERACTIONS_MAP[t]) for t in numeric_types if AODT_INTERACTIONS_MAP[t] is not None]
     if not mapped:  # If all interactions were mapped to None
         return c.INTERACTION_LOS
         
     return float(''.join(mapped))
 
-def _preallocate_data(n_rx: int) -> Dict:
+def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> Dict:
     """Pre-allocate data for path conversion.
     
     Args:
         n_rx: Number of RXs
+        n_paths: Number of paths to allocate. Defaults to c.MAX_PATHS.
 
     Returns:
         data: Dictionary containing pre-allocated data
@@ -71,15 +90,15 @@ def _preallocate_data(n_rx: int) -> Dict:
     data = {
         c.RX_POS_PARAM_NAME: np.zeros((n_rx, 3), dtype=c.FP_TYPE),
         c.TX_POS_PARAM_NAME: np.zeros((1, 3), dtype=c.FP_TYPE),
-        c.AOA_AZ_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
-        c.AOA_EL_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
-        c.AOD_AZ_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
-        c.AOD_EL_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
-        c.DELAY_PARAM_NAME:  np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
-        c.POWER_PARAM_NAME:  np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
-        c.PHASE_PARAM_NAME:  np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
-        c.INTERACTIONS_PARAM_NAME:  np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
-        c.INTERACTIONS_POS_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS, c.MAX_INTER_PER_PATH, 3), dtype=c.FP_TYPE) * np.nan,
+        c.AOA_AZ_PARAM_NAME: np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
+        c.AOA_EL_PARAM_NAME: np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
+        c.AOD_AZ_PARAM_NAME: np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
+        c.AOD_EL_PARAM_NAME: np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
+        c.DELAY_PARAM_NAME:  np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
+        c.POWER_PARAM_NAME:  np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
+        c.PHASE_PARAM_NAME:  np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
+        c.INTERACTIONS_PARAM_NAME:  np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
+        c.INTERACTIONS_POS_PARAM_NAME: np.zeros((n_rx, n_paths, c.MAX_INTER_PER_PATH, 3), dtype=c.FP_TYPE) * np.nan,
     }
     
     return data
@@ -151,7 +170,8 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
             # Get number of UEs (receivers) for this RU
             ue_ids = paths_ru_df['ue_id'].unique()
             n_rx = len(ue_ids)
-            data = _preallocate_data(n_rx)
+            n_paths = c.MAX_PATHS if not is_single_ue_multi_pair else len(paths_ru_df)
+            data = _preallocate_data(n_rx, n_paths)
             
             # Process each UE (receiver)
             for rx_idx, ue_id in enumerate(ue_ids):
