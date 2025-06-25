@@ -219,13 +219,8 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
                     data[c.INTERACTIONS_PARAM_NAME][rx_idx, path_idx] = _transform_interaction_types(path.interaction_types)
                 
                 # Now process CIRs for power, phase and delay
-                # Group by antenna elements (for now just take first antenna pair)
-                ru_ant_el = cirs['ru_ant_el'].iloc[0]
-                ue_ant_el = cirs['ue_ant_el'].iloc[0]
-                ant_cirs = cirs[
-                    (cirs['ru_ant_el'] == ru_ant_el) & 
-                    (cirs['ue_ant_el'] == ue_ant_el)
-                ]
+                # For now just take first antenna pair (first row)
+                ant_cirs = cirs.iloc[[0]]
                 
                 # Combine real and imaginary parts
                 cir_data = ant_cirs['cir_re'].to_numpy()[0] + 1j * ant_cirs['cir_im'].to_numpy()[0]
