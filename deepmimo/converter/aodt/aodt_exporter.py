@@ -1,57 +1,67 @@
-from clickhouse_driver import Client
-import subprocess
 import os
-from pathlib import Path
+from typing import List, TYPE_CHECKING, Any
 
-def get_all_tables(client, database, table_filter=None):
+Client = 'Client' if TYPE_CHECKING else Any # from clickhouse_driver import Client
+
+EXCEPT_TABLES = ['cfrs', 'training_result', 'world', 'csi_report',
+                 'telemetry', 'dus', 'ran_config']
+
+# Import optional dependencies - this only runs once when the module is imported
+try:
+    import pandas as pd
+    import pyarrow  # Required for parquet support
+except ImportError:
+    raise ImportError(
+        "AODT export functionality requires additional dependencies. "
+        "Please install them using: pip install 'deepmimo[aodt]'"
+    )
+
+def get_all_tables(client: Client, database: str) -> List[str]:
     """Get list of all tables in the database."""
+    query = f"SELECT name FROM system.tables WHERE database = '{database}'"
     try:
-        query = f"""
-            SELECT name 
-            FROM system.tables 
-            WHERE database = '{database}'
-        """
-        if table_filter:
-            query += f" AND name LIKE '{table_filter}'"
         tables = client.execute(query)
-        return [table[0] for table in tables]
     except Exception as e:
         raise Exception(f"Failed to get table list: {str(e)}")
-
-def export_table_to_parquet(client, host, database, table_name, output_dir):
-    """Export a single table to parquet file."""
-    try:
-        # make the output directory if does not already exist
-        table_output_dir = os.path.join(output_dir, database)
-        os.makedirs(table_output_dir, exist_ok=True)
-        
-        row_count = client.execute(f"SELECT count() FROM {database}.{table_name}")[0][0]
-        output_file = os.path.join(table_output_dir, f"{table_name}.parquet")
-        
-        # export directly to parquet using clickhouse client
-        cmd = [
-            'clickhouse-client',
-            '--host', host,
-            '--query', f"SELECT * FROM {database}.{table_name} FORMAT Parquet",
-        ]
-        
-        with open(output_file, 'wb') as f:
-            subprocess.run(cmd, stdout=f, check=True)
-            
-        return output_file, row_count
     
+    return [table[0] for table in tables]
+
+def export_table_to_parquet(client: Client, database: str, table_name: str, 
+                            output_dir: str) -> None:
+    """Export a single table to a parquet file using clickhouse-connect."""
+    # Ensure output directory exists
+    table_output_dir = os.path.join(output_dir, database)
+    os.makedirs(table_output_dir, exist_ok=True)
+    
+    query = f"SELECT * FROM {database}.{table_name}"
+    
+    try:
+        columns = [col[0] for col in client.execute(f"DESCRIBE TABLE {database}.{table_name}")]
+        df = pd.DataFrame(client.execute(query), columns=columns)
     except Exception as e:
         print(f"Error exporting {table_name}: {str(e)}")
         raise
+        
+    output_file = os.path.join(table_output_dir, f"{table_name}.parquet")
+    
+    # Save as Parquet
+    df.to_parquet(output_file, index=False)
 
-def export_database_to_parquet(client, host, database, output_dir, filter_tables=True):
+    print(f"Exported table {table_name} ({len(df)} rows) to {output_file}")
+    return
+
+def aodt_exporter(client: Client, database: str = '', output_dir: str = '.',
+                  ignore_tables: List[str] = EXCEPT_TABLES) -> None:
     """Export a database to parquet files."""
+    if database == '':  # default to first database
+        database = client.execute('SHOW DATABASES')[1][0]
+        print(f'Default to database: {database}')
+    
     tables = get_all_tables(client, database)
-    ignore_tables = ['cfrs', 'training_result', 'world', 'csi_report'
-                     'telemetry', 'dus', 'ran_config']
-    if filter_tables:
-        tables_to_export = [t for t in tables if t not in ignore_tables]
-    else:
-        tables_to_export = tables
+    
+    tables_to_export = [table for table in tables if table not in ignore_tables]
+    
     for table in tables_to_export:
-        export_table_to_parquet(client, host, database, table, output_dir)
+        export_table_to_parquet(client, database, table, output_dir)
+
+    return
