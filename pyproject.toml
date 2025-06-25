@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "DeepMIMOtest"
-version = "4.0.0a16"
+version = "4.0.0a20"
 authors = [
     { name = "João Morais" },
     { name = "Umut Demirhan" },
@@ -26,6 +26,7 @@ dependencies = [
     "numpy>=1.19.5",
     "scipy>=1.6.2,<=1.15.2", # only used for saving matrices compatible with matlab
     "tqdm>=4.59.0",
+    "requests"
 ]
 
 [tool.setuptools.packages.find]
@@ -63,7 +64,7 @@ aodt = [
     "pyarrow",  # backend for pandas parquet reading 
 ]
 
-sionna1 = [
+sionna = [
     # Common ray tracing pipeline tools
     "utm",               # To be replaced by built-in (see geo_utils.py)
     "lxml",              # To be replaced by built-in (see insite_raytracer.py)
@@ -145,7 +146,10 @@ all = [
     "plyfile",           
     
     # Sionna 1.0 specific
-    "sionna-rt==1.0.2",  
+    "sionna-rt==1.0.2",
+
+    # AODT specific
+    "pyarrow",
 
     # Development
     "build",
