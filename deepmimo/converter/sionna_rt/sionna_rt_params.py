@@ -17,7 +17,7 @@ import os
 from dataclasses import dataclass
 from typing import Dict
 
-from ..converter_utils import load_pickle
+from ...general_utils import load_pickle
 from ...rt_params import RayTracingParameters
 from ...consts import RAYTRACER_NAME_SIONNA
 from ...config import config

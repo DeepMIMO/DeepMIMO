@@ -17,7 +17,6 @@ from typing import List, Dict, Optional, Any
 import numpy as np
 import scipy.io
 import shutil
-import pickle
 
 from ..general_utils import (
     get_mat_filename, 
@@ -26,35 +25,6 @@ from ..general_utils import (
     save_dict_as_json
 )
 from .. import consts as c
-
-def save_pickle(obj: Any, filename: str) -> None:
-    """Save an object to a pickle file.
-    
-    Args:
-        obj (Any): Object to save
-        filename (str): Path to save pickle file
-        
-    Raises:
-        IOError: If file cannot be written
-    """
-    with open(filename, 'wb') as file:
-        pickle.dump(obj, file)
-
-def load_pickle(filename: str) -> Any:
-    """Load an object from a pickle file.
-    
-    Args:
-        filename (str): Path to pickle file
-        
-    Returns:
-        Any: Unpickled object
-        
-    Raises:
-        FileNotFoundError: If file does not exist
-        pickle.UnpicklingError: If file cannot be unpickled
-    """
-    with open(filename, 'rb') as file:
-        return pickle.load(file)
 
 def save_mat(data: np.ndarray, data_key: str, output_folder: str,
              tx_set_idx: Optional[int] = None, tx_idx: Optional[int] = None, 

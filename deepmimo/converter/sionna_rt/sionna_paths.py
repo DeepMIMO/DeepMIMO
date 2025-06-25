@@ -9,8 +9,8 @@ import numpy as np
 from tqdm import tqdm
 from typing import Dict
 from ... import consts as c
-from .. import converter_utils as cu
-from ...config import config
+from ..converter_utils import save_mat, compress_path_data
+from ...general_utils import load_pickle
 
 # Interaction Type Map for Sionna
 INTERACTIONS_MAP = {
@@ -329,7 +329,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
         [batch_size, num_rx, num_tx, max_num_paths], float
 
     """
-    path_dict_list = cu.load_pickle(os.path.join(load_folder, 'sionna_paths.pkl'))
+    path_dict_list = load_pickle(os.path.join(load_folder, 'sionna_paths.pkl'))
 
     # Collect all unique TX positions from all path dictionaries
     all_tx_pos = np.unique(np.vstack([
@@ -382,11 +382,11 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
         pbar.close()
 
         # Compress data before saving
-        data = cu.compress_path_data(data)
+        data = compress_path_data(data)
         
         # Save each data key
         for key in data.keys():
-            cu.save_mat(data[key], key, save_folder, 0, tx_idx, 1)  # Static for Sionna
+            save_mat(data[key], key, save_folder, 0, tx_idx, 1)  # Static for Sionna
         
         if bs_bs_paths:
             print(f'BS-BS paths found for TX {tx_idx}')
@@ -402,14 +402,14 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
             _process_paths_batch(paths_dict, data_bs_bs, b, t, 0, all_bs_pos, rx_pos)
             
             # Compress data before saving
-            data_bs_bs = cu.compress_path_data(data_bs_bs)
+            data_bs_bs = compress_path_data(data_bs_bs)
             
             # Save each data key
             for key in data_bs_bs.keys():
-                cu.save_mat(data_bs_bs[key], key, save_folder, 
-                            tx_set_idx=0, # BS INDEX
-                            tx_idx=tx_idx, # ANTENNA INDEX
-                            rx_set_idx=0)  # Same RX & TX set
+                save_mat(data_bs_bs[key], key, save_folder, 
+                         tx_set_idx=0, # BS INDEX
+                         tx_idx=tx_idx, # ANTENNA INDEX
+                         rx_set_idx=0)  # Same RX & TX set
     
     if bs_bs_paths:
         txrx_dict['txrx_set_0']['is_rx'] = True  # add BS set also as RX

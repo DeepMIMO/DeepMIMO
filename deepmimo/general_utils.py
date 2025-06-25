@@ -20,6 +20,7 @@ from tqdm import tqdm
 import zipfile
 import json
 from .config import config
+import pickle
 
 K = TypeVar("K", bound=str)
 V = TypeVar("V")
@@ -603,3 +604,36 @@ class DelegatingList(list):
             # Otherwise assign the same value to all items
             for item in self:
                 setattr(item, name, value)
+
+# ============================================================================
+# Pickle Utilities
+# ============================================================================
+
+def save_pickle(obj: Any, filename: str) -> None:
+    """Save an object to a pickle file.
+    
+    Args:
+        obj (Any): Object to save
+        filename (str): Path to save pickle file
+        
+    Raises:
+        IOError: If file cannot be written
+    """
+    with open(filename, 'wb') as file:
+        pickle.dump(obj, file)
+
+def load_pickle(filename: str) -> Any:
+    """Load an object from a pickle file.
+    
+    Args:
+        filename (str): Path to pickle file
+        
+    Returns:
+        Any: Unpickled object
+        
+    Raises:
+        FileNotFoundError: If file does not exist
+        pickle.UnpicklingError: If file cannot be unpickled
+    """
+    with open(filename, 'rb') as file:
+        return pickle.load(file)

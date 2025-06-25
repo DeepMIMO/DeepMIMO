@@ -8,7 +8,8 @@ import os
 from typing import Dict, Tuple
 
 from ...materials import Material, MaterialList
-from .. import converter_utils as cu
+from ...general_utils import load_pickle
+from ..converter_utils import save_mat
 
 def read_materials(load_folder: str, save_folder: str) -> Tuple[Dict, Dict[str, int]]:
     """Read materials from a Sionna RT simulation folder.
@@ -22,8 +23,8 @@ def read_materials(load_folder: str, save_folder: str) -> Tuple[Dict, Dict[str, 
                  Dict mapping object names to material indices)
     """
     # Load Sionna materials
-    material_properties = cu.load_pickle(os.path.join(load_folder, 'sionna_materials.pkl'))
-    material_indices = cu.load_pickle(os.path.join(load_folder, 'sionna_material_indices.pkl'))
+    material_properties = load_pickle(os.path.join(load_folder, 'sionna_materials.pkl'))
+    material_indices = load_pickle(os.path.join(load_folder, 'sionna_material_indices.pkl'))
 
     # Initialize material list
     material_list = MaterialList()
@@ -65,6 +66,6 @@ def read_materials(load_folder: str, save_folder: str) -> Tuple[Dict, Dict[str, 
     material_list.add_materials(materials)
     
     # Save materials indices to matrix file
-    cu.save_mat(material_indices, 'materials', save_folder)
+    save_mat(material_indices, 'materials', save_folder)
     
     return material_list.to_dict(), material_indices 

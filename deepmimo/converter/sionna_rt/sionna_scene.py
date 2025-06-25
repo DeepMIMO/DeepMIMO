@@ -7,7 +7,7 @@ This module handles loading and converting scene data from Sionna's format to De
 import os
 from typing import List
 
-from .. import converter_utils as cu
+from ...general_utils import load_pickle
 
 from ...scene import (
     PhysicalElement, 
@@ -36,8 +36,8 @@ def read_scene(load_folder: str, material_indices: List[int]) -> Scene:
         Scene: Loaded scene with all objects
     """
     # Load raw data - already in correct format
-    vertices = cu.load_pickle(os.path.join(load_folder, 'sionna_vertices.pkl')) # (N_VERTICES, 3) 
-    objects = cu.load_pickle(os.path.join(load_folder, 'sionna_objects.pkl')) # Dict with vertex index ranges
+    vertices = load_pickle(os.path.join(load_folder, 'sionna_vertices.pkl')) # (N_VERTICES, 3) 
+    objects = load_pickle(os.path.join(load_folder, 'sionna_objects.pkl')) # Dict with vertex index ranges
     
     # Create scene
     scene = Scene()
