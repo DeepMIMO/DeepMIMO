@@ -63,12 +63,10 @@ def _transform_interaction_types(types: np.ndarray) -> float:
     interactions = types[1:-1]
     
     # Convert string types to numeric codes
-    try:
+    if interactions.dtype == 'O': # str
         numeric_types = [AODT_TYPE_TO_NUM[t.lower()] for t in interactions]
-    except KeyError as e:
-        print(f"Unknown interaction type: {e}")
-        print(f"Available types: {list(AODT_TYPE_TO_NUM.keys())}")
-        raise
+    else:
+        numeric_types = interactions
         
     # Map AODT types to DeepMIMO types and concatenate
     mapped = [str(AODT_INTERACTIONS_MAP[t]) for t in numeric_types if AODT_INTERACTIONS_MAP[t] is not None]
