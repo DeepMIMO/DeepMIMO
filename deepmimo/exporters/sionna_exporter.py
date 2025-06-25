@@ -26,11 +26,10 @@ import numpy as np
 from typing import Tuple, List, Dict, Any
 
 from .. import converter_utils as cu
-from ...pipelines.sionna_rt.sionna_utils import get_sionna_version, is_sionna_v1
 
-# Define types at module level
 try:
     import sionna.rt
+    from ...pipelines.sionna_rt.sionna_utils import get_sionna_version, is_sionna_v1
     Paths = sionna.rt.Paths
     Scene = sionna.rt.Scene
 except ImportError:

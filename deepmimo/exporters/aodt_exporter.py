@@ -29,10 +29,7 @@ def get_all_tables(client: Client, database: str) -> List[str]:
 def export_table_to_parquet(client: Client, database: str, table_name: str, 
                             output_dir: str) -> None:
     """Export a single table to a parquet file using clickhouse-connect."""
-    # Ensure output directory exists
-    table_output_dir = os.path.join(output_dir, database)
-    os.makedirs(table_output_dir, exist_ok=True)
-    
+
     query = f"SELECT * FROM {database}.{table_name}"
     
     try:
@@ -42,7 +39,7 @@ def export_table_to_parquet(client: Client, database: str, table_name: str,
         print(f"Error exporting {table_name}: {str(e)}")
         raise
         
-    output_file = os.path.join(table_output_dir, f"{table_name}.parquet")
+    output_file = os.path.join(output_dir, f"{table_name}.parquet")
     
     # Save as Parquet
     df.to_parquet(output_file, index=False)
@@ -61,7 +58,10 @@ def aodt_exporter(client: Client, database: str = '', output_dir: str = '.',
     
     tables_to_export = [table for table in tables if table not in ignore_tables]
     
+    tables_output_dir = os.path.join(output_dir, database)
+    os.makedirs(tables_output_dir, exist_ok=True)
+    
     for table in tables_to_export:
-        export_table_to_parquet(client, database, table, output_dir)
-
-    return
+        export_table_to_parquet(client, database, table, tables_output_dir)
+        
+    return tables_output_dir
