@@ -249,12 +249,12 @@ def read_receivers(rt_folder: str, panels: Dict[str, Any]) -> List[Dict[str, Any
     receivers = []
     for _, ue in ues_df.iterrows():
         # Get initial orientation (azimuth) from route if available
-        route_orientations = ue['route_orientations'][time_idx]
+        # route_orientations = ue['route_orientations'][time_idx]
         
-        # Convert orientations to array using aodt_utils
-        orientations_array = au.process_points(route_orientations)
-        # Take first orientation's azimuth
-        initial_azimuth = float(orientations_array[0, 0])
+        # # Convert orientations to array using aodt_utils
+        # orientations_array = au.process_points(route_orientations)
+        # # Take first orientation's azimuth
+        # initial_azimuth = float(orientations_array[0, 0])
         initial_azimuth = 0.0  # TODO: this is a temporary fix. 
                                # The orientations are not clear...
         # raise issue if ue has multiple panels
@@ -288,7 +288,7 @@ def read_receivers(rt_folder: str, panels: Dict[str, Any]) -> List[Dict[str, Any
                 },
                 'route': {
                     'positions': np.array(ue['route_positions']),
-                    'orientations': np.array(route_orientations),
+                    'orientations': np.array(ue['route_orientations']),
                     'speeds': np.array(ue['route_speeds']),
                     'times': np.array(ue['route_times'])
                 }

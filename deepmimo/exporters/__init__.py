@@ -8,6 +8,7 @@ Each exporter has its own dependencies which can be installed separately:
 - Sionna exporter: pip install 'deepmimo[sionna]'
 """
 
+# Import the functions but don't execute the imports until needed
 def __getattr__(name):
     if name == 'aodt_exporter':
         from .aodt_exporter import aodt_exporter as _func

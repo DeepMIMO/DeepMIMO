@@ -1,3 +1,11 @@
+"""
+AODT Exporter Module.
+
+This module provides functionality for exporting AODT data to parquet format.
+Note: This functionality requires additional dependencies.
+Install them using: pip install 'deepmimo[aodt]'
+"""
+
 import os
 from typing import List, TYPE_CHECKING, Any
 
@@ -48,8 +56,18 @@ def export_table_to_parquet(client: Client, database: str, table_name: str,
     return
 
 def aodt_exporter(client: Client, database: str = '', output_dir: str = '.',
-                  ignore_tables: List[str] = EXCEPT_TABLES) -> None:
-    """Export a database to parquet files."""
+                  ignore_tables: List[str] = EXCEPT_TABLES) -> str:
+    """Export a database to parquet files.
+    
+    Args:
+        client: Clickhouse client instance
+        database: Database name to export. If empty, uses first available database.
+        output_dir: Directory to save parquet files. Defaults to current directory.
+        ignore_tables: List of tables to ignore. Defaults to EXCEPT_TABLES.
+        
+    Returns:
+        str: Path to the directory containing the exported files.
+    """
     if database == '':  # default to first database
         database = client.execute('SHOW DATABASES')[1][0]
         print(f'Default to database: {database}')
@@ -66,5 +84,5 @@ def aodt_exporter(client: Client, database: str = '', output_dir: str = '.',
         
     return tables_output_dir
 
-# Explicitly declare what should be imported when using 'from .aodt_exporter import *'
+# Make the function directly available when importing the module
 __all__ = ['aodt_exporter']
