@@ -15,9 +15,9 @@ DeepMIMO does not require sionna to be installed.
 To keep it this way AND use this module, you need to import it explicitly:
 
 # Import the module:
-from deepmimo.converter.sionna_rt import sionna_exporter
+from deepmimo.exporters import sionna_exporter
 
-sionna_exporter.export_to_deepmimo(scene, path_list, my_compute_path_params, save_folder)
+sionna_exporter(scene, path_list, my_compute_path_params, save_folder)
 
 """
 
@@ -25,7 +25,7 @@ import os
 import numpy as np
 from typing import Tuple, List, Dict, Any
 
-from .. import converter_utils as cu
+from ..general_utils import save_pickle
 
 try:
     import sionna.rt
@@ -328,6 +328,9 @@ def sionna_exporter(scene: Scene, path_list: List[Paths] | Paths,
     }
     
     for filename, variable in save_vars_dict.items():
-        cu.save_pickle(variable, os.path.join(save_folder, filename))
+        save_pickle(variable, os.path.join(save_folder, filename))
 
     return
+
+# Explicitly declare what should be imported when using 'from .sionna_exporter import *'
+__all__ = ['sionna_exporter']

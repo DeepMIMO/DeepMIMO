@@ -65,3 +65,6 @@ def aodt_exporter(client: Client, database: str = '', output_dir: str = '.',
         export_table_to_parquet(client, database, table, tables_output_dir)
         
     return tables_output_dir
+
+# Explicitly declare what should be imported when using 'from .aodt_exporter import *'
+__all__ = ['aodt_exporter']
