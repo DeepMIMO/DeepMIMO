@@ -89,7 +89,7 @@ def aodt_exporter(client: Client, database: str = '', output_dir: str = '.',
     elif n_times == 1: # Static
         target_dirs += [export_dir]
     elif n_times > 1: # Dynamic
-        target_dirs += [export_dir + f'_{t:03d}' for t in range(n_times)]
+        target_dirs += [os.path.join(export_dir, f'scene_{t:04d}') for t in range(n_times)]
 
     # Current information:
     direct_tables = ['db_info', 'materials', 'panels', 'patterns', 'runs', 'scenario']
