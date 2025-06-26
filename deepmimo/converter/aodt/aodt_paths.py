@@ -156,87 +156,86 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
     for idx, ue_id in enumerate(paths_df['ue_id'].unique()):
         rx_id_map[ue_id] = idx
     
-    # TODO: this time_idx should be passed as a parameter for Dynamic scenes
-    for time_idx in paths_df['time_idx'].unique():
-        paths_time_df = paths_df[paths_df['time_idx'] == time_idx]
-        cirs_time_df = cirs_df[cirs_df['time_idx'] == time_idx]
+    time_idx = paths_df['time_idx'].unique()[0] # take first time index
+    paths_time_df = paths_df[paths_df['time_idx'] == time_idx]
+    cirs_time_df = cirs_df[cirs_df['time_idx'] == time_idx]
+    
+    for ru_id in paths_time_df['ru_id'].unique():
+        paths_ru_df = paths_time_df[paths_time_df['ru_id'] == ru_id]
+        cirs_ru_df = cirs_time_df[cirs_time_df['ru_id'] == ru_id]
         
-        for ru_id in paths_time_df['ru_id'].unique():
-            paths_ru_df = paths_time_df[paths_time_df['ru_id'] == ru_id]
-            cirs_ru_df = cirs_time_df[cirs_time_df['ru_id'] == ru_id]
+        # Get number of UEs (receivers) for this RU
+        ue_ids = paths_ru_df['ue_id'].unique()
+        n_rx = len(ue_ids)
+        n_paths = c.MAX_PATHS if not is_single_ue_multi_pair else len(paths_ru_df)
+        data = _preallocate_data(n_rx, n_paths)
+        
+        # Process each UE (receiver)
+        for rx_idx, ue_id in enumerate(ue_ids):
+            # Get all paths and CIRs for this RU-UE pair
+            paths = paths_ru_df[paths_ru_df['ue_id'] == ue_id]
+            cirs = cirs_ru_df[cirs_ru_df['ue_id'] == ue_id]
             
-            # Get number of UEs (receivers) for this RU
-            ue_ids = paths_ru_df['ue_id'].unique()
-            n_rx = len(ue_ids)
-            n_paths = c.MAX_PATHS if not is_single_ue_multi_pair else len(paths_ru_df)
-            data = _preallocate_data(n_rx, n_paths)
+            if len(cirs) == 0:
+                print(f"Warning: No CIR data for RU {ru_id} UE {ue_id}")
+                continue
             
-            # Process each UE (receiver)
-            for rx_idx, ue_id in enumerate(ue_ids):
-                # Get all paths and CIRs for this RU-UE pair
-                paths = paths_ru_df[paths_ru_df['ue_id'] == ue_id]
-                cirs = cirs_ru_df[cirs_ru_df['ue_id'] == ue_id]
+            # Process paths first to get positions and angles
+            for path_idx, path in enumerate(paths.itertuples()):
+                # Process interaction points
+                interaction_points = au.process_points(path.points)
                 
-                if len(cirs) == 0:
-                    print(f"Warning: No CIR data for RU {ru_id} UE {ue_id}")
-                    continue
+                # Convert from cm to m
+                interaction_points = interaction_points / 100.0
                 
-                # Process paths first to get positions and angles
-                for path_idx, path in enumerate(paths.itertuples()):
-                    # Process interaction points
-                    interaction_points = au.process_points(path.points)
-                    
-                    # Convert from cm to m
-                    interaction_points = interaction_points / 100.0
-                    
-                    # First point is TX, last point is RX
-                    if path_idx == 0:  # Only need to set positions once per UE
-                        tx_pos = interaction_points[0]
-                        rx_pos = interaction_points[-1]
-                        if rx_idx == 0:  # Only set TX position once for first UE
-                            data[c.TX_POS_PARAM_NAME][0] = tx_pos
-                        data[c.RX_POS_PARAM_NAME][rx_idx] = rx_pos
-                    
-                    # Calculate angles
-                    # Departure angles - vector from TX to first interaction point
-                    departure_vector = interaction_points[1] - tx_pos
-                    departure_angles = gu.cartesian_to_spherical(departure_vector.reshape(1, -1))[0]
-                    data[c.AOD_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[1])
-                    data[c.AOD_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[2])
-                    
-                    # Arrival angles - vector from last interaction point to RX
-                    arrival_vector = rx_pos - interaction_points[-2]
-                    arrival_angles = gu.cartesian_to_spherical(arrival_vector.reshape(1, -1))[0]
-                    data[c.AOA_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[1])
-                    data[c.AOA_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[2])
-                    
-                    # Store interaction data - skip first (TX) and last (RX) points
-                    actual_interactions = interaction_points[1:-1]
-                    if len(actual_interactions) > 0:
-                        data[c.INTERACTIONS_POS_PARAM_NAME][rx_idx, path_idx, :len(actual_interactions), :] = actual_interactions
-                    
-                    # Transform interaction types to DeepMIMO format
-                    data[c.INTERACTIONS_PARAM_NAME][rx_idx, path_idx] = _transform_interaction_types(path.interaction_types)
+                # First point is TX, last point is RX
+                if path_idx == 0:  # Only need to set positions once per UE
+                    tx_pos = interaction_points[0]
+                    rx_pos = interaction_points[-1]
+                    if rx_idx == 0:  # Only set TX position once for first UE
+                        data[c.TX_POS_PARAM_NAME][0] = tx_pos
+                    data[c.RX_POS_PARAM_NAME][rx_idx] = rx_pos
                 
-                # Now process CIRs for power, phase and delay
-                # For now just take first antenna pair (first row)
-                ant_cirs = cirs.iloc[[0]]
+                # Calculate angles
+                # Departure angles - vector from TX to first interaction point
+                departure_vector = interaction_points[1] - tx_pos
+                departure_angles = gu.cartesian_to_spherical(departure_vector.reshape(1, -1))[0]
+                data[c.AOD_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[1])
+                data[c.AOD_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[2])
                 
-                # Combine real and imaginary parts
-                cir_data = ant_cirs['cir_re'].to_numpy()[0] + 1j * ant_cirs['cir_im'].to_numpy()[0]
+                # Arrival angles - vector from last interaction point to RX
+                arrival_vector = rx_pos - interaction_points[-2]
+                arrival_angles = gu.cartesian_to_spherical(arrival_vector.reshape(1, -1))[0]
+                data[c.AOA_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[1])
+                data[c.AOA_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[2])
                 
-                # Calculate power and phase from complex CIR
-                cir_power = 20 * np.log10(np.abs(cir_data))
-                data[c.POWER_PARAM_NAME][rx_idx, :len(cir_data)] = cir_power
-                data[c.PHASE_PARAM_NAME][rx_idx, :len(cir_data)] = np.angle(cir_data, deg=True)
-                data[c.DELAY_PARAM_NAME][rx_idx, :len(cir_data)] = ant_cirs['cir_delay'].to_numpy()[0]
+                # Store interaction data - skip first (TX) and last (RX) points
+                actual_interactions = interaction_points[1:-1]
+                if len(actual_interactions) > 0:
+                    data[c.INTERACTIONS_POS_PARAM_NAME][rx_idx, path_idx, :len(actual_interactions), :] = actual_interactions
+                
+                # Transform interaction types to DeepMIMO format
+                data[c.INTERACTIONS_PARAM_NAME][rx_idx, path_idx] = _transform_interaction_types(path.interaction_types)
             
-            # Get TX/RX set IDs for saving
-            tx_set_id, tx_idx = tx_id_map[ru_id]
+            # Now process CIRs for power, phase and delay
+            # For now just take first antenna pair (first row)
+            ant_cirs = cirs.iloc[[0]]
             
-            # Compress data before saving
-            data = cu.compress_path_data(data)
+            # Combine real and imaginary parts
+            cir_data = ant_cirs['cir_re'].to_numpy()[0] + 1j * ant_cirs['cir_im'].to_numpy()[0]
             
-            # Save data for all UEs of this RU
-            for key in data.keys():
-                cu.save_mat(data[key], key, output_folder, tx_set_id, tx_idx, rx_set_id)
+            # Calculate power and phase from complex CIR
+            cir_power = 20 * np.log10(np.abs(cir_data))
+            data[c.POWER_PARAM_NAME][rx_idx, :len(cir_data)] = cir_power
+            data[c.PHASE_PARAM_NAME][rx_idx, :len(cir_data)] = np.angle(cir_data, deg=True)
+            data[c.DELAY_PARAM_NAME][rx_idx, :len(cir_data)] = ant_cirs['cir_delay'].to_numpy()[0]
+        
+        # Get TX/RX set IDs for saving
+        tx_set_id, tx_idx = tx_id_map[ru_id]
+        
+        # Compress data before saving
+        data = cu.compress_path_data(data)
+        
+        # Save data for all UEs of this RU
+        for key in data.keys():
+            cu.save_mat(data[key], key, output_folder, tx_set_id, tx_idx, rx_set_id)
