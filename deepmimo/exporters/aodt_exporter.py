@@ -24,9 +24,9 @@ except ImportError:
         "Please install them using: pip install 'deepmimo[aodt]'"
     )
 
-def get_all_databases(client) -> List[str]:
+def get_all_databases(client: Client) -> List[str]:
     query = "SHOW DATABASES"
-    return [db_name[0] for db_name in db_client.execute(query)]
+    return [db_name[0] for db_name in client.execute(query)]
 
 def get_all_tables(client: Client, database: str) -> List[str]:
     """Get list of all tables in the database."""
@@ -80,7 +80,7 @@ def aodt_exporter(client: Client, database: str = '', output_dir: str = '.',
 
     # Decide if Static or Dynamic scenario (respectively, 1 or more time stamps)
     time_table = load_table_to_df(client, database, 'time_info')
-    n_times = len(df) - 1 # AODT always outputs one more time index than necessary
+    n_times = len(time_table) - 1 # AODT always outputs one more time index than necessary
 
     target_dirs = []
     export_dir = os.path.join(output_dir, database)
@@ -114,7 +114,7 @@ def aodt_exporter(client: Client, database: str = '', output_dir: str = '.',
                 
             output_file = os.path.join(target_dir, f"{table}.parquet")
             table_df.to_parquet(output_file, index=False)
-            print(f"Exported table {table} ({len(df)} rows) to {output_file}")
+            print(f"Exported table {table} ({len(table_df)} rows) to {output_file}")
     
     return export_dir
 
