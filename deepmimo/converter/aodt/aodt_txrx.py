@@ -340,8 +340,8 @@ def read_txrx(rt_folder: str, rt_params: Dict[str, Any]) -> Dict[str, Any]:
     first_rx = receivers[0]
     
     # Get initial positions from route data (time_idx = 0)
-    time_idx = 0  # TODO: this should be passed as a parameter for Dynamic scenes
-    rx_positions = [au.process_points(rx['mobility']['route']['positions'][time_idx])[0] 
+    time_idx = int(os.path.basename(rt_folder).split('_')[-1])
+    rx_positions = [au.process_points(rx['mobility']['route']['positions'][0])[time_idx] 
                     for rx in receivers]
     
     rx_data = {
