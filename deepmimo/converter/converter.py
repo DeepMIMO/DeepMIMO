@@ -11,6 +11,7 @@ import os
 from typing import Dict, Any, Optional, Callable
 
 # Local imports
+from .. import consts as c
 from . import converter_utils as cu
 from .aodt.aodt_converter import aodt_rt_converter
 from .sionna_rt.sionna_converter import sionna_rt_converter
@@ -75,7 +76,7 @@ def convert(path_to_rt_folder: str, **conversion_params: Dict[str, Any]) -> Opti
         
         if rt_converter is None:
             print('No converter match found in subdirectories.')
-            print('Make sure the folder contains ray tracing output files (.pkl, .aodt, .setup, etc.)')
+            print('Make sure the folder contains ray tracing output files (.pkl, .parquet, .setup, etc.)')
             print(f'Supported ray tracers: {c.SUPPORTED_RAYTRACERS}')
             return None
 

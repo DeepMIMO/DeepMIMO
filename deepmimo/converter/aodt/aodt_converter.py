@@ -86,9 +86,9 @@ def aodt_rt_converter(rt_folder: str, copy_source: bool = False,
     if False:
         scene = read_scene(rt_folder)
         scene_dict = scene.export_data(temp_folder) if scene else {}
-        scene_dict[c.SCENE_PARAM_NUMBER_SCENES] = num_scenes
     else:
-        scene, scene_dict = None, {'num_scenes': 1}
+        scene, scene_dict = None, {}
+    scene_dict[c.SCENE_PARAM_NUMBER_SCENES] = num_scenes
 
     # Visualize if requested
     if vis_scene and scene:

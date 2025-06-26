@@ -339,7 +339,7 @@ def _validate_txrx_sets(sets: Dict[int, list | str] | list | str,
         for set_id in sets:
             if set_id not in valid_set_ids:
                 raise Exception(f"{set_str} set {set_id} not in allowed sets {valid_set_ids}\n"
-                              + info_str)
+                                + info_str)
         
             sets_dict[set_id] = np.arange(txrx_dict[f'txrx_set_{set_id}']['num_points'])
     elif type(sets) is str:
