@@ -371,6 +371,61 @@ class Dataset(DotDict):
         """
         return self.rx_ori
 
+    def bs_look_at(self, look_pos: np.ndarray | list | tuple = (0, 0, 0)) -> None:
+        """Set the orientation of the basestation to look at a given position in 3D.
+
+        Similar to Sionna RT's Camera.look_at() function, this method automatically
+        calculates and sets the antenna rotation parameters so that the basestation
+        points toward the specified target position.
+
+        Args:
+            look_pos: The position to look at (x, y, z) in meters.
+                     Can be a numpy array, list, or tuple.
+                     If 2D coordinates are provided, z=0 is assumed.
+
+        Example:
+            >>> # Point BS toward a specific UE
+            >>> dataset.bs_look_at(dataset.rx_pos[0])
+            >>> 
+            >>> # Point BS toward coordinates
+            >>> dataset.bs_look_at([100, 200, 10])
+        """
+        # Ensure both positions are 3D numpy arrays
+        tx = np.array(self.tx_pos)
+        rx = np.array(look_pos)
+        
+        # Handle 2D coordinates by adding z=0
+        if tx.shape[0] == 2:
+            tx = np.append(tx, 0)
+        if rx.shape[0] == 2:
+            rx = np.append(rx, 0)
+
+        # Calculate direction vector
+        dx, dy, dz = rx[0] - tx[0], rx[1] - tx[1], rx[2] - tx[2]
+        
+        # Calculate azimuth (horizontal angle)
+        azimuth = np.arctan2(dy, dx)
+        
+        # Calculate elevation (vertical angle) 
+        distance = np.sqrt(dx**2 + dy**2)
+        elevation = np.arctan2(dz, distance)
+
+        # Convert from radians to degrees for DeepMIMO convention
+        azimuth_deg = azimuth * 180.0 / np.pi
+        elevation_deg = elevation * 180.0 / np.pi
+
+        # Update the basestation antenna rotation parameters
+        # Note: Currently only azimuth is supported in DeepMIMO
+        # TODO: Add elevation support when DeepMIMO implements it
+        if hasattr(self, 'ch_params') and self.ch_params is not None:
+            self.ch_params.bs_antenna[c.PARAMSET_ANT_ROTATION] = azimuth_deg
+            # Clear cached rotated angles since rotation has changed
+            self._clear_cache_rotated_angles()
+        else:
+            # If no channel parameters exist yet, store for later use
+            print("Warning: No channel parameters found. Call set_channel_params() first.")
+            print(f"Calculated azimuth: {azimuth_deg:.2f}°, elevation: {elevation_deg:.2f}°")
+
     def _compute_rotated_angles(self, tx_ant_params: Optional[Dict[str, Any]] = None, 
                                 rx_ant_params: Optional[Dict[str, Any]] = None) -> Dict[str, np.ndarray]:
         """Compute rotated angles for all users in batch.
