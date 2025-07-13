@@ -33,8 +33,27 @@ folder = f'aodt_scripts/{aodt_scen_name}'
 # df.head()
 aodt_scen = dm.convert(folder, overwrite=True)
 
-#%%
-
 aodt_scen = dm.load(aodt_scen_name, max_paths=500)
 
 #%%
+
+dataset = dm.load('asu_campus_3p5')
+
+idx_1 = 10
+idx_2 = 11
+
+dataset.plot_rays(idx_1, proj_3D=False)
+dataset.plot_rays(idx_2, proj_3D=False)
+
+# GOAL: interpolate between positions
+
+# TODO: FOR EACH PATH in a index pair:
+#       1) Identify whether it has a correspondent in the other index
+#       2) SAME PATHS: [Linear Interpolation] each quantity
+#       2.1) Provide percentages for new points in the interpolation, i.e. [0.1, 0.3, 0.7]
+#       3) NOT same paths: what to do? interpolate only equal paths?
+#       3.1) Provide percentages for new points in the interpolation, i.e. [0.1, 0.3, 0.7]
+#       4) Organize paths again (sort by strongest pwr)
+#       5) Return the new dataset??
+
+
