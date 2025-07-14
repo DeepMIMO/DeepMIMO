@@ -19,6 +19,10 @@ dm.convert(rt_folder, overwrite=True, scenario_name=scen_name, vis_scene=True)
 
 dataset = dm.load('asu_campus_3p5')
 
+#%%
+
+dm.stats_summary('asu_campus_3p5', print_summary=True)
+
 #%% AODT Conversion
 import os
 import deepmimo as dm
