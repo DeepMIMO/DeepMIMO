@@ -1179,6 +1179,68 @@ class Dataset(DotDict):
             
         return
 
+    def print_rx(self, idx: int, path_idxs: np.ndarray | list[int] | None = None) -> None:
+        """Print detailed information about a specific user.
+        
+        Args:
+            idx: Index of the user to print information for
+            path_idxs: Optional array of path indices to print. If None, prints all paths.
+            
+        Raises:
+            IndexError: If idx is out of range or if any path index is out of range
+        """
+        if idx < 0 or idx >= self.n_ue:
+            raise IndexError(f"User index {idx} is out of range [0, {self.n_ue})")
+        
+        # If path_idxs is None, use all valid paths
+        if path_idxs is None:
+            path_idxs = np.arange(self.num_paths[idx])
+        else:
+            path_idxs = np.array(path_idxs)
+            # Validate path indices
+            if np.any((path_idxs < 0) | (path_idxs >= self.num_paths[idx])):
+                raise IndexError(f"Path indices must be in range [0, {self.num_paths[idx]})")
+
+        print("\nUser Information:")
+        print(f"Position: {self.rx_pos[idx]}")
+        print(f"Velocity: {self.rx_vel[idx]}")
+
+        print("\nPath Information:")
+        print(f"Number of paths selected: {len(path_idxs)} (total: {self.num_paths[idx]})")
+        print(f"Powers (dBm): {self.power[idx][path_idxs]}")
+        print(f"Phases (deg): {self.phase[idx][path_idxs]}")
+        print(f"Delays (us): {self.delay[idx][path_idxs]*1e6}")
+
+        print("\nAngles:")
+        print(f"Azimuth of Departure (deg): {self.aod_phi[idx][path_idxs]}")
+        print(f"Elevation of Departure (deg): {self.aod_theta[idx][path_idxs]}")
+        print(f"Azimuth of Arrival (deg): {self.aoa_phi[idx][path_idxs]}")
+        print(f"Elevation of Arrival (deg): {self.aoa_theta[idx][path_idxs]}")
+
+        print("\nInteraction Information:")
+        print(f"Interaction types: {self.inter[idx][path_idxs]}")
+        print(f"Number of interactions: {self.num_interactions[idx][path_idxs]}")
+        print("Interaction positions:")
+        for p_idx, path_idx in enumerate(path_idxs):
+            n_inter = int(self.num_interactions[idx][path_idx])
+            if np.isnan(n_inter):
+                print(f"  Path {path_idx}: No interactions")
+                continue
+            print(f"  Path {path_idx} ({n_inter} interactions):")
+            for i in range(n_inter):
+                print(f"    {p_idx+1}: {self.inter_pos[idx][path_idx][p_idx]}")
+
+        if self.hasattr('inter_objects'):
+            print("\nInteraction objects:")
+            for p_idx, path_idx in enumerate(path_idxs):
+                n_inter = int(self.num_interactions[idx][path_idx])
+                if np.isnan(n_inter):
+                    print(f"  Path {path_idx}: No interactions")
+                    continue
+                print(f"  Path {path_idx} ({n_inter} interactions):")
+                for i in range(n_inter):
+                    print(f"    {p_idx+1}: {self.inter_objects[idx][path_idx][p_idx]}")
+
     @property
     def tx_vel(self) -> np.ndarray:
         """Get the velocities of the base stations.

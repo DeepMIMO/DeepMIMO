@@ -15,8 +15,6 @@ rt_folder = './RT_SOURCES/asu_campus'
 scen_name = os.path.basename(rt_folder)
 dm.convert(rt_folder, overwrite=True, scenario_name=scen_name, vis_scene=True)
 
-#%%
-
 dataset = dm.load('asu_campus_3p5')
 
 #%% AODT Conversion
@@ -56,4 +54,9 @@ dataset.plot_rays(idx_2, proj_3D=False)
 #       4) Organize paths again (sort by strongest pwr)
 #       5) Return the new dataset??
 
+
+#%%
+
+dataset.print_rx(idx_1, path_idxs=[0])
+dataset.print_rx(idx_2, path_idxs=[0])
 
