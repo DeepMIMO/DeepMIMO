@@ -42,8 +42,8 @@ dataset = dm.load('asu_campus_3p5', max_paths=3)
 # dataset = dataset.trim_by_path_type(['LoS', 'R'])
 # dataset = dataset.trim_by_path_depth(5) # not necessary
 
-# idx_1 = 10
-# idx_2 = 11
+idx_1 = 10
+idx_2 = 11
 
 # dataset.plot_rays(idx_1, proj_3D=False)
 # dataset.plot_rays(idx_2, proj_3D=False)
@@ -561,7 +561,7 @@ for i in range(max_paths_to_analyze):
 #       If the loss is small (say < -20 dB NMSE), then we can trim the paths.
 #       (99.9% of the power is in the first 3 paths)
 
-#%%
+#%% TODO
 
 # TODO: Throw away sequences where the maximum distance between samples is greater than 1.5 meters.
 
@@ -570,5 +570,68 @@ for i in range(max_paths_to_analyze):
 # hash_counts
 
 # GOAL: Plot sequences of users
+
+#%% PATH INTERPOLATION FOR ONE PAIR OF USERS
+
+# Make a function that interpolates the path between 2 users
+def interpolate_percentage(array1, array2, percents):
+    """Interpolate between two points at specified percentages.
+    
+    Args:
+        pos1: Starting position/value
+        pos2: Ending position/value
+        percents: Array of percentages between 0 and 1
+        
+    Returns:
+        np.ndarray: Array of interpolated values at given percents
+    """
+    # Ensure percentages are between 0 and 1
+    percents = np.clip(percents, 0, 1)
+
+    # Broadcast to fit shape of interpolated array
+    percents = np.reshape(percents, percents.shape + (1,) * array1.ndim)
+
+    return array1 * (1 - percents) + array2 * percents
+    
+def interpolate_path(dataset, idx_1, idx_2, distances):
+    """Interpolate all channel parameters between two users at specified distances.
+    
+    Args:
+        dataset: DeepMIMO dataset
+        idx_1: Index of first user
+        idx_2: Index of second user
+        distances: Array of distances from start point in meters
+        
+    Returns:
+        dict: Dictionary containing interpolated channel parameters
+    """
+    # Get total distance for percentage calculation
+    pos1 = dataset.rx_pos[idx_1]
+    pos2 = dataset.rx_pos[idx_2]
+    total_distance = np.linalg.norm(pos2 - pos1)
+    
+    # Convert distances to percentages (compute once, use for all)
+    percentages = np.clip(distances / total_distance, 0, 1)
+    
+    # Interpolate all parameters
+    params = {}
+    params_to_interpolate = ['rx_pos', 'power', 'phase', 'delay', 
+                             'aoa_az', 'aod_az', 'aoa_el', 'aod_el',
+                             'inter_pos']
+    
+    for param in params_to_interpolate:
+        val1 = dataset[param][idx_1]
+        val2 = dataset[param][idx_2]
+        params[param] = interpolate_percentage(val1, val2, percentages)
+    
+    return params
+
+# Or get samples at specific distances
+distances = [0, 0.6, 1]  # meters
+params2 = interpolate_path(dataset, idx_1, idx_2, distances)
+# returns just the interpolated value
+
+
+
 
 
