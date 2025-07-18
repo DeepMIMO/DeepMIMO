@@ -62,6 +62,7 @@ from .generator_utils import (
     dbw2watt,
     get_uniform_idxs,
     get_grid_idxs,
+    get_linear_idxs
 )
 
 # Converter utilities
@@ -831,6 +832,20 @@ class Dataset(DotDict):
             Array of indices of active users
         """
         return np.where(self.num_paths > 0)[0]
+
+    def get_linear_idxs(self, start_pos: np.ndarray, end_pos: np.ndarray, n_steps: int, filter_repeated: bool = True) -> np.ndarray:
+        """Return indices of users along a linear path between two points.
+        
+        Args:
+            start_pos: Starting position coordinates (2D or 3D) [x, y] or [x, y, z]
+            end_pos: Ending position coordinates (2D or 3D) [x, y] or [x, y, z]
+            n_steps: Number of steps along the path 
+            filter_repeated: Whether to filter repeated positions (default: True)
+        
+        Returns:
+            Array of indices of users along the linear path
+        """ 
+        return get_linear_idxs(self.rx_pos, start_pos, end_pos, n_steps, filter_repeated)
 
     def get_uniform_idxs(self, steps: List[int]) -> np.ndarray:
         """Return indices of users at uniform intervals.

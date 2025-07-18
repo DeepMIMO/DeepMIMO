@@ -20,6 +20,40 @@ import numpy as np
 
 ################################## For User ###################################
 
+def get_linear_idxs(rx_pos: np.ndarray, start_pos: np.ndarray, end_pos: np.ndarray, n_steps: int, filter_repeated: bool = True) -> np.ndarray:
+        """Return indices of users along a linear path between two points.
+        
+        Args:
+            rx_pos (np.ndarray): Positions of dataset points
+            start_pos (np.ndarray): Starting position coordinates (2D or 3D)
+            end_pos (np.ndarray): Ending position coordinates (2D or 3D)
+            n_steps (int): Number of steps along the path (default: 100)
+            filter_repeated (bool): Whether to filter repeated positions (default: True)
+        
+        Returns:
+            Array of indices of users along the linear path
+        """
+        start_pos = np.array(start_pos)
+        end_pos = np.array(end_pos)
+
+        # Ensure 3D coordinates
+        if start_pos.shape[0] == 2:
+            start_pos = np.concatenate((start_pos, [0]))
+        if end_pos.shape[0] == 2:
+            end_pos = np.concatenate((end_pos, [0]))
+
+        xs = np.linspace(start_pos[0], end_pos[0], n_steps).reshape((-1, 1))
+        ys = np.linspace(start_pos[1], end_pos[1], n_steps).reshape((-1, 1))
+        zs = np.linspace(start_pos[2], end_pos[2], n_steps).reshape((-1, 1))
+        interpolated_pos = np.hstack((xs, ys, zs))
+        idxs = np.array([
+            np.argmin(np.linalg.norm(rx_pos - pos, axis=1))
+            for pos in interpolated_pos
+        ])
+        if filter_repeated:
+            idxs = np.concatenate(([idxs[0]], idxs[1:][(idxs[1:] - idxs[:-1]) != 0]))
+        return idxs
+
 def dbw2watt(val: float | np.ndarray) -> float | np.ndarray:
     """Convert power from dBW to Watts.
     
