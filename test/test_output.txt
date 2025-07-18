@@ -1,0 +1,99 @@
+🧪 Look_at Function Verification Tests
+Testing all modifications and improvements...
+============================================================
+TEST 1: Basic Functionality
+============================================================
+
+🔧 Testing bs_look_at...
+BS position: [ 0  0 10]
+Target UE position: [100.    0.    1.5]
+Result BS rotation: [ 0.         -4.85846292  0.        ]
+Expected: azimuth≈0°, elevation≈-5° (pointing down), z_rot=0
+✅ Azimuth: 0.00° (expected: 0.00°)
+✅ Elevation: -4.86° (expected: -4.86°)
+✅ Z_rot preserved: 0.00°
+
+🔧 Testing ue_look_at...
+UE positions: 
+[[ 100.     0.     1.5]
+ [   0.   100.     1.5]
+ [-100.     0.     1.5]
+ [   0.  -100.     1.5]
+ [ 100.   100.     1.5]]
+BS position: [ 0  0 10]
+Result UE rotations: 
+[[ 180.            4.85846292    0.        ]
+ [ -90.            4.85846292    0.        ]
+ [   0.            4.85846292    0.        ]
+ [  90.            4.85846292    0.        ]
+ [-135.            3.43957207    0.        ]]
+  UE1: azimuth=180.0° (exp: 180.0°), elevation=4.9° (exp: 4.9°)
+  UE2: azimuth=-90.0° (exp: -90.0°), elevation=4.9° (exp: 4.9°)
+  UE3: azimuth=0.0° (exp: 0.0°), elevation=4.9° (exp: 4.9°)
+  UE4: azimuth=90.0° (exp: 90.0°), elevation=4.9° (exp: 4.9°)
+  UE5: azimuth=-135.0° (exp: -135.0°), elevation=3.4° (exp: 3.4°)
+
+============================================================
+TEST 2: Coordinate Handling (2D/3D)
+============================================================
+
+🔧 Testing 2D coordinates...
+2D target: [100, 50]
+Result: [26.56505118 -5.1110897   0.        ]
+✅ 2D handling: azimuth=26.57° (expected: 26.57°)
+✅ 2D handling: elevation=-5.11° (expected: -5.11°)
+
+============================================================
+TEST 3: Z_rot Preservation
+============================================================
+Initial BS z_rot: 45.0°
+Initial UE z_rots: [10 20 30 40 50]
+Final BS z_rot: 45.0°
+Final UE z_rots: [10. 20. 30. 40. 50.]
+✅ BS z_rot preserved: True
+✅ UE z_rots preserved: True
+
+============================================================
+TEST 4: Edge Cases
+============================================================
+
+🔧 Testing different ue_look_at input formats...
+1. Single position (list): [50, 50, 5]
+   ✅ Success: (5, 3) rotations generated
+2. Individual positions (5 UEs):
+   ✅ Success: (5, 3) rotations generated
+   Different azimuths: True
+3. Wrong number of positions (3 targets for 5 UEs):
+   ✅ Correctly caught error: Number of target positions (3) must match number of users (5)
+
+============================================================
+TEST 6: Performance Test
+============================================================
+Testing with 1000 UEs...
+✅ Vectorized processing time: 0.09 ms
+✅ Result shape: (1000, 3)
+
+============================================================
+TEST 5: Compute Channels Integration
+============================================================
+Testing compute_channels after bs_look_at...
+BS rotation after look_at: [45.         -4.04469124  0.        ]
+Testing compute_channels after ue_look_at...
+UE rotations after look_at: [[ 180.            4.85846292    0.        ]
+ [ -90.            4.85846292    0.        ]
+ [   0.            4.85846292    0.        ]
+ [  90.            4.85846292    0.        ]
+ [-135.            3.43957207    0.        ]]
+✅ Integration test passed - rotation parameters are properly set for compute_channels
+
+============================================================
+🎉 ALL TESTS COMPLETED!
+============================================================
+✅ Basic functionality works
+✅ 2D/3D coordinate handling works
+✅ Z_rot preservation works
+✅ Edge cases handled properly
+✅ Compute channels integration verified
+✅ Performance improvements verified
+
+✨ All modifications are working correctly! ✨
