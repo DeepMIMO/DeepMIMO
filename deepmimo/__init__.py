@@ -51,7 +51,7 @@ from .general_utils import (
     unzip,
 )
 
-from .summary import summary, plot_summary
+from .summary import summary, plot_summary, stats_summary
 
 from .api import (
     upload,
@@ -120,6 +120,7 @@ __all__ = [
     # General utilities
     'summary',
     'plot_summary',
+    'stats_summary',
 
     # Database API
     'upload',
