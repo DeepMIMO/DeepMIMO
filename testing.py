@@ -36,14 +36,18 @@ aodt_scen = dm.convert(folder, overwrite=True)
 aodt_scen = dm.load(aodt_scen_name, max_paths=500)
 
 #%%
+import deepmimo as dm
+
 rt_folder = './RT_SOURCES/'
 sionna_rt_path_syn_true = rt_folder + 'sionna_test_scen_synthetic_true'
 sionna_rt_path_syn_false = rt_folder + 'sionna_test_scen_synthetic_false'
 
-scen_syn = dm.convert(sionna_rt_path_syn_true, overwrite=True)
-# scen_syn = dm.convert(sionna_rt_path_syn_false, overwrite=True)
+# scen_syn = dm.convert(sionna_rt_path_syn_true, overwrite=True)
+scen_syn = dm.convert(sionna_rt_path_syn_false, overwrite=True)
 
 #%%
 
 d = dm.load(scen_syn)
-d.los.plot()
+d.los.plot(scat_sz=20)
+d[1].los.plot(scat_sz=20)
+d.inter.plot(scat_sz=20)
