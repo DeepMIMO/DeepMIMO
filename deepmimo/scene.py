@@ -45,7 +45,7 @@ from typing import List, Dict, Tuple, Literal, Optional, Set
 from dataclasses import dataclass
 from pathlib import Path
 from .materials import MaterialList
-from .consts import SCENE_PARAM_NUMBER_SCENES
+from .consts import SCENE_PARAM_NUMBER_SCENES, MAT_FMT
 from .general_utils import (
     load_dict_from_json,
     save_dict_as_json,
@@ -709,7 +709,7 @@ class Scene:
         """
         scene = cls()
         try:
-            vertices = load_mat(f"{base_folder}/vertices.mat", 'vertices')
+            vertices = load_mat(f"{base_folder}/vertices.{MAT_FMT}", 'vertices')
             objects_metadata = load_dict_from_json(f"{base_folder}/objects.json")
         except FileNotFoundError:
             print(f"FileNotFoundError: {base_folder}/vertices.mat or {base_folder}/objects.json not found")
