@@ -388,13 +388,17 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
 
     # NOTE: sources and targets have unique positions across antenna elements too.
     # This is why we either support multi-antenna or multi-user/BS. 
+    n_txrx_sets = len(txrx_dict.keys())
+    assert n_txrx_sets == 2, 'Only one pair of TXRX sets supported for now'
 
-    # Get number of antenna elements from txrx_dict
+    # Get number of TXs, RXs, and respective antenna elements from txrx_dict
     n_tx_ant = txrx_dict['txrx_set_0']['num_ant']
-    txrx_dict['txrx_set_1']['num_ant'] = 1 # TODO: remove this after testing
     n_rx_ant = txrx_dict['txrx_set_1']['num_ant']
+    n_txs = n_tx // n_tx_ant
+    n_rxs = n_rx // n_rx_ant
     
-    # assert not (n_tx_ant > 1 and n_tx > 1), 'Multi-antenna & multi-TX not supported yet'
+    assert not (n_tx_ant > 1 and n_txs > 1), 'Multi-antenna & multi-TX not supported yet'
+    assert not (n_rx_ant > 1 and n_rxs > 1), 'Multi-antenna & multi-RX not supported yet'
     
     # Initialize inactive indices list
     rx_inactive_idxs_count = 0

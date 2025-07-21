@@ -40,7 +40,8 @@ import deepmimo as dm
 
 rt_folder = './RT_SOURCES/'
 sionna_rt_path_syn_true = rt_folder + 'sionna_test_scen_synthetic_true'
-sionna_rt_path_syn_false = rt_folder + 'sionna_test_scen_synthetic_false'
+sionna_rt_path_syn_false = rt_folder + 'sionna_test_scen_synthetic_false' # multi-rx ant
+sionna_rt_path_syn_false = rt_folder + 'sionna_test_scen_synthetic_False3' # single-rx ant
 
 # scen_syn = dm.convert(sionna_rt_path_syn_true, overwrite=True)
 scen_syn = dm.convert(sionna_rt_path_syn_false, overwrite=True)
