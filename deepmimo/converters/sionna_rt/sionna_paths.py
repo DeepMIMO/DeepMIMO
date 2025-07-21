@@ -52,7 +52,7 @@ def _preallocate_data(n_rx: int) -> Dict:
     
 def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
                          batch_size: int, targets: np.ndarray, rx_pos: np.ndarray,
-                         sionna_version: str) -> int:
+                         sionna_version: str, tx_ant_idx: int = 0, rx_ant_idx: int = 0) -> int:
     """Process a batch of paths from Sionna format and store in DeepMIMO format.
     
     Args:
@@ -63,6 +63,9 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
         batch_size: Number of receivers in current batch
         targets: Array of target positions
         rx_pos: Array of RX positions
+        sionna_version: Sionna version string
+        tx_ant_idx: Index of TX antenna element to process
+        rx_ant_idx: Index of RX antenna element to process
         
     Returns:
         int: Number of inactive receivers found in this batch
@@ -92,7 +95,6 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
     # - types:    ...
     # Sionna 1.x: (the same but without batch dimension)
     # - types:    DIM_TYPE_1 or DIM_TYPE_2 (but with max_depth instead of batch_size)
-    # Currently, we only support DIM_TYPE_2 (no multi antenna)
     sionna_v1 = _is_sionna_v1(sionna_version)
     if not sionna_v1:
         a = a[b, ..., 0]
@@ -103,48 +105,82 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, b: int, t: int,
         theta_t = theta_t[b, ...]
         types = types[b, ...]
 
-    # Check if single antenna (this changes the dimensions of the arrays)
-    if theta_r.ndim == 3:
-        rx_ant_idx = 0
-        tx_ant_idx = 0
-        tx_idx = t
-    else:
-        rx_ant_range = range(a.shape[1])
-        tx_ant_range = range(a.shape[3])
-        raise NotImplementedError('Multi antenna support is not implemented yet.')
+    # Handle multi-antenna arrays
+    tx_idx = t
+    print("\nDEBUG: Initial array shapes:")
+    print(f"a: {a.shape}")
+    print(f"tau: {tau.shape}")
+    print(f"phi_r: {phi_r.shape}")
+    print(f"theta_r: {theta_r.shape}")
+    print(f"vertices: {vertices.shape}")
+    
+    if theta_r.ndim > 3:  # Multi-antenna case
+        # Extract data for specific antenna elements
+        a = a[:, rx_ant_idx, :, tx_ant_idx, :]
+        tau = tau[:, rx_ant_idx, :, tx_ant_idx, :]
+        phi_r = phi_r[:, rx_ant_idx, :, tx_ant_idx, :]
+        phi_t = phi_t[:, rx_ant_idx, :, tx_ant_idx, :]
+        theta_r = theta_r[:, rx_ant_idx, :, tx_ant_idx, :]
+        theta_t = theta_t[:, rx_ant_idx, :, tx_ant_idx, :]
+        vertices = vertices[:, 0, :, tx_ant_idx, :]  # Use 0 for rx_ant_idx
+    else:  # Single antenna case
+        # For single antenna, we need to extract the correct dimensions
+        a = a[:, 0, tx_idx, 0, :]  # Remove antenna dimensions
+        tau = tau[:, tx_idx, :]
+        phi_r = phi_r[:, tx_idx, :]
+        phi_t = phi_t[:, tx_idx, :]
+        theta_r = theta_r[:, tx_idx, :]
+        theta_t = theta_t[:, tx_idx, :]
+        vertices = vertices[:, :, tx_idx, ...]
+    
+    print("\nDEBUG: After processing array shapes:")
+    print(f"a: {a.shape}")
+    print(f"tau: {tau.shape}")
+    print(f"phi_r: {phi_r.shape}")
+    print(f"theta_r: {theta_r.shape}")
+    print(f"vertices: {vertices.shape}")
     
     n_rx = targets.shape[0]
+    print(f"n_rx: {n_rx}")
+    print(f"rx_pos shape: {rx_pos.shape}")
 
     for rel_rx_idx in range(n_rx):
-
         abs_idx_arr = np.where(np.all(rx_pos == targets[rel_rx_idx], axis=1))[0]
         if len(abs_idx_arr) == 0:
             # RX position not found in global RX list, skip
             continue
         abs_idx = abs_idx_arr[0]
+        print(f"\nDEBUG: Processing RX {rel_rx_idx} (abs_idx: {abs_idx})")
 
-        amp = a[rel_rx_idx, rx_ant_idx, tx_idx, tx_ant_idx, :]
+        # Get amplitude and remove any extra dimensions
+        print(f"a shape: {a.shape}")
+        amp = a[rel_rx_idx]
+        print(f"amp shape: {amp.shape}")
+        
         non_zero_path_idxs = np.where(amp != 0)[0][:c.MAX_PATHS]
         n_paths = len(non_zero_path_idxs)
         if n_paths == 0:
             inactive_count += 1
             continue
+            
         # Ensure that the paths are sorted by amplitude
         sorted_path_idxs = np.argsort(np.abs(amp))[::-1]
         path_idxs = sorted_path_idxs[:n_paths]
+        print(f"n_paths: {n_paths}")
+        print(f"path_idxs: {path_idxs}")
         
         data[c.POWER_PARAM_NAME][abs_idx, :n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
         data[c.PHASE_PARAM_NAME][abs_idx, :n_paths] = np.angle(amp[path_idxs], deg=True)
         
-        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_r[rel_rx_idx, tx_idx, path_idxs])
-        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_t[rel_rx_idx, tx_idx, path_idxs])
-        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_r[rel_rx_idx, tx_idx, path_idxs])
-        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_t[rel_rx_idx, tx_idx, path_idxs])
+        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_r[rel_rx_idx, path_idxs])
+        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_t[rel_rx_idx, path_idxs])
+        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_r[rel_rx_idx, path_idxs])
+        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_t[rel_rx_idx, path_idxs])
         
-        data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = tau[rel_rx_idx, tx_idx, path_idxs]
+        data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = tau[rel_rx_idx, path_idxs]
 
-        # Interaction positions and types
-        inter_pos_rx = vertices[:, rel_rx_idx, tx_idx, path_idxs, :].swapaxes(0,1)
+        # Interaction positions and types (vertices is (max_depth, n_rx, max_paths, 3))
+        inter_pos_rx = vertices[:, rel_rx_idx, path_idxs, :].swapaxes(0,1)
         n_interactions = inter_pos_rx.shape[1]
         inter_pos_rx[inter_pos_rx == 0] = np.nan
         # NOTE: this is a workaround to handle no interaction positions
@@ -327,6 +363,8 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
     - paths_dict['vertices'] is the vertices of the path
         [batch_size, num_rx, num_rx_ant, num_tx, num_tx_ant, max_num_paths] or 
         [batch_size, num_rx, num_tx, max_num_paths], float
+    
+    - For multi-antenna arrays, each antenna element is treated as a separate transmitter
 
     """
     path_dict_list = load_pickle(os.path.join(load_folder, 'sionna_paths.pkl'))
@@ -346,78 +384,87 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
     rx_pos = all_rx_pos[np.sort(unique_indices)]  # Sort indices to maintain original order
     n_rx = len(rx_pos)
 
+    # Get number of antenna elements from txrx_dict
+    n_tx_ant = txrx_dict['txrx_set_0']['num_ant']
+    n_rx_ant = txrx_dict['txrx_set_1']['num_ant']
+    if n_rx_ant > 1:
+        raise NotImplementedError('Multi-antenna support for RXs is not implemented yet.')
+    
     # Initialize inactive indices list
     rx_inactive_idxs_count = 0
     bs_bs_paths = False
+    
+    # Process each TX position and antenna element combination
     for tx_idx, tx_pos_target in enumerate(all_tx_pos):
-        # Pre-allocate matrices
-        data = _preallocate_data(n_rx)
+        for tx_ant_idx in range(n_tx_ant):
+            # Pre-allocate matrices
+            data = _preallocate_data(n_rx)
 
-        data[c.RX_POS_PARAM_NAME], data[c.TX_POS_PARAM_NAME] = rx_pos, tx_pos_target
-        
-        # Create progress bar
-        pbar = tqdm(total=n_rx, desc=f"Processing receivers for TX {tx_idx}")
-        
-        b = 0  # batch index 
-        # Process each batch of paths
-        for path_dict_idx, paths_dict in enumerate(path_dict_list):
-            sources = _get_path_key(paths_dict, 'sources', 'src_positions')
-            tx_idx_in_dict = np.where(np.all(sources == tx_pos_target, axis=1))[0]
-            if len(tx_idx_in_dict) == 0:
-                continue
-            if path_dict_idx == 0:
-                targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
-                if np.array_equal(sources, targets):
-                    bs_bs_paths = True
+            data[c.RX_POS_PARAM_NAME], data[c.TX_POS_PARAM_NAME] = rx_pos, tx_pos_target
+            
+            # Create progress bar
+            pbar = tqdm(total=n_rx, desc=f"Processing receivers for TX {tx_idx}, Ant {tx_ant_idx}")
+            
+            b = 0  # batch index 
+            # Process each batch of paths
+            for path_dict_idx, paths_dict in enumerate(path_dict_list):
+                sources = _get_path_key(paths_dict, 'sources', 'src_positions')
+                tx_idx_in_dict = np.where(np.all(sources == tx_pos_target, axis=1))[0]
+                if len(tx_idx_in_dict) == 0:
                     continue
-            t = tx_idx_in_dict[0]
-            batch_size = targets.shape[0]
-            targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
-            inactive_count = _process_paths_batch(paths_dict, data, b, t, batch_size, 
-                                                  targets, rx_pos, sionna_version)
-            if tx_idx == 0:
-                rx_inactive_idxs_count += inactive_count
-            pbar.update(batch_size)
+                if path_dict_idx == 0:
+                    targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
+                    if np.array_equal(sources, targets):
+                        bs_bs_paths = True
+                        continue
+                t = tx_idx_in_dict[0]
+                batch_size = targets.shape[0]
+                targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
+                inactive_count = _process_paths_batch(paths_dict, data, b, t, batch_size, 
+                                                      targets, rx_pos, sionna_version,
+                                                      tx_ant_idx=tx_ant_idx, rx_ant_idx=0)
+                if tx_idx == 0 and tx_ant_idx == 0:
+                    rx_inactive_idxs_count += inactive_count
+                pbar.update(batch_size)
 
-        pbar.close()
+            pbar.close()
 
-        # Compress data before saving
-        data = compress_path_data(data)
-        
-        # Save each data key
-        for key in data.keys():
-            mat_file = get_mat_filename(key, 0, tx_idx, 1)
-            save_mat(data[key], key, os.path.join(save_folder, mat_file))
-        
-        if bs_bs_paths:
-            print(f'BS-BS paths found for TX {tx_idx}')
-            
-            paths_dict = path_dict_list[0]
-            all_bs_pos = _get_path_key(paths_dict, 'sources', 'src_positions')
-            num_bs = len(all_bs_pos)
-            data_bs_bs = _preallocate_data(num_bs)
-            data_bs_bs[c.RX_POS_PARAM_NAME] = all_bs_pos
-            data_bs_bs[c.TX_POS_PARAM_NAME] = tx_pos_target
-            
-            # Process BS-BS paths using helper function
-            _process_paths_batch(paths_dict, data_bs_bs, b, t, 0, all_bs_pos, rx_pos)
-            
             # Compress data before saving
-            data_bs_bs = compress_path_data(data_bs_bs)
+            data = compress_path_data(data)
             
-            # Save each data key
-            for key in data_bs_bs.keys():
-                save_mat(data_bs_bs[key], key, save_folder, 
-                         tx_set_idx=0, # BS INDEX
-                         tx_idx=tx_idx, # ANTENNA INDEX
-                         rx_set_idx=0)  # Same RX & TX set
+            # Save each data key with antenna index in filename
+            for key in data.keys():
+                mat_file = get_mat_filename(key, 0, tx_ant_idx, 1)  # tx_set=0, tx_idx=tx_ant_idx, rx_set=1
+                save_mat(data[key], key, os.path.join(save_folder, mat_file))
+            
+            if bs_bs_paths:
+                print(f'BS-BS paths found for TX {tx_idx}, Ant {tx_ant_idx}')
+                
+                paths_dict = path_dict_list[0]
+                all_bs_pos = _get_path_key(paths_dict, 'sources', 'src_positions')
+                num_bs = len(all_bs_pos)
+                data_bs_bs = _preallocate_data(num_bs)
+                data_bs_bs[c.RX_POS_PARAM_NAME] = all_bs_pos
+                data_bs_bs[c.TX_POS_PARAM_NAME] = tx_pos_target
+                
+                # Process BS-BS paths using helper function
+                _process_paths_batch(paths_dict, data_bs_bs, b, t, 0, all_bs_pos, rx_pos,
+                                   sionna_version, tx_ant_idx=tx_ant_idx, rx_ant_idx=0)
+                
+                # Compress data before saving
+                data_bs_bs = compress_path_data(data_bs_bs)
+                
+                # Save each data key
+                for key in data_bs_bs.keys():
+                    mat_file = get_mat_filename(key, 0, tx_ant_idx, 0)  # tx_set=0, tx_idx=tx_ant_idx, rx_set=0
+                    save_mat(data_bs_bs[key], key, os.path.join(save_folder, mat_file))
     
     if bs_bs_paths:
         txrx_dict['txrx_set_0']['is_rx'] = True  # add BS set also as RX
 
     # Update txrx_dict with tx and rx numbers 
-    txrx_dict['txrx_set_0']['num_points'] = n_tx
-    txrx_dict['txrx_set_0']['num_active_points'] = n_tx
+    txrx_dict['txrx_set_0']['num_points'] = n_tx * n_tx_ant  # Total number of TX antenna elements
+    txrx_dict['txrx_set_0']['num_active_points'] = n_tx * n_tx_ant
     
     txrx_dict['txrx_set_1']['num_points'] = n_rx
     txrx_dict['txrx_set_1']['num_active_points'] = n_rx - rx_inactive_idxs_count

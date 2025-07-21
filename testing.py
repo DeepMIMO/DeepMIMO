@@ -33,8 +33,17 @@ folder = f'aodt_scripts/{aodt_scen_name}'
 # df.head()
 aodt_scen = dm.convert(folder, overwrite=True)
 
-#%%
-
 aodt_scen = dm.load(aodt_scen_name, max_paths=500)
 
 #%%
+rt_folder = './RT_SOURCES/'
+sionna_rt_path_syn_true = rt_folder + 'sionna_test_scen_synthetic_true'
+sionna_rt_path_syn_false = rt_folder + 'sionna_test_scen_synthetic_false'
+
+scen_syn = dm.convert(sionna_rt_path_syn_true, overwrite=True)
+# scen_syn = dm.convert(sionna_rt_path_syn_false, overwrite=True)
+
+#%%
+
+d = dm.load(scen_syn)
+d.los.plot()
