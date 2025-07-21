@@ -485,8 +485,8 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
         txrx_dict['txrx_set_0']['is_rx'] = True  # add BS set also as RX
 
     # Update txrx_dict with tx and rx numbers 
-    txrx_dict['txrx_set_0']['num_points'] = n_tx * n_tx_ant  # Total number of TX antenna elements
-    txrx_dict['txrx_set_0']['num_active_points'] = n_tx * n_tx_ant
+    txrx_dict['txrx_set_0']['num_points'] = n_tx 
+    txrx_dict['txrx_set_0']['num_active_points'] = n_tx
     
     txrx_dict['txrx_set_1']['num_points'] = n_rx
     txrx_dict['txrx_set_1']['num_active_points'] = n_rx - rx_inactive_idxs_count
