@@ -63,6 +63,7 @@ PARAMS_FILENAME = 'params'
 
 # Data types
 FP_TYPE = np.float32  # floating point precision for saving values
+MAT_FMT = 'npz' # format of saved arrays (available: mat, npz, npy)
 
 # Utility/Configuration parameters
 NAME_PARAM_NAME = 'name'

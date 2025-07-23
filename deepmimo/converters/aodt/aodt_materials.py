@@ -9,7 +9,7 @@ import os
 import numpy as np
 import pandas as pd
 from dataclasses import dataclass
-from typing import Dict, Any, Tuple
+from typing import Dict, Tuple
 
 from ...materials import Material, MaterialList
 from .. import converter_utils as cu

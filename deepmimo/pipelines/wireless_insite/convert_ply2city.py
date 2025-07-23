@@ -61,6 +61,11 @@ def write_material_sec(f, material_sec: List[str]) -> None:
         f: File object to write to
         material_sec (List[str]): Material section lines
     """
+    # Replace 'none' by 'directive_with_backscatter' in 'diffuse_scattering_model'
+    idx_to_replace = [line_idx for line_idx, line in enumerate(material_sec) 
+                        if line == 'diffuse_scattering_model none\n'][0]
+    material_sec[idx_to_replace] = 'diffuse_scattering_model directive_with_backscatter\n'
+
     return f.writelines(material_sec)
 
 

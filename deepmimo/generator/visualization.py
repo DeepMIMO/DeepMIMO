@@ -278,6 +278,10 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
               proj_3D: bool = True, color_by_type: bool = True,
               inter_objects: Optional[np.ndarray] = None,
               inter_obj_labels: Optional[list[str]] = None,
+              color_rays_by_pwr: bool = False,
+              powers: Optional[np.ndarray] = None,
+              show_cbar: bool = False,
+              limits: Optional[Tuple[float, float]] = None,
               ax: Optional[Axes] = None) -> Tuple[Figure, Axes]:
     """Plot ray paths between transmitter and receiver with interaction points.
     
@@ -302,6 +306,10 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
             ignore the interaction type.
         inter_obj_labels (Optional[list[str]], optional): Labels for the interaction objects. Defaults to None.
             If provided, will use these labels instead of the object ids.
+        color_rays_by_pwr (bool, optional): Whether to color rays by their power. Defaults to False.
+        powers (Optional[np.ndarray], optional): Power values for each path. Required if color_rays_by_pwr is True.
+        show_cbar (bool, optional): Whether to show the colorbar. Defaults to False.
+        limits (Optional[Tuple[float, float]], optional): Power limits for coloring (min, max). If None, uses relative scaling.
         ax (Optional[Axes], optional): Matplotlib Axes object. Defaults to None. When provided,
             the figure and axes are not created.
             
@@ -311,10 +319,8 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
         - matplotlib Axes object
     """
     if not ax:
-        fig, ax = plt.subplots(dpi=dpi, figsize=figsize,
-                               subplot_kw={'projection': '3d'} if proj_3D else {})
-    else:
-        fig = ax.figure
+        _, ax = plt.subplots(dpi=dpi, figsize=figsize,
+                             subplot_kw={'projection': '3d'} if proj_3D else {})
 
     # Ensure inputs are numpy arrays and have correct shape
     rx_loc = np.asarray(rx_loc)  # Shape: (3,)
@@ -359,6 +365,29 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
         if inter_obj_labels is None:
             inter_obj_labels = {obj_id: str(int(obj_id)) for obj_id in unique_objs}
 
+    # Setup power-based coloring if enabled
+    if color_rays_by_pwr:
+        if powers is None:
+            raise ValueError("Powers must be provided when color_rays_by_pwr is True")
+        
+        # Create colormap for power-based coloring
+        cmap = plt.get_cmap('jet')
+        
+        # Normalize powers for coloring
+        if limits is not None:
+            vmin, vmax = limits
+        else:
+            vmin, vmax = np.nanmin(powers), np.nanmax(powers)
+        
+        # Create normalization function
+        norm = plt.Normalize(vmin=vmin, vmax=vmax)
+        
+        # Create colorbar
+        if show_cbar:
+            sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+            sm.set_array([])
+            plt.colorbar(sm, ax=ax, label='Power (dBm)')
+
     # For each ray path up to number of valid paths
     for path_idx in range(n_valid_paths):
         # Get valid interaction points for this path (excluding NaN values)
@@ -380,13 +409,25 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
         
         # Check if this is a LoS path
         is_los = len(path_interactions) == 0
+        
+        # Determine ray color and style
+        if color_rays_by_pwr:
+            ray_color = cmap(norm(powers[path_idx]))
+        else:
+            ray_color = 'g' if is_los else 'r'
+        ray_plt_args = dict(color=ray_color, 
+                            alpha=1 if is_los else 0.5, 
+                            zorder=2 if is_los else 1,
+                            linewidth=2 if is_los else 1)
+            
         if is_los:
-            plot_line(path_points[0], path_points[1], color='g', label='LoS', alpha=0.5, zorder=1)
+            plot_line(path_points[0], path_points[1], **ray_plt_args,
+                      label='LoS' if not color_rays_by_pwr else None)
             continue
         
         # Plot the ray path segments
         for i in range(len(path_points)-1):
-            plot_line(path_points[i], path_points[i+1], color='r', alpha=0.5, zorder=1)
+            plot_line(path_points[i], path_points[i+1], **ray_plt_args)
         
         # Plot interaction points
         if len(path_interactions) > 0:  # If there are interaction points
@@ -403,11 +444,11 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray,
                     point_color = 'black'
                     point_label = None
                 
-                plot_point(pos, c=point_color, marker='o', s=20, label=point_label, zorder=2)
+                plot_point(pos, c=point_color, marker='o', s=10, label=point_label, zorder=2)
     
     # Plot TX and RX points
-    plot_point(tx_loc, c='black', marker='^', s=100, label='TX', zorder=3)
-    plot_point(rx_loc, c='black', marker='v', s=100, label='RX', zorder=3)
+    plot_point(tx_loc, c='white', marker='^', s=100, label='TX', zorder=3, edgecolors='black')
+    plot_point(rx_loc, c='white', marker='v', s=100, label='RX', zorder=3, edgecolors='black')
     
     # Set axis labels
     ax.set_xlabel('x (m)')

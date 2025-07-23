@@ -41,15 +41,16 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import itertools
 from scipy.spatial import ConvexHull
-from scipy.io import savemat, loadmat
 from typing import List, Dict, Tuple, Literal, Optional, Set
 from dataclasses import dataclass
 from pathlib import Path
 from .materials import MaterialList
-from .consts import SCENE_PARAM_NUMBER_SCENES
+from .consts import SCENE_PARAM_NUMBER_SCENES, MAT_FMT
 from .general_utils import (
     load_dict_from_json,
     save_dict_as_json,
+    save_mat,
+    load_mat,
     DelegatingList
 )
 
@@ -688,7 +689,7 @@ class Scene:
         vertices = np.array(all_vertices)  # Shape: (N_vertices, 3)
         
         # Save matrices
-        savemat(f"{base_folder}/vertices.mat", {'vertices': vertices})
+        save_mat(vertices, 'vertices', f"{base_folder}/vertices.mat")
         save_dict_as_json(f"{base_folder}/objects.json", objects_metadata)
         
         return {
@@ -708,7 +709,7 @@ class Scene:
         """
         scene = cls()
         try:
-            vertices = loadmat(f"{base_folder}/vertices.mat")['vertices']
+            vertices = load_mat(f"{base_folder}/vertices.{MAT_FMT}", 'vertices')
             objects_metadata = load_dict_from_json(f"{base_folder}/objects.json")
         except FileNotFoundError:
             print(f"FileNotFoundError: {base_folder}/vertices.mat or {base_folder}/objects.json not found")

@@ -84,6 +84,11 @@ class TerrainEditor:
         # Replace the material section with the new material properties
         self.file = self.file[:start] + self.material_file + self.file[end + 1 :]
 
+        # Replace 'none' by 'directive_with_backscatter' in 'diffuse_scattering_model'
+        idx_to_replace = [line_idx for line_idx, line in enumerate(self.file) 
+                          if line == 'diffuse_scattering_model none\n'][0]
+        self.file[idx_to_replace] = 'diffuse_scattering_model directive_with_backscatter\n'
+
     def save(self, outfile_path: str) -> None:
         """Save the terrain file.
         

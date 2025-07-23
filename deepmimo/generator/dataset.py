@@ -62,6 +62,7 @@ from .generator_utils import (
     dbw2watt,
     get_uniform_idxs,
     get_grid_idxs,
+    get_linear_idxs
 )
 
 # Converter utilities
@@ -296,8 +297,6 @@ class Dataset(DotDict):
 
         self.set_channel_params(params)
 
-        np.random.seed(1001)
-        
         # Compute array response product
         array_response_product = self._compute_array_response_product()
         
@@ -371,6 +370,138 @@ class Dataset(DotDict):
         """
         return self.rx_ori
 
+    def _look_at(self, from_pos: np.ndarray, to_pos: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Internal helper function to calculate azimuth and elevation angles for position pairs.
+        
+        Args:
+            from_pos: Array of starting positions with shape (n, 2-3) in meters
+            to_pos: Array of target positions with shape (n, 2-3) in meters
+            
+        Returns:
+            Tuple of (azimuth_degrees, elevation_degrees) arrays with shape (n,)
+        """
+        # Ensure positions are arrays and handle 2D coordinates
+        from_pos = np.atleast_2d(from_pos)
+        to_pos = np.atleast_2d(to_pos)
+        
+        # Add z=0 if only 2D coordinates
+        if from_pos.shape[1] == 2:
+            from_pos = np.column_stack([from_pos, np.zeros(from_pos.shape[0])])
+        if to_pos.shape[1] == 2:
+            to_pos = np.column_stack([to_pos, np.zeros(to_pos.shape[0])])
+        
+        # Calculate direction vectors for all pairs at once
+        direction_vectors = to_pos - from_pos
+        dx, dy, dz = direction_vectors[:, 0], direction_vectors[:, 1], direction_vectors[:, 2]
+        
+        # Calculate azimuth (horizontal angle) for all pairs
+        azimuth_rad = np.arctan2(dy, dx)
+        
+        # Calculate elevation (vertical angle) for all pairs
+        horizontal_distance = np.sqrt(dx**2 + dy**2)
+        elevation_rad = np.arctan2(dz, horizontal_distance)
+        
+        # Convert from radians to degrees for DeepMIMO convention
+        azimuth_deg = azimuth_rad * 180.0 / np.pi
+        elevation_deg = elevation_rad * 180.0 / np.pi
+        
+        return azimuth_deg, elevation_deg
+
+    def bs_look_at(self, look_pos: np.ndarray | list | tuple) -> None:
+        """Set the orientation of the basestation to look at a given position in 3D.
+
+        Similar to Sionna RT's Camera.look_at() function, this method automatically
+        calculates and sets the antenna rotation parameters so that the basestation
+        points toward the specified target position.
+
+        Args:
+            look_pos: The position to look at (x, y, z) in meters.
+                     Can be a numpy array, list, or tuple.
+                     If 2D coordinates are provided, z=0 is assumed.
+
+        Example:
+            >>> # Point BS toward a specific UE
+            >>> dataset.bs_look_at(dataset.rx_pos[0])
+            >>> 
+            >>> # Point BS toward coordinates
+            >>> dataset.bs_look_at([100, 200, 10])
+        """
+        # Use helper function to calculate angles
+        azimuth_deg, elevation_deg = self._look_at(self.tx_pos, look_pos)
+        azimuth_deg, elevation_deg = azimuth_deg[0], elevation_deg[0]
+
+        # Update the basestation antenna rotation parameters (preserve existing z_rot)
+        current_rotation = np.array(self.ch_params.bs_antenna[c.PARAMSET_ANT_ROTATION])
+        z_rot = current_rotation.flat[2] if current_rotation.size > 2 else 0
+        self.ch_params.bs_antenna[c.PARAMSET_ANT_ROTATION] = np.array([azimuth_deg, elevation_deg, z_rot])
+        
+        # Clear cached rotated angles since rotation has changed
+        self._clear_cache_rotated_angles()
+
+    def ue_look_at(self, look_pos: np.ndarray | list | tuple) -> None:
+        """Set the orientation of user equipment antennas to look at given position(s) in 3D.
+        
+        Similar to bs_look_at() function, this method automatically calculates and sets 
+        the UE antenna rotation parameters so that user equipment point toward the 
+        specified target position(s).
+        
+        Args:
+            look_pos: The position(s) to look at in meters.
+                     Can be:
+                     - 1D array/list/tuple (x, y, z): All UEs look at the same position
+                     - 2D array with shape (3,) or (2,): Same as 1D case
+                     - 2D array with shape (n_users, 3): Each UE looks at different position
+                     - 2D array with shape (n_users, 2): Each UE looks at different position (z=0)
+                     If 2D coordinates are provided, z=0 is assumed.
+        
+        Example:
+            >>> # All UEs look at the base station
+            >>> dataset.ue_look_at(dataset.tx_pos)
+            >>> 
+            >>> # All UEs look at a specific coordinate
+            >>> dataset.ue_look_at([100, 200, 10])
+            >>> 
+            >>> # Each UE looks at different positions (must match number of UEs)
+            >>> look_positions = np.array([[100, 200, 10], [150, 250, 15], ...])
+            >>> dataset.ue_look_at(look_positions)
+        """
+        # Convert look_pos to numpy array
+        look_pos = np.array(look_pos)
+        
+        # Get user positions
+        if not hasattr(self, 'rx_pos') or self.rx_pos is None:
+            print("Warning: No user positions found. "
+                  "Ensure positions are loaded and available in dataset.rx_pos.")
+            return
+        
+        # Handle different input formats
+        if look_pos.ndim == 1:
+            # 1D array: same target for all UEs
+            target_positions = np.tile(look_pos, (self.n_ue, 1))
+        elif look_pos.ndim == 2:
+            if look_pos.shape[0] == 1:
+                # Single position for all UEs
+                target_positions = np.tile(look_pos, (self.n_ue, 1))
+            else:
+                # Different position for each UE
+                if look_pos.shape[0] != self.n_ue:
+                    raise ValueError(f"Number of target positions ({look_pos.shape[0]}) must match number of users ({self.n_ue})")
+                target_positions = look_pos
+        else:
+            raise ValueError("look_pos must be 1D or 2D array")
+        
+        # Calculate rotation parameters for all UEs at once
+        azimuth_degrees, elevation_degrees = self._look_at(self.rx_pos, target_positions)
+        
+        # Update the UE antenna rotation parameters (preserve existing z_rot)
+        curr_rot = np.atleast_2d(self.ch_params.ue_antenna[c.PARAMSET_ANT_ROTATION])
+        z_rot_values = curr_rot[:, 2] if curr_rot.shape == (self.n_ue, 3) else np.zeros(self.n_ue)
+        self.ch_params.ue_antenna[c.PARAMSET_ANT_ROTATION] = \
+            np.column_stack([azimuth_degrees, elevation_degrees, z_rot_values])
+        
+        # Clear cached rotated angles since rotation has changed
+        self._clear_cache_rotated_angles()
+
     def _compute_rotated_angles(self, tx_ant_params: Optional[Dict[str, Any]] = None, 
                                 rx_ant_params: Optional[Dict[str, Any]] = None) -> Dict[str, np.ndarray]:
         """Compute rotated angles for all users in batch.
@@ -388,6 +519,17 @@ class Dataset(DotDict):
         if rx_ant_params is None:
             rx_ant_params = self.ch_params.ue_antenna
             
+        # Transform BS antenna rotation if needed
+        bs_rotation = tx_ant_params[c.PARAMSET_ANT_ROTATION]
+        if len(bs_rotation.shape) == 2 and bs_rotation.shape[0] == 3 and bs_rotation.shape[1] == 2:
+            # Generate random rotations for BS
+            bs_rotation = np.random.uniform(
+                bs_rotation[:, 0],
+                bs_rotation[:, 1],
+                (3,)
+            )
+            self.ch_params.bs_antenna[c.PARAMSET_ANT_ROTATION] = bs_rotation
+            
         # Transform UE antenna rotation if needed
         ue_rotation = rx_ant_params[c.PARAMSET_ANT_ROTATION]
         if len(ue_rotation.shape) == 1 and ue_rotation.shape[0] == 3:
@@ -400,10 +542,11 @@ class Dataset(DotDict):
                 ue_rotation[:, 1],
                 (self.n_ue, 3)
             )
-            
+            self.ch_params.ue_antenna[c.PARAMSET_ANT_ROTATION] = ue_rotation
+
         # Rotate angles for all users at once
         aod_theta_rot, aod_phi_rot = _rotate_angles_batch(
-            rotation=tx_ant_params[c.PARAMSET_ANT_ROTATION],
+            rotation=bs_rotation,
             theta=self[c.AOD_EL_PARAM_NAME],
             phi=self[c.AOD_AZ_PARAM_NAME])
         
@@ -701,7 +844,7 @@ class Dataset(DotDict):
 
     def _compute_max_paths(self) -> int:
         """Compute the maximum number of paths for any user."""
-        return np.nanmax(self.num_paths).astype(int)
+        return int(np.nanmax(self.num_paths))
     
     def _compute_max_interactions(self) -> int:
         """Compute the maximum number of interactions for any path of any user."""
@@ -825,7 +968,6 @@ class Dataset(DotDict):
         
         return grid_points == self.n_ue
 
-
     def get_active_idxs(self) -> np.ndarray:
         """Return indices of active users.
         
@@ -833,6 +975,20 @@ class Dataset(DotDict):
             Array of indices of active users
         """
         return np.where(self.num_paths > 0)[0]
+
+    def get_linear_idxs(self, start_pos: np.ndarray, end_pos: np.ndarray, n_steps: int, filter_repeated: bool = True) -> np.ndarray:
+        """Return indices of users along a linear path between two points.
+        
+        Args:
+            start_pos: Starting position coordinates (2D or 3D) [x, y] or [x, y, z]
+            end_pos: Ending position coordinates (2D or 3D) [x, y] or [x, y, z]
+            n_steps: Number of steps along the path 
+            filter_repeated: Whether to filter repeated positions (default: True)
+        
+        Returns:
+            Array of indices of users along the linear path
+        """ 
+        return get_linear_idxs(self.rx_pos, start_pos, end_pos, n_steps, filter_repeated)
 
     def get_uniform_idxs(self, steps: List[int]) -> np.ndarray:
         """Return indices of users at uniform intervals.
@@ -1107,10 +1263,15 @@ class Dataset(DotDict):
         """
         return plot_coverage(self.rx_pos, cov_map, bs_pos=self.tx_pos.T, bs_ori=self.tx_ori, **kwargs)
     
-    def plot_rays(self, idx: int, **kwargs):
+    def plot_rays(self, idx: int, color_strat: str = 'none', **kwargs):
         """Plot the rays of the dataset.
         
         Args:
+            idx: Index of the user to plot rays for
+            color_strat: Strategy for coloring rays by power. Can be:
+                - 'none': Don't color by power (default)
+                - 'relative': Color by power relative to min/max of this user's paths
+                - 'absolute': Color by power using absolute limits from all users
             **kwargs: Additional keyword arguments to pass to the plot_rays function.
         """
         if kwargs.get('color_by_inter_obj', False):
@@ -1127,6 +1288,18 @@ class Dataset(DotDict):
             'inter_objects': inter_objs,
             'inter_obj_labels': inter_obj_labels,
         }
+        
+        # Handle power-based coloring
+        if color_strat != 'none':
+            default_kwargs['color_rays_by_pwr'] = True
+            default_kwargs['powers'] = self.power[idx]
+            
+            if color_strat == 'absolute':
+                default_kwargs['limits'] = (np.nanmin(self.power), np.nanmax(self.power))
+            
+            if 'show_cbar' not in kwargs.keys():
+                kwargs['show_cbar'] = True
+
         default_kwargs.update(kwargs)
         return plot_rays(self.rx_pos[idx], self.tx_pos[0], self.inter_pos[idx],
                          self.inter[idx], **default_kwargs)

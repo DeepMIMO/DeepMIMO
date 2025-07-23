@@ -21,9 +21,10 @@ Main Functions:
 from pathlib import Path
 from typing import Dict
 import numpy as np
+import os
 
 from .p2m_parser import paths_parser, extract_tx_pos, read_pl_p2m_file
-from .. import converter_utils as cu
+from ...general_utils import get_mat_filename, save_mat
 from ... import consts as c
 
 
@@ -128,8 +129,9 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict) -> None:
                 update_txrx_points(txrx_dict, rx_set['id'], data[c.RX_POS_PARAM_NAME], path_loss)
 
                 # Save each data key using the set's id
-                for key in data.keys():
-                    cu.save_mat(data[key], key, output_folder, tx_set['id'], tx_idx, rx_set['id'])
+                for key in data.keys():              
+                    mat_file = get_mat_filename(key, tx_set['id'], tx_idx, rx_set['id'])
+                    save_mat(data[key], key, os.path.join(output_folder, mat_file))
     
     # Remove TX sets that have no paths with any receivers
     for tx_set in tx_sets:

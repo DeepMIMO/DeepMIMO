@@ -9,7 +9,7 @@ This module handles reading and processing:
 import os
 import numpy as np
 import pandas as pd
-from typing import Dict, Any, List
+from typing import Dict, Any
 from ... import consts as c
 from ... import general_utils as gu
 from .. import converter_utils as cu
@@ -238,4 +238,5 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: Dict[str, Any]) ->
         
         # Save data for all UEs of this RU
         for key in data.keys():
-            cu.save_mat(data[key], key, output_folder, tx_set_id, tx_idx, rx_set_id)
+            mat_filename = gu.get_mat_filename(key, tx_set_id, tx_idx, rx_set_id)
+            gu.save_mat(data[key], key, os.path.join(output_folder, mat_filename))

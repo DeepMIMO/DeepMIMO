@@ -280,11 +280,11 @@ subprocess.run([
 
 #%% Repeat for Dynamic Scene
 
-if True:
-    dyn_name = dm.convert('RT_SOURCES/asu_campus_3p5_dyn_r', 
+if False:
+    dyn_name = dm.convert('RT_SOURCES/asu_campus_3p5_dyn_rd', 
                           overwrite=True, vis_scene=False, print_params=False)
 else:
-    dyn_name = 'asu_campus_3p5_dyn_r'
+    dyn_name = 'asu_campus_3p5_dyn_rd'
 
 # Load Dataset for moving car and for static BS
 dataset_dyn = dm.load(dyn_name, tx_sets=[1], rx_sets=[0]) # car-rxgrid
@@ -298,28 +298,25 @@ plt.rcParams['xtick.color'] = 'white'
 plt.rcParams['ytick.color'] = 'white'
 plt.rcParams['axes.labelcolor'] = 'white'
 
-# pwr_lims = (-60, -141)
-pwr_lims = (-60, -100)
+pwr_lims = (-146, -60)  # min first, max second
 
 save = True
-folder = f"dm_scene_doppler_dynamic_car_rxgrid_2D"
+folder = f"dm_scene_doppler_dynamic_car_rxgrid_2D_5R1D"
 os.makedirs(folder, exist_ok=True)
 
 n_scenes = len(dataset_dyn)
 for i in range(n_scenes):
+    
     plot_args = dict(scat_sz=2.2, dpi=300, figsize=(10,8), lims=pwr_lims, 
                      cbar_title='Power (dBm)')
     ax, _ = dm.plot_coverage(dataset_dyn[i].rx_pos, 
                              dataset_dyn[i].power[:,0], 
                              bs_pos=dataset_dyn[i].tx_pos[0], 
                              **plot_args)
-    dataset_dyn_rt[i].plot_rays(0, ax=ax, proj_3D=False)
-    # ax = dataset_dyn_rt[i].plot_rays(0, proj_3D=False, dpi=300)
-    # dm.plot_coverage(dataset_dyn[i].rx_pos, 
-    #                          dataset_dyn[i].power[:,0], 
-    #                          bs_pos=dataset_dyn[i].tx_pos[0], 
-    #                          ax=ax,
-    #                          **plot_args)
+    dataset_dyn_rt[i].plot_rays(0, ax=ax, proj_3D=False,
+                                # color_strat='relative', limits=pwr_lims, 
+                                color_strat='absolute', limits=pwr_lims, 
+                                show_cbar=False)
     
     ax.legend().set_visible(False)
     ax.grid(False)
@@ -330,8 +327,7 @@ for i in range(n_scenes):
         print(f"Saved {i} of {n_scenes}")
     else:
         plt.show()
-
-    # if i == 2: 
-    #     break
+    
+    # break
 
 

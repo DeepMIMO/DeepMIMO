@@ -17,12 +17,11 @@ from typing import Dict, List, Any
 
 # Third-party imports
 import numpy as np
-import scipy.io
 
 # Local imports
 from .. import consts as c
 from ..general_utils import (get_mat_filename, load_dict_from_json, 
-                             get_scenario_folder, get_params_path, DotDict)
+                             get_scenario_folder, get_params_path, load_mat, DotDict)
 from ..scene import Scene
 from .dataset import Dataset, MacroDataset, DynamicDataset
 from ..materials import MaterialList
@@ -258,13 +257,11 @@ def _load_tx_rx_raydata(rayfolder: str, tx_set_id: int, rx_set_id: int, tx_idx: 
         
         mat_filename = get_mat_filename(key, tx_set_id, tx_idx, rx_set_id)
         mat_path = os.path.join(rayfolder, mat_filename)
-    
-        if os.path.exists(mat_path):
-            if verbose:
-                print(f'Loading {mat_filename}...', end='')
-            tx_dict[key] = scipy.io.loadmat(mat_path)[key]
-        else:
-            print(f'File {mat_path} could not be found')
+        
+        if verbose:
+            print(f'Loading {mat_filename}...', end='')
+            
+        tx_dict[key] = load_mat(mat_path, key)
         
         if tx_dict[key] is None:
             continue

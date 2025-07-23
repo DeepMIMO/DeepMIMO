@@ -65,7 +65,7 @@ import os
 #%% Constants
 
 # Wireless InSite
-WI_ROOT = "C:/Program Files/Remcom/Wireless InSite 4.0.0"
+WI_ROOT = "C:/Program Files/Remcom/Wireless InSite 3.3.0.4"
 WI_EXE = os.path.join(WI_ROOT, "bin/calc/wibatch.exe")
 WI_MAT = os.path.join(WI_ROOT, "materials")
 WI_LIC = "C:/Users/jmora/Documents/GitHub/DeepMIMO/executables/wireless insite"
@@ -95,7 +95,7 @@ p = {
 
 	# User placement parameters
 	'ue_height': 1.5,
-	'grid_spacing': 1,
+	'grid_spacing': .1,
 	'pos_prec': 4, # Decimal places for coordinates
 
 	# Paths required by Wireless InSite
@@ -108,7 +108,7 @@ p = {
 	# Ray-tracing parameters -> Efficient if they match the dataclass in SetupEditor.py
 	'carrier_freq': 3.5e9,  # Hz
 	'bandwidth': 10e6,  # Hz
-	'max_reflections': 3, # Sionna currently breaking with 4 or more max_depth.
+	'max_reflections': 5, # Sionna currently breaking with 4 or more max_depth.
 	'max_paths': 10,
 	'ray_spacing': 0.25,  # m
 	'max_transmissions': 0,
@@ -120,14 +120,11 @@ p = {
 	'ds_final_interaction_only': True,
 	'conform_to_terrain': False,  # Whether to conform the terrain to the ray tracing grid
 								  # (if True, positions have added the terrain height)
-	'bs2bs': False,  # Whether to compute path between BSs (True) or not (False)
+	'bs2bs': True,  # Whether to compute path between BSs (True) or not (False)
 	
-	# Miscellaneous parameters
-	'create_scene_folder': False,  # Whether to create an additional scene folder
-                                   # inside OSM_ROOT with params in the name.
-	                               # Set to False for Dynamic Datasets 
-                                   # (no extra folders -> direct access)
-
+	# Insite specific parameters
+    'insite_force_points': False,
+    
 	# Sionna specific parameters
 	'los': True,  # Whether to use LOS paths (True) or not (False)
 	'synthetic_array': True,  # Whether to use a synthetic array (True) or a real array (False)
@@ -140,6 +137,11 @@ p = {
 	'path_inspection_func': None,  # Function to inspect the paths after computation 
 	                               # (before filtering or saving)
 	'scene_edit_func': None,  # Function to edit the scene before ray tracing
+	'create_scene_folder': False,  # Whether to create an additional scene folder
+                                   # inside OSM_ROOT with params in the name.
+	                               # Set to False for Dynamic Datasets 
+                                   # (no extra folders -> direct access)
+
 	
 	# Sionna 0.x parameters
 	'scat_random_phases': True,

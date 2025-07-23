@@ -202,7 +202,6 @@ def parse_materials_from_file(file: Path) -> List[Material]:
     
     return materials
 
-
 def read_materials(sim_folder: str, verbose: bool = False) -> Dict:
     """Read materials from a Wireless Insite simulation folder.
     

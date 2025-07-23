@@ -110,24 +110,7 @@ dm.upload('my_scenario', 'your-api-key')
 
 ## Contributing
 
-We welcome contributions to DeepMIMO! Here's how you can help:
-
-1. **Converter Development**
-   - Add support for new ray tracers
-   - Improve existing converters (AODT, Sionna RT, Wireless InSite)
-
-2. **Generator Enhancements**
-   - Add new dataset generation features or abstractions
-   - Improve performance of channel generator
-   - Add new visualization tools
-   - Add new beamforming tools
-
-3. **Documentation**
-   - Improve existing documentation
-   - Add new examples and tutorials
-   - Create guides for common use cases
-
-To contribute:
+We welcome contributions to DeepMIMO! To contribute:
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes

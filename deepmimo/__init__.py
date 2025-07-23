@@ -2,7 +2,7 @@
 DeepMIMO Python Package.
 """
 
-__version__ = "4.0.0b8"
+__version__ = "4.0.0b11"
 
 # Core functionality
 from .generator.core import (
@@ -25,12 +25,6 @@ from .generator.visualization import (
     plot_coverage,
     plot_rays,
     plot_power_discarding,
-)
-
-# Utilities
-from .generator.generator_utils import (
-    get_idxs_with_limits,
-    LinearPath,
 )
 
 from .generator.geometry import (
@@ -103,10 +97,6 @@ __all__ = [
     'plot_rays',
     'plot_power_discarding',
 
-    # Utilities
-    'LinearPath',
-    'get_idxs_with_limits',
-    
     # Physical world representation
     'Face',
     'PhysicalElement',

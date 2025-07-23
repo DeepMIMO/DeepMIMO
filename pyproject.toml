@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "DeepMIMO"
-version = "4.0.0b8"
+version = "4.0.0b11"
 authors = [
     { name = "João Morais" },
     { name = "Umut Demirhan" },
@@ -43,6 +43,7 @@ dev = [
     "build",
     "jupyter",
     "twine==6.0.1",
+    "ipykernel"
 ]
 
 doc = [
@@ -81,9 +82,11 @@ insite = [
     "bpy==3.6.0; python_version == '3.10'",
     "bpy==4.4.0; python_version == '3.11'",
     "numpy<2.0; python_version == '3.11'",
+    "ipykernel",
 
     # InSite Specific
     "plyfile",           # To read blender ply exports for insite_raytracer.py
+
 ]
 
 sionna = [
@@ -95,6 +98,7 @@ sionna = [
     "bpy==3.6.0; python_version == '3.10'",
     "bpy==4.4.0; python_version == '3.11'",
     "numpy<2.0; python_version == '3.11'",
+    "ipykernel",
 
     # Sionna 1.0 specific
     "sionna-rt==1.0.2",  # Sionna Ray Tracer (pins "mitsuba==3.6.2")
@@ -112,6 +116,7 @@ sionna019 = [
      "bpy==3.6.0; python_version == '3.10'",
      "bpy==4.4.0; python_version == '3.11'",
      "numpy<2.0; python_version == '3.11'",
+     "ipykernel",
  
      # Other Requirements (to ensure suitable binaries)
      "numpy<2.0",
@@ -129,7 +134,7 @@ sionna019 = [
      "pyarrow==19.0.1",
      "pythreejs==2.4.2",
      "scipy==1.15.1",
-     "sionna==0.19.1",
+     "sionna==0.19.2",
      "tensorflow==2.15.1",
      
      # GPU dependencies (Requires CUDA 12.2+ drivers & Host driver ≥ 535.54.03)
@@ -157,6 +162,7 @@ all = [
     "bpy==3.6.0; python_version == '3.10'",
     "bpy==4.4.0; python_version == '3.11'",
     "numpy<2.0; python_version == '3.11'",
+    "ipykernel",
 
     # InSite Specific
     "plyfile",           

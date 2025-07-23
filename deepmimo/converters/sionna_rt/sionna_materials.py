@@ -9,14 +9,12 @@ from typing import Dict, Tuple
 
 from ...materials import Material, MaterialList
 from ...general_utils import load_pickle
-from ..converter_utils import save_mat
 
-def read_materials(load_folder: str, save_folder: str) -> Tuple[Dict, Dict[str, int]]:
+def read_materials(load_folder: str) -> Tuple[Dict, Dict[str, int]]:
     """Read materials from a Sionna RT simulation folder.
     
     Args:
         load_folder: Path to simulation folder containing material files
-        save_folder: Path to save converted materials
         
     Returns:
         Tuple of (Dict containing materials and their categorization,
@@ -64,8 +62,5 @@ def read_materials(load_folder: str, save_folder: str) -> Tuple[Dict, Dict[str, 
     # Add all materials to buildings category by default
     # This can be modified if Sionna provides material categorization
     material_list.add_materials(materials)
-    
-    # Save materials indices to matrix file
-    save_mat(material_indices, 'materials', save_folder)
     
     return material_list.to_dict(), material_indices 

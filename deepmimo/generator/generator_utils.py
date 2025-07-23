@@ -20,6 +20,43 @@ import numpy as np
 
 ################################## For User ###################################
 
+def get_linear_idxs(rx_pos: np.ndarray, start_pos: np.ndarray, end_pos: np.ndarray, 
+                    n_steps: int, filter_repeated: bool = True) -> np.ndarray:
+    """Return indices of users along a linear path between two points.
+    
+    Args:
+        rx_pos (np.ndarray): Positions of dataset points
+        start_pos (np.ndarray): Starting position coordinates (2D or 3D)
+        end_pos (np.ndarray): Ending position coordinates (2D or 3D)
+        n_steps (int): Number of steps along the path (default: 100)
+        filter_repeated (bool): Whether to filter repeated positions (default: True)
+    
+    Returns:
+        Array of indices of users along the linear path
+    """
+    start_pos = np.array(start_pos)
+    end_pos = np.array(end_pos)
+
+    # Ensure 3D coordinates
+    if start_pos.shape[0] == 2:
+        start_pos = np.concatenate((start_pos, [0]))
+    if end_pos.shape[0] == 2:
+        end_pos = np.concatenate((end_pos, [0]))
+
+    xs = np.linspace(start_pos[0], end_pos[0], n_steps).reshape((-1, 1))
+    ys = np.linspace(start_pos[1], end_pos[1], n_steps).reshape((-1, 1))
+    zs = np.linspace(start_pos[2], end_pos[2], n_steps).reshape((-1, 1))
+    interpolated_pos = np.hstack((xs, ys, zs))
+    idxs = np.array([
+        np.argmin(np.linalg.norm(rx_pos - pos, axis=1))
+        for pos in interpolated_pos
+    ])
+    # Filters only adjacent repeated points
+    if filter_repeated:
+        idxs = np.concatenate(([idxs[0]], idxs[1:][(idxs[1:] - idxs[:-1]) != 0]))
+    return idxs
+
+
 def dbw2watt(val: float | np.ndarray) -> float | np.ndarray:
     """Convert power from dBW to Watts.
     
@@ -100,83 +137,6 @@ def get_grid_idxs(grid_size: np.ndarray, axis: str, idxs: list[int] | np.ndarray
             indices.extend(col_indices)
             
     return np.array(indices)
-
-class LinearPath:
-    """Class for creating and analyzing linear paths through DeepMIMO datasets.
-    
-    This class handles the creation of linear sampling paths through a DeepMIMO
-    dataset and extracts relevant features along these paths, including path
-    loss, delays, and angles.
-    
-    Attributes:
-        rx_pos (np.ndarray): Positions of dataset points
-        first_pos (np.ndarray): Starting position of the linear path
-        last_pos (np.ndarray): Ending position of the linear path
-        n (int): Number of points along the path
-        idxs (np.ndarray): Indices of dataset points along the path
-        pos (np.ndarray): Positions of points along the path
-        feature_names (List[str]): Names of extracted features
-    """
-    def __init__(self, rx_pos: np.ndarray, first_pos: np.ndarray,
-                 last_pos: np.ndarray, res: float = 1, n_steps: Optional[int] = None, 
-                 filter_repeated: bool = True) -> None:
-        """Initialize a linear path through the dataset.
-        
-        Args:
-            deepmimo_dataset: DeepMIMO dataset or list of datasets
-            first_pos: Starting position coordinates
-            last_pos: Ending position coordinates
-            res: Spatial resolution in meters. Defaults to 1.
-            n_steps: Number of steps along path. Defaults to None.
-            filter_repeated: Whether to filter repeated positions. Defaults to True.
-        """
-        if len(first_pos) == 2:  # if not given, assume z-coordinate = 0
-            first_pos = np.concatenate((first_pos,[0]))
-            last_pos = np.concatenate((last_pos,[0]))
-            
-        self.first_pos = first_pos
-        self.last_pos = last_pos
-        
-        self._set_idxs_pos_res_steps(rx_pos, res, n_steps, filter_repeated)
-
-    def _set_idxs_pos_res_steps(self, rx_pos: np.ndarray, res: float,
-                                n_steps: Optional[int], filter_repeated: bool) -> None:
-        """Set path indices, positions, resolution and steps.
-        
-        Args:
-            res: Spatial resolution in meters
-            n_steps: Number of steps along path
-            filter_repeated: Whether to filter repeated positions
-        """
-        if not n_steps:
-            data_res = np.linalg.norm(rx_pos[0] - rx_pos[1])
-            if res < data_res and filter_repeated:
-                print(f'Changing resolution to {data_res} to eliminate repeated positions')
-                res = data_res
-                
-            self.n = int(np.linalg.norm(self.first_pos - self.last_pos) / res)
-        else:
-            self.n = n_steps
-        
-        xs = np.linspace(self.first_pos[0], self.last_pos[0], self.n).reshape((-1,1))
-        ys = np.linspace(self.first_pos[1], self.last_pos[1], self.n).reshape((-1,1))
-        zs = np.linspace(self.first_pos[2], self.last_pos[2], self.n).reshape((-1,1))
-        
-        interpolated_pos = np.hstack((xs,ys,zs))
-        idxs = np.array([np.argmin(np.linalg.norm(rx_pos - pos, axis=1)) 
-                         for pos in interpolated_pos])
-        
-        if filter_repeated:
-            # soft: removes adjacent repeated only
-            idxs = np.concatenate(([idxs[0]], idxs[1:][(idxs[1:]-idxs[:-1]) != 0]))
-            
-            if filter_repeated == 'hard':
-                # hard: removes all repeated
-                idxs = np.unique(idxs)
-            
-            self.n = len(idxs)
-    
-        self.idxs = idxs
 
 def get_idxs_with_limits(data_pos: np.ndarray, **limits) -> np.ndarray:
     """Return indices of users within specified coordinate limits.

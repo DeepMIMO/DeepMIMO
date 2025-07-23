@@ -78,7 +78,7 @@ def get_origin_coords(osm_folder: str) -> Tuple[float, float]:
 
 def _split_coords(x: str) -> np.ndarray:
     """Split comma-separated coordinates into float array."""
-    return np.array(x.split(',')).astype(np.float32)
+    return np.array(x.split(',') if type(x) == str else [x]).astype(np.float32)
 
 
 def load_params_from_row(row, params_dict):

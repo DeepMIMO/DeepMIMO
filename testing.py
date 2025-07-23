@@ -5,7 +5,7 @@ import numpy as np
 import deepmimo as dm
 import matplotlib.pyplot as plt
 
-from api_keys import DEEPMIMO_API_KEY
+# from api_keys import DEEPMIMO_API_KEY
 
 #%% V4 Conversion
 

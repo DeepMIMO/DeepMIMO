@@ -171,8 +171,8 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> Dict[str, An
         rx_array_ant_pos = rx_array.positions(wavelength).numpy()  
         tx_array_ant_pos = tx_array.positions(wavelength).numpy()
     else:
-        rx_array_ant_pos = rx_array.positions
-        tx_array_ant_pos = tx_array.positions
+        rx_array_ant_pos = rx_array.positions.numpy()
+        tx_array_ant_pos = tx_array.positions.numpy()
     
     # Safely get synthetic_array option (from scene_dict or compute_paths_kwargs)
     synthetic_array = scene_dict.get('synthetic_array', compute_paths_kwargs.get('synthetic_array', False))

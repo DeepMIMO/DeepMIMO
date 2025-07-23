@@ -53,7 +53,7 @@ def sionna_rt_converter(rt_folder: str, copy_source: bool = False,
     print('converting from sionna RT')
 
     # Get scenario name from folder if not provided
-    scen_name = scenario_name if scenario_name else os.path.basename(rt_folder)
+    scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
 
     # Check if scenario already exists in the scenarios folder
     scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
@@ -76,7 +76,7 @@ def sionna_rt_converter(rt_folder: str, copy_source: bool = False,
     read_paths(rt_folder, temp_folder, txrx_dict, rt_params['raytracer_version'])
 
     # Read Materials (.materials)
-    materials_dict, material_indices = read_materials(rt_folder, temp_folder)
+    materials_dict, material_indices = read_materials(rt_folder)
 
     # Read Scene data
     scene = read_scene(rt_folder, material_indices)

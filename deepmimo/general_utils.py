@@ -11,6 +11,7 @@ the DeepMIMO toolkit.
 # ============================================================================
 
 import numpy as np
+import scipy.io
 from pprint import pformat
 from typing import Dict, Any, TypeVar, Mapping, Optional
 from copy import deepcopy
@@ -117,6 +118,81 @@ def get_available_scenarios() -> list:
     return sorted(scenarios)
 
 # ============================================================================
+# Matrix Load and Save
+# ============================================================================
+
+def get_mat_filename(key: str, tx_set_idx: int, tx_idx: int, rx_set_idx: int,
+                     fmt: str = c.MAT_FMT) -> str:
+    """Generate a .mat filename for storing DeepMIMO data.
+
+    Args:
+        key (str): The key identifier for the data type.
+        tx_set_idx (int): Index of the transmitter set.
+        tx_idx (int): Index of the transmitter within its set.
+        rx_set_idx (int): Index of the receiver set.
+
+    Returns:
+        str: Complete filename with .mat extension.
+    """
+    str_id = f"t{tx_set_idx:03}_tx{tx_idx:03}_r{rx_set_idx:03}"
+    return f"{key}_{str_id}.{fmt}"
+
+def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_FMT) -> None:
+    """Save data to a .mat file with standardized naming.
+    
+    This function saves data to a .mat file using standardized naming conventions.
+    If transmitter/receiver indices are provided, the filename will include those indices.
+    Otherwise, it will use just the data_key as the filename.
+
+    For example:
+    - With indices: {data_key}_t{tx_set_idx}_{tx_idx}_r{rx_set_idx}.mat
+    - Without indices: {data_key}.mat
+    
+    Args:
+        data: Data array to save
+        data_key: Key identifier for the data type
+        file_path: Output path
+    """
+
+    if fmt == 'mat':
+        scipy.io.savemat(file_path, {data_key: data}) 
+    elif fmt == 'npz':
+        np.savez_compressed(file_path.replace('.mat', '.npz'), **{data_key: data}) 
+    elif fmt == 'npy':
+        np.save(file_path.replace('.mat', '.npz'), data)
+    else:
+        raise Exception('Format {fmt} not recognized. ' \
+                        'Choose "mat" (default), "npz" or "npy".')
+    
+def load_mat(mat_path: str, key: Optional[str] = None):
+    """Load a .mat file with supported extensions (mat, npz, npy).
+    
+    This function tries to load a .mat file with supported extensions (mat, npz, npy).
+    If the file is not found, it raises an exception.
+    
+    Args:
+        mat_path: Path to the .mat file
+    """
+
+    # Try each supported format by replacing extension (mat, npz, npy)
+    supported_formats = ['.mat', '.npz', '.npy']
+    base_path = os.path.splitext(mat_path)[0]
+
+    for fmt in supported_formats:
+        try_path = base_path + fmt
+        if os.path.exists(try_path):
+            if fmt == '.mat':
+                return scipy.io.loadmat(try_path)[key]
+            elif fmt == '.npz':
+                return np.load(try_path, allow_pickle=True)[key]
+            elif fmt == '.npy':
+                return np.load(try_path)
+
+    print(f'No supported format found for {mat_path}. ' \
+          f'Supported formats are: {supported_formats}')
+    return None
+
+# ============================================================================
 # Dictionary and Data Structure Utilities
 # ============================================================================
 
@@ -127,6 +203,10 @@ def save_dict_as_json(output_path: str, data_dict: Dict[str, Any]) -> None:
         output_path: Path to save JSON file
         data_dict: Dictionary to save
     """
+    # Add extension if missing
+    if not output_path.endswith('.json'):
+        output_path += '.json'
+
     numpy_handler = lambda x: x.tolist() if isinstance(x, np.ndarray) else str(x)
     with open(output_path, 'w') as f:
         json.dump(data_dict, f, indent=2, default=numpy_handler)
@@ -396,39 +476,6 @@ class PrintIfVerbose:
         """
         if self.verbose:
             print(message)
-
-# ============================================================================
-# String Generation Utilities for TXRX ID and MAT Files
-# ============================================================================
-
-def get_txrx_str_id(tx_set_idx: int, tx_idx: int, rx_set_idx: int) -> str:
-    """Generate a standardized string identifier for TX-RX combinations.
-
-    Args:
-        tx_set_idx (int): Index of the transmitter set.
-        tx_idx (int): Index of the transmitter within its set.
-        rx_set_idx (int): Index of the receiver set.
-
-    Returns:
-        str: Formatted string identifier in the form 't{tx_set_idx}_tx{tx_idx}_r{rx_set_idx}'.
-    """
-    return f"t{tx_set_idx:03}_tx{tx_idx:03}_r{rx_set_idx:03}"
-
-
-def get_mat_filename(key: str, tx_set_idx: int, tx_idx: int, rx_set_idx: int) -> str:
-    """Generate a .mat filename for storing DeepMIMO data.
-
-    Args:
-        key (str): The key identifier for the data type.
-        tx_set_idx (int): Index of the transmitter set.
-        tx_idx (int): Index of the transmitter within its set.
-        rx_set_idx (int): Index of the receiver set.
-
-    Returns:
-        str: Complete filename with .mat extension.
-    """
-    str_id = get_txrx_str_id(tx_set_idx, tx_idx, rx_set_idx)
-    return f"{key}_{str_id}.mat"
 
 # ============================================================================
 # Compression Utilities

@@ -40,6 +40,57 @@ def _convert_lists_to_arrays(obj: Any) -> Any:
     else:
         return obj
 
+def _validate_ant_rot(rotation: np.ndarray, n_ues: Optional[int] = None) -> np.ndarray:
+    """Validate antenna rotation parameters.
+    
+    Args:
+        rotation: Rotation angles array (3D vector or 3 x 2 matrix)
+        n_ues: Number of UEs (only needed for UE rotation validation)
+        
+    Returns:
+        Validated rotation array
+        
+    Raises:
+        AssertionError: If rotation format is invalid
+    """
+    if rotation is None:
+        return np.array([0, 0, 0])
+        
+    rotation_shape = rotation.shape
+    cond_1 = len(rotation_shape) == 1 and rotation_shape[0] == 3  # Fixed 3D vector
+    cond_2 = len(rotation_shape) == 2 and rotation_shape[0] == 3 and rotation_shape[1] == 2  # Random ranges
+    cond_3 = n_ues is not None and rotation_shape[0] == n_ues  # Per-user rotations
+    
+    assert_str = ('The antenna rotation must either be a 3D vector for ' +
+                  'constant values or 3 x 2 matrix for random values')
+    if n_ues is not None:
+        assert_str += ' or an n_ues x 3 matrix for per-user values'
+    
+    assert cond_1 or cond_2 or (n_ues is not None and cond_3), assert_str
+    
+    return rotation
+
+def _validate_ant_rad_pat(pattern: Optional[str] = None) -> str:
+    """Validate antenna radiation pattern.
+    
+    Args:
+        pattern: Radiation pattern string
+        
+    Returns:
+        Validated pattern string
+        
+    Raises:
+        AssertionError: If pattern is invalid
+    """
+    if pattern is None:
+        return c.PARAMSET_ANT_RAD_PAT_VALS[0]
+        
+    assert_str = ("The antenna radiation pattern must have one of the " + 
+                  f"following values: {str(c.PARAMSET_ANT_RAD_PAT_VALS)}")
+    assert pattern in c.PARAMSET_ANT_RAD_PAT_VALS, assert_str
+    
+    return pattern
+
 class ChannelParameters(DotDict):
     """Class for managing channel generation parameters.
     
@@ -142,39 +193,29 @@ class ChannelParameters(DotDict):
         
         # BS Antenna Rotation
         if c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_BS].keys():
-            rotation_shape = self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION].shape
-            assert (len(rotation_shape) == 1 and rotation_shape[0] == 3), \
-                    'The BS antenna rotation must be a 3D vector'
+            self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
+                self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION])
         else:
-            self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = None
+            self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
 
         # UE Antenna Rotation
-        if (c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_UE].keys() and \
-            self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] is not None):
-            rotation_shape = self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION].shape
-            cond_1 = len(rotation_shape) == 1 and rotation_shape[0] == 3
-            cond_2 = len(rotation_shape) == 2 and rotation_shape[0] == 3 and rotation_shape[1] == 2
-            cond_3 = (rotation_shape[0] == n_ues)
-        
-            assert_str = ('The UE antenna rotation must either be a 3D vector for ' +
-                         'constant values or 3 x 2 matrix for random values')
-            assert cond_1 or cond_2 or cond_3, assert_str
+        if c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_UE].keys():
+            self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
+                self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION], n_ues)
         else:
             self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
         
         # BS Antenna Radiation Pattern
         if c.PARAMSET_ANT_RAD_PAT in self[c.PARAMSET_ANT_BS].keys():
-            assert_str = ("The BS antenna radiation pattern must have " + 
-                         f"one of the following values: {str(c.PARAMSET_ANT_RAD_PAT_VALS)}")
-            assert self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] in c.PARAMSET_ANT_RAD_PAT_VALS, assert_str
+            self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
+                self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT])
         else:
             self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[0]
             
         # UE Antenna Radiation Pattern
         if c.PARAMSET_ANT_RAD_PAT in self[c.PARAMSET_ANT_UE].keys():
-            assert_str = ("The UE antenna radiation pattern must have one of the " + 
-                         f"following values: {str(c.PARAMSET_ANT_RAD_PAT_VALS)}")
-            assert self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] in c.PARAMSET_ANT_RAD_PAT_VALS, assert_str
+            self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
+                self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT])
         else:
             self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[0]
                                              

@@ -86,11 +86,6 @@ class SionnaRayTracingParameters(RayTracingParameters):
         if 'los' not in raw_params or not raw_params['los']:
             raise ValueError("los not found in Sionna RT parameters")
         
-        # Raise error if arrays are not synthetic
-        # if not raw_params['synthetic_array']:
-        #     raise ValueError("arrays are not synthetic in Sionna RT parameters. "
-        #                      "Multi-antenna arrays are not supported yet.")
-        
         # NOTE: Sionna distributes these samples across antennas AND TXs
         n_tx, n_tx_ant = raw_params['tx_array_size'], raw_params['tx_array_num_ant']
         n_emmitters = n_tx * n_tx_ant
@@ -136,8 +131,9 @@ class SionnaRayTracingParameters(RayTracingParameters):
             'synthetic_array': raw_params.get('synthetic_array', True),
             'num_rays': -1 if rt_method != 'fibonacci' else n_rays, 
             'ray_casting_method': rt_method.replace('fibonacci', 'uniform'),
-            # The alternative to fibonacci is exhaustive, for which the number of rays is not predictable
-
+            'ray_casting_range_az': raw_params.get('ray_casting_range_az', 360),
+            'ray_casting_range_el': raw_params.get('ray_casting_range_el', 180),
+            
             # GPS Bounding Box
             'gps_bbox': gps_bbox,
 
@@ -145,5 +141,4 @@ class SionnaRayTracingParameters(RayTracingParameters):
             'raw_params': raw_params,
         }
         
-        # Create and return parameters object
-        return cls.from_dict(params_dict)
+        return cls(**params_dict)

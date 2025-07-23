@@ -61,7 +61,7 @@ class XmlGenerator:
         # Extract material properties from terrain / city / road files
         self.terrain = Material.from_file(self.setup.get_terrain_path())
         self.city = Material.from_file(self.setup.get_city_path())
-        self.road = Material.from_file(self.setup.get_road_path())
+        #self.road = Material.from_file(self.setup.get_road_path())
         
         script_dir = os.path.dirname(os.path.abspath(__file__))
         self.xml_template_folder = os.path.join(script_dir, "..", "resources", "xml")
@@ -296,11 +296,11 @@ class XmlGenerator:
                 'template': self.geometry_city_template_xml,
                 'path_replace': './pathto.city'
             },
-            'road': {
-                'material': self.road,
-                'template': self.geometry_city_template_xml,
-                'path_replace': './pathto.city'
-            }
+            # 'road': {
+            #     'material': self.road,
+            #     'template': self.geometry_city_template_xml,
+            #     'path_replace': './pathto.city'
+            # }
         }
         
         for feature in self.setup.features:

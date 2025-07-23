@@ -19,6 +19,7 @@ The text files are useful for debugging and verification in the Wireless InSite 
 import os
 from dataclasses import fields
 from typing import Dict, Tuple, Any
+from datetime import datetime
 
 # Third-party imports
 import numpy as np
@@ -55,9 +56,10 @@ def create_directory_structure(osm_folder: str, rt_params: Dict[str, Any]) -> Tu
                    f"{rt_params['max_reflections']}R_{rt_params['max_diffractions']}D_"
                    f"{1 if rt_params['ds_enable'] else 0}S")
     insite_path = os.path.join(osm_folder, folder_name)
-    os.makedirs(insite_path, exist_ok=True)
-
-    insite_path = os.path.join(osm_folder, folder_name)
+    if os.path.exists(insite_path):
+        dt = datetime.now()
+        insite_path += '_' + dt.strftime("%Y%m%d_%H%M%S")
+    
     study_area_path = os.path.join(insite_path, "study_area")
 
     # Create directories
@@ -111,10 +113,10 @@ def raytrace_insite(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
         str: Path to the insite directory containing all generated files
     """
     insite_path, study_area_path = create_directory_structure(osm_folder, rt_params)
-    
+
     # Create buildings.city & roads.city files
     bldgs_city = convert_to_city_file(osm_folder, insite_path, "buildings", rt_params['building_material'])
-    roads_city = convert_to_city_file(osm_folder, insite_path, "roads", rt_params['road_material'])
+    roads_city = None #convert_to_city_file(osm_folder, insite_path, "roads", rt_params['road_material'])
 
     xmin_pad, ymin_pad, xmax_pad, ymax_pad = convert_GpsBBox2CartesianBBox(
         rt_params['min_lat'], rt_params['min_lon'], rt_params['max_lat'], rt_params['max_lon'],
@@ -141,7 +143,7 @@ def raytrace_insite(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
             conform_to_terrain=False)
 
     #   RX (UEs) - adding ues as points is much slower than as a grid
-    if False:
+    if rt_params['insite_force_points']:
         txrx_editor.add_txrx(
                 txrx_type="points",
                 is_transmitter=False,
@@ -149,20 +151,20 @@ def raytrace_insite(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
                 pos=rx_pos,
                 name="user_grid",
                 conform_to_terrain=rt_params['conform_to_terrain'])
-    
-    # The user grid should cover the bounding box area that was fetched from OSM
-    grid_side = [xmax_pad - xmin_pad - 2 * BBOX_PAD + rt_params['grid_spacing'], 
-                 ymax_pad - ymin_pad - 2 * BBOX_PAD + rt_params['grid_spacing']]
-    txrx_editor.add_txrx(
-        txrx_type="grid",
-        is_transmitter=False,
-        is_receiver=True,
-        pos=[xmin_pad + BBOX_PAD + 1e-3, ymin_pad + BBOX_PAD, rt_params['ue_height']],
-        name="UE_grid",
-        grid_side=grid_side,
-        grid_spacing=rt_params['grid_spacing'],
-        conform_to_terrain=rt_params['conform_to_terrain']
-    )
+    else:
+        # The user grid should cover the bounding box area that was fetched from OSM
+        grid_side = [xmax_pad - xmin_pad - 2 * BBOX_PAD + rt_params['grid_spacing'], 
+                    ymax_pad - ymin_pad - 2 * BBOX_PAD + rt_params['grid_spacing']]
+        txrx_editor.add_txrx(
+            txrx_type="grid",
+            is_transmitter=False,
+            is_receiver=True,
+            pos=[xmin_pad + BBOX_PAD + 1e-3, ymin_pad + BBOX_PAD, rt_params['ue_height']],
+            name="UE_grid",
+            grid_side=grid_side,
+            grid_spacing=rt_params['grid_spacing'],
+            conform_to_terrain=rt_params['conform_to_terrain']
+        )
     txrx_editor.save(os.path.join(insite_path, "insite.txrx"))
 
     # Get ray tracing parameter names from the dataclass
@@ -179,7 +181,7 @@ def raytrace_insite(osm_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **r
     scenario = SetupEditor(insite_path)
     scenario.set_carrierFreq(rt_params['carrier_freq'])
     scenario.set_bandwidth(rt_params['bandwidth'])
-    scenario.set_study_area(zmin=-3, zmax=20, all_vertex=study_area_vertex)
+    scenario.set_study_area(zmin=-3, zmax=40, all_vertex=study_area_vertex)
     mean_lat = (rt_params['min_lat'] + rt_params['max_lat']) / 2
     mean_lon = (rt_params['min_lon'] + rt_params['max_lon']) / 2
     scenario.set_origin(mean_lat, mean_lon)
