@@ -1004,7 +1004,7 @@ class Dataset(DotDict):
         """
         return get_uniform_idxs(self.n_ue, self.grid_size, steps)
     
-    def get_row_idxs(self, row_idxs: list[int] | np.ndarray) -> np.ndarray:
+    def get_row_idxs(self, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
         """Return indices of users in the specified rows, assuming a grid structure.
         
         Args:
@@ -1015,7 +1015,7 @@ class Dataset(DotDict):
         """
         return get_grid_idxs(self.grid_size, 'row', row_idxs)
         
-    def get_col_idxs(self, col_idxs: list[int] | np.ndarray) -> np.ndarray:
+    def get_col_idxs(self, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
         """Return indices of users in the specified columns, assuming a grid structure.
         
         Args:
