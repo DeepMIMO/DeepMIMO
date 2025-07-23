@@ -632,6 +632,101 @@ params2 = interpolate_path(dataset, idx_1, idx_2, distances)
 # returns just the interpolated value
 
 
+#%%
+
+
+# d_10cm = dm.load('asu_campus_3p5_10cm', filter_matrices=['inter_pos'])
+
+matrices = ['rx_pos', 'tx_pos', 'aoa_az', 'aod_az', 'aoa_el', 'aod_el', 
+            'delay', 'power', 'phase', 'inter']
+d_10cm = dm.load('asu_campus_3p5_10cm', matrices=matrices)
+
+#%%
+
+# Generate all pairs of points 
+
+# For example: ...
+dataset = dm.load('asu_campus_3p5')
+# dataset = dataset.subset(dataset.get_uniform_idxs([2,2]))
+
+n_cols, n_rows = dataset.grid_size
+
+folder = 'sweeps'
+os.makedirs(folder, exist_ok=True)
+
+def get_consecutive_active_segments(dataset, idxs):
+    """Get consecutive segments of active users.
+    
+    Args:
+        dataset: DeepMIMO dataset
+        idxs: Array of user indices to check
+        
+    Returns:
+        List of arrays containing consecutive active user indices
+    """
+    active_idxs = np.where(dataset.los[idxs] != -1)[0]
+    
+    # Split active_idxs into arrays of consecutive indices
+    splits = np.where(np.diff(active_idxs) != 1)[0] + 1
+    consecutive_arrays = np.split(active_idxs, splits)
+    
+    # Filter out single-element arrays
+    consecutive_arrays = [arr for arr in consecutive_arrays if len(arr) > 1]
+    
+    return consecutive_arrays
+    
+row_or_col = 'row'
+for k in range(n_rows if row_or_col == 'row' else n_cols):
+    func = dataset.get_row_idxs if row_or_col == 'row' else dataset.get_col_idxs
+    idxs = func(k)
+    consecutive_arrays = get_consecutive_active_segments(dataset, idxs)
+    
+    print(f"{row_or_col} {k} has {len(consecutive_arrays)} consecutive segments:")
+    dataset.los.plot()
+    for i, arr in enumerate(consecutive_arrays):
+        print(f"Segment {i}: {len(arr)} users")
+        idxs_filtered = idxs[arr]
+        plt.scatter(dataset.rx_pos[idxs_filtered, 0], 
+                    dataset.rx_pos[idxs_filtered, 1], color='red', s=.5)
+    
+    plt.savefig(f'{folder}/asu_campus_3p5_{row_or_col}_{k:04d}.png', 
+                bbox_inches='tight', dpi=200)
+    plt.close()
+    # break
+
+#%% Combine all PNGs into a video
+import subprocess
+
+subprocess.run([
+    "ffmpeg", "-y",
+    "-framerate", "60",
+    "-pattern_type", "glob",
+    "-i", f"{folder}/*.png",
+    "-vf", "crop=in_w:in_h-mod(in_h\\,2)",
+    "-c:v", "libx264",
+    "-pix_fmt", "yuv420p",
+    f"{folder}/output_60fps.mp4"
+])
+
+#%%
+
+all_seqs = []
+for k in range(n_rows):
+    idxs = dataset.get_row_idxs(k)
+    consecutive_arrays = get_consecutive_active_segments(dataset, idxs)
+    all_seqs += consecutive_arrays
 
 
 
+#%%
+
+
+
+
+
+
+
+#%%
+
+
+    
