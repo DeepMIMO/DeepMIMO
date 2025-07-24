@@ -120,6 +120,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
             # i.e. no antenna dimensions in vertices in sionna 0.x
             vertices = vertices[:, :, tx_idx, ...]
         else:
+            types = types[:, :, rx_ant_idx, tx_idx, tx_ant_idx]
             vertices = vertices[:, :, rx_ant_idx, tx_idx, tx_ant_idx, :]
 
     else:  # Single antenna case
@@ -131,7 +132,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
         theta_r = theta_r[:, tx_idx, :]
         theta_t = theta_t[:, tx_idx, :]
         vertices = vertices[:, :, tx_idx, ...]
-    
+        
     n_rx = a.shape[0]
     for rel_rx_idx in range(n_rx):
         abs_idx_arr = np.where(np.all(rx_pos == targets[rel_rx_idx], axis=1))[0]
@@ -148,7 +149,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
         if n_paths == 0:
             inactive_count += 1
             continue
-            
+
         # Ensure that the paths are sorted by amplitude
         sorted_path_idxs = np.argsort(np.abs(amp))[::-1]
         path_idxs = sorted_path_idxs[:n_paths]
@@ -173,7 +174,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
         if sionna_v1:
             # For Sionna v1, types is (max_depth, n_rx, n_tx, max_paths)
             # We need to get (n_paths, max_depth) for the current rx/tx pair
-            path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0,1)
+            path_types = types[:, rel_rx_idx, path_idxs].swapaxes(0,1)
             inter_types = _transform_interaction_types(path_types)
         else:
             inter_types = _get_sionna_interaction_types(types[path_idxs], inter_pos_rx)
