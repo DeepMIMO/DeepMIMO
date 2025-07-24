@@ -634,17 +634,14 @@ params2 = interpolate_path(dataset, idx_1, idx_2, distances)
 
 #%%
 
-
 # d_10cm = dm.load('asu_campus_3p5_10cm', filter_matrices=['inter_pos'])
 
 matrices = ['rx_pos', 'tx_pos', 'aoa_az', 'aod_az', 'aoa_el', 'aod_el', 
             'delay', 'power', 'phase', 'inter']
-matrices = ['rx_pos', 'inter']
-dataset = dm.load('asu_campus_3p5_10cm', matrices=matrices)
+essential_matrices = ['rx_pos', 'aoa_az', 'inter']
+dataset = dm.load('asu_campus_3p5_10cm', matrices=essential_matrices)
 
-# For example: ...
-# dataset = dm.load('asu_campus_3p5_10cm')
-# dataset = dataset.subset(dataset.get_uniform_idxs([2,2]))
+dataset = dm.load('asu_campus_3p5', matrices=essential_matrices)
 
 #%% Generate all linear sequences in a scenario
 
