@@ -120,7 +120,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
             # i.e. no antenna dimensions in vertices in sionna 0.x
             vertices = vertices[:, :, tx_idx, ...]
         else:
-            types = types[:, :, rx_ant_idx, tx_idx, tx_ant_idx]
+            types = types[:, :, rx_ant_idx, :, tx_ant_idx]
             vertices = vertices[:, :, rx_ant_idx, tx_idx, tx_ant_idx, :]
 
     else:  # Single antenna case
@@ -174,7 +174,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
         if sionna_v1:
             # For Sionna v1, types is (max_depth, n_rx, n_tx, max_paths)
             # We need to get (n_paths, max_depth) for the current rx/tx pair
-            path_types = types[:, rel_rx_idx, path_idxs].swapaxes(0,1)
+            path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0,1)
             inter_types = _transform_interaction_types(path_types)
         else:
             inter_types = _get_sionna_interaction_types(types[path_idxs], inter_pos_rx)
