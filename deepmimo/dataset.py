@@ -39,18 +39,18 @@ import numpy as np
 from tqdm import tqdm
 
 # Base utilities
-from ..general_utils import DotDict, spherical_to_cartesian, DelegatingList
-from .. import consts as c
-from ..info import info
+from .general_utils import DotDict, spherical_to_cartesian, DelegatingList
+from . import consts as c
+from .info import info
 from .visualization import plot_coverage, plot_rays
-from .array_wrapper import DeepMIMOArray
+from .generator.array_wrapper import DeepMIMOArray
 
 # Channel generation
-from .channel import _generate_MIMO_channel, ChannelParameters
+from .generator.channel import _generate_MIMO_channel, ChannelParameters
 
 # Antenna patterns and geometry
-from .ant_patterns import AntennaPattern
-from .geometry import (
+from .generator.ant_patterns import AntennaPattern
+from .generator.geometry import (
     _rotate_angles_batch,
     _apply_FoV_batch,
     _array_response_batch,
@@ -58,7 +58,7 @@ from .geometry import (
 )
 
 # Utilities
-from .generator_utils import (
+from .generator.generator_utils import (
     dbw2watt,
     get_uniform_idxs,
     get_grid_idxs,
@@ -66,13 +66,13 @@ from .generator_utils import (
 )
 
 # Converter utilities
-from ..converters import converter_utils as cu
+from .converters import converter_utils as cu
 
 # Txrx set information
-from ..txrx import get_txrx_sets, TxRxSet
+from .txrx import get_txrx_sets, TxRxSet
 
 # Summary
-from ..summary import plot_summary
+from .summary import plot_summary
 
 # Parameters that should remain consistent across datasets in a MacroDataset
 SHARED_PARAMS = [

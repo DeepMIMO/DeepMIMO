@@ -9,7 +9,7 @@ from .generator.core import (
     generate,
     load,
 )
-from .generator.dataset import Dataset, MacroDataset, DynamicDataset
+from .dataset import Dataset, MacroDataset, DynamicDataset
 
 # TX/RX handling
 from .txrx import (
@@ -21,7 +21,7 @@ from .txrx import (
 )
 
 # Visualization
-from .generator.visualization import (
+from .visualization import (
     plot_coverage,
     plot_rays,
     plot_power_discarding,

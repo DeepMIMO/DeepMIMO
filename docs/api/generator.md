@@ -135,7 +135,7 @@ Note 2: The default orientation of an antenna panel is along the +X axis.
 ```
 
 ```{eval-rst}
-.. autofunction:: deepmimo.generator.dataset.Dataset.compute_channels
+.. autofunction:: deepmimo.dataset.Dataset.compute_channels
 
 ```
 
@@ -314,7 +314,7 @@ For more details on the visualization functions, see the <a href="../manual_full
 
 ### Dataset Class
 ```{eval-rst}
-.. autoclass:: deepmimo.generator.dataset.Dataset
+.. autoclass:: deepmimo.dataset.Dataset
    :members:
    :undoc-members:
    :show-inheritance:
@@ -339,7 +339,7 @@ channels = macro_dataset.compute_channels()
 ```
 
 ```{eval-rst}
-.. autoclass:: deepmimo.generator.dataset.MacroDataset
+.. autoclass:: deepmimo.dataset.MacroDataset
    :members:
    :undoc-members:
    :show-inheritance:
@@ -366,7 +366,7 @@ print(f"Scene names: {dynamic_dataset.names}")
 ```
 
 ```{eval-rst}
-.. autoclass:: deepmimo.generator.dataset.DynamicDataset
+.. autoclass:: deepmimo.dataset.DynamicDataset
    :members:
    :undoc-members:
    :show-inheritance:

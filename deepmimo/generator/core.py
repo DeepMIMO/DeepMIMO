@@ -23,7 +23,7 @@ from .. import consts as c
 from ..general_utils import (get_mat_filename, load_dict_from_json, 
                              get_scenario_folder, get_params_path, load_mat, DotDict)
 from ..scene import Scene
-from .dataset import Dataset, MacroDataset, DynamicDataset
+from ..dataset import Dataset, MacroDataset, DynamicDataset
 from ..materials import MaterialList
 
 # Channel generation

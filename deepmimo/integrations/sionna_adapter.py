@@ -17,7 +17,7 @@ from typing import Tuple
 # Third-party imports
 import numpy as np
 from numpy.typing import NDArray
-from ..generator.dataset import Dataset, MacroDataset
+from ..dataset import Dataset, MacroDataset
 
 
 class SionnaAdapter:

@@ -11,7 +11,7 @@ import os
 # Add the deepmimo path - go up one level from test directory
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from deepmimo.generator.dataset import Dataset
+from deepmimo.dataset import Dataset
 from deepmimo import consts as c
 
 def create_test_dataset():
@@ -245,7 +245,7 @@ def test_compute_channels():
 
 def create_realistic_dataset_for_compute_channels():
     """Create a realistic dataset that can actually run compute_channels"""
-    from deepmimo.generator.dataset import Dataset
+    from deepmimo.dataset import Dataset
     from deepmimo.generator.channel import ChannelParameters
     import deepmimo.consts as c
     
