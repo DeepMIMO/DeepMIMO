@@ -3,11 +3,7 @@
 __all__ = [
     'generate',
     'load',
-    'Dataset',
     'ChannelParameters',
-    'plot_coverage',
-    'plot_rays',
-    'plot_power_discarding',
     'get_idxs_with_limits',
     'LinearPath',
     'steering_vector',
