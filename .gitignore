@@ -34,7 +34,7 @@ aodt_scripts/*
 RT_SOURCES/*
 visibility/*
 path_trim_plots/*
-pipeline_runners/*
+pipeline_runners/
 
 # Others
 building_*
