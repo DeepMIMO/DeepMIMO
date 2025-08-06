@@ -54,18 +54,23 @@ def set_materials(scene: Scene) -> Scene:
             continue
         else:
             print(f"Unknown material: {mat_name}")
-            exit()
+            
+            #exit()
 
     # Add asphalt material
     if get_sionna_version().startswith('0.19'):
-        asphalt_material = RadioMaterial(
-            name="asphalt", 
-            relative_permittivity=5.72, 
-            conductivity=5e-4,
-            scattering_coefficient=0.4, 
-            xpd_coefficient=0.4,
-            scattering_pattern=BackscatteringPattern(alpha_r=4, alpha_i=4, lambda_=0.75))
-        scene.add(asphalt_material)
+        scat_pattern = BackscatteringPattern(alpha_r=4, alpha_i=4, lambda_=0.75)
+    else:
+        scat_pattern = 'backscattering'
+        
+    asphalt_material = RadioMaterial(
+        name="asphalt", 
+        relative_permittivity=5.72, 
+        conductivity=5e-4,
+        scattering_coefficient=0.4, 
+        xpd_coefficient=0.4,
+        scattering_pattern=scat_pattern)
+    scene.add(asphalt_material)
 
     for obj in scene.objects.keys():
         if 'road' in obj or 'path' in obj:
