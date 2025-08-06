@@ -81,10 +81,13 @@ def set_materials(scene: Scene) -> Scene:
 
 def create_base_scene(scene_path: str, center_frequency: float) -> Scene:
     """Create a base Sionna scene."""
+    args = {}
     if is_sionna_v1():
-        scene = load_scene(scene_path, merge_shapes=False) # sionna 1.x
-    else:
-        scene = load_scene(scene_path) # sionna 0.x
+        args['merge_shapes'] = False
+    if scene_path:
+        args['filename'] = scene_path
+
+    scene = load_scene(**args)
 
     scene.frequency = center_frequency
     scene.tx_array = PlanarArray(

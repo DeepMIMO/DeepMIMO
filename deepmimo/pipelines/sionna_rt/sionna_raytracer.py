@@ -123,7 +123,7 @@ def raytrace_sionna(base_folder: str, tx_pos: np.ndarray, rx_pos: np.ndarray, **
         scene_folder = base_folder
     
     if rt_params['use_builtin_scene']:
-        xml_path = getattr(sionna.rt.scene, rt_params['builtin_scene_path'])
+        xml_path = getattr(sionna.rt.scene, rt_params['builtin_scene_path'], None)
     else:
         xml_path = os.path.join(base_folder, "scene.xml")  # Created by Blender OSM Export!
     
