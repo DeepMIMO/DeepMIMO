@@ -638,10 +638,9 @@ params2 = interpolate_path(dataset, idx_1, idx_2, distances)
 
 matrices = ['rx_pos', 'tx_pos', 'aoa_az', 'aod_az', 'aoa_el', 'aod_el', 
             'delay', 'power', 'phase', 'inter']
-essential_matrices = ['rx_pos', 'aoa_az', 'inter']
-dataset = dm.load('asu_campus_3p5_10cm', matrices=essential_matrices)
+dataset = dm.load('asu_campus_3p5_10cm', matrices=matrices)
 
-dataset = dm.load('asu_campus_3p5', matrices=essential_matrices)
+# dataset = dm.load('asu_campus_3p5', matrices=matrices)
 
 #%% Generate all linear sequences in a scenario
 
@@ -663,7 +662,7 @@ def get_consecutive_active_segments(dataset: dm.Dataset, idxs: np.ndarray,
     consecutive_arrays = np.split(active_idxs, splits)
     
     # Filter out single-element arrays
-    consecutive_arrays = [arr for arr in consecutive_arrays if len(arr) > min_len]
+    consecutive_arrays = [idxs[arr] for arr in consecutive_arrays if len(arr) > min_len]
     
     return consecutive_arrays
     
@@ -736,13 +735,264 @@ print(f"Number of active users: {len(dataset.get_active_idxs())}")
 print(f"Total length of sequences: {sum_len_seqs}")
 
 
+#%%
+
+def expand_to_uniform_sequences(sequences: list[np.ndarray] | np.ndarray,
+                                target_len: int,
+                                stride: int = 1) -> np.ndarray:
+    """From a list/array of index sequences, return a 2D array of windows of length target_len.
+    Sequences shorter than target_len are dropped. Uses sliding window with given stride.
+    """
+    if isinstance(sequences, list):
+        seq_list = [np.asarray(seq, dtype=int) for seq in sequences]
+    else:
+        # sequences is assumed 2D already; convert to list of 1D arrays
+        seq_list = [np.asarray(sequences[i], dtype=int) for i in range(sequences.shape[0])]
+
+    out: list[np.ndarray] = []
+    for seq in seq_list:
+        if len(seq) < target_len:
+            continue
+        for i in range(0, len(seq) - target_len + 1, stride):
+            out.append(seq[i:i+target_len])
+    if len(out) == 0:
+        return np.empty((0, target_len), dtype=int)
+    return np.stack(out, axis=0)
+
+# Expand to uniform sequences
+all_seqs_mat_t = expand_to_uniform_sequences(all_seqs, target_len=10, stride=1)
+print(f"all_seqs_mat_t.shape: {all_seqs_mat_t.shape}")
+
+#%%
+# sample N sequences from all_trimmed_seqs_mat
+N = min(100_000, len(all_seqs_mat_t))
+idxs = np.random.choice(len(all_seqs_mat_t), N, replace=False)
+all_seqs_mat_t2 = all_seqs_mat_t[idxs]
+print(f"all_seqs_mat_t2.shape: {all_seqs_mat_t2.shape}")
+
+def build_interpolated_dataset_from_sequences(dataset: dm.Dataset | dm.MacroDataset,
+                                              sequences: np.ndarray,
+                                              step_meters: float | None = 0.5,
+                                              points_per_segment: int | None = None) -> dm.Dataset:
+    """Create a new Dataset by interpolating along each sequence of indices.
+
+    This function takes sequences of indices into a dataset and creates a new dataset by interpolating
+    between consecutive points in each sequence. The interpolation can be done either:
+    - Based on physical distance (step_meters): Points are placed every step_meters along each segment
+    - Based on fixed count (points_per_segment): A fixed number of evenly-spaced points per segment
+
+    Args:
+        dataset: Source dataset containing the data to interpolate
+        sequences: Array of shape [n_sequences, sequence_length] containing indices into dataset
+        step_meters: Distance between interpolated points. Set to None to use points_per_segment.
+        points_per_segment: Number of points per segment. Set to None to use step_meters.
+
+    Returns:
+        A new Dataset containing the interpolated data with shape [n_total_points, ...] where
+        n_total_points depends on the interpolation parameters and sequence lengths.
+
+    The following fields are interpolated:
+        - rx_pos: Receiver positions [n_points, 3]
+        - power, phase, delay: Ray parameters [n_points, n_rays] 
+        - aoa_az, aod_az, aoa_el, aod_el: Angles [n_points, n_rays]
+        - inter: Interaction types [n_points, n_rays] (copied from first point)
+        - inter_pos: Interaction positions [n_points, n_rays, n_interactions, 3] (if present)
+    """
+    # Unwrap MacroDataset if necessary
+    dataset = dataset.datasets[0] if isinstance(dataset, dm.MacroDataset) else dataset
+
+    assert sequences.ndim == 2, "sequences must be a 2D array [n_seq, seq_len]"
+    n_sequences, seq_length = sequences.shape
+
+    # Define arrays to interpolate
+    ray_fields = ['rx_pos', 'power', 'phase', 'delay', 'aoa_az', 'aod_az', 'aoa_el', 'aod_el']
+    interaction_fields = ['inter', 'inter_pos']
+    interpolation_fields = ray_fields + interaction_fields
+
+    # Initialize accumulators for interpolated data
+    interpolated_data = {field: [] for field in interpolation_fields}
+
+    for seq_idx in range(n_sequences):
+        sequence_indices = sequences[seq_idx].astype(int)
+        for segment_idx in range(seq_length - 1):
+            point1_idx = int(sequence_indices[segment_idx])
+            point2_idx = int(sequence_indices[segment_idx + 1])
+
+            # Determine interpolation points for this segment
+            if step_meters is not None and points_per_segment is None:
+                # Distance-based interpolation
+                pos1, pos2 = dataset.rx_pos[point1_idx], dataset.rx_pos[point2_idx]
+                segment_distance = float(np.linalg.norm(pos2 - pos1))
+                n_points = max(1, int(np.ceil(segment_distance / float(step_meters))))
+            else:
+                # Fixed count interpolation
+                n_points = 1 if points_per_segment is None else max(1, int(points_per_segment))
+            
+            interp_points = np.linspace(0.0, 1.0, n_points, endpoint=False)
+            if interp_points.size == 0:
+                continue
+
+            # Interpolate ray parameters
+            for field in ray_fields:
+                val1, val2 = dataset[field][point1_idx], dataset[field][point2_idx]
+                interpolated_data[field].append(interpolate_percentage(val1, val2, interp_points))
+
+            # Copy interaction data from first point
+            inter_data = dataset.inter[point1_idx]
+            interpolated_data['inter'].append(np.tile(inter_data[None, ...], (len(interp_points), 1)))
+
+            # if dataset.hasattr('inter_pos'):
+            #     inter_pos_data = dataset.inter_pos[point1_idx]
+            #     interpolated_data['inter_pos'].append(np.tile(inter_pos_data[None, ...], (len(interp_points), 1, 1, 1)))
+
+        # Append final endpoint of the sequence explicitly
+        final_idx = sequence_indices[-1]
+        for field in ray_fields:
+            interpolated_data[field].append(np.expand_dims(dataset[field][final_idx], 0))
+        interpolated_data['inter'].append(np.expand_dims(dataset.inter[final_idx], 0))
+        # if dataset.hasattr('inter_pos'):
+        #     interpolated_data['inter_pos'].append(np.expand_dims(dataset.inter_pos[final_idx], 0))
+
+    # Concatenate all interpolated data
+    concatenated_data: dict[str, np.ndarray] = {}
+    for field, data_list in interpolated_data.items():
+        if len(data_list) == 0:
+            continue
+        concatenated_data[field] = np.concatenate(data_list, axis=0)
+
+    # Create new dataset with shared parameters
+    new_dataset_params = {}
+    for param in ['scene', 'materials', 'load_params', 'rt_params']:
+        if hasattr(dataset, 'hasattr') and dataset.hasattr(param):
+            new_dataset_params[param] = getattr(dataset, param)
+
+    new_dataset_params['n_ue'] = int(concatenated_data['rx_pos'].shape[0])
+    new_dataset_params['parent_name'] = dataset.get('parent_name', dataset.name)
+    new_dataset_params['name'] = f"{dataset.name}_interp"
+
+    new_dataset = dm.Dataset(new_dataset_params)
+    new_dataset.tx_pos = dataset.tx_pos
+    
+    # Assign all interpolated arrays
+    for field in ray_fields + ['inter']:
+        new_dataset[field] = concatenated_data[field]
+    # if 'inter_pos' in concatenated_data:
+    #     new_dataset.inter_pos = concatenated_data['inter_pos']
+
+    return new_dataset
+
+# Example: build one small batch dataset, compute channels, then you can persist or stream
+example_batch_size = min(20, all_seqs_mat_t2.shape[0])
+pps = 10  # fixed number of points per segment ensures uniform lengths
+interp_batch_ds = build_interpolated_dataset_from_sequences(dataset, 
+    all_seqs_mat_t2[:example_batch_size], 
+    points_per_segment=pps)
+print(f"Interpolated batch dataset users: {interp_batch_ds.n_ue}")
+
+# Create channels
+ch_params = dm.ChannelParameters()
+ch_params.bs_antenna.shape = [2, 1]
+ch_params.ue_antenna.shape = [1, 1]
+H = interp_batch_ds.compute_channels(ch_params)
+print(f"H.shape (interpolated batch): {H.shape}")
+
+# Compute uniform output sequence length for reshape
+seq_in_len = all_seqs_mat_t2.shape[1]
+seq_out_len = (seq_in_len - 1) * pps + 1
+H_seq = H.reshape(example_batch_size, seq_out_len, *H.shape[1:])
+print(f"H_seq.shape: {H_seq.shape}") # (n_seq_batch, seq_len, n_rx_ant, n_tx_ant, subcarriers)
+
+#%% plot interpolation results
+
+# Compare positions before/after interpolation for a few sequences
+n_plot = min(3, example_batch_size)
+for i in range(n_plot):
+    orig_seq = all_seqs_mat_t2[i]
+    start = i * seq_out_len
+    end = start + seq_out_len
+    interp_slice = slice(start, end)
+
+    plt.figure(dpi=200)
+    # Original positions along the sequence
+    plt.plot(dataset.rx_pos[orig_seq, 0], dataset.rx_pos[orig_seq, 1], 'o', label='Original (indices)')
+    # Interpolated positions
+    plt.plot(interp_batch_ds.rx_pos[interp_slice, 0], interp_batch_ds.rx_pos[interp_slice, 1], '-x', label='Interpolated')
+    plt.gca().set_aspect('equal', adjustable='box')
+    plt.title(f'RX Positions: Original vs Interpolated (seq {i})')
+    plt.xlabel('X [m]')
+    plt.ylabel('Y [m]')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
+
+# Compare an example variable (power of first path) before/after interpolation
+for i in range(n_plot):
+    orig_seq = all_seqs_mat_t2[i]
+    start = i * seq_out_len
+    end = start + seq_out_len
+    interp_slice = slice(start, end)
+
+    plt.figure(dpi=200)
+    # Power for first path (path index 0)
+    plt.plot(np.arange(len(orig_seq)), dataset.power[orig_seq, 0], 'o-', label='Original (path 0)')
+    plt.plot(np.arange(seq_out_len), interp_batch_ds.power[interp_slice, 0], 'x-', label='Interpolated (path 0)')
+    plt.title(f'Power (first path): Original vs Interpolated (seq {i})')
+    plt.xlabel('Sample index along sequence')
+    plt.ylabel('Power [dBW]')
+    plt.grid(True)
+    plt.legend()
+    plt.show()
 
 #%%
 
 
+# TODO: Take H_seq and select 100k sequences of L length. This can be done. 
+# 
+
+# Expand to uniform sequences
+# all_seqs_mat_t3 = expand_to_uniform_sequences(all_seqs, target_len=95, stride=1)
+# print(f"all_seqs_mat_t3.shape: {all_seqs_mat_t3.shape}")
+
+# # sample N sequences from all_trimmed_seqs_mat
+# N = min(100_000, len(all_seqs_mat_t3))
+# idxs = np.random.choice(len(all_seqs_mat_t3), N, replace=False)
+# all_seqs_mat_t3 = all_seqs_mat_t3[idxs]
+# print(f"all_seqs_mat_t3.shape: {all_seqs_mat_t3.shape}")
 
 
 
+# Plot H - transform to fit: (n_samples, n_rx_ant, n_tx_ant, seq_len)
+H_3_plot = np.transpose(H_seq[:, :95, :, :, 0], (0, 2, 3, 1))
+
+def plot_iq_from_H(H: np.ndarray, sample_idx: int | None = None, rx_idx: int | None = None):
+    # H shape: (n_samples, n_rx, n_tx, n_time_steps), complex64
+    i = np.random.randint(H.shape[0]) if sample_idx is None else sample_idx
+    r = np.random.randint(H.shape[1]) if rx_idx is None else rx_idx
+
+    plt.figure(dpi=150)
+    lim = 0.0
+    for t in range(H.shape[2]):
+        z = H[i, r, t, :]  # complex time series
+        lim = max(lim, np.max(np.abs(z)))
+        plt.plot(z.real, z.imag, "*-", markersize=3, label=f"Tx antenna {t+1}")
+    lim = float(lim) * 1.1
+    plt.xlim(-lim, lim)
+    plt.ylim(-lim, lim)
+    plt.gca().set_aspect("equal", adjustable="box")
+    plt.grid(True)
+    plt.xlabel("In-Phase")
+    plt.ylabel("Quadrature")
+    plt.legend()
+    plt.title("Channel Gain")
+    plt.show()
+
+    return i, r  # return sample and rx index
+
+plot_sample_idx, plot_rx_idx = plot_iq_from_H(H_3_plot)
+
+
+
+# If we have sequences 
 
 
 #%%
