@@ -106,7 +106,7 @@ def get_uniform_idxs(n_ue: int, grid_size: np.ndarray, steps: List[int]) -> np.n
     
     return idxs
 
-def get_grid_idxs(grid_size: np.ndarray, axis: str, idxs: list[int] | np.ndarray) -> np.ndarray:
+def get_grid_idxs(grid_size: np.ndarray, axis: str, idxs: int | list[int] | np.ndarray) -> np.ndarray:
     """Return indices of users in the specified rows or columns, assuming a grid structure.
     
     Args:
@@ -122,6 +122,9 @@ def get_grid_idxs(grid_size: np.ndarray, axis: str, idxs: list[int] | np.ndarray
     """
     if axis not in ['row', 'col']:
         raise ValueError("axis must be either 'row' or 'col'")
+        
+    if isinstance(idxs, int):
+        idxs = [idxs]
         
     indices = []
     if axis == 'row':

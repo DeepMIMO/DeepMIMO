@@ -163,7 +163,7 @@ def _load_raytracing_scene(scene_folder: str, txrx_dict: dict, max_paths: int = 
         txrx_dict (dict): Dictionary containing transmitter and receiver sets.
         max_paths (int): Maximum number of paths to load. Defaults to 5.
         tx_sets (dict or list or str): Transmitter sets to load. Defaults to 'all'.
-        rx_sets (dict or list or str): Receiver sets to load. Defaults to 'all'.
+        rx_sets (dict or list or str): Receiver sets to load. Defaults to 'rx_only'.
         matrices (list of str or str): List of matrix names to load. Defaults to 'all'.
 
     Returns:
