@@ -764,6 +764,10 @@ class Scene:
         Returns:
             matplotlib Axes object
         """
+        if len(self.objects) == 0:
+            print('No objects in scene - skipping plot')
+            return ax
+        
         if ax is None:
             _, ax = plt.subplots(figsize=figsize, dpi=dpi,
                                  subplot_kw={'projection': '3d' if proj_3D else None})

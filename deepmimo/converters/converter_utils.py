@@ -139,8 +139,11 @@ def compress_path_data(data: Dict[str, np.ndarray]) -> Dict[str, np.ndarray]:
     if c.INTERACTIONS_PARAM_NAME in data:
         max_bounces = np.max(comp_next_pwr_10(data[c.INTERACTIONS_PARAM_NAME]))
     
+
     # Compress arrays to not take more than that space
     for key in data.keys():
+        if key in [c.RX_POS_PARAM_NAME, c.TX_POS_PARAM_NAME]:
+            continue
         if len(data[key].shape) >= 2:
             data[key] = data[key][:, :max_paths, ...]
         if len(data[key].shape) >= 3:

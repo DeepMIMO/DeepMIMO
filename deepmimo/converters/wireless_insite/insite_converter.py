@@ -78,6 +78,7 @@ def insite_rt_converter(rt_folder: str, copy_source: bool = False,
     """
 
     # Get scenario name from folder if not provided
+    rt_folder = rt_folder[:-1] if rt_folder[-1] in ['/', '\\'] else rt_folder
     scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
     
     # Check if scenario already exists in the scenarios folder

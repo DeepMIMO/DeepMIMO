@@ -9,7 +9,7 @@ from .generator.core import (
     generate,
     load,
 )
-from .generator.dataset import Dataset
+from .generator.dataset import Dataset, MacroDataset, DynamicDataset
 
 # TX/RX handling
 from .txrx import (
@@ -83,6 +83,8 @@ __all__ = [
     'info',
     'load',
     'Dataset',
+    'MacroDataset',
+    'DynamicDataset',
     'ChannelParameters',
     
     # TX/RX handling

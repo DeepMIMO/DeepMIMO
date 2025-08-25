@@ -106,12 +106,6 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
     
     # Handle multi-antenna arrays
     tx_idx = t
-    # print("\nDEBUG: Initial array shapes:")
-    # print(f"a: {a.shape}")
-    # print(f"tau: {tau.shape}")
-    # print(f"phi_r: {phi_r.shape}")
-    # print(f"theta_r: {theta_r.shape}")
-    # print(f"vertices: {vertices.shape}")
     
     if theta_r.ndim > 3:  # Multi-antenna case
         # Extract data for specific antenna elements
@@ -125,6 +119,9 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
             # the vertices are always (max_depth, n_rx, n_tx, max_paths, 3)
             # i.e. no antenna dimensions in vertices in sionna 0.x
             vertices = vertices[:, :, tx_idx, ...]
+        else:
+            types = types[:, :, rx_ant_idx, :, tx_ant_idx]
+            vertices = vertices[:, :, rx_ant_idx, tx_idx, tx_ant_idx, :]
 
     else:  # Single antenna case
         # For single antenna, we need to extract the correct dimensions
@@ -135,28 +132,16 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
         theta_r = theta_r[:, tx_idx, :]
         theta_t = theta_t[:, tx_idx, :]
         vertices = vertices[:, :, tx_idx, ...]
-    
-    # print("\nDEBUG: After processing array shapes:")
-    # print(f"a: {a.shape}")
-    # print(f"tau: {tau.shape}")
-    # print(f"phi_r: {phi_r.shape}")
-    # print(f"theta_r: {theta_r.shape}")
-    # print(f"vertices: {vertices.shape}")
-    
+        
     n_rx = a.shape[0]
-    # print(f"n_rx: {n_rx}")
-    # print(f"rx_pos shape: {rx_pos.shape}")
-
     for rel_rx_idx in range(n_rx):
         abs_idx_arr = np.where(np.all(rx_pos == targets[rel_rx_idx], axis=1))[0]
         if len(abs_idx_arr) == 0:
             # RX position not found in global RX list, skip
             continue
         abs_idx = abs_idx_arr[0]
-        # print(f"\nDEBUG: Processing RX {rel_rx_idx} (abs_idx: {abs_idx})")
         
         # Get amplitude and remove any extra dimensions
-        # print(f"a shape: {a.shape}")
         amp = a[rel_rx_idx]
         
         non_zero_path_idxs = np.where(amp != 0)[0][:c.MAX_PATHS]
@@ -164,12 +149,10 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
         if n_paths == 0:
             inactive_count += 1
             continue
-            
+
         # Ensure that the paths are sorted by amplitude
         sorted_path_idxs = np.argsort(np.abs(amp))[::-1]
         path_idxs = sorted_path_idxs[:n_paths]
-        # print(f"n_paths: {n_paths}")
-        # print(f"path_idxs: {path_idxs}")
         
         data[c.POWER_PARAM_NAME][abs_idx, :n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
         data[c.PHASE_PARAM_NAME][abs_idx, :n_paths] = np.angle(amp[path_idxs], deg=True)
@@ -185,6 +168,7 @@ def _process_paths_batch(paths_dict: Dict, data: Dict, t: int,
         inter_pos_rx = vertices[:, rel_rx_idx, path_idxs, :].swapaxes(0,1)
         n_interactions = inter_pos_rx.shape[1]
         inter_pos_rx[inter_pos_rx == 0] = np.nan
+
         # NOTE: this is a workaround to handle no interaction positions
         data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :n_interactions, :] = inter_pos_rx
         if sionna_v1:

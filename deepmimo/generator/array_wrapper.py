@@ -118,4 +118,4 @@ class DeepMIMOArray(np.ndarray):
                 kwargs['cbar_title'] = COLORBAR_TITLES[self.name]
 
         # Use dataset's plot_coverage method directly
-        self.dataset.plot_coverage(data, **kwargs) 
+        return self.dataset.plot_coverage(data, **kwargs)

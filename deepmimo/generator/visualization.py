@@ -142,10 +142,8 @@ def plot_coverage(rxs: np.ndarray, cov_map: tuple[float, ...] | list[float] | np
     xyz = {s: rxs[:,i] for s,i in zip(xyz_arg_names, range(n))}
     
     if not ax:
-        fig, ax = plt.subplots(dpi=dpi, figsize=figsize,
-                               subplot_kw={'projection': '3d'} if proj_3D else {})
-    else:
-        fig = ax.figure
+        _, ax = plt.subplots(dpi=dpi, figsize=figsize,
+                             subplot_kw={'projection': '3d'} if proj_3D else {})
 
     cov_map = np.array(cov_map) if isinstance(cov_map, list) else cov_map
 
