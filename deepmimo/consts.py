@@ -79,7 +79,7 @@ RAYTRACER_VERSION_AODT = '1.x'
 
 SUPPORTED_RAYTRACERS = [RAYTRACER_NAME_WIRELESS_INSITE, RAYTRACER_NAME_SIONNA]
 SUPPORTED_WIRELESS_INSITE_VERSIONS = ['3.3.x', '4.0.x'] # Check 3.4.x
-SUPPORTED_SIONNA_VERSIONS = ['0.19.x', '1.0.x'] # Expand to 1.0.x
+SUPPORTED_SIONNA_VERSIONS = ['0.19.1', '0.19.2', '1.0.2'] # Expand to 1.0.x
 SUPPORTED_AODT_VERSIONS = []
 
 #==============================================================================
