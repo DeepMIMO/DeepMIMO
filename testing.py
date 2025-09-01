@@ -5,7 +5,21 @@ import numpy as np
 import deepmimo as dm
 import matplotlib.pyplot as plt
 
+from tqdm import tqdm
 # from api_keys import DEEPMIMO_API_KEY
+
+# d_10cm = dm.load('asu_campus_3p5_10cm', filter_matrices=['inter_pos'])
+
+matrices = ['rx_pos', 'tx_pos', 'aoa_az', 'aod_az', 'aoa_el', 'aod_el', 
+            'delay', 'power', 'phase', 'inter']
+# dataset = dm.load('asu_campus_3p5_10cm', matrices=matrices)
+
+dataset = dm.load('asu_campus_3p5')#, matrices=matrices)
+
+idx_1 = 10
+idx_2 = 11
+
+
 
 #%% V4 Conversion
 
@@ -34,8 +48,6 @@ aodt_scen = dm.convert(folder, overwrite=True)
 aodt_scen = dm.load(aodt_scen_name, max_paths=500)
 
 #%% TESTING PATH IDS
-
-from tqdm import tqdm
 
 # dataset = dm.load('asu_campus_3p5')
 dataset = dm.load('asu_campus_3p5', max_paths=3)
@@ -561,16 +573,6 @@ for i in range(max_paths_to_analyze):
 #       If the loss is small (say < -20 dB NMSE), then we can trim the paths.
 #       (99.9% of the power is in the first 3 paths)
 
-#%% TODO
-
-# TODO: Throw away sequences where the maximum distance between samples is greater than 1.5 meters.
-
-# TODO: Generate sequences for hashes with more than 100 users
-
-# hash_counts
-
-# GOAL: Plot sequences of users
-
 #%% PATH INTERPOLATION FOR ONE PAIR OF USERS
 
 # Make a function that interpolates the path between 2 users
@@ -620,6 +622,9 @@ def interpolate_path(dataset, idx_1, idx_2, distances):
                              'inter_pos']
     
     for param in params_to_interpolate:
+        if dataset[param] is None:
+            params[param] = None
+            continue
         val1 = dataset[param][idx_1]
         val2 = dataset[param][idx_2]
         params[param] = interpolate_percentage(val1, val2, percentages)
@@ -628,19 +633,9 @@ def interpolate_path(dataset, idx_1, idx_2, distances):
 
 # Or get samples at specific distances
 distances = [0, 0.6, 1]  # meters
+
 params2 = interpolate_path(dataset, idx_1, idx_2, distances)
 # returns just the interpolated value
-
-
-#%%
-
-# d_10cm = dm.load('asu_campus_3p5_10cm', filter_matrices=['inter_pos'])
-
-matrices = ['rx_pos', 'tx_pos', 'aoa_az', 'aod_az', 'aoa_el', 'aod_el', 
-            'delay', 'power', 'phase', 'inter']
-dataset = dm.load('asu_campus_3p5_10cm', matrices=matrices)
-
-# dataset = dm.load('asu_campus_3p5', matrices=matrices)
 
 #%% Generate all linear sequences in a scenario
 
@@ -806,13 +801,13 @@ def build_interpolated_dataset_from_sequences(dataset: dm.Dataset | dm.MacroData
 
     # Define arrays to interpolate
     ray_fields = ['rx_pos', 'power', 'phase', 'delay', 'aoa_az', 'aod_az', 'aoa_el', 'aod_el']
-    interaction_fields = ['inter', 'inter_pos']
-    interpolation_fields = ray_fields + interaction_fields
+    interpolation_fields = ray_fields + (['inter_pos'] if dataset.inter_pos is not None else [])
+    replication_fields = ['inter'] if dataset.inter is not None else []
 
     # Initialize accumulators for interpolated data
-    interpolated_data = {field: [] for field in interpolation_fields}
+    expanded_data = {field: [] for field in interpolation_fields + replication_fields}
 
-    for seq_idx in range(n_sequences):
+    for seq_idx in tqdm(range(n_sequences), desc="Interpolating sequences"):
         sequence_indices = sequences[seq_idx].astype(int)
         for segment_idx in range(seq_length - 1):
             point1_idx = int(sequence_indices[segment_idx])
@@ -833,37 +828,30 @@ def build_interpolated_dataset_from_sequences(dataset: dm.Dataset | dm.MacroData
                 continue
 
             # Interpolate ray parameters
-            for field in ray_fields:
+            for field in interpolation_fields:
                 val1, val2 = dataset[field][point1_idx], dataset[field][point2_idx]
-                interpolated_data[field].append(interpolate_percentage(val1, val2, interp_points))
+                expanded_data[field].append(interpolate_percentage(val1, val2, interp_points))
 
             # Copy interaction data from first point
-            inter_data = dataset.inter[point1_idx]
-            interpolated_data['inter'].append(np.tile(inter_data[None, ...], (len(interp_points), 1)))
-
-            # if dataset.hasattr('inter_pos'):
-            #     inter_pos_data = dataset.inter_pos[point1_idx]
-            #     interpolated_data['inter_pos'].append(np.tile(inter_pos_data[None, ...], (len(interp_points), 1, 1, 1)))
+            for field in replication_fields:
+                data = dataset[field][point1_idx]
+                expanded_data[field].append(np.tile(data[None, ...], (len(interp_points), 1)))
 
         # Append final endpoint of the sequence explicitly
         final_idx = sequence_indices[-1]
-        for field in ray_fields:
-            interpolated_data[field].append(np.expand_dims(dataset[field][final_idx], 0))
-        interpolated_data['inter'].append(np.expand_dims(dataset.inter[final_idx], 0))
-        # if dataset.hasattr('inter_pos'):
-        #     interpolated_data['inter_pos'].append(np.expand_dims(dataset.inter_pos[final_idx], 0))
+        for field in interpolation_fields + replication_fields:
+            expanded_data[field].append(np.expand_dims(dataset[field][final_idx], 0))
 
     # Concatenate all interpolated data
     concatenated_data: dict[str, np.ndarray] = {}
-    for field, data_list in interpolated_data.items():
-        if len(data_list) == 0:
-            continue
-        concatenated_data[field] = np.concatenate(data_list, axis=0)
+    for field, data_list in expanded_data.items():
+        if len(data_list):
+            concatenated_data[field] = np.concatenate(data_list, axis=0)
 
     # Create new dataset with shared parameters
     new_dataset_params = {}
     for param in ['scene', 'materials', 'load_params', 'rt_params']:
-        if hasattr(dataset, 'hasattr') and dataset.hasattr(param):
+        if hasattr(dataset, param):
             new_dataset_params[param] = getattr(dataset, param)
 
     new_dataset_params['n_ue'] = int(concatenated_data['rx_pos'].shape[0])
@@ -874,10 +862,9 @@ def build_interpolated_dataset_from_sequences(dataset: dm.Dataset | dm.MacroData
     new_dataset.tx_pos = dataset.tx_pos
     
     # Assign all interpolated arrays
-    for field in ray_fields + ['inter']:
-        new_dataset[field] = concatenated_data[field]
-    # if 'inter_pos' in concatenated_data:
-    #     new_dataset.inter_pos = concatenated_data['inter_pos']
+    for field in interpolation_fields + replication_fields:
+        if field in concatenated_data:
+            new_dataset[field] = concatenated_data[field]
 
     return new_dataset
 
@@ -925,20 +912,26 @@ for i in range(n_plot):
     plt.legend()
     plt.show()
 
+#%%
 # Compare an example variable (power of first path) before/after interpolation
-for i in range(n_plot):
+var = 'inter'
+for i in range(3):
     orig_seq = all_seqs_mat_t2[i]
     start = i * seq_out_len
     end = start + seq_out_len
     interp_slice = slice(start, end)
 
+    # Compute the sample indices in the interpolated sequence that correspond to the original samples
+    # These are always at positions [0, pps, 2*pps, ..., (len(orig_seq)-1)*pps]
+    orig_sample_indices = np.arange(len(orig_seq)) * pps
+
     plt.figure(dpi=200)
     # Power for first path (path index 0)
-    plt.plot(np.arange(len(orig_seq)), dataset.power[orig_seq, 0], 'o-', label='Original (path 0)')
-    plt.plot(np.arange(seq_out_len), interp_batch_ds.power[interp_slice, 0], 'x-', label='Interpolated (path 0)')
-    plt.title(f'Power (first path): Original vs Interpolated (seq {i})')
+    plt.plot(orig_sample_indices, dataset[var][orig_seq, 0], 'o-', label='Original (path 0)')
+    plt.plot(np.arange(seq_out_len), interp_batch_ds[var][interp_slice, 0], 'x-', label='Interpolated (path 0)')
+    plt.title(f'{var} (first path): Original vs Interpolated (seq {i})')
     plt.xlabel('Sample index along sequence')
-    plt.ylabel('Power [dBW]')
+    plt.ylabel(f'{var} [dBW]')
     plt.grid(True)
     plt.legend()
     plt.show()
