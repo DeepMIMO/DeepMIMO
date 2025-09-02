@@ -1,6 +1,6 @@
 # Database
 
-DeepMIMO API leverages B2 buckets, which are globally available and provide an excellent distribution network for both uploads and downloads worldwide.
+DeepMIMO API leverages a database which is globally available and provides an excellent distribution network for both uploads and downloads worldwide.
 
 ## Search
 

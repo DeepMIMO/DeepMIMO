@@ -7,10 +7,10 @@ from the DeepMIMO server.
 Upload flow:
 1. Call upload() with scenario name, key, and optional parameters (details, extra_metadata, etc.)
 2. If not submission_only:
-   - _upload_to_b2() is called to upload the scenario zip file, handling:
+   - _upload_to_db() is called to upload the scenario zip file, handling:
      * Get presigned URL for upload
      * Calculate file hash
-     * Upload file to B2
+     * Upload file to the database
      * Return authorized filename
 3. _make_submission_on_server() creates the submission with:
    - Process parameters using _process_params_data() - used scenario filtering in database
@@ -141,8 +141,8 @@ def _dm_upload_api_call(file: str, key: str) -> Optional[str]:
                 sha1.update(chunk)
         file_hash = sha1.hexdigest()
 
-        # Upload file to B2
-        print(f"Uploading {authorized_filename} to B2...")
+        # Upload file to DB
+        print(f"Uploading {authorized_filename} to DB...")
         pbar = tqdm(total=file_size, unit='B', unit_scale=True, desc="Uploading")
         
         try:
@@ -463,21 +463,21 @@ def upload_images(scenario_name: str, img_paths: list[str], key: str) -> list[di
 
     return uploaded_image_objects
 
-def _upload_to_b2(scen_folder: str, key: str, skip_zip: bool = False) -> str:
-    """Upload a zip file to B2 storage."""
+def _upload_to_db(scen_folder: str, key: str, skip_zip: bool = False) -> str:
+    """Upload a zip file to the database."""
 
     # Zip scenario
     zip_path = scen_folder + ".zip" if skip_zip else zip(scen_folder)
 
     try:
-        print("Uploading to storage...")
+        print("Uploading to the database...")
         upload_result = _dm_upload_api_call(zip_path, key)
     except Exception as e:
-        print(f"Error: Failed to upload to storage - {str(e)}")
+        print(f"Error: Failed to upload to the database - {str(e)}")
 
     if not upload_result:
-        print(f"Error: Failed to upload to B2")
-        raise RuntimeError("Failed to upload to B2")
+        print(f"Error: Failed to upload to the database")
+        raise RuntimeError("Failed to upload to the database")
     print("✓ Upload successful")
 
     submission_scenario_name = upload_result.split(".")[0].split("/")[-1].split("\\")[-1]
@@ -562,7 +562,7 @@ def upload(scenario_name: str, key: str,
     """Upload a DeepMIMO scenario to the server.
 
     Uploads a scenario to the DeepMIMO database by zipping the scenario folder,
-    uploading to B2 storage, and creating a submission on the server.
+    uploading to the database, and creating a submission on the server.
 
     Args:
         scenario_name (str): Name of the scenario to upload.
@@ -580,7 +580,7 @@ def upload(scenario_name: str, key: str,
         skip_zip (bool, optional): If True, skip zipping scenario folder. Defaults to False.
         include_images (bool, optional): If True, generate and upload visualization images. 
             Defaults to True.
-        submission_only (bool, optional): If True, skip B2 upload and only create server 
+        submission_only (bool, optional): If True, skip database upload and only create server 
             submission. Use when scenario is already uploaded. Defaults to False.
 
     Returns:
@@ -602,7 +602,7 @@ def upload(scenario_name: str, key: str,
         raise RuntimeError(f"Failed to parse parameters - {str(e)}")
 
     if not submission_only:
-        submission_scenario_name = _upload_to_b2(scen_folder, key, skip_zip)
+        submission_scenario_name = _upload_to_db(scen_folder, key, skip_zip)
     else:
         submission_scenario_name = scenario_name
 
@@ -612,7 +612,7 @@ def upload(scenario_name: str, key: str,
     return submission_scenario_name
 
 def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
-    """Upload a Ray Tracing (RT) source file to B2 storage.
+    """Upload a Ray Tracing (RT) source file to the database.
 
     Args:
         scenario_name: The name of the corresponding scenario already uploaded.
@@ -638,7 +638,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
         return False
 
     try:
-        # 1. Get presigned upload URL for the RT bucket
+        # 1. Get presigned upload URL for the RT database
         print("Requesting RT upload authorization from server...")
         auth_response = requests.get(
             f"{API_BASE_URL}/api/b2/authorize-rt-upload",
@@ -659,7 +659,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
              print(f"Server authorized RT upload for '{authorized_filename}' but expected '{target_filename}'")
              return False
 
-        print(f"✓ Authorization granted. Uploading to RT bucket as '{authorized_filename}'...")
+        print(f"✓ Authorization granted. Uploading to RT database as '{authorized_filename}'...")
 
         # 2. Calculate file hash (using the local rt_zip_path file)
         sha1 = hashlib.sha1()
@@ -668,7 +668,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
                 sha1.update(chunk)
         file_hash = sha1.hexdigest()
 
-        # 3. Upload file to B2 RT Bucket using the presigned URL
+        # 3. Upload file to the RT database using the presigned URL
         pbar = tqdm(total=file_size, unit='B', unit_scale=True, desc="Uploading RT Source")
         progress_reader = None
         try:
@@ -679,7 +679,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
                 headers={
                     "Content-Type": auth_data.get("contentType", "application/zip"),
                     "Content-Length": str(file_size),
-                    "X-Bz-Content-Sha1": file_hash, # Required by B2
+                    "X-Bz-Content-Sha1": file_hash, # Required by the database
                 },
                 data=progress_reader
             )
@@ -728,7 +728,7 @@ def _download_url(scenario_name: str) -> str:
     return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}"
 
 def download(scenario_name: str, output_dir: Optional[str] = None) -> Optional[str]:
-    """Download a DeepMIMO scenario from B2 storage.
+    """Download a DeepMIMO scenario from the database.
 
     Args:
         scenario_name: Name of the scenario
