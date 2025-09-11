@@ -46,7 +46,7 @@ from .visualization import plot_coverage, plot_rays
 from .array_wrapper import DeepMIMOArray
 
 # Channel generation
-from .channel import _generate_MIMO_channel, ChannelParameters
+from .channel import _generate_MIMO_channel, ChannelParameters, _generate_MIMO_channel_v2
 
 # Antenna patterns and geometry
 from .ant_patterns import AntennaPattern
@@ -305,8 +305,11 @@ class Dataset(DotDict):
         # Whether to enable the doppler shift per path in the channel
         n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
         default_doppler = np.zeros((self.n_ue, n_paths))
+        
+        # use_doppler = self.hasattr('doppler') and params[c.PARAMSET_DOPPLER_EN]
+        # if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
+        
         use_doppler = self.hasattr('doppler')
-
         if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
             all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
             # Enable doppler if any velocity component is non-zero
@@ -330,6 +333,84 @@ class Dataset(DotDict):
 
         return channel
     
+    def compute_channels_v2(
+        self,
+        params: Optional[ChannelParameters] = None,
+        *,
+        times: Optional[float | np.ndarray] = None,
+        num_timestamps: Optional[int] = None,
+        **kwargs
+    ) -> np.ndarray:
+        """Compute MIMO channel matrices with Doppler over an explicit time axis.
+
+        If `times` is None and `num_timestamps` is None -> single snapshot at t=0 (squeezed 4-D).
+        If `times` is a scalar or 1D array -> uses it directly (seconds).
+        If `num_timestamps` is provided (and `times` is None) -> builds times from OFDM symbol spacing.
+
+        Returns:
+            If freq_domain:
+            [n_users, n_rx_ant, n_tx_ant, n_subcarriers]              (single t)  or
+            [n_users, n_rx_ant, n_tx_ant, n_subcarriers, N_t]         (multi t)
+            Else:
+            [n_users, n_rx_ant, n_tx_ant, n_paths]                     (single t)  or
+            [n_users, n_rx_ant, n_tx_ant, n_paths, N_t]                (multi t)
+        """
+        # --- Params handling (same as your original) ---
+        if params is None:
+            if kwargs:
+                params = ChannelParameters(**kwargs)
+            else:
+                params = self.ch_params if self.ch_params is not None else ChannelParameters()
+        self.set_channel_params(params)
+
+        # --- Time axis derivation ---
+        if times is None:
+            if num_timestamps is None:
+                # single snapshot at t=0
+                times = 0.0
+            else:
+                # Build equally spaced times based on OFDM symbol period
+                B = params.ofdm[c.PARAMSET_OFDM_BANDWIDTH]                  # Hz
+                N = params.ofdm[c.PARAMSET_OFDM_SC_NUM]                     # subcarriers
+                delta_f = B / N                                             # Hz
+                T_sym = 1.0 / delta_f                                       # base symbol (no CP)
+                times = np.arange(int(num_timestamps), dtype=float) * T_sym
+        # else: use provided times (scalar or array, seconds)
+
+        # --- Array response product ---
+        array_response_product = self._compute_array_response_product()
+
+        # --- Path selection ---
+        n_paths_to_gen = params.num_paths
+        n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
+
+        # --- Doppler enable/disable logic (same as yours, but reused) ---
+        default_doppler = np.zeros((self.n_ue, n_paths))
+        use_doppler = self.hasattr('doppler')
+        if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
+            all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
+            use_doppler = self.tx_vel.any() or self.rx_vel.any() or all_obj_vel.any()
+            if not use_doppler:
+                print("No doppler in channel generation because all velocities are zero")
+        dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
+
+        # --- Call the time-aware V2 generator ---
+        channel = _generate_MIMO_channel_v2(
+            array_response_product=array_response_product[..., :n_paths],
+            powers=self._power_linear_ant_gain[..., :n_paths],
+            delays=self.delay[..., :n_paths],
+            phases=self.phase[..., :n_paths],
+            dopplers=dopplers,
+            ofdm_params=params.ofdm,
+            times=times,                                 # <—— the key
+            freq_domain=params.freq_domain,
+            squeeze_time=True,                           # squeeze when single t
+        )
+
+        self[c.CHANNEL_PARAM_NAME] = channel  # Cache the result
+
+        return channel
+
     ###########################################
     # 3. Geometric Computations
     ###########################################
