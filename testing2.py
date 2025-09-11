@@ -27,9 +27,9 @@ ch_params.doppler = True  # Check if this is needed
 
 dataset_t.set_doppler(1)
 H = dataset_t.compute_channels(ch_params)
-H2 = dataset_t.compute_channels_v2(ch_params, times=0.0)
-H3 = dataset_t.compute_channels_v2(ch_params, times=0.001)
-H4 = dataset_t.compute_channels_v2(ch_params, times=np.array([0.0, 0.001]))
+H2 = dataset_t.compute_channels(ch_params, times=0.0)
+H3 = dataset_t.compute_channels(ch_params, times=0.001)
+H4 = dataset_t.compute_channels(ch_params, times=np.array([0.0, 0.001]))
 
 #%%
 rtol = 1e-15

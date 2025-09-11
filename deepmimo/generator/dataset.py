@@ -46,7 +46,7 @@ from .visualization import plot_coverage, plot_rays
 from .array_wrapper import DeepMIMOArray
 
 # Channel generation
-from .channel import _generate_MIMO_channel, ChannelParameters, _generate_MIMO_channel_v2
+from .channel import _generate_MIMO_channel, ChannelParameters
 
 # Antenna patterns and geometry
 from .ant_patterns import AntennaPattern
@@ -265,75 +265,7 @@ class Dataset(DotDict):
         
         return params
     
-    def compute_channels(self, params: Optional[ChannelParameters] = None, **kwargs) -> np.ndarray:
-        """Compute MIMO channel matrices for all users.
-        
-        This is the main public method for computing channel matrices. It handles all the
-        necessary preprocessing steps including:
-        - Antenna pattern application
-        - Field of view filtering
-        - Array response computation
-        - OFDM processing (if enabled)
-        
-        The computed channel will be cached and accessible as dataset.channel
-        or dataset['channel'] after this call.
-        
-        Args:
-            params: Channel generation parameters. If None, uses default parameters.
-                    See ChannelParameters class for details.
-            **kwargs: Additional keyword arguments to pass to ChannelParameters constructor
-                    if params is None. Ignored if params is provided. 
-                    If provided, overrides existing channel parameters (e.g. set_channel_params).
-            
-        Returns:
-            numpy.ndarray: MIMO channel matrix with shape [n_users, n_rx_ant, n_tx_ant, n_subcarriers]
-                          if freq_domain=True, otherwise [n_users, n_rx_ant, n_tx_ant, n_paths]
-        """
-        if params is None:
-            if kwargs:
-                params = ChannelParameters(**kwargs)
-            else:
-                params = self.ch_params if self.ch_params is not None else ChannelParameters()
-
-        self.set_channel_params(params)
-
-        # Compute array response product
-        array_response_product = self._compute_array_response_product()
-        
-        n_paths_to_gen = params.num_paths
-        
-        # Whether to enable the doppler shift per path in the channel
-        n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
-        default_doppler = np.zeros((self.n_ue, n_paths))
-        
-        # use_doppler = self.hasattr('doppler') and params[c.PARAMSET_DOPPLER_EN]
-        # if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
-        
-        use_doppler = self.hasattr('doppler')
-        if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
-            all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
-            # Enable doppler if any velocity component is non-zero
-            use_doppler = self.tx_vel.any() or self.rx_vel.any() or all_obj_vel.any()
-            if not use_doppler:
-                print("No doppler in channel generation because all velocities are zero")
-
-        dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
-
-        channel = _generate_MIMO_channel(
-            array_response_product=array_response_product[..., :n_paths],
-            powers=self._power_linear_ant_gain[..., :n_paths],
-            delays=self.delay[..., :n_paths],
-            phases=self.phase[..., :n_paths],
-            dopplers=dopplers,
-            ofdm_params=params.ofdm,
-            freq_domain=params.freq_domain,
-        )
-
-        self[c.CHANNEL_PARAM_NAME] = channel  # Cache the result
-
-        return channel
-    
-    def compute_channels_v2(
+    def compute_channels(
         self,
         params: Optional[ChannelParameters] = None,
         *,
@@ -384,7 +316,7 @@ class Dataset(DotDict):
         n_paths_to_gen = params.num_paths
         n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
 
-        # --- Doppler enable/disable logic (same as yours, but reused) ---
+        # --- Doppler enable/disable logic ---
         default_doppler = np.zeros((self.n_ue, n_paths))
         use_doppler = self.hasattr('doppler')
         if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
@@ -395,16 +327,15 @@ class Dataset(DotDict):
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
 
         # --- Call the time-aware V2 generator ---
-        channel = _generate_MIMO_channel_v2(
+        channel = _generate_MIMO_channel(
             array_response_product=array_response_product[..., :n_paths],
             powers=self._power_linear_ant_gain[..., :n_paths],
             delays=self.delay[..., :n_paths],
             phases=self.phase[..., :n_paths],
             dopplers=dopplers,
             ofdm_params=params.ofdm,
-            times=times,                                 # <—— the key
-            freq_domain=params.freq_domain,
-            squeeze_time=True,                           # squeeze when single t
+            times=times,
+            freq_domain=params.freq_domain
         )
 
         self[c.CHANNEL_PARAM_NAME] = channel  # Cache the result
