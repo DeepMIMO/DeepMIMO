@@ -318,8 +318,8 @@ class Dataset(DotDict):
 
         # --- Doppler enable/disable logic ---
         default_doppler = np.zeros((self.n_ue, n_paths))
-        use_doppler = self.hasattr('doppler')
-        if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
+        use_doppler = self.hasattr('doppler') and params[c.PARAMSET_DOPPLER_EN]
+        if not use_doppler:
             all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
             use_doppler = self.tx_vel.any() or self.rx_vel.any() or all_obj_vel.any()
             if not use_doppler:

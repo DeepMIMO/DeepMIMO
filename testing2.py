@@ -23,7 +23,7 @@ dataset_t = dataset.subset(dataset.get_active_idxs())
 ch_params = dm.ChannelParameters()
 ch_params.bs_antenna.shape = [3, 1]
 ch_params.ue_antenna.shape = [1, 1]
-ch_params.doppler = True  # Check if this is needed
+ch_params.doppler = True
 
 dataset_t.set_doppler(1)
 H = dataset_t.compute_channels(ch_params)
