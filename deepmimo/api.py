@@ -708,11 +708,12 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
         print(f"An unexpected error occurred during RT upload: {str(e)}")
         return False
 
-def _download_url(scenario_name: str) -> str:
+def _download_url(scenario_name: str, rt_source: bool = False) -> str:
     """Get the secure download endpoint URL for a DeepMIMO scenario.
 
     Args:
         scenario_name: Name of the scenario ZIP file
+        rt_source: Whether to download the raytracing source file
 
     Returns:
         Secure URL for downloading the scenario through the API endpoint
@@ -725,14 +726,16 @@ def _download_url(scenario_name: str) -> str:
         scenario_name += ".zip"
 
     # Return the secure download endpoint URL with the filename as a parameter
-    return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}"
+    rt_param = "&rt_source=true" if rt_source else ""
+    return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}{rt_param}"
 
-def download(scenario_name: str, output_dir: Optional[str] = None) -> Optional[str]:
+def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bool = False) -> Optional[str]:
     """Download a DeepMIMO scenario from the database.
 
     Args:
         scenario_name: Name of the scenario
         output_dir: Directory to save file (defaults to current directory)
+        rt_source: Whether to download the raytracing source file instead of the scenario
 
     Returns:
         Path to downloaded file if successful, None otherwise
@@ -748,16 +751,18 @@ def download(scenario_name: str, output_dir: Optional[str] = None) -> Optional[s
         return None
 
     # Get secure download URL using existing helper
-    url = _download_url(scenario_name)
+    url = _download_url(scenario_name, rt_source)
     
-    output_path = os.path.join(download_dir, f"{scenario_name}_downloaded.zip")
+    file_suffix = "_rt_source" if rt_source else "_downloaded"
+    output_path = os.path.join(download_dir, f"{scenario_name}{file_suffix}.zip")
 
     # Check if file already exists in download folder
     if not os.path.exists(output_path):
         # Create download directory if it doesn't exist
         os.makedirs(download_dir, exist_ok=True)
 
-        print(f"Downloading scenario '{scenario_name}'")
+        download_type = "raytracing source" if rt_source else "scenario"
+        print(f"Downloading {download_type} '{scenario_name}'")
         try:
             # Get download token and redirect URL
             resp = requests.get(url, headers=HEADERS)
@@ -800,17 +805,21 @@ def download(scenario_name: str, output_dir: Optional[str] = None) -> Optional[s
     else: # Extract the zip if it exists, don't download again
         print(f'Scenario zip file "{output_path}" already exists.')
     
-    # Unzip downloaded scenario
-    unzipped_folder = unzip(output_path)
-
-    # Move unzipped folder to scenarios folder
-    unzipped_folder_without_suffix = unzipped_folder.replace('_downloaded', '')
-    os.makedirs(scenarios_dir, exist_ok=True)
-    os.rename(unzipped_folder, unzipped_folder_without_suffix)
-    shutil.move(unzipped_folder_without_suffix, scenario_folder)
-    print(f"✓ Unzipped and moved to {scenarios_dir}")
-
-    print(f"✓ Scenario '{scenario_name}' ready to use!")
+    # Handle file extraction based on type
+    if rt_source:
+        # For RT source files, just extract and don't move to scenarios folder
+        unzipped_folder = unzip(output_path)
+        print(f"✓ RT source files extracted to {unzipped_folder}")
+        print(f"✓ RT source '{scenario_name}' downloaded!")
+    else:
+        # For regular scenarios, unzip and move to scenarios folder
+        unzipped_folder = unzip(output_path)
+        unzipped_folder_without_suffix = unzipped_folder.replace('_downloaded', '')
+        os.makedirs(scenarios_dir, exist_ok=True)
+        os.rename(unzipped_folder, unzipped_folder_without_suffix)
+        shutil.move(unzipped_folder_without_suffix, scenario_folder)
+        print(f"✓ Unzipped and moved to {scenarios_dir}")
+        print(f"✓ Scenario '{scenario_name}' ready to use!")
 
     return output_path 
 
@@ -837,6 +846,7 @@ def search(query: Optional[Dict] = None) -> Optional[List[str]]:
         - scattering: bool - Boolean filter or 'all' to ignore
         - transmission: bool - Boolean filter or 'all' to ignore
         - digitalTwin: bool - Boolean filter or 'all' to ignore
+        - hasRtSource: bool - Boolean filter or 'all' to ignore
         - city: str - City name text filter
         - bbCoords: Dict - Bounding box coordinates 
             {'minLat': float, 'minLon': float, 'maxLat': float, 'maxLon': float}
