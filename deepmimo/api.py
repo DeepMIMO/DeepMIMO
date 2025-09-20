@@ -52,7 +52,7 @@ from .general_utils import (
     get_scenarios_dir,
     get_scenario_folder,
     get_rt_sources_dir,
-    get_rt_source_path,
+    get_rt_source_folder,
     get_params_path,
     load_dict_from_json,
     zip,
@@ -749,10 +749,11 @@ def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bo
     if rt_source:
         # For RT sources, use dedicated RT sources directory unless output_dir is specified
         download_dir = output_dir if output_dir else get_rt_sources_dir()
-        output_path = get_rt_source_path(scenario_name) if not output_dir else os.path.join(download_dir, f"{scenario_name}_rt_source.zip")
-        # Check if RT source already exists
-        if os.path.exists(output_path):
-            print(f'RT source "{scenario_name}" already exists at {output_path}')
+        output_path = os.path.join(download_dir, f"{scenario_name}_rt_source.zip")
+        rt_source_folder = get_rt_source_folder(scenario_name)
+        # Check if RT source folder already exists
+        if os.path.exists(rt_source_folder):
+            print(f'RT source "{scenario_name}" already exists at {rt_source_folder}')
             return None
     else:
         # For regular scenarios, use scenarios directory unless output_dir is specified
@@ -822,8 +823,8 @@ def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bo
         rt_sources_dir = get_rt_sources_dir()
         unzipped_folder = unzip(output_path)
         
-        # Move extracted folder to RT sources directory with proper naming
-        rt_extracted_path = os.path.join(rt_sources_dir, f"{scenario_name}_rt_source")
+        # Move extracted folder to RT sources directory
+        rt_extracted_path = get_rt_source_folder(scenario_name)
         unzipped_folder_without_suffix = unzipped_folder.replace('_rt_source', '')
         
         os.makedirs(rt_sources_dir, exist_ok=True)

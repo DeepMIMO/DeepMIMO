@@ -41,7 +41,7 @@ from .general_utils import (
     get_params_path,
     get_scenario_folder,
     get_rt_sources_dir,
-    get_rt_source_path,
+    get_rt_source_folder,
     load_dict_from_json,
     zip,
     unzip,
@@ -127,7 +127,7 @@ __all__ = [
     'get_params_path',
     'get_scenario_folder',
     'get_rt_sources_dir',
-    'get_rt_source_path',
+    'get_rt_source_folder',
     'load_dict_from_json',
     
     # Constants and configuration
