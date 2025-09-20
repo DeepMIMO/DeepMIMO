@@ -381,8 +381,10 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
     n_txs = n_tx // n_tx_ant
     n_rxs = n_rx // n_rx_ant
     
-    assert not (n_tx_ant > 1 and n_txs > 1), 'Multi-antenna & multi-TX not supported yet'
-    assert not (n_rx_ant > 1 and n_rxs > 1), 'Multi-antenna & multi-RX not supported yet'
+    multi_tx_ant = n_tx_ant > 1
+    multi_rx_ant = n_rx_ant > 1
+    assert not (multi_tx_ant and n_txs > 1), 'Multi-antenna & multi-TX not supported yet'
+    assert not (multi_rx_ant and n_rxs > 1), 'Multi-antenna & multi-RX not supported yet'
     
     # Initialize inactive indices list
     rx_inactive_idxs_count = 0
@@ -391,8 +393,8 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
     # Process each TX position and antenna element combination
     for tx_idx, tx_pos_target in enumerate(all_tx_pos):
         # for printing purposes
-        idx_of_tx = tx_idx if n_tx_ant == 1 else 0
-        idx_of_tx_ant = 0 if n_tx_ant == 1 else tx_idx
+        idx_of_tx = 0 if multi_tx_ant else tx_idx
+        idx_of_tx_ant = tx_idx if multi_tx_ant else 0
 
         # Pre-allocate matrices
         data = _preallocate_data(n_rx)
@@ -414,8 +416,8 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
                     bs_bs_paths = True
                     continue
             
-            tx_ant_idx = tx_idx_in_dict[0] if n_tx_ant > 1 else 0
-            t = 0 if n_tx_ant > 1 else tx_idx_in_dict[0]
+            tx_ant_idx = tx_idx_in_dict[0] if multi_tx_ant else 0
+            t = 0 if multi_tx_ant else tx_idx_in_dict[0]
             batch_size = targets.shape[0]
             targets = _get_path_key(paths_dict, 'targets', 'tgt_positions')
             
@@ -435,11 +437,12 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: Dict, sionna_versi
         
         # Save each data key with antenna index in filename
         for key in data.keys():
-            mat_file = get_mat_filename(key, 0, tx_ant_idx, 1)  # tx_set=0, tx_idx=tx_ant_idx, rx_set=1
+            idx = tx_ant_idx if multi_tx_ant else tx_idx
+            mat_file = get_mat_filename(key, 0, idx, 1)  # tx_set=0, tx_idx=tx_ant_idx, rx_set=1
             save_mat(data[key], key, os.path.join(save_folder, mat_file))
         
         if bs_bs_paths:
-            if n_tx_ant > 1:
+            if multi_tx_ant:
                 raise NotImplementedError('Multi-antenna BS-BS paths not supported yet')
                 # It would just be necessary to loop over the sources like above
 

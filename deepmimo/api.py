@@ -729,6 +729,7 @@ def _download_url(scenario_name: str, rt_source: bool = False) -> str:
     rt_param = "&rt_source=true" if rt_source else ""
     return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}{rt_param}"
 
+
 def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bool = False) -> Optional[str]:
     """Download a DeepMIMO scenario from the database.
 
