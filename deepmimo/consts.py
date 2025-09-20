@@ -59,6 +59,7 @@ VERSION = __version__
 
 # File and folder paths
 SCENARIOS_FOLDER = 'deepmimo_scenarios'  # Folder containing scenarios (extracted and ZIPs)
+RT_SOURCES_FOLDER = 'deepmimo_rt_sources'  # Folder containing ray tracing source files
 PARAMS_FILENAME = 'params'
 
 # Data types

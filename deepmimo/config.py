@@ -58,6 +58,7 @@ class DeepMIMOConfig:
             'use_gpu': False,
             'gpu_device_id': 0,
             'scenarios_folder': 'deepmimo_scenarios',  # Folder containing both extracted scenarios and scenario ZIP files
+            'rt_sources_folder': 'deepmimo_rt_sources',  # Folder containing ray tracing source files
         }
     
     def set(self, key, value):
