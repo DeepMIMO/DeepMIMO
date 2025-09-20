@@ -51,6 +51,8 @@ from . import consts as c
 from .general_utils import (
     get_scenarios_dir,
     get_scenario_folder,
+    get_rt_sources_dir,
+    get_rt_source_path,
     get_params_path,
     load_dict_from_json,
     zip,
@@ -743,19 +745,27 @@ def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bo
     """
     scenario_name = scenario_name.lower()
     scenarios_dir = get_scenarios_dir()
-    download_dir = output_dir if output_dir else get_scenarios_dir()
-    scenario_folder = get_scenario_folder(scenario_name)
     
-    # Check if file already exists in scenarios folder
-    if os.path.exists(scenario_folder):
-        print(f'Scenario "{scenario_name}" already exists in {scenarios_dir}')
-        return None
+    if rt_source:
+        # For RT sources, use dedicated RT sources directory unless output_dir is specified
+        download_dir = output_dir if output_dir else get_rt_sources_dir()
+        output_path = get_rt_source_path(scenario_name) if not output_dir else os.path.join(download_dir, f"{scenario_name}_rt_source.zip")
+        # Check if RT source already exists
+        if os.path.exists(output_path):
+            print(f'RT source "{scenario_name}" already exists at {output_path}')
+            return None
+    else:
+        # For regular scenarios, use scenarios directory unless output_dir is specified
+        download_dir = output_dir if output_dir else get_scenarios_dir()
+        scenario_folder = get_scenario_folder(scenario_name)
+        output_path = os.path.join(download_dir, f"{scenario_name}_downloaded.zip")
+        # Check if scenario already exists in scenarios folder
+        if os.path.exists(scenario_folder):
+            print(f'Scenario "{scenario_name}" already exists in {scenarios_dir}')
+            return None
 
     # Get secure download URL using existing helper
     url = _download_url(scenario_name, rt_source)
-    
-    file_suffix = "_rt_source" if rt_source else "_downloaded"
-    output_path = os.path.join(download_dir, f"{scenario_name}{file_suffix}.zip")
 
     # Check if file already exists in download folder
     if not os.path.exists(output_path):
@@ -808,9 +818,26 @@ def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bo
     
     # Handle file extraction based on type
     if rt_source:
-        # For RT source files, just extract and don't move to scenarios folder
+        # For RT source files, extract to RT sources directory
+        rt_sources_dir = get_rt_sources_dir()
         unzipped_folder = unzip(output_path)
-        print(f"✓ RT source files extracted to {unzipped_folder}")
+        
+        # Move extracted folder to RT sources directory with proper naming
+        rt_extracted_path = os.path.join(rt_sources_dir, f"{scenario_name}_rt_source")
+        unzipped_folder_without_suffix = unzipped_folder.replace('_rt_source', '')
+        
+        os.makedirs(rt_sources_dir, exist_ok=True)
+        
+        # If the target already exists, remove it first
+        if os.path.exists(rt_extracted_path):
+            shutil.rmtree(rt_extracted_path)
+            
+        # Rename the unzipped folder and move to RT sources directory
+        if unzipped_folder != unzipped_folder_without_suffix:
+            os.rename(unzipped_folder, unzipped_folder_without_suffix)
+        shutil.move(unzipped_folder_without_suffix, rt_extracted_path)
+        
+        print(f"✓ RT source files extracted to {rt_extracted_path}")
         print(f"✓ RT source '{scenario_name}' downloaded!")
     else:
         # For regular scenarios, unzip and move to scenarios folder

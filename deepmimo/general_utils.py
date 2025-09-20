@@ -70,6 +70,28 @@ def get_scenario_folder(scenario_name: str) -> str:
     check_scen_name(scenario_name)
     return os.path.join(get_scenarios_dir(), scenario_name)
 
+def get_rt_sources_dir() -> str:
+    """Get the absolute path to the ray tracing sources directory.
+    
+    This directory contains the downloaded RT source files.
+    
+    Returns:
+        str: Absolute path to the RT sources directory
+    """
+    return os.path.join(os.getcwd(), config.get('rt_sources_folder'))
+
+def get_rt_source_path(scenario_name: str) -> str:
+    """Get the absolute path to a specific RT source file.
+    
+    Args:
+        scenario_name: Name of the scenario (without .zip extension)
+        
+    Returns:
+        str: Absolute path to the RT source zip file
+    """
+    check_scen_name(scenario_name)
+    return os.path.join(get_rt_sources_dir(), f"{scenario_name}_rt_source.zip")
+
 def get_params_path(scenario_name: str) -> str:
     """Get the absolute path to a scenario's params file.
     
