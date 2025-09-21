@@ -31,6 +31,8 @@ from .consts import (
     RAYTRACER_VERSION_WIRELESS_INSITE,
     RAYTRACER_VERSION_SIONNA,
     RAYTRACER_VERSION_AODT,
+    SCENARIOS_FOLDER,
+    RT_SOURCES_FOLDER,
 )
 
 class DeepMIMOConfig:
@@ -51,14 +53,18 @@ class DeepMIMOConfig:
     def _initialize(self):
         """Initialize the configuration with default values."""
         self._config = {
-            # Ray tracing parameters
+            # Ray tracer versions
             'wireless_insite_version': RAYTRACER_VERSION_WIRELESS_INSITE,
             'sionna_version': RAYTRACER_VERSION_SIONNA,
             'aodt_version': RAYTRACER_VERSION_AODT,
+            # Use GPU
             'use_gpu': False,
+            # GPU device ID
             'gpu_device_id': 0,
-            'scenarios_folder': 'deepmimo_scenarios',  # Folder containing both extracted scenarios and scenario ZIP files
-            'rt_sources_folder': 'deepmimo_rt_sources',  # Folder containing ray tracing source files
+            # Folder containing scenarios (extracted and ZIPs)
+            'scenarios_folder': SCENARIOS_FOLDER,
+            # Folder containing ray tracing source files
+            'rt_sources_folder': RT_SOURCES_FOLDER,
         }
     
     def set(self, key, value):
