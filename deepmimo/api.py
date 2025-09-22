@@ -875,10 +875,12 @@ def search(query: Optional[Dict] = None) -> Optional[List[str]]:
         - scattering: bool - Boolean filter or 'all' to ignore
         - transmission: bool - Boolean filter or 'all' to ignore
         - digitalTwin: bool - Boolean filter or 'all' to ignore
-        - hasRtSource: bool - Boolean filter or 'all' to ignore
         - city: str - City name text filter
         - bbCoords: Dict - Bounding box coordinates 
             {'minLat': float, 'minLon': float, 'maxLat': float, 'maxLon': float}
+        - hasRtSource: bool - Boolean filter or 'all' to ignore
+            Note: Unlike other flags which are derived in the package during conversion,
+            hasRtSource is set server-side when RT source is uploaded with upload_rt_source()
     
     Returns:
         Dict containing count and list of matching scenario names if successful, None otherwise
