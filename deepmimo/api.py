@@ -51,6 +51,8 @@ from . import consts as c
 from .general_utils import (
     get_scenarios_dir,
     get_scenario_folder,
+    get_rt_sources_dir,
+    get_rt_source_folder,
     get_params_path,
     load_dict_from_json,
     zip,
@@ -708,11 +710,12 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
         print(f"An unexpected error occurred during RT upload: {str(e)}")
         return False
 
-def _download_url(scenario_name: str) -> str:
+def _download_url(scenario_name: str, rt_source: bool = False) -> str:
     """Get the secure download endpoint URL for a DeepMIMO scenario.
 
     Args:
         scenario_name: Name of the scenario ZIP file
+        rt_source: Whether to download the raytracing source file
 
     Returns:
         Secure URL for downloading the scenario through the API endpoint
@@ -725,39 +728,53 @@ def _download_url(scenario_name: str) -> str:
         scenario_name += ".zip"
 
     # Return the secure download endpoint URL with the filename as a parameter
-    return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}"
+    rt_param = "&rt_source=true" if rt_source else ""
+    return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}{rt_param}"
 
-def download(scenario_name: str, output_dir: Optional[str] = None) -> Optional[str]:
+
+def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bool = False) -> Optional[str]:
     """Download a DeepMIMO scenario from the database.
 
     Args:
         scenario_name: Name of the scenario
         output_dir: Directory to save file (defaults to current directory)
+        rt_source: Whether to download the raytracing source file instead of the scenario
 
     Returns:
         Path to downloaded file if successful, None otherwise
     """
     scenario_name = scenario_name.lower()
     scenarios_dir = get_scenarios_dir()
-    download_dir = output_dir if output_dir else get_scenarios_dir()
-    scenario_folder = get_scenario_folder(scenario_name)
     
-    # Check if file already exists in scenarios folder
-    if os.path.exists(scenario_folder):
-        print(f'Scenario "{scenario_name}" already exists in {scenarios_dir}')
-        return None
+    if rt_source:
+        # For RT sources, use dedicated RT sources directory unless output_dir is specified
+        download_dir = output_dir if output_dir else get_rt_sources_dir()
+        output_path = os.path.join(download_dir, f"{scenario_name}_rt_source.zip")
+        rt_source_folder = get_rt_source_folder(scenario_name)
+        # Check if RT source folder already exists
+        if os.path.exists(rt_source_folder):
+            print(f'RT source "{scenario_name}" already exists at {rt_source_folder}')
+            return None
+    else:
+        # For regular scenarios, use scenarios directory unless output_dir is specified
+        download_dir = output_dir if output_dir else get_scenarios_dir()
+        scenario_folder = get_scenario_folder(scenario_name)
+        output_path = os.path.join(download_dir, f"{scenario_name}_downloaded.zip")
+        # Check if scenario already exists in scenarios folder
+        if os.path.exists(scenario_folder):
+            print(f'Scenario "{scenario_name}" already exists in {scenarios_dir}')
+            return None
 
     # Get secure download URL using existing helper
-    url = _download_url(scenario_name)
-    
-    output_path = os.path.join(download_dir, f"{scenario_name}_downloaded.zip")
+    url = _download_url(scenario_name, rt_source)
 
     # Check if file already exists in download folder
     if not os.path.exists(output_path):
         # Create download directory if it doesn't exist
         os.makedirs(download_dir, exist_ok=True)
 
-        print(f"Downloading scenario '{scenario_name}'")
+        download_type = "raytracing source" if rt_source else "scenario"
+        print(f"Downloading {download_type} '{scenario_name}'")
         try:
             # Get download token and redirect URL
             resp = requests.get(url, headers=HEADERS)
@@ -800,17 +817,38 @@ def download(scenario_name: str, output_dir: Optional[str] = None) -> Optional[s
     else: # Extract the zip if it exists, don't download again
         print(f'Scenario zip file "{output_path}" already exists.')
     
-    # Unzip downloaded scenario
-    unzipped_folder = unzip(output_path)
-
-    # Move unzipped folder to scenarios folder
-    unzipped_folder_without_suffix = unzipped_folder.replace('_downloaded', '')
-    os.makedirs(scenarios_dir, exist_ok=True)
-    os.rename(unzipped_folder, unzipped_folder_without_suffix)
-    shutil.move(unzipped_folder_without_suffix, scenario_folder)
-    print(f"✓ Unzipped and moved to {scenarios_dir}")
-
-    print(f"✓ Scenario '{scenario_name}' ready to use!")
+    # Handle file extraction based on type
+    if rt_source:
+        # For RT source files, extract to RT sources directory
+        rt_sources_dir = get_rt_sources_dir()
+        unzipped_folder = unzip(output_path)
+        
+        # Move extracted folder to RT sources directory
+        rt_extracted_path = get_rt_source_folder(scenario_name)
+        unzipped_folder_without_suffix = unzipped_folder.replace('_rt_source', '')
+        
+        os.makedirs(rt_sources_dir, exist_ok=True)
+        
+        # If the target already exists, remove it first
+        if os.path.exists(rt_extracted_path):
+            shutil.rmtree(rt_extracted_path)
+            
+        # Rename the unzipped folder and move to RT sources directory
+        if unzipped_folder != unzipped_folder_without_suffix:
+            os.rename(unzipped_folder, unzipped_folder_without_suffix)
+        shutil.move(unzipped_folder_without_suffix, rt_extracted_path)
+        
+        print(f"✓ RT source files extracted to {rt_extracted_path}")
+        print(f"✓ RT source '{scenario_name}' downloaded!")
+    else:
+        # For regular scenarios, unzip and move to scenarios folder
+        unzipped_folder = unzip(output_path)
+        unzipped_folder_without_suffix = unzipped_folder.replace('_downloaded', '')
+        os.makedirs(scenarios_dir, exist_ok=True)
+        os.rename(unzipped_folder, unzipped_folder_without_suffix)
+        shutil.move(unzipped_folder_without_suffix, scenario_folder)
+        print(f"✓ Unzipped and moved to {scenarios_dir}")
+        print(f"✓ Scenario '{scenario_name}' ready to use!")
 
     return output_path 
 
@@ -840,6 +878,9 @@ def search(query: Optional[Dict] = None) -> Optional[List[str]]:
         - city: str - City name text filter
         - bbCoords: Dict - Bounding box coordinates 
             {'minLat': float, 'minLon': float, 'maxLat': float, 'maxLon': float}
+        - hasRtSource: bool - Boolean filter or 'all' to ignore
+            Note: Unlike other flags which are derived in the package during conversion,
+            hasRtSource is set server-side when RT source is uploaded with upload_rt_source()
     
     Returns:
         Dict containing count and list of matching scenario names if successful, None otherwise
