@@ -1687,12 +1687,12 @@ class Dataset(DotDict):
         Args:
             output_dir: Output directory for binary files (default: "./datasets")
         """
-        from ..general_utils import export_dataset_to_binary
+        from ..web_export import export_dataset_to_binary
         
         # Get dataset name from scenario name or use default
         dataset_name = getattr(self, 'name', 'dataset')
         
-        # Call the integrated export function
+        # Call the web export function
         export_dataset_to_binary(self, dataset_name, output_dir)
 
 
@@ -1817,12 +1817,12 @@ class MacroDataset:
         Args:
             output_dir: Output directory for binary files (default: "./datasets")
         """
-        from ..general_utils import export_dataset_to_binary
+        from ..web_export import export_dataset_to_binary
         
         # Get dataset name from first dataset or use default
         dataset_name = getattr(self.datasets[0], 'name', 'dataset') if self.datasets else 'dataset'
         
-        # Call the integrated export function with the MacroDataset
+        # Call the web export function with the MacroDataset
         export_dataset_to_binary(self, dataset_name, output_dir)
         
 
