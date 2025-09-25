@@ -13,40 +13,6 @@ from pathlib import Path
 from typing import Union
 
 
-def save_binary_array(arr: np.ndarray, file_path: Union[str, Path]) -> None:
-    """Save numpy array as simple binary format for web visualizer.
-    
-    Format: [dtype_code(4 bytes)][shape_dims(4 bytes)][shape_values(4 bytes each)][flattened_data]
-    
-    Args:
-        arr: Numpy array to save
-        file_path: Path where to save the binary file
-        
-    Raises:
-        Exception: If array cannot be saved
-    """
-    try:
-        with open(file_path, 'wb') as f:
-            # Write dtype code (padded to 4 bytes for alignment)
-            dtype_code = {
-                'float32': b'f\x00\x00\x00',
-                'float64': b'd\x00\x00\x00',
-                'int32': b'i\x00\x00\x00'
-            }.get(str(arr.dtype), b'f\x00\x00\x00')
-            f.write(dtype_code)
-            
-            # Write shape
-            f.write(struct.pack('<I', len(arr.shape)))
-            f.write(struct.pack(f'<{len(arr.shape)}I', *arr.shape))
-            
-            # Write flattened data
-            arr_data = arr.astype(dtype_code[0:1].decode()).tobytes()
-            f.write(arr_data)
-    except Exception as e:
-        print(f"Error saving array to {file_path}: {e}")
-        raise
-
-
 def export_dataset_to_binary(dataset, dataset_name: str, output_dir: str = "./datasets") -> None:
     """Export DeepMIMO dataset to binary format for web visualizer.
     
@@ -92,6 +58,40 @@ def export_dataset_to_binary(dataset, dataset_name: str, output_dir: str = "./da
         json.dump(metadata, f)
     
     print(f"Export completed for {dataset_name} with {len(tx_rx_sets_info)} TX/RX sets")
+
+
+def _save_binary_array(arr: np.ndarray, file_path: Union[str, Path]) -> None:
+    """Save numpy array as simple binary format for web visualizer.
+    
+    Format: [dtype_code(4 bytes)][shape_dims(4 bytes)][shape_values(4 bytes each)][flattened_data]
+    
+    Args:
+        arr: Numpy array to save
+        file_path: Path where to save the binary file
+        
+    Raises:
+        Exception: If array cannot be saved
+    """
+    try:
+        with open(file_path, 'wb') as f:
+            # Write dtype code (padded to 4 bytes for alignment)
+            dtype_code = {
+                'float32': b'f\x00\x00\x00',
+                'float64': b'd\x00\x00\x00',
+                'int32': b'i\x00\x00\x00'
+            }.get(str(arr.dtype), b'f\x00\x00\x00')
+            f.write(dtype_code)
+            
+            # Write shape
+            f.write(struct.pack('<I', len(arr.shape)))
+            f.write(struct.pack(f'<{len(arr.shape)}I', *arr.shape))
+            
+            # Write flattened data
+            arr_data = arr.astype(dtype_code[0:1].decode()).tobytes()
+            f.write(arr_data)
+    except Exception as e:
+        print(f"Error saving array to {file_path}: {e}")
+        raise
 
 
 def _process_single_dataset_to_binary(dataset, base_dir: Path, tx_set_id: int, rx_set_id: int) -> dict:
@@ -168,7 +168,7 @@ def _process_single_dataset_to_binary(dataset, base_dir: Path, tx_set_id: int, r
         if data is not None:
             try:
                 file_path = base_dir / f'{name}_rx_{rx_set_id}_tx_{tx_set_id}.bin'
-                save_binary_array(data, file_path)
+                _save_binary_array(data, file_path)
                 print(f"Saved {name} for RX set {rx_set_id}, TX set {tx_set_id} to {file_path}")
             except Exception as e:
                 print(f"Error saving {name} for RX set {rx_set_id}, TX set {tx_set_id}: {e}")
@@ -219,7 +219,7 @@ def _process_scene_to_binary(scene, base_dir: Path) -> None:
         
         buildings_array = np.array(buildings, dtype=np.float32)
         file_path = base_dir / f'buildings.bin'
-        save_binary_array(buildings_array, file_path)
+        _save_binary_array(buildings_array, file_path)
         print(f"Saved buildings to {file_path}")    
 
     # Process terrain objects
@@ -244,7 +244,7 @@ def _process_scene_to_binary(scene, base_dir: Path) -> None:
         
         terrain_array = np.array(terrain, dtype=np.float32)
         file_path = base_dir / f'terrain.bin'
-        save_binary_array(terrain_array, file_path)
+        _save_binary_array(terrain_array, file_path)
         print(f"Saved terrain to {file_path}")
 
     # Process vegetation objects
@@ -269,5 +269,5 @@ def _process_scene_to_binary(scene, base_dir: Path) -> None:
         
         vegetation_array = np.array(vegetation, dtype=np.float32)
         file_path = base_dir / f'vegetation.bin'
-        save_binary_array(vegetation_array, file_path)
+        _save_binary_array(vegetation_array, file_path)
         print(f"Saved vegetation to {file_path}")

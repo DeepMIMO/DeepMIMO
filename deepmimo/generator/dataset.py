@@ -74,6 +74,9 @@ from ..txrx import get_txrx_sets, TxRxSet
 # Summary
 from ..summary import plot_summary
 
+# Web export functionality
+from ..web_export import export_dataset_to_binary
+
 # Parameters that should remain consistent across datasets in a MacroDataset
 SHARED_PARAMS = [
     c.SCENE_PARAM_NAME,           # Scene object
@@ -1687,8 +1690,6 @@ class Dataset(DotDict):
         Args:
             output_dir: Output directory for binary files (default: "./datasets")
         """
-        from ..web_export import export_dataset_to_binary
-        
         # Get dataset name from scenario name or use default
         dataset_name = getattr(self, 'name', 'dataset')
         
@@ -1817,8 +1818,6 @@ class MacroDataset:
         Args:
             output_dir: Output directory for binary files (default: "./datasets")
         """
-        from ..web_export import export_dataset_to_binary
-        
         # Get dataset name from first dataset or use default
         dataset_name = getattr(self.datasets[0], 'name', 'dataset') if self.datasets else 'dataset'
         
