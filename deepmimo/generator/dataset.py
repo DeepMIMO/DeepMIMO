@@ -74,6 +74,9 @@ from ..txrx import get_txrx_sets, TxRxSet
 # Summary
 from ..summary import plot_summary
 
+# Web export functionality
+from ..web_export import export_dataset_to_binary
+
 # Parameters that should remain consistent across datasets in a MacroDataset
 SHARED_PARAMS = [
     c.SCENE_PARAM_NAME,           # Scene object
@@ -1677,6 +1680,22 @@ class Dataset(DotDict):
             
         info(param_name)
 
+    def to_binary(self, output_dir: str = "./datasets") -> None:
+        """Export dataset to binary format for web visualizer.
+        
+        This method exports the dataset to a binary format suitable for the DeepMIMO
+        web visualizer. It creates binary files with proper naming convention and
+        metadata information.
+        
+        Args:
+            output_dir: Output directory for binary files (default: "./datasets")
+        """
+        # Get dataset name from scenario name or use default
+        dataset_name = getattr(self, 'name', 'dataset')
+        
+        # Call the web export function
+        export_dataset_to_binary(self, dataset_name, output_dir)
+
 
 class MacroDataset:
     """A container class that holds multiple Dataset instances and propagates operations to all children.
@@ -1789,6 +1808,21 @@ class MacroDataset:
             dataset: Dataset instance to add
         """
         self.datasets.append(dataset)
+        
+    def to_binary(self, output_dir: str = "./datasets") -> None:
+        """Export all datasets to binary format for web visualizer.
+        
+        This method exports all contained datasets to binary format suitable for the
+        DeepMIMO web visualizer with proper TX/RX set naming.
+        
+        Args:
+            output_dir: Output directory for binary files (default: "./datasets")
+        """
+        # Get dataset name from first dataset or use default
+        dataset_name = getattr(self.datasets[0], 'name', 'dataset') if self.datasets else 'dataset'
+        
+        # Call the web export function with the MacroDataset
+        export_dataset_to_binary(self, dataset_name, output_dir)
         
 
 class DynamicDataset(MacroDataset):
