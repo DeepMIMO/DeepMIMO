@@ -843,7 +843,22 @@ def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bo
     else:
         # For regular scenarios, unzip and move to scenarios folder
         unzipped_folder = unzip(output_path)
+
+        # Handle nested directory structure
         unzipped_folder_without_suffix = unzipped_folder.replace('_downloaded', '')
+        
+        # Check if there's a nested directory with the scenario name
+        nested_path = os.path.join(unzipped_folder, scenario_name)
+        if os.path.exists(nested_path) and os.path.isdir(nested_path):
+            # Move files and folders from nested dir to parent
+            for item in os.listdir(nested_path):
+                source_path = os.path.join(nested_path, item)
+                dest_path = os.path.join(unzipped_folder, item)
+                shutil.move(source_path, dest_path)
+            # Remove the now-empty nested directory
+            os.rmdir(nested_path)
+            print(f"✓ Flattened nested directory '{scenario_name}'")
+        
         os.makedirs(scenarios_dir, exist_ok=True)
         os.rename(unzipped_folder, unzipped_folder_without_suffix)
         shutil.move(unzipped_folder_without_suffix, scenario_folder)
