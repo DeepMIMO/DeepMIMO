@@ -31,17 +31,8 @@ def export_dataset_to_binary(dataset, dataset_name: str, output_dir: str = "./da
     
     # Check if this is a MacroDataset (has multiple datasets)
     if hasattr(dataset, 'datasets'):
-        # Handle MacroDataset with multiple TX/RX sets
-        print(f"Processing MacroDataset with {len(dataset)} TX/RX sets")
-        
-        for i, single_dataset in enumerate(dataset.datasets):
-            tx_set_id = i + 1
-            rx_set_id = i + 1  # Assuming 1:1 mapping for now
-            
-            set_info = _process_single_dataset_to_binary(
-                single_dataset, base_dir, tx_set_id, rx_set_id
-            )
-            tx_rx_sets_info.append(set_info)
+        print(f"Processing MacroDataset with {len(dataset.datasets)} TX/RX sets")
+        tx_rx_sets_info = _process_macro_dataset(dataset, base_dir)
     else:
         # Handle single Dataset
         print(f"Processing single Dataset")
@@ -58,6 +49,29 @@ def export_dataset_to_binary(dataset, dataset_name: str, output_dir: str = "./da
         json.dump(metadata, f)
     
     print(f"Export completed for {dataset_name} with {len(tx_rx_sets_info)} TX/RX sets")
+
+
+def _process_macro_dataset(dataset, base_dir: Path) -> list:
+    """Process MacroDataset using TX/RX set information from datasets."""
+    tx_rx_sets_info = []
+    
+    print("Extracting TX/RX set IDs from datasets...")
+    
+    for i, single_dataset in enumerate(dataset.datasets):
+        if not hasattr(single_dataset, 'rx_pos') or len(single_dataset.rx_pos) == 0:
+            continue
+        
+        # Get TX/RX set IDs from the dataset's txrx attribute
+        tx_set_id = single_dataset['txrx']['tx_set_id']
+        rx_set_id = single_dataset['txrx']['rx_set_id']
+        
+        print(f"Dataset {i}: TX set {tx_set_id}, RX set {rx_set_id} (rx_count={len(single_dataset.rx_pos)})")
+        
+        set_info = _process_single_dataset_to_binary(single_dataset, base_dir, tx_set_id, rx_set_id)
+        tx_rx_sets_info.append(set_info)
+    
+    return tx_rx_sets_info
+
 
 
 def _save_binary_array(arr: np.ndarray, file_path: Union[str, Path]) -> None:
@@ -107,6 +121,17 @@ def _process_single_dataset_to_binary(dataset, base_dir: Path, tx_set_id: int, r
         dict: TX/RX set information
     """
     MAX_PATHS = 5  # Limit number of paths stored
+    
+    # Validation: Check if dataset has basic required data
+    if not hasattr(dataset, 'rx_pos') or len(dataset.rx_pos) == 0:
+        print(f"Warning: Dataset TX={tx_set_id}, RX={rx_set_id} has no rx_pos data, skipping")
+        return {
+            'tx_set': tx_set_id,
+            'rx_set': rx_set_id,
+            'totalUsers': 0,
+            'usersPerRow': 0,
+            'numRows': 0
+        }
     
     # Extract basic information
     total_users = len(dataset.rx_pos)
@@ -167,7 +192,7 @@ def _process_single_dataset_to_binary(dataset, base_dir: Path, tx_set_id: int, r
     for name, data in properties.items():
         if data is not None:
             try:
-                file_path = base_dir / f'{name}_rx_{rx_set_id}_tx_{tx_set_id}.bin'
+                file_path = base_dir / f'{name}_tx_{tx_set_id}_rx_{rx_set_id}.bin'
                 _save_binary_array(data, file_path)
                 print(f"Saved {name} for RX set {rx_set_id}, TX set {tx_set_id} to {file_path}")
             except Exception as e:
