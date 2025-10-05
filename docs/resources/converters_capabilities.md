@@ -48,3 +48,8 @@
 - [q] Dual-pol: AODT via panel flag; Sionna via num_ant vs size; InSite via “Both” polarization.
 - [r] AODT computes angles from geometry; Sionna provides angles; InSite from file fields.
 - [t] Sionna sorts by path amplitude before truncation to MAX_PATHS. 
+
+
+Note:
+- AODT doesn't have scene.
+- Only Sionna has proper multi-antenna support. Others support it via sep-TX.
