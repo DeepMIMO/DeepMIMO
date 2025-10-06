@@ -268,57 +268,68 @@ class Dataset(DotDict):
         
         return params
     
-    def compute_channels(self, params: Optional[ChannelParameters] = None, **kwargs) -> np.ndarray:
-        """Compute MIMO channel matrices for all users.
-        
-        This is the main public method for computing channel matrices. It handles all the
-        necessary preprocessing steps including:
-        - Antenna pattern application
-        - Field of view filtering
-        - Array response computation
-        - OFDM processing (if enabled)
-        
-        The computed channel will be cached and accessible as dataset.channel
-        or dataset['channel'] after this call.
-        
-        Args:
-            params: Channel generation parameters. If None, uses default parameters.
-                    See ChannelParameters class for details.
-            **kwargs: Additional keyword arguments to pass to ChannelParameters constructor
-                    if params is None. Ignored if params is provided. 
-                    If provided, overrides existing channel parameters (e.g. set_channel_params).
-            
+    def compute_channels(
+        self,
+        params: Optional[ChannelParameters] = None,
+        *,
+        times: Optional[float | np.ndarray] = None,
+        num_timestamps: Optional[int] = None,
+        **kwargs
+    ) -> np.ndarray:
+        """Compute MIMO channel matrices with Doppler over an explicit time axis.
+
+        If `times` is None and `num_timestamps` is None -> single snapshot at t=0 (squeezed 4-D).
+        If `times` is a scalar or 1D array -> uses it directly (seconds).
+        If `num_timestamps` is provided (and `times` is None) -> builds times from OFDM symbol spacing.
+
         Returns:
-            numpy.ndarray: MIMO channel matrix with shape [n_users, n_rx_ant, n_tx_ant, n_subcarriers]
-                          if freq_domain=True, otherwise [n_users, n_rx_ant, n_tx_ant, n_paths]
+            If freq_domain:
+            [n_users, n_rx_ant, n_tx_ant, n_subcarriers]              (single t)  or
+            [n_users, n_rx_ant, n_tx_ant, n_subcarriers, N_t]         (multi t)
+            Else:
+            [n_users, n_rx_ant, n_tx_ant, n_paths]                     (single t)  or
+            [n_users, n_rx_ant, n_tx_ant, n_paths, N_t]                (multi t)
         """
+        # --- Params handling (same as your original) ---
         if params is None:
             if kwargs:
                 params = ChannelParameters(**kwargs)
             else:
                 params = self.ch_params if self.ch_params is not None else ChannelParameters()
-
         self.set_channel_params(params)
 
-        # Compute array response product
-        array_response_product = self._compute_array_response_product()
-        
-        n_paths_to_gen = params.num_paths
-        
-        # Whether to enable the doppler shift per path in the channel
-        n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
-        default_doppler = np.zeros((self.n_ue, n_paths))
-        use_doppler = self.hasattr('doppler')
+        # --- Time axis derivation ---
+        if times is None:
+            if num_timestamps is None:
+                # single snapshot at t=0
+                times = 0.0
+            else:
+                # Build equally spaced times based on OFDM symbol period
+                B = params.ofdm[c.PARAMSET_OFDM_BANDWIDTH]                  # Hz
+                N = params.ofdm[c.PARAMSET_OFDM_SC_NUM]                     # subcarriers
+                delta_f = B / N                                             # Hz
+                T_sym = 1.0 / delta_f                                       # base symbol (no CP)
+                times = np.arange(int(num_timestamps), dtype=float) * T_sym
+        # else: use provided times (scalar or array, seconds)
 
-        if params[c.PARAMSET_DOPPLER_EN] and not use_doppler:
+        # --- Array response product ---
+        array_response_product = self._compute_array_response_product()
+
+        # --- Path selection ---
+        n_paths_to_gen = params.num_paths
+        n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
+
+        # --- Doppler enable/disable logic ---
+        default_doppler = np.zeros((self.n_ue, n_paths))
+        use_doppler = self.hasattr('doppler') and params[c.PARAMSET_DOPPLER_EN]
+        if not use_doppler:
             all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
-            # Enable doppler if any velocity component is non-zero
             use_doppler = self.tx_vel.any() or self.rx_vel.any() or all_obj_vel.any()
             if not use_doppler:
                 print("No doppler in channel generation because all velocities are zero")
-
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
 
+        # --- Call the time-aware V2 generator ---
         channel = _generate_MIMO_channel(
             array_response_product=array_response_product[..., :n_paths],
             powers=self._power_linear_ant_gain[..., :n_paths],
@@ -326,13 +337,14 @@ class Dataset(DotDict):
             phases=self.phase[..., :n_paths],
             dopplers=dopplers,
             ofdm_params=params.ofdm,
-            freq_domain=params.freq_domain,
+            times=times,
+            freq_domain=params.freq_domain
         )
 
         self[c.CHANNEL_PARAM_NAME] = channel  # Cache the result
 
         return channel
-    
+
     ###########################################
     # 3. Geometric Computations
     ###########################################
@@ -1007,7 +1019,7 @@ class Dataset(DotDict):
         """
         return get_uniform_idxs(self.n_ue, self.grid_size, steps)
     
-    def get_row_idxs(self, row_idxs: list[int] | np.ndarray) -> np.ndarray:
+    def get_row_idxs(self, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
         """Return indices of users in the specified rows, assuming a grid structure.
         
         Args:
@@ -1018,7 +1030,7 @@ class Dataset(DotDict):
         """
         return get_grid_idxs(self.grid_size, 'row', row_idxs)
         
-    def get_col_idxs(self, col_idxs: list[int] | np.ndarray) -> np.ndarray:
+    def get_col_idxs(self, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
         """Return indices of users in the specified columns, assuming a grid structure.
         
         Args:
@@ -1354,6 +1366,68 @@ class Dataset(DotDict):
             self._rx_vel = velocities
             
         return
+
+    def print_rx(self, idx: int, path_idxs: np.ndarray | list[int] | None = None) -> None:
+        """Print detailed information about a specific user.
+        
+        Args:
+            idx: Index of the user to print information for
+            path_idxs: Optional array of path indices to print. If None, prints all paths.
+            
+        Raises:
+            IndexError: If idx is out of range or if any path index is out of range
+        """
+        if idx < 0 or idx >= self.n_ue:
+            raise IndexError(f"User index {idx} is out of range [0, {self.n_ue})")
+        
+        # If path_idxs is None, use all valid paths
+        if path_idxs is None:
+            path_idxs = np.arange(self.num_paths[idx])
+        else:
+            path_idxs = np.array(path_idxs)
+            # Validate path indices
+            if np.any((path_idxs < 0) | (path_idxs >= self.num_paths[idx])):
+                raise IndexError(f"Path indices must be in range [0, {self.num_paths[idx]})")
+
+        print("\nUser Information:")
+        print(f"Position: {self.rx_pos[idx]}")
+        print(f"Velocity: {self.rx_vel[idx]}")
+
+        print("\nPath Information:")
+        print(f"Number of paths selected: {len(path_idxs)} (total: {self.num_paths[idx]})")
+        print(f"Powers (dBm): {self.power[idx][path_idxs]}")
+        print(f"Phases (deg): {self.phase[idx][path_idxs]}")
+        print(f"Delays (us): {self.delay[idx][path_idxs]*1e6}")
+
+        print("\nAngles:")
+        print(f"Azimuth of Departure (deg): {self.aod_phi[idx][path_idxs]}")
+        print(f"Elevation of Departure (deg): {self.aod_theta[idx][path_idxs]}")
+        print(f"Azimuth of Arrival (deg): {self.aoa_phi[idx][path_idxs]}")
+        print(f"Elevation of Arrival (deg): {self.aoa_theta[idx][path_idxs]}")
+
+        print("\nInteraction Information:")
+        print(f"Interaction types: {self.inter[idx][path_idxs]}")
+        print(f"Number of interactions: {self.num_interactions[idx][path_idxs]}")
+        print("Interaction positions:")
+        for p_idx, path_idx in enumerate(path_idxs):
+            n_inter = int(self.num_interactions[idx][path_idx])
+            if np.isnan(n_inter):
+                print(f"  Path {path_idx}: No interactions")
+                continue
+            print(f"  Path {path_idx} ({n_inter} interactions):")
+            for i in range(n_inter):
+                print(f"    {p_idx+1}: {self.inter_pos[idx][path_idx][p_idx]}")
+
+        if self.hasattr('inter_objects'):
+            print("\nInteraction objects:")
+            for p_idx, path_idx in enumerate(path_idxs):
+                n_inter = int(self.num_interactions[idx][path_idx])
+                if np.isnan(n_inter):
+                    print(f"  Path {path_idx}: No interactions")
+                    continue
+                print(f"  Path {path_idx} ({n_inter} interactions):")
+                for i in range(n_inter):
+                    print(f"    {p_idx+1}: {self.inter_objects[idx][path_idx][p_idx]}")
 
     @property
     def tx_vel(self) -> np.ndarray:
