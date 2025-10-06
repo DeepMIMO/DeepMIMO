@@ -7,10 +7,10 @@ from the DeepMIMO server.
 Upload flow:
 1. Call upload() with scenario name, key, and optional parameters (details, extra_metadata, etc.)
 2. If not submission_only:
-   - _upload_to_b2() is called to upload the scenario zip file, handling:
+   - _upload_to_db() is called to upload the scenario zip file, handling:
      * Get presigned URL for upload
      * Calculate file hash
-     * Upload file to B2
+     * Upload file to the database
      * Return authorized filename
 3. _make_submission_on_server() creates the submission with:
    - Process parameters using _process_params_data() - used scenario filtering in database
@@ -51,6 +51,8 @@ from . import consts as c
 from .general_utils import (
     get_scenarios_dir,
     get_scenario_folder,
+    get_rt_sources_dir,
+    get_rt_source_folder,
     get_params_path,
     load_dict_from_json,
     zip,
@@ -141,8 +143,8 @@ def _dm_upload_api_call(file: str, key: str) -> Optional[str]:
                 sha1.update(chunk)
         file_hash = sha1.hexdigest()
 
-        # Upload file to B2
-        print(f"Uploading {authorized_filename} to B2...")
+        # Upload file to DB
+        print(f"Uploading {authorized_filename} to DB...")
         pbar = tqdm(total=file_size, unit='B', unit_scale=True, desc="Uploading")
         
         try:
@@ -463,21 +465,21 @@ def upload_images(scenario_name: str, img_paths: list[str], key: str) -> list[di
 
     return uploaded_image_objects
 
-def _upload_to_b2(scen_folder: str, key: str, skip_zip: bool = False) -> str:
-    """Upload a zip file to B2 storage."""
+def _upload_to_db(scen_folder: str, key: str, skip_zip: bool = False) -> str:
+    """Upload a zip file to the database."""
 
     # Zip scenario
     zip_path = scen_folder + ".zip" if skip_zip else zip(scen_folder)
 
     try:
-        print("Uploading to storage...")
+        print("Uploading to the database...")
         upload_result = _dm_upload_api_call(zip_path, key)
     except Exception as e:
-        print(f"Error: Failed to upload to storage - {str(e)}")
+        print(f"Error: Failed to upload to the database - {str(e)}")
 
     if not upload_result:
-        print(f"Error: Failed to upload to B2")
-        raise RuntimeError("Failed to upload to B2")
+        print(f"Error: Failed to upload to the database")
+        raise RuntimeError("Failed to upload to the database")
     print("✓ Upload successful")
 
     submission_scenario_name = upload_result.split(".")[0].split("/")[-1].split("\\")[-1]
@@ -562,7 +564,7 @@ def upload(scenario_name: str, key: str,
     """Upload a DeepMIMO scenario to the server.
 
     Uploads a scenario to the DeepMIMO database by zipping the scenario folder,
-    uploading to B2 storage, and creating a submission on the server.
+    uploading to the database, and creating a submission on the server.
 
     Args:
         scenario_name (str): Name of the scenario to upload.
@@ -580,7 +582,7 @@ def upload(scenario_name: str, key: str,
         skip_zip (bool, optional): If True, skip zipping scenario folder. Defaults to False.
         include_images (bool, optional): If True, generate and upload visualization images. 
             Defaults to True.
-        submission_only (bool, optional): If True, skip B2 upload and only create server 
+        submission_only (bool, optional): If True, skip database upload and only create server 
             submission. Use when scenario is already uploaded. Defaults to False.
 
     Returns:
@@ -602,7 +604,7 @@ def upload(scenario_name: str, key: str,
         raise RuntimeError(f"Failed to parse parameters - {str(e)}")
 
     if not submission_only:
-        submission_scenario_name = _upload_to_b2(scen_folder, key, skip_zip)
+        submission_scenario_name = _upload_to_db(scen_folder, key, skip_zip)
     else:
         submission_scenario_name = scenario_name
 
@@ -612,7 +614,7 @@ def upload(scenario_name: str, key: str,
     return submission_scenario_name
 
 def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
-    """Upload a Ray Tracing (RT) source file to B2 storage.
+    """Upload a Ray Tracing (RT) source file to the database.
 
     Args:
         scenario_name: The name of the corresponding scenario already uploaded.
@@ -638,7 +640,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
         return False
 
     try:
-        # 1. Get presigned upload URL for the RT bucket
+        # 1. Get presigned upload URL for the RT database
         print("Requesting RT upload authorization from server...")
         auth_response = requests.get(
             f"{API_BASE_URL}/api/b2/authorize-rt-upload",
@@ -659,7 +661,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
              print(f"Server authorized RT upload for '{authorized_filename}' but expected '{target_filename}'")
              return False
 
-        print(f"✓ Authorization granted. Uploading to RT bucket as '{authorized_filename}'...")
+        print(f"✓ Authorization granted. Uploading to RT database as '{authorized_filename}'...")
 
         # 2. Calculate file hash (using the local rt_zip_path file)
         sha1 = hashlib.sha1()
@@ -668,7 +670,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
                 sha1.update(chunk)
         file_hash = sha1.hexdigest()
 
-        # 3. Upload file to B2 RT Bucket using the presigned URL
+        # 3. Upload file to the RT database using the presigned URL
         pbar = tqdm(total=file_size, unit='B', unit_scale=True, desc="Uploading RT Source")
         progress_reader = None
         try:
@@ -679,7 +681,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
                 headers={
                     "Content-Type": auth_data.get("contentType", "application/zip"),
                     "Content-Length": str(file_size),
-                    "X-Bz-Content-Sha1": file_hash, # Required by B2
+                    "X-Bz-Content-Sha1": file_hash, # Required by the database
                 },
                 data=progress_reader
             )
@@ -708,11 +710,12 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
         print(f"An unexpected error occurred during RT upload: {str(e)}")
         return False
 
-def _download_url(scenario_name: str) -> str:
+def _download_url(scenario_name: str, rt_source: bool = False) -> str:
     """Get the secure download endpoint URL for a DeepMIMO scenario.
 
     Args:
         scenario_name: Name of the scenario ZIP file
+        rt_source: Whether to download the raytracing source file
 
     Returns:
         Secure URL for downloading the scenario through the API endpoint
@@ -725,39 +728,53 @@ def _download_url(scenario_name: str) -> str:
         scenario_name += ".zip"
 
     # Return the secure download endpoint URL with the filename as a parameter
-    return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}"
+    rt_param = "&rt_source=true" if rt_source else ""
+    return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}{rt_param}"
 
-def download(scenario_name: str, output_dir: Optional[str] = None) -> Optional[str]:
-    """Download a DeepMIMO scenario from B2 storage.
+
+def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bool = False) -> Optional[str]:
+    """Download a DeepMIMO scenario from the database.
 
     Args:
         scenario_name: Name of the scenario
         output_dir: Directory to save file (defaults to current directory)
+        rt_source: Whether to download the raytracing source file instead of the scenario
 
     Returns:
         Path to downloaded file if successful, None otherwise
     """
     scenario_name = scenario_name.lower()
     scenarios_dir = get_scenarios_dir()
-    download_dir = output_dir if output_dir else get_scenarios_dir()
-    scenario_folder = get_scenario_folder(scenario_name)
     
-    # Check if file already exists in scenarios folder
-    if os.path.exists(scenario_folder):
-        print(f'Scenario "{scenario_name}" already exists in {scenarios_dir}')
-        return None
+    if rt_source:
+        # For RT sources, use dedicated RT sources directory unless output_dir is specified
+        download_dir = output_dir if output_dir else get_rt_sources_dir()
+        output_path = os.path.join(download_dir, f"{scenario_name}_rt_source.zip")
+        rt_source_folder = get_rt_source_folder(scenario_name)
+        # Check if RT source folder already exists
+        if os.path.exists(rt_source_folder):
+            print(f'RT source "{scenario_name}" already exists at {rt_source_folder}')
+            return None
+    else:
+        # For regular scenarios, use scenarios directory unless output_dir is specified
+        download_dir = output_dir if output_dir else get_scenarios_dir()
+        scenario_folder = get_scenario_folder(scenario_name)
+        output_path = os.path.join(download_dir, f"{scenario_name}_downloaded.zip")
+        # Check if scenario already exists in scenarios folder
+        if os.path.exists(scenario_folder):
+            print(f'Scenario "{scenario_name}" already exists in {scenarios_dir}')
+            return None
 
     # Get secure download URL using existing helper
-    url = _download_url(scenario_name)
-    
-    output_path = os.path.join(download_dir, f"{scenario_name}_downloaded.zip")
+    url = _download_url(scenario_name, rt_source)
 
     # Check if file already exists in download folder
     if not os.path.exists(output_path):
         # Create download directory if it doesn't exist
         os.makedirs(download_dir, exist_ok=True)
 
-        print(f"Downloading scenario '{scenario_name}'")
+        download_type = "raytracing source" if rt_source else "scenario"
+        print(f"Downloading {download_type} '{scenario_name}'")
         try:
             # Get download token and redirect URL
             resp = requests.get(url, headers=HEADERS)
@@ -800,17 +817,50 @@ def download(scenario_name: str, output_dir: Optional[str] = None) -> Optional[s
     else: # Extract the zip if it exists, don't download again
         print(f'Scenario zip file "{output_path}" already exists.')
     
-    # Unzip downloaded scenario
-    unzipped_folder = unzip(output_path)
+    # Handle file extraction based on type
+    if rt_source:
+        # For RT source files, extract to RT sources directory
+        rt_sources_dir = get_rt_sources_dir()
+        unzipped_folder = unzip(output_path)
+        
+        # Move extracted folder to RT sources directory
+        rt_extracted_path = get_rt_source_folder(scenario_name)
+        unzipped_folder_without_suffix = unzipped_folder.replace('_rt_source', '')
+        
+        os.makedirs(rt_sources_dir, exist_ok=True)
+        
+        # If the target already exists, remove it first
+        if os.path.exists(rt_extracted_path):
+            shutil.rmtree(rt_extracted_path)
+            
+        # Rename the unzipped folder and move to RT sources directory
+        if unzipped_folder != unzipped_folder_without_suffix:
+            os.rename(unzipped_folder, unzipped_folder_without_suffix)
+        shutil.move(unzipped_folder_without_suffix, rt_extracted_path)
+        
+        print(f"✓ RT source files extracted to {rt_extracted_path}")
+        print(f"✓ RT source '{scenario_name}' downloaded!")
+    else:
+        # For regular scenarios, unzip and move to scenarios folder
+        unzipped_folder = unzip(output_path)
 
-    # Move unzipped folder to scenarios folder
-    unzipped_folder_without_suffix = unzipped_folder.replace('_downloaded', '')
-    os.makedirs(scenarios_dir, exist_ok=True)
-    os.rename(unzipped_folder, unzipped_folder_without_suffix)
-    shutil.move(unzipped_folder_without_suffix, scenario_folder)
-    print(f"✓ Unzipped and moved to {scenarios_dir}")
-
-    print(f"✓ Scenario '{scenario_name}' ready to use!")
+        # Handle nested directory structure
+        unzipped_folder_without_suffix = unzipped_folder.replace('_downloaded', '')
+        
+        # Check if there's a nested directory with the scenario name
+        nested_path = os.path.join(unzipped_folder, scenario_name)
+        if os.path.exists(nested_path) and os.path.isdir(nested_path):
+            tmp_path = unzipped_folder + "_tmp"
+            shutil.move(unzipped_folder, tmp_path)
+            shutil.move(os.path.join(tmp_path, scenario_name), unzipped_folder)
+            shutil.rmtree(tmp_path)
+            print(f"✓ Flattened nested directory '{scenario_name}'")
+        
+        os.makedirs(scenarios_dir, exist_ok=True)
+        os.rename(unzipped_folder, unzipped_folder_without_suffix)
+        shutil.move(unzipped_folder_without_suffix, scenario_folder)
+        print(f"✓ Unzipped and moved to {scenarios_dir}")
+        print(f"✓ Scenario '{scenario_name}' ready to use!")
 
     return output_path 
 
@@ -840,6 +890,9 @@ def search(query: Optional[Dict] = None) -> Optional[List[str]]:
         - city: str - City name text filter
         - bbCoords: Dict - Bounding box coordinates 
             {'minLat': float, 'minLon': float, 'maxLat': float, 'maxLon': float}
+        - hasRtSource: bool - Boolean filter or 'all' to ignore
+            Note: Unlike other flags which are derived in the package during conversion,
+            hasRtSource is set server-side when RT source is uploaded with upload_rt_source()
     
     Returns:
         Dict containing count and list of matching scenario names if successful, None otherwise

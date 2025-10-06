@@ -55,7 +55,7 @@ def generate(scen_name: str, load_params: Dict[str, Any] = {},
     ch_params = ch_gen_params if ch_gen_params else ChannelParameters()
     
     # Compute channels - will be propagated to all child datasets if MacroDataset
-    _ = dataset._compute_channels(ch_params)
+    _ = dataset.compute_channels(ch_params)
 
     return dataset
 
