@@ -335,5 +335,5 @@ def steering_vec(array: NDArray, phi: float = 0, theta: float = 0, spacing: floa
         NDArray: Complex normalized steering (array response) vector
     """
     idxs = _ant_indices(array)
-    resp = _array_response(idxs, phi*np.pi/180, theta*np.pi/180 + np.pi/2, 2*np.pi*spacing)
+    resp = _array_response(idxs, theta*np.pi/180 + np.pi/2, phi*np.pi/180, 2*np.pi*spacing)
     return resp / np.linalg.norm(resp)
