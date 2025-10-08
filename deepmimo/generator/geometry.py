@@ -327,13 +327,15 @@ def steering_vec(array: NDArray, phi: float = 0, theta: float = 0, spacing: floa
     
     Args:
         array (NDArray): Array of antenna positions
-        phi (float): Azimuth angle in degrees. Defaults to 0.
-        theta (float): Elevation angle in degrees. Defaults to 0.
+        phi (float): Azimuth angle in degrees. (0°=+x, 90°=+y) Defaults to 0. 
+        theta (float): Elevation angle in degrees. (0°=xy-plane, 90°=+z) Defaults to 0.
         spacing (float): Antenna spacing in wavelengths. Defaults to 0.5.
         
     Returns:
         NDArray: Complex normalized steering (array response) vector
     """
     idxs = _ant_indices(array)
-    resp = _array_response(idxs, theta*np.pi/180 + np.pi/2, phi*np.pi/180, 2*np.pi*spacing)
+    theta_polar = np.pi/2 - np.deg2rad(theta)  # convert elevation -> polar
+    phi_rad = np.deg2rad(phi)
+    resp = _array_response(idxs, theta_polar, phi_rad, 2*np.pi*spacing)
     return resp / np.linalg.norm(resp)
