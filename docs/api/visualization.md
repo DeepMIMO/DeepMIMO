@@ -3,7 +3,7 @@
 The visualization module provides tools for visualizing DeepMIMO datasets, including coverage maps, ray paths, and channel characteristics.
 
 ```{tip}
-Many more visualization examples are available in the <a href="../manual_full.html#visualization">Visualization Section</a> of the DeepMIMO Mannual.
+Many more visualization examples are available in the <a href="../manual_full.html#visualization">Visualization Section</a> of the DeepMIMO Manual.
 ```
 
 ## Coverage Maps

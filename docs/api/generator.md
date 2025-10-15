@@ -64,7 +64,7 @@ dataset = dm.load('asu_campus_3p5')
 ```
 
 ```{tip}
-For detailed examples of loading, see the <a href="../manual_full.html#detailed-load">Detailed Load</a> Section of the DeepMIMO Mannual.
+For detailed examples of loading, see the <a href="../manual_full.html#detailed-load">Detailed Load</a> Section of the DeepMIMO Manual.
 ```
 
 ```{eval-rst}
@@ -107,7 +107,7 @@ channels = dataset.compute_channels(params)
 ```
 
 ```{tip}
-For detailed examples of generating channels, see the <a href="../manual_full.html#channel-generation">Channel Generation</a> Section of the DeepMIMO Mannual.
+For detailed examples of generating channels, see the <a href="../manual_full.html#channel-generation">Channel Generation</a> Section of the DeepMIMO Manual.
 ```
 
 | Parameter | Default Value | Description |
@@ -295,7 +295,7 @@ dataset2 = dataset.subset(uniform_idxs)
 ```
 
 ```{tip}
-For detailed examples of sampling users from a dataset and creating subsets of a dataset, see the <a href="../manual_full.html#user-sampling">User Sampling</a> Section of the DeepMIMO Mannual.
+For detailed examples of sampling users from a dataset and creating subsets of a dataset, see the <a href="../manual_full.html#user-sampling">User Sampling</a> Section of the DeepMIMO Manual.
 ```
 
 ### Plotting
@@ -309,7 +309,7 @@ plot_rays = dataset.plot_rays()
 ```
 
 ```{tip}
-For more details on the visualization functions, see the <a href="../manual_full.html#visualization">Visualization</a> Section of the DeepMIMO Mannual, and the <a href="visualization.html">Visualization API</a> section of this noteoobk.
+For more details on the visualization functions, see the <a href="../manual_full.html#visualization">Visualization</a> Section of the DeepMIMO Manual, and the <a href="visualization.html">Visualization API</a> section of this noteoobk.
 ```
 
 ### Dataset Class
