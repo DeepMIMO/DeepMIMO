@@ -25,7 +25,7 @@ classifiers = [
 dependencies = [
     "matplotlib>=3.8.2",
     "numpy>=1.19.5,<2.3",
-    "scipy>=1.6.2",
+    "scipy>=1.6.2",  # only for .mat and ConvexHulls
     "tqdm>=4.59.0",
     "requests"
 ]
@@ -50,7 +50,6 @@ doc = [
     "sphinx>=7.2.6,<8.0.0",                      # Stable Sphinx
     "myst-parser",                               # Avoids footnote detector error
     "myst-nb>=0.17.2",                           # Notebook support
-
     "sphinx-autodoc-typehints>=1.25.0",          # Better type hints rendering
     "sphinx-copybutton>=0.5.0",                  # Copy buttons
     "sphinx-automodapi>=0.15.0",                 # Optional: for module API docs
@@ -62,7 +61,6 @@ doc = [
     "docutils>=0.19",
     # "beautifulsoup4>=4.12.0",
     # "git+https://github.com/pradyunsg/sphinx-remove-toctrees.git"  # ToC pruning
-
     # Themes
     "sphinx-rtd-theme>=2.0.0",                   # RTD theme
     # "furo",                                      # Works with 2024.8.6
