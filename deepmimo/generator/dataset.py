@@ -325,7 +325,7 @@ class Dataset(DotDict):
         if not use_doppler:
             all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
             use_doppler = self.tx_vel.any() or self.rx_vel.any() or all_obj_vel.any()
-            if not use_doppler:
+            if not use_doppler and params[c.PARAMSET_DOPPLER_EN]:
                 print("No doppler in channel generation because all velocities are zero")
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
 
