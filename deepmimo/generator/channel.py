@@ -218,7 +218,30 @@ class ChannelParameters(DotDict):
                 self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT])
         else:
             self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[0]
-                                             
+        
+        # OFDM selected subcarriers validation (indices within [0, N_sc-1])
+        if c.PARAMSET_OFDM in self.keys():
+            ofdm_params = self[c.PARAMSET_OFDM]
+            if (c.PARAMSET_OFDM_SC_SAMP in ofdm_params.keys() and
+                c.PARAMSET_OFDM_SC_NUM in ofdm_params.keys()):
+                sc_sel = np.asarray(ofdm_params[c.PARAMSET_OFDM_SC_SAMP])
+                if sc_sel.ndim > 1:
+                    raise ValueError(f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a 1-D array")
+                if sc_sel.size == 0:
+                    raise ValueError(f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a non-empty array")
+                if not np.issubdtype(sc_sel.dtype, np.integer):
+                    try:
+                        sc_sel = sc_sel.astype(int, copy=False)
+                        self[c.PARAMSET_OFDM][c.PARAMSET_OFDM_SC_SAMP] = sc_sel
+                    except Exception:
+                        raise ValueError(f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices")
+                n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]
+                if np.any(sc_sel < 0) or np.any(sc_sel >= n_sc):
+                    error_msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' values must be within [0, {n_sc-1}]\n"
+                    error_msg += f"Got max value: {np.max(sc_sel)}.\n"
+                    error_msg += f"Adjust ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_SAMP} or "
+                    error_msg += f"ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_NUM}."
+                    raise ValueError(error_msg)
         return self
 
 class OFDM_PathGenerator:
