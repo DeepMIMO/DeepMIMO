@@ -9,7 +9,7 @@ This module handles reading and processing:
 """
 
 import os
-import pandas as pd
+from .safe_import import pd
 import numpy as np
 from typing import Dict, Any, Optional, List, Tuple
 from ...txrx import TxRxSet

@@ -9,8 +9,7 @@ is defined by its path in the stage hierarchy.
 """
 
 import os
-import pandas as pd
-import numpy as np
+from .safe_import import pd
 from typing import Dict, Any, Optional
 
 class AODTScene:
@@ -27,7 +26,7 @@ class AODTScene:
     - Diffraction can only occur once per ray
     """
 
-    def __init__(self, world_df: pd.DataFrame):
+    def __init__(self, world_df: "pd.DataFrame"):
         """Initialize scene from world dataframe.
 
         Args:

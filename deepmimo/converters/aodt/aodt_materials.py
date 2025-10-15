@@ -7,7 +7,7 @@ following ITU-R P.2040 standard for building materials and structures.
 
 import os
 import numpy as np
-import pandas as pd
+from .safe_import import pd
 from dataclasses import dataclass
 from typing import Dict, Tuple
 

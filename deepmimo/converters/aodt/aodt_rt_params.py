@@ -14,7 +14,7 @@ and DeepMIMO's standardized ray tracing parameters.
 """
 
 import os
-import pandas as pd
+from .safe_import import pd
 from dataclasses import dataclass
 from typing import Dict
 from pathlib import Path

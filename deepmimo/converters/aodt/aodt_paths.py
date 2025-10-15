@@ -8,7 +8,7 @@ This module handles reading and processing:
 
 import os
 import numpy as np
-import pandas as pd
+from .safe_import import pd
 from typing import Dict, Any
 from ... import consts as c
 from ... import general_utils as gu
