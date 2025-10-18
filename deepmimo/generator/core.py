@@ -32,8 +32,13 @@ from .channel import ChannelParameters
 # Scenario management
 from ..api import download
 
-def generate(scen_name: str, load_params: Dict[str, Any] = {},
-            ch_gen_params: Dict[str, Any] = {}) -> Dataset:
+def generate(
+    scen_name: str,
+    *,
+    load_params: Dict[str, Any] = {},
+    trim_params: Dict[str, Any] = {},
+    ch_params: Dict[str, Any] = {},
+) -> Dataset | MacroDataset | DynamicDataset:
     """Generate a DeepMIMO dataset for a given scenario.
     
     This function wraps loading scenario data, computing channels, and organizing results.
@@ -42,6 +47,14 @@ def generate(scen_name: str, load_params: Dict[str, Any] = {},
         scen_name (str): Name of the scenario to generate data for
         load_params (dict): Parameters for loading the scenario. Defaults to {}.
         ch_gen_params (dict): Parameters for channel generation. Defaults to {}.
+        trim_params (dict, optional): Parameters for dataset trimming. Supports:
+            - idxs (array-like): UE indices to keep (applied first)
+            - idxs_mode (str): One of 'active'|'linear'|'uniform'|'row'|'col'|'limits'
+            - idxs_kwargs (dict): Keyword args for the idxs mode
+            - bs_fov (list|tuple [h_deg, v_deg])
+            - ue_fov (list|tuple [h_deg, v_deg])
+            - path_depth (int)
+            - path_types (list[str])
 
     Returns:
         Dataset: Generated DeepMIMO dataset containing channel matrices and metadata
@@ -50,12 +63,14 @@ def generate(scen_name: str, load_params: Dict[str, Any] = {},
         ValueError: If scenario name is invalid or required files are missing
     """
     dataset = load(scen_name, **load_params)
+
+    if trim_params:
+        if 'idxs' not in trim_params:
+            trim_params['idxs'] = dataset.get_idxs(trim_params['idxs_mode'], **trim_params.get('idxs_kwargs', {}))
+
+        dataset = dataset.trim(**trim_params)
     
-    # Create channel generation parameters
-    ch_params = ch_gen_params if ch_gen_params else ChannelParameters()
-    
-    # Compute channels - will be propagated to all child datasets if MacroDataset
-    _ = dataset.compute_channels(ch_params)
+    _ = dataset.compute_channels(ch_params if ch_params else ChannelParameters())
 
     return dataset
 
