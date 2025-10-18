@@ -596,8 +596,7 @@ class Dataset(DotDict):
         for k in rotated_angles_keys & self.keys():
             super().__delitem__(k)
         
-        # Also clear FOV cache since it depends on rotated angles
-        self._clear_cache_fov()
+        # No FoV cache to clear; FoV is handled via trimming, not lazy caching
 
     def _compute_single_array_response(self, ant_params: Dict, theta: np.ndarray, 
                                        phi: np.ndarray) -> np.ndarray:
@@ -629,10 +628,10 @@ class Dataset(DotDict):
         
         # Compute individual responses
         array_response_TX = self._compute_single_array_response(
-            tx_ant_params, self[c.AOD_EL_FOV_PARAM_NAME], self[c.AOD_AZ_FOV_PARAM_NAME])
+            tx_ant_params, self[c.AOD_EL_ROT_PARAM_NAME], self[c.AOD_AZ_ROT_PARAM_NAME])
             
         array_response_RX = self._compute_single_array_response(
-            rx_ant_params, self[c.AOA_EL_FOV_PARAM_NAME], self[c.AOA_AZ_FOV_PARAM_NAME])
+            rx_ant_params, self[c.AOA_EL_ROT_PARAM_NAME], self[c.AOA_AZ_ROT_PARAM_NAME])
         
         # Compute product with proper broadcasting
         # [n_users, M_rx, M_tx, n_paths]
@@ -642,33 +641,6 @@ class Dataset(DotDict):
     # 4. Field of View Operations
     ###########################################
 
-    def apply_fov(self, bs_fov: np.ndarray = np.array([360, 180]), 
-                  ue_fov: np.ndarray = np.array([360, 180])) -> None:
-        """Apply field of view (FoV) filtering to the dataset.
-        
-        This method sets the FoV parameters and invalidates any cached FoV-dependent attributes.
-        The actual filtering will be performed lazily when FoV-dependent attributes are accessed.
-        
-        Args:
-            bs_fov: Base station FoV as [horizontal, vertical] in degrees. Defaults to [360, 180] (full sphere).
-            ue_fov: User equipment FoV as [horizontal, vertical] in degrees. Defaults to [360, 180] (full sphere).
-            
-        Note:
-            This operation affects all path-related attributes and cached computations.
-            The following will be recomputed as needed when accessed:
-            - FoV filtered angles
-            - Number of valid paths
-            - Line of sight status
-            - Channel matrices
-            - Powers with antenna gain
-        """
-        # Clear cached FoV-dependent attributes
-        self._clear_cache_fov()
-            
-        # Store FoV parameters
-        self.bs_fov = bs_fov
-        self.ue_fov = ue_fov
-    
     def _is_full_fov(self, fov: np.ndarray) -> bool:
         """Check if a FoV parameter represents a full sphere view.
         
@@ -680,94 +652,7 @@ class Dataset(DotDict):
         """
         return fov[0] >= 360 and fov[1] >= 180
 
-    def _is_fov_enabled(self) -> bool:
-        """Get the current FoV status including parameters and whether they are full sphere.
-        
-        Returns:
-            bool: True if FoV filtering is enabled
-        """
-        bs_fov = self.get('bs_fov')
-        ue_fov = self.get('ue_fov')
-        bs_full = bs_fov is not None and self._is_full_fov(bs_fov)
-        ue_full = ue_fov is not None and self._is_full_fov(ue_fov)
-        has_fov = (bs_fov is not None and not bs_full) or (ue_fov is not None and not ue_full)
-        
-        return has_fov
-
-    def _compute_fov(self) -> Dict[str, np.ndarray]:
-        """Compute field of view filtered angles for all users.
-        
-        This function applies field of view constraints to the rotated angles
-        and stores both the filtered angles and the mask in the dataset.
-        If no FoV parameters are set, assumes full FoV and returns unfiltered angles.
-        
-        Returns:
-            Dict: Dictionary containing FoV filtered angles and mask
-        """
-        # Get rotated angles from dataset
-        aod_theta = self[c.AOD_EL_ROT_PARAM_NAME]  # [n_users, n_paths]
-        aod_phi = self[c.AOD_AZ_ROT_PARAM_NAME]    # [n_users, n_paths]
-        aoa_theta = self[c.AOA_EL_ROT_PARAM_NAME]  # [n_users, n_paths]
-        aoa_phi = self[c.AOA_AZ_ROT_PARAM_NAME]    # [n_users, n_paths]
-        
-        # Get FoV parameters and check if they are full sphere
-        bs_fov = self.get('bs_fov')
-        ue_fov = self.get('ue_fov')
-        bs_full = bs_fov is not None and self._is_full_fov(bs_fov)
-        ue_full = ue_fov is not None and self._is_full_fov(ue_fov)
-        
-        # If no FoV params or both are full sphere, return unfiltered angles
-        if (bs_fov is None and ue_fov is None) or (bs_full and ue_full):
-            return {
-                c.FOV_MASK_PARAM_NAME: None,
-                c.AOD_EL_FOV_PARAM_NAME: aod_theta,
-                c.AOD_AZ_FOV_PARAM_NAME: aod_phi,
-                c.AOA_EL_FOV_PARAM_NAME: aoa_theta,
-                c.AOA_AZ_FOV_PARAM_NAME: aoa_phi
-            }
-        
-        # Initialize mask as all True
-        fov_mask = np.ones_like(aod_theta, dtype=bool)
-        
-        # Only apply BS FoV filtering if restricted
-        if not bs_full:
-            tx_mask = _apply_FoV_batch(bs_fov, aod_theta, aod_phi)
-            fov_mask = np.logical_and(fov_mask, tx_mask)
-            
-        # Only apply UE FoV filtering if restricted
-        if not ue_full:
-            rx_mask = _apply_FoV_batch(ue_fov, aoa_theta, aoa_phi)
-            fov_mask = np.logical_and(fov_mask, rx_mask)
-        
-        return {
-            c.FOV_MASK_PARAM_NAME: fov_mask,
-            c.AOD_EL_FOV_PARAM_NAME: np.where(fov_mask, aod_theta, np.nan),
-            c.AOD_AZ_FOV_PARAM_NAME: np.where(fov_mask, aod_phi, np.nan),
-            c.AOA_EL_FOV_PARAM_NAME: np.where(fov_mask, aoa_theta, np.nan),
-            c.AOA_AZ_FOV_PARAM_NAME: np.where(fov_mask, aoa_phi, np.nan)
-        }
-
-    def _clear_cache_fov(self) -> None:
-        """Clear all cached attributes that depend on field of view (FoV) filtering.
-        
-        This includes:
-        - FoV filtered angles
-        - FoV mask
-        - Number of valid paths
-        - Line of sight status
-        - Channel matrices
-        - Powers with antenna gain
-        """
-        # Define FOV-dependent keys
-        fov_dependent_keys = {
-            c.FOV_MASK_PARAM_NAME, c.NUM_PATHS_PARAM_NAME, c.LOS_PARAM_NAME,
-            c.CHANNEL_PARAM_NAME,  c.PWR_LINEAR_ANT_GAIN_PARAM_NAME,
-            c.AOD_EL_FOV_PARAM_NAME, c.AOD_AZ_FOV_PARAM_NAME,
-            c.AOA_EL_FOV_PARAM_NAME, c.AOA_AZ_FOV_PARAM_NAME
-        }
-        # Remove all FOV-dependent keys at once
-        for k in fov_dependent_keys & self.keys():
-            super().__delitem__(k)
+    
 
     ###########################################
     # 5. Path and Power Computations
@@ -816,26 +701,9 @@ class Dataset(DotDict):
         """
         los_status = np.full(self.inter.shape[0], -1)
         
-        # Get FoV mask if FoV filtering is enabled
-        if self._is_fov_enabled():
-            _ = self[c.AOD_AZ_ROT_PARAM_NAME]
-            fov_mask = self[c.FOV_MASK_PARAM_NAME]
-        else:
-            fov_mask = None
-
-        if fov_mask is not None:
-            # If we have FoV filtering, only consider paths within FoV
-            has_paths = np.any(fov_mask, axis=1)
-            # For each user, find the first valid path within FoV
-            first_valid_path = np.full(self.inter.shape[0], -1)
-            for i in range(self.inter.shape[0]):
-                valid_paths = np.where(fov_mask[i])[0]
-                if len(valid_paths) > 0:
-                    first_valid_path[i] = self.inter[i, valid_paths[0]]
-        else:
-            # No FoV filtering, use all paths
-            has_paths = self.num_paths > 0
-            first_valid_path = self.inter[:, 0]
+        # With physical trimming, just use current paths
+        has_paths = self.num_paths > 0
+        first_valid_path = self.inter[:, 0]
         
         # Set NLoS status for users with paths
         los_status[has_paths] = 0
@@ -847,12 +715,9 @@ class Dataset(DotDict):
         return los_status
 
     def _compute_num_paths(self) -> np.ndarray:
-        """Compute number of valid paths for each user after FoV filtering."""
+        """Compute number of valid paths for each user (NaNs indicate removed paths)."""
 
-        if self._is_fov_enabled():
-            aoa = self[c.AOA_AZ_FOV_PARAM_NAME]
-        else:
-            aoa = self[c.AOA_AZ_PARAM_NAME]
+        aoa = self[c.AOA_AZ_PARAM_NAME]
         
         # Count non-NaN values (NaN indicates filtered out, possibly by FoV)
         return (~np.isnan(aoa)).sum(axis=1)
@@ -930,12 +795,12 @@ class Dataset(DotDict):
         antennapattern = AntennaPattern(tx_pattern=tx_ant_params[c.PARAMSET_ANT_RAD_PAT],
                                         rx_pattern=rx_ant_params[c.PARAMSET_ANT_RAD_PAT])
         
-        # Get FoV filtered angles and apply antenna patterns in batch
+        # Apply antenna patterns using rotated angles
         return antennapattern.apply_batch(power=self[c.PWR_LINEAR_PARAM_NAME],
-                                          aoa_theta=self[c.AOA_EL_FOV_PARAM_NAME],
-                                          aoa_phi=self[c.AOA_AZ_FOV_PARAM_NAME], 
-                                          aod_theta=self[c.AOD_EL_FOV_PARAM_NAME],
-                                          aod_phi=self[c.AOD_AZ_FOV_PARAM_NAME])
+                                          aoa_theta=self[c.AOA_EL_ROT_PARAM_NAME],
+                                          aoa_phi=self[c.AOA_AZ_ROT_PARAM_NAME], 
+                                          aod_theta=self[c.AOD_EL_ROT_PARAM_NAME],
+                                          aod_phi=self[c.AOD_AZ_ROT_PARAM_NAME])
 
 
     def _compute_power_linear(self) -> np.ndarray:
@@ -1088,7 +953,6 @@ class Dataset(DotDict):
         """Clear all caches."""
         self._clear_cache_core()
         self._clear_cache_rotated_angles()
-        self._clear_cache_fov()
         self._clear_cache_doppler()
 
     def _clear_cache_core(self) -> None:
@@ -1196,21 +1060,15 @@ class Dataset(DotDict):
         the existing path-trimming utility.
 
         Args:
-            bs_fov: Base-station FoV as [horizontal_deg, vertical_deg]. If None,
-                    uses dataset's stored `bs_fov` if available; otherwise full FoV.
-            ue_fov: User-equipment FoV as [horizontal_deg, vertical_deg]. If None,
-                    uses dataset's stored `ue_fov` if available; otherwise full FoV.
+            bs_fov: Base-station FoV as [horizontal_deg, vertical_deg]. If None, treated as full FoV.
+            ue_fov: User-equipment FoV as [horizontal_deg, vertical_deg]. If None, treated as full FoV.
 
         Returns:
             A new Dataset instance with only paths inside the FoV kept.
         """
-        # Determine effective FoVs
-        eff_bs_fov = bs_fov if bs_fov is not None else self.get('bs_fov')
-        eff_ue_fov = ue_fov if ue_fov is not None else self.get('ue_fov')
-
         # Resolve full-FoV flags
-        bs_full = eff_bs_fov is None or self._is_full_fov(np.array(eff_bs_fov))
-        ue_full = eff_ue_fov is None or self._is_full_fov(np.array(eff_ue_fov))
+        bs_full = bs_fov is None or self._is_full_fov(np.array(bs_fov))
+        ue_full = ue_fov is None or self._is_full_fov(np.array(ue_fov))
 
         # Access rotated angles (radians). This will compute and cache if needed.
         aod_theta_rot = self[c.AOD_EL_ROT_PARAM_NAME]
@@ -1224,12 +1082,12 @@ class Dataset(DotDict):
 
         # Apply BS FoV if restricted
         if not bs_full:
-            tx_mask = _apply_FoV_batch(np.array(eff_bs_fov), aod_theta_rot, aod_phi_rot)
+            tx_mask = _apply_FoV_batch(np.array(bs_fov), aod_theta_rot, aod_phi_rot)
             path_mask = np.logical_and(path_mask, tx_mask)
 
         # Apply UE FoV if restricted
         if not ue_full:
-            rx_mask = _apply_FoV_batch(np.array(eff_ue_fov), aoa_theta_rot, aoa_phi_rot)
+            rx_mask = _apply_FoV_batch(np.array(ue_fov), aoa_theta_rot, aoa_phi_rot)
             path_mask = np.logical_and(path_mask, rx_mask)
 
         # Physically remove paths outside FoV and return new dataset
@@ -1485,7 +1343,7 @@ class Dataset(DotDict):
         """
         self._clear_cache_doppler()
 
-        if type(velocities) == list or type(velocities) == tuple:
+        if isinstance(velocities, list) or isinstance(velocities, tuple):
             velocities = np.array(velocities)
 
         if velocities.ndim != 1:
@@ -1529,14 +1387,14 @@ class Dataset(DotDict):
         Returns:
             None
         """
-        if type(vel) == list or type(vel) == tuple:
+        if isinstance(vel, list) or isinstance(vel, tuple):
             vel = np.array(vel)
         if vel.ndim == 1:
             vel = np.repeat(vel[None, :], len(obj_idx), axis=0)
         if vel.shape[0] != len(obj_idx):
             raise ValueError('Number of velocities must match number of objects')
         
-        if type(obj_idx) == int:
+        if isinstance(obj_idx, int):
             obj_idx = [obj_idx]
         for idx, obj_id in enumerate(obj_idx):
             self.scene.objects[obj_id].vel = vel[idx]
@@ -1748,13 +1606,6 @@ class Dataset(DotDict):
         c.AOD_AZ_ROT_PARAM_NAME: '_compute_rotated_angles',
         c.AOD_EL_ROT_PARAM_NAME: '_compute_rotated_angles',
         'array_response_product': '_compute_array_response_product',
-        
-        # Field of view
-        c.FOV_MASK_PARAM_NAME: '_compute_fov',
-        c.AOA_AZ_FOV_PARAM_NAME: '_compute_fov',
-        c.AOA_EL_FOV_PARAM_NAME: '_compute_fov',
-        c.AOD_AZ_FOV_PARAM_NAME: '_compute_fov',
-        c.AOD_EL_FOV_PARAM_NAME: '_compute_fov',
         
         # Power with antenna gain
         c.PWR_LINEAR_ANT_GAIN_PARAM_NAME: '_compute_power_linear_ant_gain',
@@ -1986,7 +1837,7 @@ class DynamicDataset(MacroDataset):
             raise ValueError(f'Time reference must be a single value or a list of {self.n_scenes} values')
         
         if self.timestamps.ndim != 1:
-            raise ValueError(f'Time reference must be single dimension.')
+            raise ValueError('Time reference must be single dimension.')
 
         self._compute_speeds()
     

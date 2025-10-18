@@ -73,10 +73,5 @@ dataset.los.plot(title='Full dataset')
 dataset_t.los.plot(title='Trimmed dataset')
 
 #%%
-dataset.los.plot(title='Full dataset')
-dataset_t.los.plot(title='Trimmed dataset')
-
-
-#%%
 dataset.power.plot(title='Full dataset')
 dataset_t.power.plot(title='Trimmed dataset')
