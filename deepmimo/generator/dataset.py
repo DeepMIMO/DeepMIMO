@@ -1638,6 +1638,7 @@ class Dataset(DotDict):
         cache_keys = {
             # Core computed attributes
             c.NUM_PATHS_PARAM_NAME,
+            c.MAX_PATHS_PARAM_NAME,
             c.LOS_PARAM_NAME,
             c.NUM_INTERACTIONS_PARAM_NAME,
             c.MAX_INTERACTIONS_PARAM_NAME,
