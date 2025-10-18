@@ -216,6 +216,9 @@ NUM_INTERACTIONS_PARAM_NAME = 'num_inter'
 NUM_PATHS_FOV_PARAM_NAME = '_num_paths_fov'  # Number of paths within FoV for each user
 DOPPLER_PARAM_NAME = 'doppler'  # Doppler frequency shifts [Hz] for each user and path
 INTER_OBJECTS_PARAM_NAME = 'inter_obj'  # Object ids at each interaction point
+ARRAY_RESPONSE_PRODUCT_PARAM_NAME = 'array_response_product'
+GRID_SIZE_PARAM_NAME = 'grid_size'
+GRID_SPACING_PARAM_NAME = 'grid_spacing'
 
 # Rotated angles (after antenna rotation)
 AOA_AZ_ROT_PARAM_NAME = '_aoa_az_rot'       # Azimuth   angles after rotation (radians)
@@ -318,7 +321,14 @@ DATASET_ALIASES = {
     # Time of arrival aliases
     'toa': DELAY_PARAM_NAME,
     'time_of_arrival': DELAY_PARAM_NAME,
-
+    
+    # Array response product aliases
+    'array_response_product': ARRAY_RESPONSE_PRODUCT_PARAM_NAME,
+    
+    # Grid size aliases
+    'grid_size': GRID_SIZE_PARAM_NAME,
+    'grid_spacing': GRID_SPACING_PARAM_NAME,
+    
     # Interaction aliases
     'bounce_type': INTERACTIONS_PARAM_NAME,
     'interactions': INTERACTIONS_PARAM_NAME,

@@ -62,7 +62,8 @@ from .generator_utils import (
     dbw2watt,
     get_uniform_idxs,
     get_grid_idxs,
-    get_linear_idxs
+    get_linear_idxs,
+    get_idxs_with_limits
 )
 
 # Converter utilities
@@ -596,8 +597,7 @@ class Dataset(DotDict):
         for k in rotated_angles_keys & self.keys():
             super().__delitem__(k)
         
-        # Also clear FOV cache since it depends on rotated angles
-        self._clear_cache_fov()
+        # No FoV cache to clear; FoV is handled via trimming, not lazy caching
 
     def _compute_single_array_response(self, ant_params: Dict, theta: np.ndarray, 
                                        phi: np.ndarray) -> np.ndarray:
@@ -629,10 +629,10 @@ class Dataset(DotDict):
         
         # Compute individual responses
         array_response_TX = self._compute_single_array_response(
-            tx_ant_params, self[c.AOD_EL_FOV_PARAM_NAME], self[c.AOD_AZ_FOV_PARAM_NAME])
+            tx_ant_params, self[c.AOD_EL_ROT_PARAM_NAME], self[c.AOD_AZ_ROT_PARAM_NAME])
             
         array_response_RX = self._compute_single_array_response(
-            rx_ant_params, self[c.AOA_EL_FOV_PARAM_NAME], self[c.AOA_AZ_FOV_PARAM_NAME])
+            rx_ant_params, self[c.AOA_EL_ROT_PARAM_NAME], self[c.AOA_AZ_ROT_PARAM_NAME])
         
         # Compute product with proper broadcasting
         # [n_users, M_rx, M_tx, n_paths]
@@ -642,33 +642,6 @@ class Dataset(DotDict):
     # 4. Field of View Operations
     ###########################################
 
-    def apply_fov(self, bs_fov: np.ndarray = np.array([360, 180]), 
-                  ue_fov: np.ndarray = np.array([360, 180])) -> None:
-        """Apply field of view (FoV) filtering to the dataset.
-        
-        This method sets the FoV parameters and invalidates any cached FoV-dependent attributes.
-        The actual filtering will be performed lazily when FoV-dependent attributes are accessed.
-        
-        Args:
-            bs_fov: Base station FoV as [horizontal, vertical] in degrees. Defaults to [360, 180] (full sphere).
-            ue_fov: User equipment FoV as [horizontal, vertical] in degrees. Defaults to [360, 180] (full sphere).
-            
-        Note:
-            This operation affects all path-related attributes and cached computations.
-            The following will be recomputed as needed when accessed:
-            - FoV filtered angles
-            - Number of valid paths
-            - Line of sight status
-            - Channel matrices
-            - Powers with antenna gain
-        """
-        # Clear cached FoV-dependent attributes
-        self._clear_cache_fov()
-            
-        # Store FoV parameters
-        self.bs_fov = bs_fov
-        self.ue_fov = ue_fov
-    
     def _is_full_fov(self, fov: np.ndarray) -> bool:
         """Check if a FoV parameter represents a full sphere view.
         
@@ -680,94 +653,7 @@ class Dataset(DotDict):
         """
         return fov[0] >= 360 and fov[1] >= 180
 
-    def _is_fov_enabled(self) -> bool:
-        """Get the current FoV status including parameters and whether they are full sphere.
-        
-        Returns:
-            bool: True if FoV filtering is enabled
-        """
-        bs_fov = self.get('bs_fov')
-        ue_fov = self.get('ue_fov')
-        bs_full = bs_fov is not None and self._is_full_fov(bs_fov)
-        ue_full = ue_fov is not None and self._is_full_fov(ue_fov)
-        has_fov = (bs_fov is not None and not bs_full) or (ue_fov is not None and not ue_full)
-        
-        return has_fov
-
-    def _compute_fov(self) -> Dict[str, np.ndarray]:
-        """Compute field of view filtered angles for all users.
-        
-        This function applies field of view constraints to the rotated angles
-        and stores both the filtered angles and the mask in the dataset.
-        If no FoV parameters are set, assumes full FoV and returns unfiltered angles.
-        
-        Returns:
-            Dict: Dictionary containing FoV filtered angles and mask
-        """
-        # Get rotated angles from dataset
-        aod_theta = self[c.AOD_EL_ROT_PARAM_NAME]  # [n_users, n_paths]
-        aod_phi = self[c.AOD_AZ_ROT_PARAM_NAME]    # [n_users, n_paths]
-        aoa_theta = self[c.AOA_EL_ROT_PARAM_NAME]  # [n_users, n_paths]
-        aoa_phi = self[c.AOA_AZ_ROT_PARAM_NAME]    # [n_users, n_paths]
-        
-        # Get FoV parameters and check if they are full sphere
-        bs_fov = self.get('bs_fov')
-        ue_fov = self.get('ue_fov')
-        bs_full = bs_fov is not None and self._is_full_fov(bs_fov)
-        ue_full = ue_fov is not None and self._is_full_fov(ue_fov)
-        
-        # If no FoV params or both are full sphere, return unfiltered angles
-        if (bs_fov is None and ue_fov is None) or (bs_full and ue_full):
-            return {
-                c.FOV_MASK_PARAM_NAME: None,
-                c.AOD_EL_FOV_PARAM_NAME: aod_theta,
-                c.AOD_AZ_FOV_PARAM_NAME: aod_phi,
-                c.AOA_EL_FOV_PARAM_NAME: aoa_theta,
-                c.AOA_AZ_FOV_PARAM_NAME: aoa_phi
-            }
-        
-        # Initialize mask as all True
-        fov_mask = np.ones_like(aod_theta, dtype=bool)
-        
-        # Only apply BS FoV filtering if restricted
-        if not bs_full:
-            tx_mask = _apply_FoV_batch(bs_fov, aod_theta, aod_phi)
-            fov_mask = np.logical_and(fov_mask, tx_mask)
-            
-        # Only apply UE FoV filtering if restricted
-        if not ue_full:
-            rx_mask = _apply_FoV_batch(ue_fov, aoa_theta, aoa_phi)
-            fov_mask = np.logical_and(fov_mask, rx_mask)
-        
-        return {
-            c.FOV_MASK_PARAM_NAME: fov_mask,
-            c.AOD_EL_FOV_PARAM_NAME: np.where(fov_mask, aod_theta, np.nan),
-            c.AOD_AZ_FOV_PARAM_NAME: np.where(fov_mask, aod_phi, np.nan),
-            c.AOA_EL_FOV_PARAM_NAME: np.where(fov_mask, aoa_theta, np.nan),
-            c.AOA_AZ_FOV_PARAM_NAME: np.where(fov_mask, aoa_phi, np.nan)
-        }
-
-    def _clear_cache_fov(self) -> None:
-        """Clear all cached attributes that depend on field of view (FoV) filtering.
-        
-        This includes:
-        - FoV filtered angles
-        - FoV mask
-        - Number of valid paths
-        - Line of sight status
-        - Channel matrices
-        - Powers with antenna gain
-        """
-        # Define FOV-dependent keys
-        fov_dependent_keys = {
-            c.FOV_MASK_PARAM_NAME, c.NUM_PATHS_PARAM_NAME, c.LOS_PARAM_NAME,
-            c.CHANNEL_PARAM_NAME,  c.PWR_LINEAR_ANT_GAIN_PARAM_NAME,
-            c.AOD_EL_FOV_PARAM_NAME, c.AOD_AZ_FOV_PARAM_NAME,
-            c.AOA_EL_FOV_PARAM_NAME, c.AOA_AZ_FOV_PARAM_NAME
-        }
-        # Remove all FOV-dependent keys at once
-        for k in fov_dependent_keys & self.keys():
-            super().__delitem__(k)
+    
 
     ###########################################
     # 5. Path and Power Computations
@@ -816,26 +702,9 @@ class Dataset(DotDict):
         """
         los_status = np.full(self.inter.shape[0], -1)
         
-        # Get FoV mask if FoV filtering is enabled
-        if self._is_fov_enabled():
-            _ = self[c.AOD_AZ_ROT_PARAM_NAME]
-            fov_mask = self[c.FOV_MASK_PARAM_NAME]
-        else:
-            fov_mask = None
-
-        if fov_mask is not None:
-            # If we have FoV filtering, only consider paths within FoV
-            has_paths = np.any(fov_mask, axis=1)
-            # For each user, find the first valid path within FoV
-            first_valid_path = np.full(self.inter.shape[0], -1)
-            for i in range(self.inter.shape[0]):
-                valid_paths = np.where(fov_mask[i])[0]
-                if len(valid_paths) > 0:
-                    first_valid_path[i] = self.inter[i, valid_paths[0]]
-        else:
-            # No FoV filtering, use all paths
-            has_paths = self.num_paths > 0
-            first_valid_path = self.inter[:, 0]
+        # With physical trimming, just use current paths
+        has_paths = self.num_paths > 0
+        first_valid_path = self.inter[:, 0]
         
         # Set NLoS status for users with paths
         los_status[has_paths] = 0
@@ -847,12 +716,9 @@ class Dataset(DotDict):
         return los_status
 
     def _compute_num_paths(self) -> np.ndarray:
-        """Compute number of valid paths for each user after FoV filtering."""
+        """Compute number of valid paths for each user (NaNs indicate removed paths)."""
 
-        if self._is_fov_enabled():
-            aoa = self[c.AOA_AZ_FOV_PARAM_NAME]
-        else:
-            aoa = self[c.AOA_AZ_PARAM_NAME]
+        aoa = self[c.AOA_AZ_PARAM_NAME]
         
         # Count non-NaN values (NaN indicates filtered out, possibly by FoV)
         return (~np.isnan(aoa)).sum(axis=1)
@@ -930,12 +796,12 @@ class Dataset(DotDict):
         antennapattern = AntennaPattern(tx_pattern=tx_ant_params[c.PARAMSET_ANT_RAD_PAT],
                                         rx_pattern=rx_ant_params[c.PARAMSET_ANT_RAD_PAT])
         
-        # Get FoV filtered angles and apply antenna patterns in batch
+        # Apply antenna patterns using rotated angles
         return antennapattern.apply_batch(power=self[c.PWR_LINEAR_PARAM_NAME],
-                                          aoa_theta=self[c.AOA_EL_FOV_PARAM_NAME],
-                                          aoa_phi=self[c.AOA_AZ_FOV_PARAM_NAME], 
-                                          aod_theta=self[c.AOD_EL_FOV_PARAM_NAME],
-                                          aod_phi=self[c.AOD_AZ_FOV_PARAM_NAME])
+                                          aoa_theta=self[c.AOA_EL_ROT_PARAM_NAME],
+                                          aoa_phi=self[c.AOA_AZ_ROT_PARAM_NAME], 
+                                          aod_theta=self[c.AOD_EL_ROT_PARAM_NAME],
+                                          aod_phi=self[c.AOD_AZ_ROT_PARAM_NAME])
 
 
     def _compute_power_linear(self) -> np.ndarray:
@@ -983,143 +849,107 @@ class Dataset(DotDict):
         
         return grid_points == self.n_ue
 
-    def get_active_idxs(self) -> np.ndarray:
-        """Return indices of active users.
-        
+    def _get_active_idxs(self) -> np.ndarray:
+        """Internal: Return indices of users that have at least one valid path.
+
         Returns:
-            Array of indices of active users
+            np.ndarray: 1D array of integer indices (shape: [n_active]) where
+                        `num_paths > 0`.
         """
         return np.where(self.num_paths > 0)[0]
 
-    def get_linear_idxs(self, start_pos: np.ndarray, end_pos: np.ndarray, n_steps: int, filter_repeated: bool = True) -> np.ndarray:
-        """Return indices of users along a linear path between two points.
-        
+
+    def _get_linear_idxs(self, start_pos: np.ndarray, end_pos: np.ndarray, n_steps: int, filter_repeated: bool = True) -> np.ndarray:
+        """Internal: Return indices of users along a straight line between two positions.
+
         Args:
-            start_pos: Starting position coordinates (2D or 3D) [x, y] or [x, y, z]
-            end_pos: Ending position coordinates (2D or 3D) [x, y] or [x, y, z]
-            n_steps: Number of steps along the path 
-            filter_repeated: Whether to filter repeated positions (default: True)
-        
+            start_pos (np.ndarray): Start coordinate [x, y] or [x, y, z].
+            end_pos (np.ndarray): End coordinate [x, y] or [x, y, z].
+            n_steps (int): Number of intermediate samples along the segment.
+            filter_repeated (bool): If True, de-duplicate indices when sampled
+                positions map to the same user location.
+
         Returns:
-            Array of indices of users along the linear path
-        """ 
+            np.ndarray: 1D array of integer indices ordered along the path.
+        """
         return get_linear_idxs(self.rx_pos, start_pos, end_pos, n_steps, filter_repeated)
 
-    def get_uniform_idxs(self, steps: List[int]) -> np.ndarray:
-        """Return indices of users at uniform intervals.
-        
+
+    def _get_uniform_idxs(self, steps: List[int]) -> np.ndarray:
+        """Internal: Uniformly sample users over the receiver grid.
+
         Args:
-            steps: List of sampling steps for each dimension [x_step, y_step]
-            
+            steps (List[int]): `[x_step, y_step]` stride per grid axis.
+
         Returns:
-            Array of indices for uniformly sampled users
-            
-        Raises:
-            ValueError: If dataset does not have a valid grid structure
+            np.ndarray: 1D array of integer indices sampled on a uniform grid.
         """
         return get_uniform_idxs(self.n_ue, self.grid_size, steps)
+
     
-    def get_row_idxs(self, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
-        """Return indices of users in the specified rows, assuming a grid structure.
-        
+    def _get_row_idxs(self, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
+        """Internal: Return indices of users in the specified grid rows.
+
         Args:
-            row_idxs: Array of row indices to include in the new dataset
+            row_idxs (int | list[int] | np.ndarray): Row index or iterable of rows.
 
         Returns:
-            Array of indices of receivers in the specified rows
+            np.ndarray: 1D array of integer indices for the selected rows.
         """
         return get_grid_idxs(self.grid_size, 'row', row_idxs)
+
         
-    def get_col_idxs(self, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
-        """Return indices of users in the specified columns, assuming a grid structure.
-        
+    def _get_col_idxs(self, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
+        """Internal: Return indices of users in the specified grid columns.
+
         Args:
-            col_idxs: Array of column indices to include in the new dataset
+            col_idxs (int | list[int] | np.ndarray): Column index or iterable of columns.
 
         Returns:
-            Array of indices of receivers in the specified columns
+            np.ndarray: 1D array of integer indices for the selected columns.
         """
         return get_grid_idxs(self.grid_size, 'col', col_idxs)
 
     
-    ###########################################
-    # 7. Subsetting and Trimming
-    ###########################################
+    def get_idxs(
+        self,
+        mode: str,
+        **kwargs
+    ) -> np.ndarray:
+        """Unified dispatcher for user index selection.
 
-    def subset(self, idxs: np.ndarray) -> 'Dataset':
-        """Create a new dataset containing only the selected indices.
-        
-        Args:
-            idxs: Array of indices to include in the new dataset
-            
+        Modes:
+            - 'active': indices of active users (paths > 0)
+            - 'linear': indices along line: requires start_pos, end_pos, n_steps [, filter_repeated]
+            - 'uniform': grid sampling: requires steps=[x_step, y_step]
+            - 'row': row selection: requires row_idxs
+            - 'col': column selection: requires col_idxs
+            - 'limits': position bounds: requires x_min, x_max, y_min, y_max, z_min, z_max
+
         Returns:
-            Dataset: A new dataset containing only the selected indices
+            np.ndarray of selected indices
         """
-        # Create a new dataset with initial data
-        initial_data = {}
-        
-        # Copy shared parameters that should remain consistent across datasets
-        for param in SHARED_PARAMS:
-            if self.hasattr(param):
-                initial_data[param] = getattr(self, param)
-            
-        # Directly set n_ue
-        initial_data['n_ue'] = len(idxs)
-        
-        # Create new dataset with initial data
-        new_dataset = Dataset(initial_data)
-        
-        # Copy all attributes
-        for attr, value in self.to_dict().items():
-            # skip private and already handled attributes
-            if not attr.startswith('_') and attr not in SHARED_PARAMS + ['n_ue']:
-                if isinstance(value, np.ndarray) and len(value.shape) == 0:
-                    print(f'{attr} is a scalar')
-                if isinstance(value, np.ndarray) and value.ndim > 0 and value.shape[0] == self.n_ue:
-                    # Copy and index arrays with UE dimension
-                    setattr(new_dataset, attr, value[idxs])
-                else:
-                    # Copy other attributes as is
-                    setattr(new_dataset, attr, value)
-                
-        return new_dataset
+        m = mode.lower()
+        if m == 'active':
+            return self._get_active_idxs()
+        if m == 'linear':
+            return self._get_linear_idxs(
+                kwargs['start_pos'], kwargs['end_pos'], kwargs['n_steps'],
+                kwargs.get('filter_repeated', True)
+            )
+        if m == 'uniform':
+            return self._get_uniform_idxs(kwargs['steps'])
+        if m == 'row':
+            return self._get_row_idxs(kwargs['row_idxs'])
+        if m == 'col':
+            return self._get_col_idxs(kwargs['col_idxs'])
+        if m == 'limits':
+            return get_idxs_with_limits(self.rx_pos, **kwargs)
+        raise ValueError(f"Unknown mode: {mode}")
 
-    def _clear_all_caches(self) -> None:
-        """Clear all caches."""
-        self._clear_cache_core()
-        self._clear_cache_rotated_angles()
-        self._clear_cache_fov()
-        self._clear_cache_doppler()
-
-    def _clear_cache_core(self) -> None:
-        """Clear all cached attributes that don't have dedicated clearing functions.
-        
-        This includes:
-        - Line of sight status
-        - Number of paths
-        - Number of interactions
-        - Channel matrices
-        - Powers with antenna gain
-        - Inter-object related attributes
-        - Other computed attributes
-        """
-        # Define cache keys for attributes without dedicated clearing functions
-        cache_keys = {
-            # Core computed attributes
-            c.NUM_PATHS_PARAM_NAME,
-            c.LOS_PARAM_NAME,
-            c.NUM_INTERACTIONS_PARAM_NAME,
-            c.MAX_INTERACTIONS_PARAM_NAME,
-            c.INTER_STR_PARAM_NAME,
-            c.INTER_INT_PARAM_NAME,
-            c.CHANNEL_PARAM_NAME,
-            c.PWR_LINEAR_ANT_GAIN_PARAM_NAME,
-            c.INTER_OBJECTS_PARAM_NAME
-        }
-        
-        # Remove all cache keys at once
-        for k in cache_keys & self.keys():
-            super().__delitem__(k)
+    ###########################################
+    # 7. Trimming
+    ###########################################
 
     def _trim_by_path(self, path_mask: np.ndarray) -> 'Dataset':
         """Helper function to trim paths based on a boolean mask.
@@ -1176,33 +1006,90 @@ class Dataset(DotDict):
         return aux_dataset
 
     def _trim_by_index(self, idxs: np.ndarray) -> 'Dataset':
-        """Rename previous subset function.
+        """Create a new dataset containing only the selected indices.
         
         Args:
-            idxs: The indices to trim the dataset by.
+            idxs: Array of indices to include in the new dataset
+            
+        Returns:
+            Dataset: A new dataset containing only the selected indices
         """
-        return self.subset(idxs)
+        # Create a new dataset with initial data
+        initial_data = {}
+        
+        # Copy shared parameters that should remain consistent across datasets
+        for param in SHARED_PARAMS:
+            if self.hasattr(param):
+                initial_data[param] = getattr(self, param)
+            
+        # Directly set n_ue
+        initial_data['n_ue'] = len(idxs)
+        
+        # Create new dataset with initial data
+        new_dataset = Dataset(initial_data)
+        
+        # Copy all attributes
+        for attr, value in self.to_dict().items():
+            # skip private and already handled attributes
+            if not attr.startswith('_') and attr not in SHARED_PARAMS + ['n_ue']:
+                if isinstance(value, np.ndarray) and len(value.shape) == 0:
+                    print(f'{attr} is a scalar')
+                if isinstance(value, np.ndarray) and value.ndim > 0 and value.shape[0] == self.n_ue:
+                    # Copy and index arrays with UE dimension
+                    setattr(new_dataset, attr, value[idxs])
+                else:
+                    # Copy other attributes as is
+                    setattr(new_dataset, attr, value)
+                
+        return new_dataset
     
-    def _trim_by_fov(self, fov: float) -> 'Dataset':
-        """Trim the dataset by FoV.
-        
-        This function performs the same as applying the FoV filter to the dataset. 
-        It is possible to apply it based on a BS and UE rotation, either already
-        defined in the channel parameters or based on input arguments.
+    def _trim_by_fov(
+        self,
+        bs_fov: np.ndarray | list | tuple | None = None,
+        ue_fov: np.ndarray | list | tuple | None = None,
+    ) -> 'Dataset':
+        """Trim the dataset by field of view and return a new dataset.
 
-        BENEFIT: makes all the FoV logic unnecessary. 
-
-        NOTE: before making this function, decide what to do with the rotated angles.
-        Should we always have a .apply_fov(ue_fov, bs_fov) or .apply_rot(ue_rot, bs_rot) 
-        methods that apply in-place or return new datasets?
-        ANS: Yes. aoa_az should always be with respect to the BS/UE orientation.
+        This function removes paths that fall outside the specified FoV at the
+        transmitter (BS) and receiver (UE). It computes a boolean path mask from
+        the rotated angles and then physically removes the excluded paths using
+        the existing path-trimming utility.
 
         Args:
-            fov: The FoV to trim the dataset by.
-        """
-        return 0
+            bs_fov: Base-station FoV as [horizontal_deg, vertical_deg]. If None, treated as full FoV.
+            ue_fov: User-equipment FoV as [horizontal_deg, vertical_deg]. If None, treated as full FoV.
 
-    def trim_by_path_depth(self, path_depth: int) -> 'Dataset':
+        Returns:
+            A new Dataset instance with only paths inside the FoV kept.
+        """
+        # Resolve full-FoV flags
+        bs_full = bs_fov is None or self._is_full_fov(np.array(bs_fov))
+        ue_full = ue_fov is None or self._is_full_fov(np.array(ue_fov))
+
+        # Access rotated angles (radians). This will compute and cache if needed.
+        aod_theta_rot = self[c.AOD_EL_ROT_PARAM_NAME]
+        aod_phi_rot   = self[c.AOD_AZ_ROT_PARAM_NAME]
+        aoa_theta_rot = self[c.AOA_EL_ROT_PARAM_NAME]
+        aoa_phi_rot   = self[c.AOA_AZ_ROT_PARAM_NAME]
+
+        # Start with baseline: keep all existing valid paths. Using AoA azimuth as validity proxy.
+        base_valid = ~np.isnan(self[c.AOA_AZ_PARAM_NAME])
+        path_mask = base_valid.copy()
+
+        # Apply BS FoV if restricted
+        if not bs_full:
+            tx_mask = _apply_FoV_batch(np.array(bs_fov), aod_theta_rot, aod_phi_rot)
+            path_mask = np.logical_and(path_mask, tx_mask)
+
+        # Apply UE FoV if restricted
+        if not ue_full:
+            rx_mask = _apply_FoV_batch(np.array(ue_fov), aoa_theta_rot, aoa_phi_rot)
+            path_mask = np.logical_and(path_mask, rx_mask)
+
+        # Physically remove paths outside FoV and return new dataset
+        return self._trim_by_path(path_mask)
+
+    def _trim_by_path_depth(self, path_depth: int) -> 'Dataset':
         """Trim the dataset to keep only paths with at most the specified number of interactions.
         
         Args:
@@ -1222,7 +1109,7 @@ class Dataset(DotDict):
         
         return self._trim_by_path(path_mask)
 
-    def trim_by_path_type(self, allowed_types: List[str]) -> 'Dataset':
+    def _trim_by_path_type(self, allowed_types: List[str]) -> 'Dataset':
         """Trim the dataset to keep only paths with allowed interaction types.
         
         Args:
@@ -1264,6 +1151,53 @@ class Dataset(DotDict):
                 path_mask[user_idx, path_idx] = is_valid
         
         return self._trim_by_path(path_mask)
+
+    def trim(
+        self,
+        *,
+        idxs: Optional[np.ndarray] = None,
+        bs_fov: np.ndarray | list | tuple | None = None,
+        ue_fov: np.ndarray | list | tuple | None = None,
+        path_depth: Optional[int] = None,
+        path_types: Optional[List[str]] = None,
+    ) -> 'Dataset':
+        """Return a new dataset after applying multiple trims in optimal order.
+
+        Order applied (to minimize work for complex trims):
+        1) Index subset
+        2) FoV trimming
+        3) Path depth trimming
+        4) Path type trimming
+
+        Args:
+            idxs: UE indices to keep. If None, skip.
+            bs_fov: Base-station FoV [h_deg, v_deg]. None => full FoV (no trimming).
+            ue_fov: User-equipment FoV [h_deg, v_deg]. None => full FoV (no trimming).
+            path_depth: Keep only paths with a number of interactions <= path_depth.
+            path_types: Keep only paths comprised of allowed interaction types.
+
+        Returns:
+            A new Dataset with all requested trims applied.
+        """
+        ds: Dataset = self
+
+        # 1) Index subset first (cheapest and reduces subsequent work)
+        if idxs is not None:
+            ds = ds._trim_by_index(np.array(idxs))
+
+        # 2) FoV trimming (reduces paths for later complex filters)
+        if bs_fov is not None or ue_fov is not None:
+            ds = ds._trim_by_fov(bs_fov=bs_fov, ue_fov=ue_fov)
+
+        # 3) Path depth trimming
+        if path_depth is not None:
+            ds = ds._trim_by_path_depth(path_depth)
+
+        # 4) Path type trimming (most expensive)
+        if path_types is not None:
+            ds = ds._trim_by_path_type(path_types)
+
+        return ds
 
     ###########################################
     # 8. Visualization
@@ -1351,7 +1285,7 @@ class Dataset(DotDict):
         """
         self._clear_cache_doppler()
         
-        if type(velocities) == list or type(velocities) == tuple:
+        if isinstance(velocities, list) or isinstance(velocities, tuple):
             velocities = np.array(velocities)
             
         if velocities.ndim == 1:
@@ -1452,7 +1386,7 @@ class Dataset(DotDict):
         """
         self._clear_cache_doppler()
 
-        if type(velocities) == list or type(velocities) == tuple:
+        if isinstance(velocities, list) or isinstance(velocities, tuple):
             velocities = np.array(velocities)
 
         if velocities.ndim != 1:
@@ -1496,14 +1430,14 @@ class Dataset(DotDict):
         Returns:
             None
         """
-        if type(vel) == list or type(vel) == tuple:
+        if isinstance(vel, list) or isinstance(vel, tuple):
             vel = np.array(vel)
         if vel.ndim == 1:
             vel = np.repeat(vel[None, :], len(obj_idx), axis=0)
         if vel.shape[0] != len(obj_idx):
             raise ValueError('Number of velocities must match number of objects')
         
-        if type(obj_idx) == int:
+        if isinstance(obj_idx, int):
             obj_idx = [obj_idx]
         for idx, obj_id in enumerate(obj_idx):
             self.scene.objects[obj_id].vel = vel[idx]
@@ -1679,8 +1613,45 @@ class Dataset(DotDict):
         return inter_obj_ids
 
     ###########################################
-    # 10. Utilities and Computation Methods
+    # 10. Cache Management
     ###########################################
+
+    def _clear_all_caches(self) -> None:
+        """Clear all caches."""
+        self._clear_cache_core()
+        self._clear_cache_rotated_angles()
+        self._clear_cache_doppler()
+
+    def _clear_cache_core(self) -> None:
+        """Clear all cached attributes that don't have dedicated clearing functions.
+        
+        This includes:
+        - Line of sight status
+        - Number of paths
+        - Number of interactions
+        - Channel matrices
+        - Powers with antenna gain
+        - Inter-object related attributes
+        - Other computed attributes
+        """
+        # Define cache keys for attributes without dedicated clearing functions
+        cache_keys = {
+            # Core computed attributes
+            c.NUM_PATHS_PARAM_NAME,
+            c.MAX_PATHS_PARAM_NAME,
+            c.LOS_PARAM_NAME,
+            c.NUM_INTERACTIONS_PARAM_NAME,
+            c.MAX_INTERACTIONS_PARAM_NAME,
+            c.INTER_STR_PARAM_NAME,
+            c.INTER_INT_PARAM_NAME,
+            c.CHANNEL_PARAM_NAME,
+            c.PWR_LINEAR_ANT_GAIN_PARAM_NAME,
+            c.INTER_OBJECTS_PARAM_NAME
+        }
+        
+        # Remove all cache keys at once
+        for k in cache_keys & self.keys():
+            super().__delitem__(k)
 
     def _get_txrx_sets(self) -> list[TxRxSet]:
         """Get the txrx sets for the dataset.
@@ -1690,54 +1661,6 @@ class Dataset(DotDict):
         """
         return get_txrx_sets(self.get('parent_name', self.name))
     
-    # Dictionary mapping attribute names to their computation methods
-    # (in order of computation)
-    _computed_attributes = {
-        c.N_UE_PARAM_NAME: '_compute_n_ue',
-        c.NUM_PATHS_PARAM_NAME: '_compute_num_paths',
-        c.MAX_PATHS_PARAM_NAME: '_compute_max_paths',
-        c.NUM_INTERACTIONS_PARAM_NAME: '_compute_num_interactions',
-        c.MAX_INTERACTIONS_PARAM_NAME: '_compute_max_interactions',
-        c.DIST_PARAM_NAME: '_compute_distances',
-        c.PATHLOSS_PARAM_NAME: 'compute_pathloss',
-        c.CHANNEL_PARAM_NAME: 'compute_channels',
-        c.LOS_PARAM_NAME: '_compute_los',
-        c.CH_PARAMS_PARAM_NAME: 'set_channel_params',
-        c.DOPPLER_PARAM_NAME: '_compute_doppler',
-        c.INTER_OBJECTS_PARAM_NAME: '_compute_inter_objects',
-        
-        # Power linear
-        c.PWR_LINEAR_PARAM_NAME: '_compute_power_linear',
-        
-        # Rotated angles
-        c.AOA_AZ_ROT_PARAM_NAME: '_compute_rotated_angles',
-        c.AOA_EL_ROT_PARAM_NAME: '_compute_rotated_angles', 
-        c.AOD_AZ_ROT_PARAM_NAME: '_compute_rotated_angles',
-        c.AOD_EL_ROT_PARAM_NAME: '_compute_rotated_angles',
-        'array_response_product': '_compute_array_response_product',
-        
-        # Field of view
-        c.FOV_MASK_PARAM_NAME: '_compute_fov',
-        c.AOA_AZ_FOV_PARAM_NAME: '_compute_fov',
-        c.AOA_EL_FOV_PARAM_NAME: '_compute_fov',
-        c.AOD_AZ_FOV_PARAM_NAME: '_compute_fov',
-        c.AOD_EL_FOV_PARAM_NAME: '_compute_fov',
-        
-        # Power with antenna gain
-        c.PWR_LINEAR_ANT_GAIN_PARAM_NAME: '_compute_power_linear_ant_gain',
-        
-        # Grid information
-        'grid_size': '_compute_grid_info',
-        'grid_spacing': '_compute_grid_info',
-
-        # Interactions
-        c.INTER_STR_PARAM_NAME: '_compute_inter_str',
-        c.INTER_INT_PARAM_NAME: '_compute_inter_int',
-
-        # Txrx set information
-        'txrx_sets': '_get_txrx_sets',
-    }
-
     def info(self, param_name: str | None = None) -> None:
         """Display help information about DeepMIMO dataset parameters.
         
@@ -1769,6 +1692,51 @@ class Dataset(DotDict):
         
         # Call the web export function
         export_dataset_to_binary(self, dataset_name, output_dir)
+
+    ###########################################
+    # 10. Computation Methods
+    ###########################################
+
+    # Dictionary mapping attribute names to their computation methods
+    # (in order of computation)
+    _computed_attributes = {
+        c.N_UE_PARAM_NAME: '_compute_n_ue',
+        c.NUM_PATHS_PARAM_NAME: '_compute_num_paths',
+        c.MAX_PATHS_PARAM_NAME: '_compute_max_paths',
+        c.NUM_INTERACTIONS_PARAM_NAME: '_compute_num_interactions',
+        c.MAX_INTERACTIONS_PARAM_NAME: '_compute_max_interactions',
+        c.DIST_PARAM_NAME: '_compute_distances',
+        c.PATHLOSS_PARAM_NAME: 'compute_pathloss',
+        c.CHANNEL_PARAM_NAME: 'compute_channels',
+        c.LOS_PARAM_NAME: '_compute_los',
+        c.CH_PARAMS_PARAM_NAME: 'set_channel_params',
+        c.DOPPLER_PARAM_NAME: '_compute_doppler',
+        c.INTER_OBJECTS_PARAM_NAME: '_compute_inter_objects',
+        
+        # Power linear
+        c.PWR_LINEAR_PARAM_NAME: '_compute_power_linear',
+        
+        # Rotated angles
+        c.AOA_AZ_ROT_PARAM_NAME: '_compute_rotated_angles',
+        c.AOA_EL_ROT_PARAM_NAME: '_compute_rotated_angles', 
+        c.AOD_AZ_ROT_PARAM_NAME: '_compute_rotated_angles',
+        c.AOD_EL_ROT_PARAM_NAME: '_compute_rotated_angles',
+        c.ARRAY_RESPONSE_PRODUCT_PARAM_NAME: '_compute_array_response_product',
+        
+        # Power with antenna gain
+        c.PWR_LINEAR_ANT_GAIN_PARAM_NAME: '_compute_power_linear_ant_gain',
+        
+        # Grid information
+        c.GRID_SIZE_PARAM_NAME: '_compute_grid_info',
+        c.GRID_SPACING_PARAM_NAME: '_compute_grid_info',
+
+        # Interactions
+        c.INTER_STR_PARAM_NAME: '_compute_inter_str',
+        c.INTER_INT_PARAM_NAME: '_compute_inter_int',
+
+        # Txrx set information
+        c.TXRX_PARAM_NAME: '_get_txrx_sets',
+    }
 
 
 class MacroDataset:
@@ -1953,7 +1921,7 @@ class DynamicDataset(MacroDataset):
             raise ValueError(f'Time reference must be a single value or a list of {self.n_scenes} values')
         
         if self.timestamps.ndim != 1:
-            raise ValueError(f'Time reference must be single dimension.')
+            raise ValueError('Time reference must be single dimension.')
 
         self._compute_speeds()
     
