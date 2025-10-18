@@ -1721,21 +1721,21 @@ class Dataset(DotDict):
         c.AOA_EL_ROT_PARAM_NAME: '_compute_rotated_angles', 
         c.AOD_AZ_ROT_PARAM_NAME: '_compute_rotated_angles',
         c.AOD_EL_ROT_PARAM_NAME: '_compute_rotated_angles',
-        'array_response_product': '_compute_array_response_product',
+        c.ARRAY_RESPONSE_PRODUCT_PARAM_NAME: '_compute_array_response_product',
         
         # Power with antenna gain
         c.PWR_LINEAR_ANT_GAIN_PARAM_NAME: '_compute_power_linear_ant_gain',
         
         # Grid information
-        'grid_size': '_compute_grid_info',
-        'grid_spacing': '_compute_grid_info',
+        c.GRID_SIZE_PARAM_NAME: '_compute_grid_info',
+        c.GRID_SPACING_PARAM_NAME: '_compute_grid_info',
 
         # Interactions
         c.INTER_STR_PARAM_NAME: '_compute_inter_str',
         c.INTER_INT_PARAM_NAME: '_compute_inter_int',
 
         # Txrx set information
-        'txrx_sets': '_get_txrx_sets',
+        c.TXRX_PARAM_NAME: '_get_txrx_sets',
     }
 
 
