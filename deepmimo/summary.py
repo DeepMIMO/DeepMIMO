@@ -239,7 +239,7 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
                 if bs == 0 and n_bs == 1:
                     bs_dataset = dataset
                     # Workaround for DynamicDataset
-                    if type(bs_dataset.bs_pos) == list:
+                    if isinstance(bs_dataset.bs_pos, list):
                         bs_dataset = dataset[0]
                         print('Warning: plot_summary not supported for DynamicDatasets. ')
                         print('Plotting the summary of the first snapshot only. ')
@@ -250,7 +250,7 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
                            s=250, color=bs_colors[bs], label=f'BS {bs + 1}', marker='*')
 
             # Get txrx pair index from the first receiver-only txrx (which is like a rx grid)
-            if type(dataset.txrx) == list:
+            if isinstance(dataset.txrx, list):
                 rx_set_id = [s for s in txrx_sets if s.is_rx and not s.is_tx][0].id
                 first_pair_with_rx_grid = \
                     next(txrx_pair_idx for txrx_pair_idx, txrx_dict in enumerate(dataset.txrx) 

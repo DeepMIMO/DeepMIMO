@@ -62,7 +62,8 @@ from .generator_utils import (
     dbw2watt,
     get_uniform_idxs,
     get_grid_idxs,
-    get_linear_idxs
+    get_linear_idxs,
+    get_idxs_with_limits
 )
 
 # Converter utilities
@@ -848,65 +849,104 @@ class Dataset(DotDict):
         
         return grid_points == self.n_ue
 
-    def get_active_idxs(self) -> np.ndarray:
-        """Return indices of active users.
-        
+    def _get_active_idxs(self) -> np.ndarray:
+        """Internal: Return indices of users that have at least one valid path.
+
         Returns:
-            Array of indices of active users
+            np.ndarray: 1D array of integer indices (shape: [n_active]) where
+                        `num_paths > 0`.
         """
         return np.where(self.num_paths > 0)[0]
 
-    def get_linear_idxs(self, start_pos: np.ndarray, end_pos: np.ndarray, n_steps: int, filter_repeated: bool = True) -> np.ndarray:
-        """Return indices of users along a linear path between two points.
-        
+
+    def _get_linear_idxs(self, start_pos: np.ndarray, end_pos: np.ndarray, n_steps: int, filter_repeated: bool = True) -> np.ndarray:
+        """Internal: Return indices of users along a straight line between two positions.
+
         Args:
-            start_pos: Starting position coordinates (2D or 3D) [x, y] or [x, y, z]
-            end_pos: Ending position coordinates (2D or 3D) [x, y] or [x, y, z]
-            n_steps: Number of steps along the path 
-            filter_repeated: Whether to filter repeated positions (default: True)
-        
+            start_pos (np.ndarray): Start coordinate [x, y] or [x, y, z].
+            end_pos (np.ndarray): End coordinate [x, y] or [x, y, z].
+            n_steps (int): Number of intermediate samples along the segment.
+            filter_repeated (bool): If True, de-duplicate indices when sampled
+                positions map to the same user location.
+
         Returns:
-            Array of indices of users along the linear path
-        """ 
+            np.ndarray: 1D array of integer indices ordered along the path.
+        """
         return get_linear_idxs(self.rx_pos, start_pos, end_pos, n_steps, filter_repeated)
 
-    def get_uniform_idxs(self, steps: List[int]) -> np.ndarray:
-        """Return indices of users at uniform intervals.
-        
+
+    def _get_uniform_idxs(self, steps: List[int]) -> np.ndarray:
+        """Internal: Uniformly sample users over the receiver grid.
+
         Args:
-            steps: List of sampling steps for each dimension [x_step, y_step]
-            
+            steps (List[int]): `[x_step, y_step]` stride per grid axis.
+
         Returns:
-            Array of indices for uniformly sampled users
-            
-        Raises:
-            ValueError: If dataset does not have a valid grid structure
+            np.ndarray: 1D array of integer indices sampled on a uniform grid.
         """
         return get_uniform_idxs(self.n_ue, self.grid_size, steps)
+
     
-    def get_row_idxs(self, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
-        """Return indices of users in the specified rows, assuming a grid structure.
-        
+    def _get_row_idxs(self, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
+        """Internal: Return indices of users in the specified grid rows.
+
         Args:
-            row_idxs: Array of row indices to include in the new dataset
+            row_idxs (int | list[int] | np.ndarray): Row index or iterable of rows.
 
         Returns:
-            Array of indices of receivers in the specified rows
+            np.ndarray: 1D array of integer indices for the selected rows.
         """
         return get_grid_idxs(self.grid_size, 'row', row_idxs)
+
         
-    def get_col_idxs(self, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
-        """Return indices of users in the specified columns, assuming a grid structure.
-        
+    def _get_col_idxs(self, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
+        """Internal: Return indices of users in the specified grid columns.
+
         Args:
-            col_idxs: Array of column indices to include in the new dataset
+            col_idxs (int | list[int] | np.ndarray): Column index or iterable of columns.
 
         Returns:
-            Array of indices of receivers in the specified columns
+            np.ndarray: 1D array of integer indices for the selected columns.
         """
         return get_grid_idxs(self.grid_size, 'col', col_idxs)
 
     
+    def get_idxs(
+        self,
+        mode: str,
+        **kwargs
+    ) -> np.ndarray:
+        """Unified dispatcher for user index selection.
+
+        Modes:
+            - 'active': indices of active users (paths > 0)
+            - 'linear': indices along line: requires start_pos, end_pos, n_steps [, filter_repeated]
+            - 'uniform': grid sampling: requires steps=[x_step, y_step]
+            - 'row': row selection: requires row_idxs
+            - 'col': column selection: requires col_idxs
+            - 'limits': position bounds: requires x_min, x_max, y_min, y_max, z_min, z_max
+
+        Returns:
+            np.ndarray of selected indices
+        """
+        m = mode.lower()
+        if m == 'active':
+            return self._get_active_idxs()
+        if m == 'linear':
+            return self._get_linear_idxs(
+                kwargs['start_pos'], kwargs['end_pos'], kwargs['n_steps'],
+                kwargs.get('filter_repeated', True)
+            )
+        if m == 'uniform':
+            return self._get_uniform_idxs(kwargs['steps'])
+        if m == 'row':
+            return self._get_row_idxs(kwargs['row_idxs'])
+        if m == 'col':
+            return self._get_col_idxs(kwargs['col_idxs'])
+        if m == 'limits':
+            return get_idxs_with_limits(self.rx_pos, **kwargs)
+        raise ValueError(f"Unknown mode: {mode}")
+
     ###########################################
     # 7. Trimming
     ###########################################
