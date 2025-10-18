@@ -75,3 +75,27 @@ dataset_t.los.plot(title='Trimmed dataset')
 #%%
 dataset.power.plot(title='Full dataset')
 dataset_t.power.plot(title='Trimmed dataset')
+
+#%% Unified trim() API example (before/after)
+
+dataset = dm.load('asu_campus_3p5')
+
+# Set a BS rotation to make FoV meaningful
+ch_params = dm.ChannelParameters()
+ch_params.bs_antenna.rotation = [0, 0, -135]
+dataset.set_channel_params(ch_params)
+
+print(f"Before trim -> n_ue={dataset.n_ue}, max_paths={dataset.max_paths}, active_ues={(dataset.num_paths>0).sum()}")
+
+# Apply unified trimming in order: idxs -> FoV -> path depth -> path type
+trimmed = dataset.trim(
+    idxs=np.arange(0, dataset.n_ue, 5),   # keep every other UE
+    bs_fov=[90, 90],                      # FoV at BS
+    path_depth=1,                         # at most 1 interaction
+    path_types=['LoS', 'R']               # only LoS and reflections
+)
+
+print(f"After trim  -> n_ue={trimmed.n_ue}, max_paths={trimmed.max_paths}, active_ues={(trimmed.num_paths>0).sum()}")
+
+# Optional visualization
+trimmed.los.plot(title='Unified trim result')
