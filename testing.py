@@ -57,3 +57,26 @@ d[1].los.plot(scat_sz=20)
 d[1].inter.plot(scat_sz=20)
 
 d.tx_pos # positions of each tx antenna element
+
+#%%
+
+dataset = dm.load('asu_campus_3p5')
+
+# Trim by fov
+ch_params = dm.ChannelParameters()
+ch_params.bs_antenna.rotation = [0, 0, -135]
+dataset.set_channel_params(ch_params)
+dataset_t = dataset._trim_by_fov(bs_fov=[90, 90])
+
+#%% Plot coverage
+dataset.los.plot(title='Full dataset')
+dataset_t.los.plot(title='Trimmed dataset')
+
+#%%
+dataset.los.plot(title='Full dataset')
+dataset_t.los.plot(title='Trimmed dataset')
+
+
+#%%
+dataset.power.plot(title='Full dataset')
+dataset_t.power.plot(title='Trimmed dataset')

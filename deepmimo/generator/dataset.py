@@ -1183,24 +1183,57 @@ class Dataset(DotDict):
         """
         return self.subset(idxs)
     
-    def _trim_by_fov(self, fov: float) -> 'Dataset':
-        """Trim the dataset by FoV.
-        
-        This function performs the same as applying the FoV filter to the dataset. 
-        It is possible to apply it based on a BS and UE rotation, either already
-        defined in the channel parameters or based on input arguments.
+    def _trim_by_fov(
+        self,
+        bs_fov: np.ndarray | list | tuple | None = None,
+        ue_fov: np.ndarray | list | tuple | None = None,
+    ) -> 'Dataset':
+        """Trim the dataset by field of view and return a new dataset.
 
-        BENEFIT: makes all the FoV logic unnecessary. 
-
-        NOTE: before making this function, decide what to do with the rotated angles.
-        Should we always have a .apply_fov(ue_fov, bs_fov) or .apply_rot(ue_rot, bs_rot) 
-        methods that apply in-place or return new datasets?
-        ANS: Yes. aoa_az should always be with respect to the BS/UE orientation.
+        This function removes paths that fall outside the specified FoV at the
+        transmitter (BS) and receiver (UE). It computes a boolean path mask from
+        the rotated angles and then physically removes the excluded paths using
+        the existing path-trimming utility.
 
         Args:
-            fov: The FoV to trim the dataset by.
+            bs_fov: Base-station FoV as [horizontal_deg, vertical_deg]. If None,
+                    uses dataset's stored `bs_fov` if available; otherwise full FoV.
+            ue_fov: User-equipment FoV as [horizontal_deg, vertical_deg]. If None,
+                    uses dataset's stored `ue_fov` if available; otherwise full FoV.
+
+        Returns:
+            A new Dataset instance with only paths inside the FoV kept.
         """
-        return 0
+        # Determine effective FoVs
+        eff_bs_fov = bs_fov if bs_fov is not None else self.get('bs_fov')
+        eff_ue_fov = ue_fov if ue_fov is not None else self.get('ue_fov')
+
+        # Resolve full-FoV flags
+        bs_full = eff_bs_fov is None or self._is_full_fov(np.array(eff_bs_fov))
+        ue_full = eff_ue_fov is None or self._is_full_fov(np.array(eff_ue_fov))
+
+        # Access rotated angles (radians). This will compute and cache if needed.
+        aod_theta_rot = self[c.AOD_EL_ROT_PARAM_NAME]
+        aod_phi_rot   = self[c.AOD_AZ_ROT_PARAM_NAME]
+        aoa_theta_rot = self[c.AOA_EL_ROT_PARAM_NAME]
+        aoa_phi_rot   = self[c.AOA_AZ_ROT_PARAM_NAME]
+
+        # Start with baseline: keep all existing valid paths. Using AoA azimuth as validity proxy.
+        base_valid = ~np.isnan(self[c.AOA_AZ_PARAM_NAME])
+        path_mask = base_valid.copy()
+
+        # Apply BS FoV if restricted
+        if not bs_full:
+            tx_mask = _apply_FoV_batch(np.array(eff_bs_fov), aod_theta_rot, aod_phi_rot)
+            path_mask = np.logical_and(path_mask, tx_mask)
+
+        # Apply UE FoV if restricted
+        if not ue_full:
+            rx_mask = _apply_FoV_batch(np.array(eff_ue_fov), aoa_theta_rot, aoa_phi_rot)
+            path_mask = np.logical_and(path_mask, rx_mask)
+
+        # Physically remove paths outside FoV and return new dataset
+        return self._trim_by_path(path_mask)
 
     def trim_by_path_depth(self, path_depth: int) -> 'Dataset':
         """Trim the dataset to keep only paths with at most the specified number of interactions.
@@ -1351,7 +1384,7 @@ class Dataset(DotDict):
         """
         self._clear_cache_doppler()
         
-        if type(velocities) == list or type(velocities) == tuple:
+        if isinstance(velocities, list) or isinstance(velocities, tuple):
             velocities = np.array(velocities)
             
         if velocities.ndim == 1:
