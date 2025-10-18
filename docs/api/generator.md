@@ -274,24 +274,38 @@ The maximum number of paths and interactions are either configured by the load f
 | `aod_phi_rot` | ndarray | Rotated angles of departure in azimuth |
 | `aoa_theta_rot` | ndarray | Rotated angles of arrival in elevation |
 | `aoa_phi_rot` | ndarray | Rotated angles of arrival in azimuth |
-| `fov` | dict | Field of view parameters |
 | `grid_size` | tuple | Size of the grid for the dataset |
 | `grid_spacing` | float | Spacing of the grid for the dataset |
 
 ### Sampling & Trimming
+
+Unified index selection (dispatcher):
 ```python
-# Get uniform indices
-uniform_idxs = dataset.get_uniform_idxs([2,2])
+# Uniform sampling on the grid
+uniform_idxs = dataset.get_idxs('uniform', steps=[2, 2])
 
-# Trim dataset to have 1 every 2 samples, along x and y
-dataset2 = dataset.subset(uniform_idxs)
+# Active users (paths > 0)
+active_idxs = dataset.get_idxs('active')
 
-# Example of dataset trimming
-active_idxs = dataset2.get_active_idxs()
+# Users along a line
+linear_idxs = dataset.get_idxs('linear', start_pos=[0,0,0], end_pos=[100,0,0], n_steps=50)
+```
 
-# Further trim the dataset down to include only users with channels 
-# (typically outside buildings)
-dataset2 = dataset.subset(uniform_idxs)
+Create trimmed datasets (physical trimming):
+```python
+# Subset by indices
+dataset2 = dataset.trim(idxs=uniform_idxs)
+
+# Apply FoV trimming (uses rotated angles)
+dataset_fov = dataset.trim(bs_fov=[90, 90])  # optional: ue_fov=[...]
+
+# Combine trims efficiently (order: idxs -> FoV -> path depth -> path type)
+dataset_t = dataset.trim(
+    idxs=active_idxs,
+    bs_fov=[90, 90],
+    path_depth=1,
+    path_types=['LoS', 'R']
+)
 ```
 
 ```{tip}
