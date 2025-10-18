@@ -911,42 +911,6 @@ class Dataset(DotDict):
     # 7. Trimming
     ###########################################
 
-    def _clear_all_caches(self) -> None:
-        """Clear all caches."""
-        self._clear_cache_core()
-        self._clear_cache_rotated_angles()
-        self._clear_cache_doppler()
-
-    def _clear_cache_core(self) -> None:
-        """Clear all cached attributes that don't have dedicated clearing functions.
-        
-        This includes:
-        - Line of sight status
-        - Number of paths
-        - Number of interactions
-        - Channel matrices
-        - Powers with antenna gain
-        - Inter-object related attributes
-        - Other computed attributes
-        """
-        # Define cache keys for attributes without dedicated clearing functions
-        cache_keys = {
-            # Core computed attributes
-            c.NUM_PATHS_PARAM_NAME,
-            c.LOS_PARAM_NAME,
-            c.NUM_INTERACTIONS_PARAM_NAME,
-            c.MAX_INTERACTIONS_PARAM_NAME,
-            c.INTER_STR_PARAM_NAME,
-            c.INTER_INT_PARAM_NAME,
-            c.CHANNEL_PARAM_NAME,
-            c.PWR_LINEAR_ANT_GAIN_PARAM_NAME,
-            c.INTER_OBJECTS_PARAM_NAME
-        }
-        
-        # Remove all cache keys at once
-        for k in cache_keys & self.keys():
-            super().__delitem__(k)
-
     def _trim_by_path(self, path_mask: np.ndarray) -> 'Dataset':
         """Helper function to trim paths based on a boolean mask.
         
@@ -1147,10 +1111,6 @@ class Dataset(DotDict):
                 path_mask[user_idx, path_idx] = is_valid
         
         return self._trim_by_path(path_mask)
-
-    ###########################################
-    # 8.1 Unified Trimming Interface
-    ###########################################
 
     def trim(
         self,
@@ -1613,8 +1573,44 @@ class Dataset(DotDict):
         return inter_obj_ids
 
     ###########################################
-    # 10. Utilities and Computation Methods
+    # 10. Cache Management
     ###########################################
+
+    def _clear_all_caches(self) -> None:
+        """Clear all caches."""
+        self._clear_cache_core()
+        self._clear_cache_rotated_angles()
+        self._clear_cache_doppler()
+
+    def _clear_cache_core(self) -> None:
+        """Clear all cached attributes that don't have dedicated clearing functions.
+        
+        This includes:
+        - Line of sight status
+        - Number of paths
+        - Number of interactions
+        - Channel matrices
+        - Powers with antenna gain
+        - Inter-object related attributes
+        - Other computed attributes
+        """
+        # Define cache keys for attributes without dedicated clearing functions
+        cache_keys = {
+            # Core computed attributes
+            c.NUM_PATHS_PARAM_NAME,
+            c.LOS_PARAM_NAME,
+            c.NUM_INTERACTIONS_PARAM_NAME,
+            c.MAX_INTERACTIONS_PARAM_NAME,
+            c.INTER_STR_PARAM_NAME,
+            c.INTER_INT_PARAM_NAME,
+            c.CHANNEL_PARAM_NAME,
+            c.PWR_LINEAR_ANT_GAIN_PARAM_NAME,
+            c.INTER_OBJECTS_PARAM_NAME
+        }
+        
+        # Remove all cache keys at once
+        for k in cache_keys & self.keys():
+            super().__delitem__(k)
 
     def _get_txrx_sets(self) -> list[TxRxSet]:
         """Get the txrx sets for the dataset.
@@ -1624,6 +1620,42 @@ class Dataset(DotDict):
         """
         return get_txrx_sets(self.get('parent_name', self.name))
     
+    def info(self, param_name: str | None = None) -> None:
+        """Display help information about DeepMIMO dataset parameters.
+        
+        Args:
+            param_name: Name of the parameter to get info about.
+                       If None or 'all', displays information for all parameters.
+                       If the parameter name is an alias, shows info for the resolved parameter.
+        """
+        # If it's an alias, resolve it first
+        if param_name in c.DATASET_ALIASES:
+            resolved_name = c.DATASET_ALIASES[param_name]
+            print(f"'{param_name}' is an alias for '{resolved_name}'")
+            param_name = resolved_name
+            
+        info(param_name)
+
+    def to_binary(self, output_dir: str = "./datasets") -> None:
+        """Export dataset to binary format for web visualizer.
+        
+        This method exports the dataset to a binary format suitable for the DeepMIMO
+        web visualizer. It creates binary files with proper naming convention and
+        metadata information.
+        
+        Args:
+            output_dir: Output directory for binary files (default: "./datasets")
+        """
+        # Get dataset name from scenario name or use default
+        dataset_name = getattr(self, 'name', 'dataset')
+        
+        # Call the web export function
+        export_dataset_to_binary(self, dataset_name, output_dir)
+
+    ###########################################
+    # 10. Computation Methods
+    ###########################################
+
     # Dictionary mapping attribute names to their computation methods
     # (in order of computation)
     _computed_attributes = {
@@ -1664,38 +1696,6 @@ class Dataset(DotDict):
         # Txrx set information
         'txrx_sets': '_get_txrx_sets',
     }
-
-    def info(self, param_name: str | None = None) -> None:
-        """Display help information about DeepMIMO dataset parameters.
-        
-        Args:
-            param_name: Name of the parameter to get info about.
-                       If None or 'all', displays information for all parameters.
-                       If the parameter name is an alias, shows info for the resolved parameter.
-        """
-        # If it's an alias, resolve it first
-        if param_name in c.DATASET_ALIASES:
-            resolved_name = c.DATASET_ALIASES[param_name]
-            print(f"'{param_name}' is an alias for '{resolved_name}'")
-            param_name = resolved_name
-            
-        info(param_name)
-
-    def to_binary(self, output_dir: str = "./datasets") -> None:
-        """Export dataset to binary format for web visualizer.
-        
-        This method exports the dataset to a binary format suitable for the DeepMIMO
-        web visualizer. It creates binary files with proper naming convention and
-        metadata information.
-        
-        Args:
-            output_dir: Output directory for binary files (default: "./datasets")
-        """
-        # Get dataset name from scenario name or use default
-        dataset_name = getattr(self, 'name', 'dataset')
-        
-        # Call the web export function
-        export_dataset_to_binary(self, dataset_name, output_dir)
 
 
 class MacroDataset:
