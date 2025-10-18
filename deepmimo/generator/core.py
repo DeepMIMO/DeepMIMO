@@ -46,7 +46,6 @@ def generate(
     Args:
         scen_name (str): Name of the scenario to generate data for
         load_params (dict): Parameters for loading the scenario. Defaults to {}.
-        ch_gen_params (dict): Parameters for channel generation. Defaults to {}.
         trim_params (dict, optional): Parameters for dataset trimming. Supports:
             - idxs (array-like): UE indices to keep (applied first)
             - idxs_mode (str): One of 'active'|'linear'|'uniform'|'row'|'col'|'limits'
@@ -55,6 +54,7 @@ def generate(
             - ue_fov (list|tuple [h_deg, v_deg])
             - path_depth (int)
             - path_types (list[str])
+        ch_params (dict): Parameters for channel generation. Defaults to {}.
 
     Returns:
         Dataset: Generated DeepMIMO dataset containing channel matrices and metadata
