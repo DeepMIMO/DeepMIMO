@@ -1093,7 +1093,7 @@ class Dataset(DotDict):
         # Physically remove paths outside FoV and return new dataset
         return self._trim_by_path(path_mask)
 
-    def trim_by_path_depth(self, path_depth: int) -> 'Dataset':
+    def _trim_by_path_depth(self, path_depth: int) -> 'Dataset':
         """Trim the dataset to keep only paths with at most the specified number of interactions.
         
         Args:
@@ -1113,7 +1113,7 @@ class Dataset(DotDict):
         
         return self._trim_by_path(path_mask)
 
-    def trim_by_path_type(self, allowed_types: List[str]) -> 'Dataset':
+    def _trim_by_path_type(self, allowed_types: List[str]) -> 'Dataset':
         """Trim the dataset to keep only paths with allowed interaction types.
         
         Args:
@@ -1155,6 +1155,57 @@ class Dataset(DotDict):
                 path_mask[user_idx, path_idx] = is_valid
         
         return self._trim_by_path(path_mask)
+
+    ###########################################
+    # 8.1 Unified Trimming Interface
+    ###########################################
+
+    def trim(
+        self,
+        *,
+        idxs: Optional[np.ndarray] = None,
+        bs_fov: np.ndarray | list | tuple | None = None,
+        ue_fov: np.ndarray | list | tuple | None = None,
+        path_depth: Optional[int] = None,
+        path_types: Optional[List[str]] = None,
+    ) -> 'Dataset':
+        """Return a new dataset after applying multiple trims in optimal order.
+
+        Order applied (to minimize work for complex trims):
+        1) Index subset
+        2) FoV trimming
+        3) Path depth trimming
+        4) Path type trimming
+
+        Args:
+            idxs: UE indices to keep. If None, skip.
+            bs_fov: Base-station FoV [h_deg, v_deg]. None => full FoV (no trimming).
+            ue_fov: User-equipment FoV [h_deg, v_deg]. None => full FoV (no trimming).
+            path_depth: Keep only paths with a number of interactions <= path_depth.
+            path_types: Keep only paths comprised of allowed interaction types.
+
+        Returns:
+            A new Dataset with all requested trims applied.
+        """
+        ds: Dataset = self
+
+        # 1) Index subset first (cheapest and reduces subsequent work)
+        if idxs is not None:
+            ds = ds._trim_by_index(np.array(idxs))
+
+        # 2) FoV trimming (reduces paths for later complex filters)
+        if bs_fov is not None or ue_fov is not None:
+            ds = ds._trim_by_fov(bs_fov=bs_fov, ue_fov=ue_fov)
+
+        # 3) Path depth trimming
+        if path_depth is not None:
+            ds = ds._trim_by_path_depth(path_depth)
+
+        # 4) Path type trimming (most expensive)
+        if path_types is not None:
+            ds = ds._trim_by_path_type(path_types)
+
+        return ds
 
     ###########################################
     # 8. Visualization
