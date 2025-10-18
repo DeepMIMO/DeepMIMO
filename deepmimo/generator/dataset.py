@@ -908,46 +908,8 @@ class Dataset(DotDict):
 
     
     ###########################################
-    # 7. Subsetting and Trimming
+    # 7. Trimming
     ###########################################
-
-    def subset(self, idxs: np.ndarray) -> 'Dataset':
-        """Create a new dataset containing only the selected indices.
-        
-        Args:
-            idxs: Array of indices to include in the new dataset
-            
-        Returns:
-            Dataset: A new dataset containing only the selected indices
-        """
-        # Create a new dataset with initial data
-        initial_data = {}
-        
-        # Copy shared parameters that should remain consistent across datasets
-        for param in SHARED_PARAMS:
-            if self.hasattr(param):
-                initial_data[param] = getattr(self, param)
-            
-        # Directly set n_ue
-        initial_data['n_ue'] = len(idxs)
-        
-        # Create new dataset with initial data
-        new_dataset = Dataset(initial_data)
-        
-        # Copy all attributes
-        for attr, value in self.to_dict().items():
-            # skip private and already handled attributes
-            if not attr.startswith('_') and attr not in SHARED_PARAMS + ['n_ue']:
-                if isinstance(value, np.ndarray) and len(value.shape) == 0:
-                    print(f'{attr} is a scalar')
-                if isinstance(value, np.ndarray) and value.ndim > 0 and value.shape[0] == self.n_ue:
-                    # Copy and index arrays with UE dimension
-                    setattr(new_dataset, attr, value[idxs])
-                else:
-                    # Copy other attributes as is
-                    setattr(new_dataset, attr, value)
-                
-        return new_dataset
 
     def _clear_all_caches(self) -> None:
         """Clear all caches."""
@@ -1040,12 +1002,42 @@ class Dataset(DotDict):
         return aux_dataset
 
     def _trim_by_index(self, idxs: np.ndarray) -> 'Dataset':
-        """Rename previous subset function.
+        """Create a new dataset containing only the selected indices.
         
         Args:
-            idxs: The indices to trim the dataset by.
+            idxs: Array of indices to include in the new dataset
+            
+        Returns:
+            Dataset: A new dataset containing only the selected indices
         """
-        return self.subset(idxs)
+        # Create a new dataset with initial data
+        initial_data = {}
+        
+        # Copy shared parameters that should remain consistent across datasets
+        for param in SHARED_PARAMS:
+            if self.hasattr(param):
+                initial_data[param] = getattr(self, param)
+            
+        # Directly set n_ue
+        initial_data['n_ue'] = len(idxs)
+        
+        # Create new dataset with initial data
+        new_dataset = Dataset(initial_data)
+        
+        # Copy all attributes
+        for attr, value in self.to_dict().items():
+            # skip private and already handled attributes
+            if not attr.startswith('_') and attr not in SHARED_PARAMS + ['n_ue']:
+                if isinstance(value, np.ndarray) and len(value.shape) == 0:
+                    print(f'{attr} is a scalar')
+                if isinstance(value, np.ndarray) and value.ndim > 0 and value.shape[0] == self.n_ue:
+                    # Copy and index arrays with UE dimension
+                    setattr(new_dataset, attr, value[idxs])
+                else:
+                    # Copy other attributes as is
+                    setattr(new_dataset, attr, value)
+                
+        return new_dataset
     
     def _trim_by_fov(
         self,
