@@ -1850,6 +1850,129 @@ class MacroDataset:
             dataset: Dataset instance to add
         """
         self.datasets.append(dataset)
+    
+    def merge(self) -> 'Dataset':
+        """Merge all datasets in the MacroDataset into a single Dataset.
+        
+        This method concatenates all the fundamental arrays from all datasets
+        along the user dimension (first dimension). The resulting dataset will
+        have all users from all datasets combined.
+        
+        Shared parameters (scene, materials, load_params, rt_params) are taken
+        from the first dataset, assuming they are consistent across all datasets.
+        
+        Returns:
+            Dataset: A single dataset containing all users from all datasets
+            
+        Raises:
+            ValueError: If MacroDataset is empty
+            ValueError: If datasets have incompatible shapes or parameters
+        """
+        if not self.datasets:
+            raise ValueError("Cannot merge empty MacroDataset")
+        
+        if len(self.datasets) == 1:
+            # If only one dataset, return it directly
+            return self.datasets[0]
+        
+        # Get the first dataset as the base
+        base_dataset = self.datasets[0]
+        
+        # Create initial data with shared parameters from first dataset
+        initial_data = {}
+        
+        # Copy shared parameters that should remain consistent across datasets
+        for param in SHARED_PARAMS:
+            if param in base_dataset._data:
+                initial_data[param] = base_dataset[param]
+        
+        # Calculate total number of users
+        total_users = sum(dataset.n_ue for dataset in self.datasets)
+        initial_data['n_ue'] = total_users
+        
+        # Create new merged dataset
+        merged_dataset = Dataset(initial_data)
+        
+        # Define fundamental arrays that need to be concatenated
+        # These are the core arrays that have user dimension as first dimension
+        fundamental_arrays = [
+            c.POWER_PARAM_NAME,
+            c.PHASE_PARAM_NAME, 
+            c.DELAY_PARAM_NAME,
+            c.AOA_AZ_PARAM_NAME,
+            c.AOA_EL_PARAM_NAME,
+            c.AOD_AZ_PARAM_NAME,
+            c.AOD_EL_PARAM_NAME,
+            c.RX_POS_PARAM_NAME,
+            c.TX_POS_PARAM_NAME,
+            c.INTERACTIONS_PARAM_NAME,
+            c.INTERACTIONS_POS_PARAM_NAME,
+        ]
+        
+        # Concatenate fundamental arrays
+        for array_name in fundamental_arrays:
+            if array_name in base_dataset._data:
+                # Get all arrays from all datasets
+                arrays = [dataset[array_name] for dataset in self.datasets]
+                
+                # Validate that all arrays have the same shape except first dimension
+                base_shape = arrays[0].shape
+                for i, arr in enumerate(arrays[1:], 1):
+                    if arr.shape[1:] != base_shape[1:]:
+                        raise ValueError(f"Dataset {i} has incompatible shape for {array_name}: "
+                                      f"expected {base_shape[1:]}, got {arr.shape[1:]}")
+                
+                # Concatenate along first dimension (user dimension)
+                concatenated = np.concatenate(arrays, axis=0)
+                setattr(merged_dataset, array_name, concatenated)
+        
+        # Handle special cases for arrays that might not exist in all datasets
+        optional_arrays = [
+            c.DOPPLER_PARAM_NAME,
+            c.INTER_OBJECTS_PARAM_NAME,
+        ]
+        
+        for array_name in optional_arrays:
+            if array_name in base_dataset._data:
+                arrays = []
+                for dataset in self.datasets:
+                    if array_name in dataset._data:
+                        arrays.append(dataset[array_name])
+                    else:
+                        # Create zero/NaN array with same shape as others
+                        if arrays:
+                            zero_shape = list(arrays[0].shape)
+                            zero_shape[0] = dataset.n_ue
+                            if array_name == c.DOPPLER_PARAM_NAME:
+                                zero_array = np.zeros(zero_shape)
+                            else:
+                                zero_array = np.full(zero_shape, np.nan)
+                            arrays.append(zero_array)
+                
+                if arrays:
+                    # Validate shapes
+                    base_shape = arrays[0].shape
+                    for i, arr in enumerate(arrays[1:], 1):
+                        if arr.shape[1:] != base_shape[1:]:
+                            raise ValueError(f"Dataset {i} has incompatible shape for {array_name}: "
+                                          f"expected {base_shape[1:]}, got {arr.shape[1:]}")
+                    
+                    # Concatenate
+                    concatenated = np.concatenate(arrays, axis=0)
+                    setattr(merged_dataset, array_name, concatenated)
+        
+        # Copy other attributes that don't need concatenation
+        # These are typically scalars or configuration objects
+        for attr, value in base_dataset.to_dict().items():
+            if (not attr.startswith('_') and 
+                attr not in SHARED_PARAMS + ['n_ue'] + fundamental_arrays + optional_arrays):
+                # Copy the attribute as-is (assuming it's the same across all datasets)
+                setattr(merged_dataset, attr, value)
+        
+        # Clear all caches since we've modified the fundamental data
+        merged_dataset._clear_all_caches()
+        
+        return merged_dataset
         
     def to_binary(self, output_dir: str = "./datasets") -> None:
         """Export all datasets to binary format for web visualizer.
