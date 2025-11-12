@@ -61,6 +61,7 @@ from .general_utils import (
 from .summary import summary, plot_summary
 
 import json
+import time
 
 API_BASE_URL = "https://deepmimo.net"
 
@@ -478,7 +479,7 @@ def _upload_to_db(scen_folder: str, key: str, skip_zip: bool = False) -> str:
         print(f"Error: Failed to upload to the database - {str(e)}")
 
     if not upload_result:
-        print(f"Error: Failed to upload to the database")
+        print("Error: Failed to upload to the database")
         raise RuntimeError("Failed to upload to the database")
     print("✓ Upload successful")
 
@@ -495,7 +496,7 @@ def _make_submission_on_server(submission_scenario_name: str, key: str,
         processed_params = _process_params_data(params_dict, extra_metadata)
         key_components = _generate_key_components(summary(submission_scenario_name, print_summary=False))
     except Exception as e:
-        print(f"Error: Failed to process parameters and generate key components")
+        print("Error: Failed to process parameters and generate key components")
         raise RuntimeError(f"Failed to process parameters and generate key components - {str(e)}")
 
     submission_data = {
@@ -821,6 +822,7 @@ def download(scenario_name: str, output_dir: Optional[str] = None, rt_source: bo
     if rt_source:
         # For RT source files, extract to RT sources directory
         rt_sources_dir = get_rt_sources_dir()
+        time.sleep(0.5) # wait for the file to be file lock to be lifted
         unzipped_folder = unzip(output_path)
         
         # Move extracted folder to RT sources directory
