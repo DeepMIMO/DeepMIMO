@@ -36,7 +36,7 @@ nav:
 theme:
   name: material
   language: en
-  logo: assets/images/deepmimo-logo.png
+  logo: download.png
   favicon: assets/images/ray_paths.png
   icon:
     repo: fontawesome/brands/github
