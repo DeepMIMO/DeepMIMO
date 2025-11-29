@@ -11,6 +11,7 @@
 deepmimo_scenarios*
 
 # Artifacts
+site/
 **/osm_root/*
 **/blender_addons/*
 manuals/*
