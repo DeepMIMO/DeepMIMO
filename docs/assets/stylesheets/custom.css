@@ -44,6 +44,12 @@ body,
   backdrop-filter: blur(12px);
 }
 
+/* Make the DeepMIMO logo more prominent in the header */
+.md-header__button.md-logo img {
+  height: 2.6rem;
+  width: auto;
+}
+
 .md-tabs {
   backdrop-filter: blur(12px);
 }
