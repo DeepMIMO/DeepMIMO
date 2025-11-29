@@ -59,7 +59,6 @@ d[1].inter.plot(scat_sz=20)
 d.tx_pos # positions of each tx antenna element
 
 #%%
-
 dataset = dm.load('asu_campus_3p5')
 
 # Trim by fov
@@ -99,3 +98,28 @@ print(f"After trim  -> n_ue={trimmed.n_ue}, max_paths={trimmed.max_paths}, activ
 
 # Optional visualization
 trimmed.los.plot(title='Unified trim result')
+
+#%%
+ch_params = dm.ChannelParameters()
+ch_params.ofdm.subcarriers = 32
+ch_params.ofdm.selected_subcarriers = np.arange(1)
+ch_params.num_paths = 5
+
+dataset = dm.load('asu_campus_3p5')
+
+#%%
+
+dataset_t = dataset.subset(dataset.get_uniform_idxs([3,3]))
+params = dm.ChannelParameters()
+params['bs_antenna']['rotation'] = np.array([0, 0, -135])
+dataset_t.set_channel_params(dm.ChannelParameters({'bs_antenna':{'rotation': [0,0,-135]}}))
+# TODO: make alias for ChannelParameters() -> ChParams()
+# TODO: make alias for set_channel_params() -> set_ch_params()
+# TODO: set_channel_params accept only a dictionary (and set internally the params)
+# TODO: make alias for compute_channels() -> compute_ch()
+
+fig, axs = plt.subplots(1, 2, figsize=(15, 5), dpi=300)
+dataset_t.los.plot(ax=axs[0], title='Before FoV')
+dataset_t.apply_fov(bs_fov=np.array([60, 180]))  # irreversible change!
+dataset_t.los.plot(ax=axs[1], title='After FoV')
+
