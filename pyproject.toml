@@ -189,12 +189,7 @@ all = [
     "ipykernel>=6.0.0"
 ]
 
-# TODO: check which are more updated, the packages in [all] or in [doc]
-#       & Update the other
-#doc = [
-#    "sphinx>=7.2.6,<8.0.0",
-#    "myst-parser",
-#    "myst-nb>=0.17.2",
-#    "sphinxext-opengraph>=0.8.0",
-#    "sphinx-design>=0.4.1",
-#]
+[tool.ruff]
+line-length = 100
+select = ["ALL"]
+
