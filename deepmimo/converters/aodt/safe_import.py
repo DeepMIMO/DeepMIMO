@@ -1,5 +1,4 @@
-"""
-Safe import helpers for optional AODT dependencies.
+"""Safe import helpers for optional AODT dependencies.
 
 This module centralizes optional imports used by AODT modules, so that
 import-time failures are avoided and users receive a simple, consistent
@@ -11,5 +10,6 @@ try:
     import pandas as pd  # type: ignore
 except Exception:
     pd = None  # type: ignore
-    print("Warning: AODT features require pandas/pyarrow.\n"
-          "Install with: pip install 'deepmimo[aodt]'")
+    print(
+        "Warning: AODT features require pandas/pyarrow.\nInstall with: pip install 'deepmimo[aodt]'",
+    )

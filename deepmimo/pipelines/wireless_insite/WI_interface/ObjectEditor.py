@@ -1,49 +1,50 @@
-"""
-ObjectEditor module for 3D object manipulation.
+"""ObjectEditor module for 3D object manipulation.
 
 This module provides functionality to read, transform, and save 3D object files
 used in electromagnetic simulations.
 """
 
-from math import cos, sin, radians
-from typing import List
+from math import cos, radians, sin
 
 
 class ObjectEditor:
     """Class for editing 3D object files.
-    
+
     This class provides methods to read, transform (translate and rotate), and save
     3D object files used in electromagnetic simulations.
-    
+
     Attributes:
         infile_path (str): Path to the input object file
         file (List[str]): Contents of the file as lines of text
+
     """
-    
+
     def __init__(self, infile_path: str) -> None:
         """Initialize the ObjectEditor with an input file path.
-        
+
         Args:
             infile_path (str): Path to the input object file
+
         """
         self.infile_path = infile_path
         self.read_file()
 
     def read_file(self) -> None:
         """Read the object file into memory."""
-        with open(self.infile_path, "r") as f:
+        with open(self.infile_path) as f:
             self.file = f.readlines()
-        print("")
+        print()
 
-    def transform(self, translate: List[float] = [0, 0, 0], rotate_angle: float = 0) -> None:
+    def transform(self, translate: list[float] = [0, 0, 0], rotate_angle: float = 0) -> None:
         """Transform the object by translation and rotation.
-        
+
         Applies translation and rotation to all vertices in the object file.
         Rotation is performed around the Z-axis (flat earth assumption).
-        
+
         Args:
             translate (List[float], optional): Translation vector [x, y, z]. Defaults to [0, 0, 0].
             rotate_angle (float, optional): Rotation angle in degrees. Defaults to 0.
+
         """
         for i in range(len(self.file)):
             if "nVertices" in self.file[i]:
@@ -67,14 +68,18 @@ class ObjectEditor:
                     z_new += translate[2]
 
                     self.file[j] = str.format(
-                        "{:12.10f} {:12.10f} {:12.10f} \n", x_new, y_new, z_new
+                        "{:12.10f} {:12.10f} {:12.10f} \n",
+                        x_new,
+                        y_new,
+                        z_new,
                     )
 
     def save(self, outfile_path: str) -> None:
         """Save the transformed object to a file.
-        
+
         Args:
             outfile_path (str): Path to save the output object file
+
         """
         # clean the output file before writing
         open(outfile_path, "w+").close()

@@ -1,5 +1,4 @@
-"""
-Sionna Ray Tracing Parameters.
+"""Sionna Ray Tracing Parameters.
 
 This module provides parameter handling for Sionna ray tracing simulations.
 
@@ -15,15 +14,14 @@ and DeepMIMO's standardized ray tracing parameters.
 
 import os
 from dataclasses import dataclass
-from typing import Dict
 
+from ...config import config
+from ...consts import RAYTRACER_NAME_SIONNA
 from ...general_utils import load_pickle
 from ...rt_params import RayTracingParameters
-from ...consts import RAYTRACER_NAME_SIONNA
-from ...config import config
 
 
-def read_rt_params(load_folder: str) -> Dict:
+def read_rt_params(load_folder: str) -> dict:
     """Read Sionna RT parameters from a folder."""
     return SionnaRayTracingParameters.read_rt_params(load_folder).to_dict()
 
@@ -31,10 +29,10 @@ def read_rt_params(load_folder: str) -> Dict:
 @dataclass
 class SionnaRayTracingParameters(RayTracingParameters):
     """Sionna ray tracing parameter representation.
-    
+
     This class extends the base RayTracingParameters with Sionna-specific
     settings for ray tracing configuration and interaction handling.
-    
+
     Attributes:
         raytracer_name (str): Name of ray tracing engine (from constants)
         raytracer_version (str): Version of ray tracing engine
@@ -58,87 +56,93 @@ class SionnaRayTracingParameters(RayTracingParameters):
         ray_casting_range_az (float): Ray casting range in azimuth (degrees)
         ray_casting_range_el (float): Ray casting range in elevation (degrees)
         raw_params (Dict): Original parameters from Sionna
-        
+
     Notes:
         All required parameters must come before optional ones in dataclasses.
         First come the base class required parameters (inherited), then the class-specific
         required parameters, then all optional parameters.
+
     """
-    
+
     @classmethod
-    def read_rt_params(cls, load_folder: str) -> 'SionnaRayTracingParameters':
+    def read_rt_params(cls, load_folder: str) -> "SionnaRayTracingParameters":
         """Read Sionna RT parameters and return a parameters object.
-        
+
         Args:
             load_folder (str): Path to folder containing Sionna parameter files
-            
+
         Returns:
             SionnaRayTracingParameters: Object containing standardized parameters
-            
+
         Raises:
             FileNotFoundError: If parameter files not found
             ValueError: If required parameters are missing or invalid
+
         """
         # Load original parameters
-        raw_params = load_pickle(os.path.join(load_folder, 'sionna_rt_params.pkl'))
-        
+        raw_params = load_pickle(os.path.join(load_folder, "sionna_rt_params.pkl"))
+
         # Raise error if los is not present
-        if 'los' not in raw_params or not raw_params['los']:
+        if "los" not in raw_params or not raw_params["los"]:
             raise ValueError("los not found in Sionna RT parameters")
-        
+
         # NOTE: Sionna distributes these samples across antennas AND TXs
-        n_tx, n_tx_ant = raw_params['tx_array_size'], raw_params['tx_array_num_ant']
+        n_tx, n_tx_ant = raw_params["tx_array_size"], raw_params["tx_array_num_ant"]
         n_emmitters = n_tx * n_tx_ant
-        n_rays = raw_params['num_samples'] // n_emmitters
-        
+        n_rays = raw_params["num_samples"] // n_emmitters
+
         # Check if GPS origin is present (average point of scene, in geographic coordinates)
-        if raw_params.get('min_lat', 0) != 0:
-            gps_bbox = (raw_params['min_lat'], raw_params['min_lon'],
-                        raw_params['max_lat'], raw_params['max_lon'])
+        if raw_params.get("min_lat", 0) != 0:
+            gps_bbox = (
+                raw_params["min_lat"],
+                raw_params["min_lon"],
+                raw_params["max_lat"],
+                raw_params["max_lon"],
+            )
         else:
-            gps_bbox = (0,0,0,0) # default
-        
-        rt_method = raw_params.get('method', 'fibonacci')
+            gps_bbox = (0, 0, 0, 0)  # default
+
+        rt_method = raw_params.get("method", "fibonacci")
 
         # Create standardized parameters
         params_dict = {
             # Ray Tracing Engine info
-            'raytracer_name': RAYTRACER_NAME_SIONNA,
-            'raytracer_version': raw_params.get('raytracer_version', config.get('sionna_version')),
-
+            "raytracer_name": RAYTRACER_NAME_SIONNA,
+            "raytracer_version": raw_params.get("raytracer_version", config.get("sionna_version")),
             # Base required parameters
-            'frequency': int(raw_params['frequency']),
-            
+            "frequency": int(raw_params["frequency"]),
             # Ray tracing interaction settings
-            'max_path_depth': int(raw_params['max_depth']),
-            'max_reflections': int(raw_params['max_depth']) if raw_params['reflection'] else 0,
-            'max_diffractions': int(raw_params['diffraction']),  # Sionna only supports 1 diffraction event
-            'max_scattering': int(raw_params['scattering']),   # Sionna only supports 1 scattering event
-            'max_transmissions': 0, # Sionna does not support transmissions
-
+            "max_path_depth": int(raw_params["max_depth"]),
+            "max_reflections": int(raw_params["max_depth"]) if raw_params["reflection"] else 0,
+            "max_diffractions": int(
+                raw_params["diffraction"],
+            ),  # Sionna only supports 1 diffraction event
+            "max_scattering": int(
+                raw_params["scattering"],
+            ),  # Sionna only supports 1 scattering event
+            "max_transmissions": 0,  # Sionna does not support transmissions
             # Terrain interaction settings
-            'terrain_reflection': bool(raw_params['reflection']), 
-            'terrain_diffraction': raw_params['diffraction'],  # Sionna only supports 1 diffraction, may be on terrain
-            'terrain_scattering': raw_params['scattering'],
-
+            "terrain_reflection": bool(raw_params["reflection"]),
+            "terrain_diffraction": raw_params[
+                "diffraction"
+            ],  # Sionna only supports 1 diffraction, may be on terrain
+            "terrain_scattering": raw_params["scattering"],
             # Details on diffraction, scattering, and transmission
-            'diffuse_reflections': int(raw_params['max_depth']) - 1, # Sionna only supports diffuse reflections
-            'diffuse_diffractions': 0, # Sionna only supports 1 diffraction event, with no diffuse scattering
-            'diffuse_transmissions': 0, # Sionna does not support transmissions
-            'diffuse_final_interaction_only': True, # Sionna only supports diffuse scattering at final interaction
-            'diffuse_random_phases': raw_params.get('scat_random_phases', True),
-
-            'synthetic_array': raw_params.get('synthetic_array', True),
-            'num_rays': -1 if rt_method != 'fibonacci' else n_rays, 
-            'ray_casting_method': rt_method.replace('fibonacci', 'uniform'),
-            'ray_casting_range_az': raw_params.get('ray_casting_range_az', 360),
-            'ray_casting_range_el': raw_params.get('ray_casting_range_el', 180),
-            
+            "diffuse_reflections": int(raw_params["max_depth"])
+            - 1,  # Sionna only supports diffuse reflections
+            "diffuse_diffractions": 0,  # Sionna only supports 1 diffraction event, with no diffuse scattering
+            "diffuse_transmissions": 0,  # Sionna does not support transmissions
+            "diffuse_final_interaction_only": True,  # Sionna only supports diffuse scattering at final interaction
+            "diffuse_random_phases": raw_params.get("scat_random_phases", True),
+            "synthetic_array": raw_params.get("synthetic_array", True),
+            "num_rays": -1 if rt_method != "fibonacci" else n_rays,
+            "ray_casting_method": rt_method.replace("fibonacci", "uniform"),
+            "ray_casting_range_az": raw_params.get("ray_casting_range_az", 360),
+            "ray_casting_range_el": raw_params.get("ray_casting_range_el", 180),
             # GPS Bounding Box
-            'gps_bbox': gps_bbox,
-
+            "gps_bbox": gps_bbox,
             # Store raw parameters
-            'raw_params': raw_params,
+            "raw_params": raw_params,
         }
-        
+
         return cls(**params_dict)
