@@ -1,0 +1,56 @@
+Format type:keyword version: 1.1.0
+begin_<terrain> asu_plane
+begin_<reference> 
+cartesian
+longitude 0.000000000000000
+latitude 0.000000000000000
+visible no
+sealevel
+end_<reference>
+begin_<Material> ITU Concrete 3.5 GHz
+Material 1
+LayeredDielectric
+begin_<Color> 
+ambient 0.750000 0.820000 0.810000 1.000000
+diffuse 0.750000 0.820000 0.810000 1.000000
+specular 0.750000 0.820000 0.810000 1.000000
+emission 0.000000 0.000000 0.000000 0.000000
+shininess 5.000000
+end_<Color>
+diffuse_scattering_model directive_with_backscatter
+fields_diffusively_scattered 0.200000
+cross_polarized_power 0.400000
+directive_alpha 4
+directive_beta 4
+directive_lambda 0.750000
+subdivide_facets yes
+reflection_coefficient_options do_not_use
+nLayers 1
+begin_<DielectricLayer> 
+conductivity 8.987e-02
+permittivity 5.310000
+roughness 0.000e+00
+thickness 3.000e-01
+end_<DielectricLayer>
+end_<Material>
+begin_<structure_group> 
+begin_<structure> 
+begin_<sub_structure> 
+begin_<face> 
+Material 1
+nVertices 3
+300.4500122070 -240.0000000000 0.0000000000
+-300.4500122070 240.0000000000 0.0000000000
+-300.4500122070 -240.0000000000 0.0000000000
+end_<face>
+begin_<face> 
+Material 1
+nVertices 3
+300.4500122070 -240.0000000000 0.0000000000
+300.4500122070 240.0000000000 0.0000000000
+-300.4500122070 240.0000000000 0.0000000000
+end_<face>
+end_<sub_structure>
+end_<structure>
+end_<structure_group>
+end_<terrain>
