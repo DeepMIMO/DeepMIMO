@@ -15,8 +15,8 @@
 <p align="center">
   <b>
     <a href="#quickstart">Quickstart</a> •
-    <a href="https://deepmimo.net">Docs</a> •
-    <a href="#project-structure">Project</a> •
+    <a href="https://deepmimo.net/documentation">Docs</a> •
+    <a href="https://deepmimo.net">Web</a> •
     <a href="#faq">FAQ</a> •
     <a href="#citation">Cite</a>
   </b>
