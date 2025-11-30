@@ -1,6 +1,11 @@
 # DeepMIMO
 DeepMIMO Toolchain: Bridging RayTracers and 5G Simulators
 
+<p align="center">
+  <img src="docs/assets/dm.gif" alt="DeepMIMO animated showcase" width="600"/>
+</p>
+
+
 **[Goal]** Enabling large-scale AI benchmarking using site-specific wireless raytracing datasets.
 
 **[How]** Converting the outputs of the best wireless propagation ray tracers to a distributable format readable by the best simulation toolboxes. 
