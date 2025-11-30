@@ -1,16 +1,54 @@
-# DeepMIMO
-DeepMIMO Toolchain: Bridging RayTracers and 5G Simulators
+<div align="center">
+  <h1>DeepMIMO</h1>
+  <p><i>Bridging ray tracers and 5G/6G simulators with shareable, site-specific datasets</i></p>
+  <p>
+    <a href="https://pypi.org/project/deepmimo/"><img alt="PyPI 4.0.0b" src="https://img.shields.io/badge/PyPI-4.0.0b-blue"></a>
+    <a href="https://www.python.org/"><img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-blue"></a>
+    <a href="https://deepmimo.net"><img alt="Docs" src="https://img.shields.io/badge/docs-deepmimo.net-brightgreen"></a>
+    <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/DeepMIMO/DeepMIMO.svg"></a>
+    <a href="https://github.com/astral-sh/uv"><img alt="uv" src="https://img.shields.io/badge/uv-speedy%20installs-ff69b4"></a>
+    <a href="https://docs.astral.sh/ruff/"><img alt="ruff" src="https://img.shields.io/badge/lint-ruff-F74C00"></a>
+  </p>
+  <p>
+    Convert world‑class ray tracers (Sionna RT, Wireless InSite, AODT) into portable datasets that plug directly into leading simulators (Sionna, MATLAB 5G, and more).
+  </p>
+  <img src="docs/assets/dm.gif" alt="DeepMIMO animated showcase" width="800"/>
+</div>
 
 <p align="center">
-  <img src="docs/assets/dm.gif" alt="DeepMIMO animated showcase" width="600"/>
+  <a href="#installation">Install</a> •
+  <a href="#usage-examples">Quickstart</a> •
+  <a href="https://deepmimo.net">Docs</a> •
+  <a href="docs/resources">Resources</a> •
+  <a href="#faq">FAQ</a> •
+  <a href="#citation">Cite</a>
 </p>
 
+<table style="width:100%; text-align:center; border-collapse:separate; border-spacing:0 6px;">
+  <thead>
+    <tr>
+      <th>GOAL</th>
+      <th style="border-left:1px solid #eaeaea; border-right:1px solid #eaeaea;">HOW</th>
+      <th>WHY</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Enable large‑scale AI benchmarking using site‑specific wireless ray‑tracing datasets.</td>
+      <td style="border-left:1px solid #eaeaea; border-right:1px solid #eaeaea;">Convert outputs from top propagation ray tracers into a clean, distributable format readable by modern simulation toolboxes.</td>
+      <td>Make ray‑tracing data easy to access, share, and benchmark—accelerating AI‑driven wireless research.</td>
+    </tr>
+  </tbody>
+  </table>
 
-**[Goal]** Enabling large-scale AI benchmarking using site-specific wireless raytracing datasets.
+## Features
 
-**[How]** Converting the outputs of the best wireless propagation ray tracers to a distributable format readable by the best simulation toolboxes. 
-
-**[Why]** To revolutionize AI-driven wireless research by making ray tracing data easy to access, share, and benchmark.
+- 🚀 Plug-and-play datasets for simulators: **Sionna**, **MATLAB 5G**, and more
+- 🔄 Converters for major ray tracers: **Sionna RT**, **Wireless InSite**, **AODT**
+- 🧱 Modular pipelines for conversion, validation, export, and distribution
+- 📦 Exporters for clean, reproducible, shareable formats
+- 📚 Rich documentation, examples, and scenarios to get you started fast
+- 🐍 **Python 3.11+**, supports both `pip` and `uv`
 
 ## Project Structure
 ```
@@ -62,7 +100,7 @@ Additional directories:
 
 ### Basic Installation
 ```bash
-pip install deepmimo
+pip install --pre deepmimo
 ```
 
 ### Development Installation
@@ -107,25 +145,41 @@ dm.upload('my_scenario', 'your-api-key')
 
 ## Building Documentation
 
-| Step    | Command                                           | Description                       |
-|---------|---------------------------------------------------|-----------------------------------|
-| Install | `pip install .[doc]`                              | Install docs dependencies         |
-| Build   | `cd docs`<br>`sphinx-build -b html . _build/html` | Generate HTML documentation       |
-| Serve   | `cd docs/_build/html`<br>`python -m http.server`  | View docs at http://localhost:8000|
+| Step    | Command                              | Description                        |
+|---------|--------------------------------------|------------------------------------|
+| Install | `pip install .[doc]`                 | Install docs dependencies          |
+| Build   | `mkdocs build`                       | Generate static site into `site/`  |
+| Serve   | `mkdocs serve -a 0.0.0.0:8000`       | Preview at http://localhost:8000   |
 
 ## Contributing
 
 We welcome contributions to DeepMIMO! To contribute:
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+1. Fork
+2. Change
+3. Pull Request
 
 We aim to respond to pull requests within 24 hours.
 
+## FAQ
+
+- Q: Is the package in beta?  
+  A: Yes. Install with `pip install --pre deepmimo`.
+
+- Q: What Python versions are supported?  
+  A: **Python 3.11+**.
+
+- Q: Which ray tracers are supported?  
+  A: **Sionna RT**, **Wireless InSite**, and **AODT** via dedicated converters.
+
+- Q: Which simulators can consume DeepMIMO datasets?  
+  A: **Sionna**, **MATLAB 5G**, and other toolboxes via our exporters/integrations.
+
+- Q: Any tips for large datasets?  
+  A: Use batching, prefer SSDs, and export intermediate artifacts to avoid recomputation.
+
 ## Citation
 
-If you use this software, please cite it as:
+If you use this software, please cite it:
 
 ```bibtex
 @misc{alkhateeb2019deepmimo,
