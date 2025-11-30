@@ -1373,7 +1373,7 @@ class Dataset(DotDict):
         """Get the velocities of the users.
 
         Returns:
-            np.ndarray: The velocities of the users in cartesian coordinates. [n_ue, 3] [m/s]
+            np.ndarray: The velocities of the users in cartesian coordinates. (n_ue, 3) `m/s`
 
         """
         # check if this exists, and initialize to zeros if not
@@ -1386,7 +1386,7 @@ class Dataset(DotDict):
         """Set the velocities of the users.
 
         Args:
-            velocities: The velocities of the users in cartesian coordinates. [m/s]
+            velocities: The velocities of the users in cartesian coordinates. `m/s`
 
         Returns:
             The velocities of the users in spherical coordinates.
@@ -1476,7 +1476,7 @@ class Dataset(DotDict):
         """Get the velocities of the base stations.
 
         Returns:
-            np.ndarray: The velocities of the base stations in cartesian coordinates. [3,] [m/s]
+            np.ndarray: The velocities of the base stations in cartesian coordinates. (3,) `m/s`
 
         """
         if not self.hasattr("_tx_vel"):
@@ -1488,10 +1488,10 @@ class Dataset(DotDict):
         """Set the velocities of the base stations.
 
         Args:
-            velocities: The velocities of the base stations in cartesian coordinates. [m/s]
+            velocities: The velocities of the base stations in cartesian coordinates. `m/s`
 
         Returns:
-            The velocities of the base stations in cartesian coordinates. [3,] [m/s]
+            The velocities of the base stations in cartesian coordinates. (3,) `m/s`
 
         """
         self._clear_cache_doppler()
@@ -1509,11 +1509,11 @@ class Dataset(DotDict):
         """Set the doppler frequency shifts.
 
         Args:
-            doppler: The doppler frequency shifts. [n_ue, max_paths] [Hz]
+            doppler: The doppler frequency shifts. (n_ue, max_paths) `Hz`
                 There are 3 options for the shape of the doppler array:
-                1. 1 value for all paths and users. [1,] [Hz]
-                2. a value for each user. [n_ue,] [Hz]
-                3. a value for each user and each path. [n_ue, max_paths] [Hz]
+                1. 1 value for all paths and users. (1,) `Hz`
+                2. a value for each user. (n_ue,) `Hz`
+                3. a value for each user and each path. (n_ue, max_paths) `Hz`
 
         """
         doppler = np.array([doppler]) if type(doppler) in [float, int] else np.array(doppler)
@@ -1544,7 +1544,7 @@ class Dataset(DotDict):
 
         Args:
             obj_idx: The index of the object to update.
-            vel: The velocity of the object in 3D cartesian coordinates. [m/s]
+            vel: The velocity of the object in 3D cartesian coordinates. `m/s`
 
         Returns:
             None
@@ -1575,7 +1575,7 @@ class Dataset(DotDict):
         """Compute the doppler frequency shifts.
 
         Returns:
-            np.ndarray: The doppler frequency shifts. [n_ue, max_paths] [Hz]
+            np.ndarray: The doppler frequency shifts. (n_ue, max_paths) `Hz`
 
         NOTE: this Doppler computation is matching the Sionna Doppler computation.
               See Sionna.rt.Paths.doppler in: https://nvlabs.github.io/sionna/rt/api/paths.html

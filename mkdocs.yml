@@ -94,8 +94,7 @@ plugins:
               - "!^_"
             inherited_members: true
             show_if_no_docstring: true
-            signature_crossrefs: true
-  - autorefs
+            signature_crossrefs: false
   - exclude:
       glob:
         - "_build/**"

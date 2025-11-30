@@ -113,8 +113,8 @@ class ChannelParameters(DotDict):
     - OFDM parameters
     - Channel domain settings (time/frequency)
 
-    The parameters can be accessed directly using dot notation (e.g. params.bs_antenna.shape)
-    or using dictionary notation (e.g. params['bs_antenna']['shape']).
+    The parameters can be accessed directly using dot notation (e.g. `params.bs_antenna.shape`)
+    or using dictionary notation (e.g. `params['bs_antenna']['shape']`).
 
     Examples:
         # Initialize with default parameters
