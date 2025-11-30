@@ -72,3 +72,4 @@ wheels/
 .installed.cfg
 *.egg
 *.vscode
+*.mp4
