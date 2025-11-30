@@ -4,12 +4,7 @@ This module provides configuration management for DeepMIMO through a singleton c
 
 The configuration interface is provided through a singleton instance `deepmimo.config`:
 
-```{eval-rst}
-.. autoclass:: deepmimo.config.DeepMIMOConfig
-   :members: set, get, reset, print_config, get_all
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.config.DeepMIMOConfig
 
 ## Basic Usage
 

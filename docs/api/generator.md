@@ -66,9 +66,7 @@ dataset = dm.load('asu_campus_3p5')
 For detailed examples of loading, see the <a href="../manual_full.html#detailed-load">Detailed Load</a> Section of the DeepMIMO Manual.
 ```
 
-```{eval-rst}
-.. autofunction:: deepmimo.generator.core.load
-```
+::: deepmimo.generator.core.load
 
 
 ## Generate Channels
@@ -126,17 +124,9 @@ For detailed examples of generating channels, see the <a href="../manual_full.ht
 Note 1: Rotation angles follow the right-hand rule.
 Note 2: The default orientation of an antenna panel is along the +X axis.
 
-```{eval-rst}
-.. autoclass:: deepmimo.generator.channel.ChannelParameters
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.generator.channel.ChannelParameters
 
-```{eval-rst}
-.. autofunction:: deepmimo.generator.dataset.Dataset.compute_channels
-
-```
+::: deepmimo.generator.dataset.Dataset.compute_channels
 
 ## Doppler
 
@@ -326,12 +316,7 @@ For more details on the visualization functions, see the <a href="../manual_full
 ```
 
 ### Dataset Class
-```{eval-rst}
-.. autoclass:: deepmimo.generator.dataset.Dataset
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.generator.dataset.Dataset
 
 
 ## MacroDataset
@@ -351,12 +336,7 @@ for dataset in macro_dataset:
 channels = macro_dataset.compute_channels()
 ```
 
-```{eval-rst}
-.. autoclass:: deepmimo.generator.dataset.MacroDataset
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.generator.dataset.MacroDataset
 
 ## DynamicDataset
 
@@ -378,12 +358,7 @@ print(f"Number of scenes: {len(dynamic_dataset)}")  # or dynamic_dataset.n_scene
 print(f"Scene names: {dynamic_dataset.names}")
 ```
 
-```{eval-rst}
-.. autoclass:: deepmimo.generator.dataset.DynamicDataset
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.generator.dataset.DynamicDataset
 
 
 

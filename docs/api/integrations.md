@@ -17,11 +17,7 @@ Please contact us directly if this is something you would be interested in.
 
 See the [DeepMIMO Integration Notebook in Sionna Docs](https://nvlabs.github.io/sionna/phy/tutorials/DeepMIMO.html) for a complete example of the integration. It mainly leverages the Sionna Adapter. 
 
-```{eval-rst}
-
-.. autoclass:: deepmimo.integrations.sionna_adapter.SionnaAdapter
-
-```
+::: deepmimo.integrations.sionna_adapter.SionnaAdapter
 
 
 ## MATLAB 5G Toolbox

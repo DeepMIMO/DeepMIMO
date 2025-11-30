@@ -14,11 +14,7 @@ converters/
       └── insite_converter.py
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.converters.convert
-   :noindex:
-```
+::: deepmimo.converters.convert
 
 ```python
 import deepmimo as dm
@@ -76,11 +72,7 @@ scenario = insite_rt_converter('path/to/insite_project')
 Check <a href="../manual_full.html#from-wireless-insite">Conversion From Wireless InSite</a> section in DeepMIMO manual for a full end-to-end example of conversion from a Wireless InSite simulation.
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.converters.wireless_insite.insite_converter.insite_rt_converter
-
-```
+::: deepmimo.converters.wireless_insite.insite_converter.insite_rt_converter
 
 ## Sionna RT
 
@@ -102,11 +94,7 @@ sionna_exporter(
 )
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.exporters.sionna_exporter.sionna_exporter
-
-```
+::: deepmimo.exporters.sionna_exporter.sionna_exporter
 
 ### Converting
 
@@ -123,11 +111,7 @@ scenario = sionna_rt_converter(sionna_save_folder)
 Check <a href="../manual_full.html#from-sionna-rt">Conversion From Sionna RT</a> section in DeepMIMO manual for a conversion example using Sionna 0.19. Sionna 1.0 support is coming in May 2025.
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.converters.sionna_rt.sionna_converter.sionna_rt_converter
-
-```
+::: deepmimo.converters.sionna_rt.sionna_converter.sionna_rt_converter
 
 ## AODT
 
@@ -159,11 +143,7 @@ aodt_rt_folder = aodt_exporter(
 )
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.exporters.aodt_exporter.aodt_exporter
-
-```
+::: deepmimo.exporters.aodt_exporter.aodt_exporter
 
 ### Converting
 
@@ -183,10 +163,6 @@ scenario = aodt_rt_converter(aodt_rt_folder)
 # - time_info.parquet (Time information)
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.converters.aodt.aodt_converter.aodt_rt_converter
-
-```
+::: deepmimo.converters.aodt.aodt_converter.aodt_rt_converter
 
 
