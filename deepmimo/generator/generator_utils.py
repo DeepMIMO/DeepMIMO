@@ -155,7 +155,7 @@ def get_grid_idxs(
     return np.array(indices)
 
 
-def get_idxs_with_limits(data_pos: np.ndarray, **limits) -> np.ndarray:
+def get_idxs_with_limits(data_pos: np.ndarray, **limits: float) -> np.ndarray:
     """Return indices of users within specified coordinate limits.
 
     Args:

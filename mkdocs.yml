@@ -56,18 +56,18 @@ theme:
     - content.code.copy
     - content.tabs.link
   palette:
-    - scheme: deepmimo
-      primary: custom
-      accent: custom
-      toggle:
-        icon: material/weather-night
-        name: Switch to dark mode
     - scheme: deepmimo-dark
       primary: custom
       accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to light mode
+    - scheme: deepmimo
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
   font:
     text: "Plus Jakarta Sans"
     code: "JetBrains Mono"
@@ -82,9 +82,9 @@ plugins:
       handlers:
         python:
           options:
-            docstring_style: sphinx
-            docstring_section_style: list
-            heading_level: 2
+            docstring_style: google
+            docstring_section_style: table
+            heading_level: 3
             show_signature: true
             separate_signature: true
             show_source: false
@@ -108,6 +108,7 @@ markdown_extensions:
   - md_in_html
   - toc:
       permalink: true
+      toc_depth: 2
   - pymdownx.arithmatex:
       generic: true
   - pymdownx.details

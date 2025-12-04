@@ -85,7 +85,7 @@ def generate(
     return dataset
 
 
-def load(scen_name: str, **load_params) -> Dataset | MacroDataset:
+def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
     """Load a DeepMIMO scenario.
 
     This function loads raytracing data and creates a Dataset or MacroDataset instance.

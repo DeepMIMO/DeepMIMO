@@ -834,13 +834,12 @@ class Scene:
 
         Args:
             title: Whether to display the title (default: True)
-            save: Whether to save the plot to a file (default: False)
-            filename: Name of the file to save the plot to (if save is True)
             mode: Visualization mode for 3D - either 'faces' or 'tri_faces' (default: 'faces')
             ax: Matplotlib axes to plot on (if None, creates new figure)
             proj_3D: Whether to create 3D projection (default: True)
             figsize: Figure dimensions (width, height) in inches (default: (10, 10))
             dpi: Plot resolution in dots per inch (default: 100)
+            legend: Whether to show legend for objects/materials (default: False)
 
         Returns:
             matplotlib Axes object

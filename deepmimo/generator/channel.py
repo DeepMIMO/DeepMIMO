@@ -117,14 +117,23 @@ class ChannelParameters(DotDict):
     or using dictionary notation (e.g. `params['bs_antenna']['shape']`).
 
     Examples:
-        # Initialize with default parameters
+        **Default parameters**
+
+        ```python
         params = ChannelParameters()
+        ```
 
-        # Initialize with specific parameters
+        **Specific parameters**
+
+        ```python
         params = ChannelParameters(doppler=True, freq_domain=True)
+        ```
 
-        # Initialize with nested parameters (lists are automatically converted to numpy arrays during validation)
-        params = ChannelParameters(bs_antenna={'shape': [4, 4]})  # Other bs_antenna fields preserved
+        **Nested parameters** (lists are converted to numpy arrays during validation)
+
+        ```python
+        params = ChannelParameters(bs_antenna={"shape": [4, 4]})  # Other bs_antenna fields preserved
+        ```
 
     """
 
@@ -156,7 +165,7 @@ class ChannelParameters(DotDict):
         },
     }
 
-    def __init__(self, data: dict | None = None, **kwargs):
+    def __init__(self, data: dict | None = None, **kwargs: Any):
         """Initialize channel generation parameters.
 
         Args:

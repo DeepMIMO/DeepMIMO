@@ -4,33 +4,34 @@ The generator module is the core of DeepMIMO. This module takes ray tracing scen
 
 Below is an ascii diagram of how the simulations from the ray tracers are converted into DeepMIMO scenarios (by the converter module, following the DeepMIMO SPEC), and then loaded and used to generate channels (with the generator module).
 ```text
-+-----------------+     +-------------------+    +-------------------+
-| WIRELESS INSITE |     |     SIONNA_RT     |    |       AODT        |
-+--------+--------+     +---------+---------+    +---------+---------+
-         |                        |                        |
-         +------------------------+------------------------+
-                                  |
-                                  v
-                         +------------------+
-                         |   dm.convert()   |
-                         +--------+---------+
-                                  v
-                         +------------------+
-                         |    DEEPMIMO      |
-                         |    SCENARIOS     |
-                         +--------+---------+
-                                  v
-                      +-------------------------+
-                      |   dataset = dm.load()   |
-                      +-----------+-------------+
-                                  v
-                    +-----------------------------+
-                    | dataset.compute_channels()  |
-                    +-------------+---------------+
-                                  v
-                         +------------------+
-                         |  dataset.plot()  |
-                         +------------------+
+┌───────────────────┐     ┌────────────────┐     ┌────────────────┐
+│ WIRELESS INSITE   │ ──▶ │   SIONNA_RT    │ ──▶ │      AODT      │
+└─────────┬─────────┘     └───────┬────────┘     └───────┬────────┘
+          │                       │                      │
+          └──────────────┬────────┴──────────────┬───────┘
+                         ▼                       ▼
+                   ┌───────────────┐       ┌───────────────┐
+                   │  dm.convert() │       │  dm.convert() │
+                   └──────┬────────┘       └──────┬────────┘
+                          │                       │
+                          └──────────────┬────────┘
+                                         ▼
+                               ┌────────────────┐
+                               │   DEEPMIMO     │
+                               │   SCENARIOS    │
+                               └──────┬─────────┘
+                                      ▼
+                        ┌────────────────────────┐
+                        │  dataset = dm.load()   │
+                        └──────────┬─────────────┘
+                                   ▼
+                   ┌──────────────────────────────┐
+                   │ dataset.compute_channels()   │
+                   └──────────────┬───────────────┘
+                                  ▼
+                         ┌────────────────┐
+                         │  dataset.plot()│
+                         └────────────────┘
 ```
 
 Dependencies of the Generator Module:
@@ -62,9 +63,8 @@ import deepmimo as dm
 dataset = dm.load('asu_campus_3p5')
 ```
 
-```{tip}
-For detailed examples of loading, see the <a href="../manual_full.html#detailed-load">Detailed Load</a> Section of the DeepMIMO Manual.
-```
+!!! tip "Detailed load examples"
+    See the <a href="../manual/#detailed-load">Detailed Load</a> section of the DeepMIMO Manual for more examples.
 
 ::: deepmimo.generator.core.load
 
@@ -103,9 +103,8 @@ params.freq_domain = True
 channels = dataset.compute_channels(params)
 ```
 
-```{tip}
-For detailed examples of generating channels, see the <a href="../manual_full.html#channel-generation">Channel Generation</a> Section of the DeepMIMO Manual.
-```
+!!! tip "Channel generation examples"
+    See the <a href="../manual/#channel-generation">Channel Generation</a> section of the DeepMIMO Manual for more examples.
 
 | Parameter | Default Value | Description |
 |-----------|--------------|-------------|
@@ -135,9 +134,8 @@ Doppler effects can be added to the generated channels (in time or frequency dom
 - Set Speeds directly: Manually set the TX, RX or object speeds, which automatically computes Doppler frequencies
 - Set Time Reference: Automatically compute TX, RX and object speeds across scenes (only works with Dynamic Datasets)
 
-```{note}
-For Doppler to be added to the channel, the parameter `doppler` must be set to `True` in the channel parameters.
-```
+!!! note
+    To add Doppler to the channel, set `doppler=True` in the channel parameters.
 
 For more details about working with datasets and its methods, see the [Dataset](#dataset) section below.
 
@@ -207,10 +205,8 @@ print(f'tx_vel: {dataset.tx_vel}')
 print(f'obj_vel: {[obj.vel for obj in dataset.scene.objects]}')
 ```
 
-```{note}
-Setting timestamps requires a Dynamic Dataset. The Dynamic dataset is the exact same as 
-a normal dataset, but instead of providing a folder with the ray tracing results directly inside, we provide a folder with many of such folders inside, one for each scene. See more in the [Dataset](#dataset) and DynamicDataset sections below.
-```
+!!! note
+    Setting timestamps requires a Dynamic Dataset. Provide a folder containing one subfolder per scene (ray-tracing results per snapshot). See the [Dataset](#dataset) and DynamicDataset sections below.
 
 ## Dataset
 
@@ -297,9 +293,8 @@ dataset_t = dataset.trim(
 )
 ```
 
-```{tip}
-For detailed examples of sampling users from a dataset and creating subsets of a dataset, see the <a href="../manual_full.html#user-sampling">User Sampling</a> Section of the DeepMIMO Manual.
-```
+!!! tip "User sampling and subsets"
+    See the <a href="../manual/#user-sampling">User Sampling</a> section of the DeepMIMO Manual for examples of sampling users and creating subsets.
 
 ### Plotting
 
@@ -311,9 +306,8 @@ plot_coverage = dataset.plot_coverage()
 plot_rays = dataset.plot_rays()
 ```
 
-```{tip}
-For more details on the visualization functions, see the <a href="../manual_full.html#visualization">Visualization</a> Section of the DeepMIMO Manual, and the <a href="visualization.html">Visualization API</a> section of this noteoobk.
-```
+!!! tip "Visualization details"
+    For visualization examples, see the <a href="../manual/#visualization">Visualization</a> section of the manual and the <a href="visualization.html">Visualization API</a>.
 
 ### Dataset Class
 ::: deepmimo.generator.dataset.Dataset
@@ -359,6 +353,3 @@ print(f"Scene names: {dynamic_dataset.names}")
 ```
 
 ::: deepmimo.generator.dataset.DynamicDataset
-
-
-

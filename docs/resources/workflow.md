@@ -13,11 +13,11 @@ This page captures the legacy Sphinx workflow so contributors can reproduce the 
 
 1. Build the updated package and publish a test wheel so it can be installed on Google Colab.
 2. Install the test package inside Colab and capture new examples in the notebook.
-3. Download the notebook as `manual_full.ipynb`.
+3. Download the notebook as `manual.ipynb`.
 4. Copy the table of contents cells from the tracked `manual.ipynb` so internal Markdown links remain intact.
 5. (Legacy) When using Sphinx, strip metadata/output via:
    ```bash
-   jupyter nbconvert manual_full.ipynb --ClearMetadataPreprocessor.enabled=True \
+   jupyter nbconvert manual.ipynb --ClearMetadataPreprocessor.enabled=True \
        --clear-output --to notebook --output manual2.ipynb
    ```
 6. Replace the committed `docs/manual.ipynb` with the cleaned notebook and re-run the docs build.

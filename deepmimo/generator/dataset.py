@@ -1297,7 +1297,7 @@ class Dataset(DotDict):
     # 8. Visualization
     ###########################################
 
-    def plot_coverage(self, cov_map, **kwargs):
+    def plot_coverage(self, cov_map: Any, **kwargs: Any):
         """Plot the coverage of the dataset.
 
         Args:
@@ -1313,7 +1313,7 @@ class Dataset(DotDict):
             **kwargs,
         )
 
-    def plot_rays(self, idx: int, color_strat: str = "none", **kwargs):
+    def plot_rays(self, idx: int, color_strat: str = "none", **kwargs: Any):
         """Plot the rays of the dataset.
 
         Args:
@@ -1970,7 +1970,7 @@ class MacroDataset:
         """Return number of contained datasets."""
         return len(self.datasets)
 
-    def append(self, dataset):
+    def append(self, dataset: Dataset | MacroDataset):
         """Add a dataset to the collection.
 
         Args:

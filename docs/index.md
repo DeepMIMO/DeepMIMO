@@ -61,6 +61,3 @@ Use these entry points to navigate the most common tasks.
 - [Documentation Workflow](resources/workflow.md)
 - [Contributing](resources/contributing.md)
 - [Need Help?](resources/need_help.md)
-
-!!! info "Legacy Sphinx docs"
-		Everything in `docs_old/` remains available for reference. If you notice missing content, please open an issue or PR on GitHub.
