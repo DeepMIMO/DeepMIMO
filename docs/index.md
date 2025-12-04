@@ -1,45 +1,63 @@
-# DeepMIMO
+# DeepMIMO Documentation
 
-Welcome to DeepMIMO Documentation!
+<div class="hero">
+	<h1>Welcome to DeepMIMO Documentation!</h1>
+	<p>DeepMIMO manages the largest database of ray tracing scenarios. DeepMIMO is offered as an open-source Python package and provides tools to generate realistic MIMO channels and use them with 5G/6G simulation tools.</p>
+	<div class="hero-actions">
+		<a class="md-button md-button--primary" href="quickstart/">Launch the quickstart</a>
+		<a class="md-button md-button--secondary" href="installation/">Install DeepMIMO</a>
+		<a class="md-button" href="manual/">Open the notebook manual</a>
+	</div>
+</div>
 
-DeepMIMO manages the largest database of ray tracing scenarios. DeepMIMO is offered as an open-source Python package and provides tools to generate realistic MIMO channels and use them with 5G/6G simulation tools.
+## Explore DeepMIMO
 
-DeepMIMO is developed and used by the [Wireless Intelligence Lab](https://wi-lab.net/) for 6G research.
+Use these entry points to navigate the most common tasks.
 
+<div class="feature-grid">
+	<div class="feature-card">
+		<h3>Deploy pipelines</h3>
+		<p>Create Blender/OSM, Wireless InSite, or Sionna-RT pipelines with curated defaults.</p>
+		<a href="quickstart/">Follow the quickstart →</a>
+	</div>
+	<div class="feature-card">
+		<h3>Integrate anywhere</h3>
+		<p>Export channels into TensorFlow (Sionna), MATLAB, or proprietary converters via adapters.</p>
+		<a href="api/integrations/">See integrations →</a>
+	</div>
+	<div class="feature-card">
+		<h3>Inspect datasets</h3>
+		<p>Understand materials, scenes, and antenna arrays with the API reference and resources.</p>
+		<a href="api/database/">Browse the API →</a>
+	</div>
+</div>
 
-```{toctree}
-:maxdepth: 2
-:caption: Getting Started
+## Getting Started
 
-installation
-quickstart
-manual_full.ipynb
-```
+- [Installation](installation.md) — install DeepMIMO and its dependencies.
+- [Quickstart](quickstart.md) — run your first dataset generation pipeline.
+- [User Manual](manual.ipynb) — interactive tutorial built with `mkdocs-jupyter`.
 
-```{toctree}
-:maxdepth: 2
-:caption: API Reference
+## API Reference
 
-api/generator
-api/converter
-api/visualization
-api/database
-api/scene
-api/materials
-api/integrations
-api/pipelines
-api/utils
-api/config
-```
+- [Generator](api/generator.md)
+- [Converter](api/converter.md)
+- [Visualization](api/visualization.md)
+- [Database](api/database.md)
+- [Scene](api/scene.md)
+- [Materials](api/materials.md)
+- [Integrations](api/integrations.md)
+- [Pipelines](api/pipelines.md)
+- [Utilities](api/utils.md)
+- [Configuration](api/config.md)
 
-```{toctree}
-:maxdepth: 2
-:caption: Resources
+## Resources
 
-resources/raytracing_guidelines
-resources/comparing_raytracers
-resources/specs
-resources/conventions
-resources/contributing
-resources/need_help
-```
+- [Ray Tracing Guidelines](resources/raytracing_guidelines.md)
+- [Comparing Ray Tracers](resources/comparing_raytracers.md)
+- [Scenario Specs](resources/specs.md)
+- [Converters Capabilities](resources/converters_capabilities.md)
+- [Conventions](resources/conventions.md)
+- [Documentation Workflow](resources/workflow.md)
+- [Contributing](resources/contributing.md)
+- [Need Help?](resources/need_help.md)

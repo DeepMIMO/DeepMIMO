@@ -37,6 +37,6 @@ When specifying array dimensions, elements are indexed and grow as follows:
 - Channel matrices use a flattened representation of the array elements
 - For an MxN array, element (i,j) maps to index i*N + j in the flattened channel
 
-![Array element indexing convention](/_static/array_indexing.png)
+![Array element indexing convention](../assets/images/array_indexing.png)
 
 

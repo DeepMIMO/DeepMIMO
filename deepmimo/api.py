@@ -950,29 +950,29 @@ def search(query: dict | None = None) -> list[str] | None:
 
     Args:
         query: Dictionary containing search parameters from the following list:
-        - bands: List[str] - Array of frequency bands ['sub6', 'mmW', 'subTHz']
-        - raytracerName: str - Raytracer name or 'all'
-        - environment: str - 'indoor', 'outdoor', or 'all'
-        - numTx: Dict - Numeric range filter {'min': number, 'max': number}
-        - numRx: Dict - Numeric range filter {'min': number, 'max': number}
-        - pathDepth: Dict - Numeric range filter {'min': number, 'max': number}
-        - maxReflections: Dict - Numeric range filter {'min': number, 'max': number}
-        - numRays: Dict - Numeric range filter {'min': number, 'max': number}
-        - multiRxAnt: bool - Boolean filter or 'all' to ignore
-        - multiTxAnt: bool - Boolean filter or 'all' to ignore
-        - dualPolarization: bool - Boolean filter or 'all' to ignore
-        - BS2BS: bool - Boolean filter or 'all' to ignore
-        - dynamic: bool - Boolean filter or 'all' to ignore
-        - diffraction: bool - Boolean filter or 'all' to ignore
-        - scattering: bool - Boolean filter or 'all' to ignore
-        - transmission: bool - Boolean filter or 'all' to ignore
-        - digitalTwin: bool - Boolean filter or 'all' to ignore
-        - city: str - City name text filter
-        - bbCoords: Dict - Bounding box coordinates
-            {'minLat': float, 'minLon': float, 'maxLat': float, 'maxLon': float}
-        - hasRtSource: bool - Boolean filter or 'all' to ignore
-            Note: Unlike other flags which are derived in the package during conversion,
-            hasRtSource is set server-side when RT source is uploaded with upload_rt_source()
+            * bands (list[str]): Frequency bands ['sub6', 'mmW', 'subTHz']
+            * raytracerName (str): Raytracer name or 'all'
+            * environment (str): 'indoor', 'outdoor', or 'all'
+            * numTx (dict): Numeric range filter {'min': number, 'max': number}
+            * numRx (dict): Numeric range filter {'min': number, 'max': number}
+            * pathDepth (dict): Numeric range filter {'min': number, 'max': number}
+            * maxReflections (dict): Numeric range filter {'min': number, 'max': number}
+            * numRays (dict): Numeric range filter {'min': number, 'max': number}
+            * multiRxAnt (bool): Boolean filter or 'all' to ignore
+            * multiTxAnt (bool): Boolean filter or 'all' to ignore
+            * dualPolarization (bool): Boolean filter or 'all' to ignore
+            * BS2BS (bool): Boolean filter or 'all' to ignore
+            * dynamic (bool): Boolean filter or 'all' to ignore
+            * diffraction (bool): Boolean filter or 'all' to ignore
+            * scattering (bool): Boolean filter or 'all' to ignore
+            * transmission (bool): Boolean filter or 'all' to ignore
+            * digitalTwin (bool): Boolean filter or 'all' to ignore
+            * city (str): City name text filter
+            * bbCoords (dict): Bounding box coordinates
+              {'minLat': float, 'minLon': float, 'maxLat': float, 'maxLon': float}
+            * hasRtSource (bool): Boolean filter or 'all' to ignore.
+              Note: Unlike other flags which are derived in the package during conversion,
+              hasRtSource is set server-side when RT source is uploaded with upload_rt_source()
 
     Returns:
         Dict containing count and list of matching scenario names if successful, None otherwise

@@ -66,12 +66,7 @@ face = dm.Face(
 )
 ```
 
-```{eval-rst}
-.. autoclass:: deepmimo.scene.Face
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.scene.Face
 
 ## PhysicalElement
 
@@ -102,12 +97,7 @@ volume = element.volume
 position = element.position
 ```
 
-```{eval-rst}
-.. autoclass:: deepmimo.scene.PhysicalElement
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.scene.PhysicalElement
 
 ## PhysicalElementGroup
 
@@ -126,12 +116,7 @@ first = group[0]
 subset = group[1:3]
 ```
 
-```{eval-rst}
-.. autoclass:: deepmimo.scene.PhysicalElementGroup
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.scene.PhysicalElementGroup
 
 ## Scene
 
@@ -165,10 +150,5 @@ scene.plot(mode='tri_faces')  # Use triangular representation
 scene.plot(proj_3D=False)
 ```
 
-```{eval-rst}
-.. autoclass:: deepmimo.scene.Scene
-   :members:
-   :undoc-members:
-   :show-inheritance:
-```
+::: deepmimo.scene.Scene
 

@@ -25,11 +25,7 @@ for scenario in scenarios:
     
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.api.search
-
-```
+::: deepmimo.api.search
 
 ## Download
 
@@ -44,11 +40,7 @@ download_path = dm.download(scenario_name)
 print(f"Downloaded to: {download_path}")
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.api.download
-
-```
+::: deepmimo.api.download
 
 ## Upload
 
@@ -73,11 +65,7 @@ key = 'your_api_key'
 dm.upload(scenario_name, key=key)
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.api.upload
-
-```
+::: deepmimo.api.upload
 
 ### Images
 
@@ -93,11 +81,7 @@ img_paths = ['image1.png', 'image2.png']
 dm.upload_images(scenario_name, img_paths, key)
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.api.upload_images
-
-```
+::: deepmimo.api.upload_images
 
 ### RT Source
 
@@ -113,9 +97,5 @@ key = 'your_api_key'
 dm.upload_rt_source(scenario_name, rt_zip_path, key)
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.api.upload_rt_source
-
-```
+::: deepmimo.api.upload_rt_source
 

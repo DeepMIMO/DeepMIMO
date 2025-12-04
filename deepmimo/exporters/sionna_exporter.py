@@ -58,30 +58,23 @@ def _paths_to_dict(paths: Paths) -> list[dict]:
     return data
 
 
-def export_paths(path_list):
-    """Export paths to a filtered dictionary with only selected keys.
-
-    Note:
-    - in both versions:
-        - 'tau' is a float array
-        - 'phi_r' and 'phi_t' are float arrays
-        - 'theta_r' and 'theta_t' are float arrays
-        - 'sources' and 'targets' are lists of positions
-        - 'vertices' is a list of vertices
-        - 'rx_array' and 'tx_array' are arrays of positions
-    - Sionna 0.x:
-        - 'a' is a complex array
-        - 'types' is are the types of each interaction
-    - Sionna 1.x:
-        - 'a' is a tuple of real and imaginary parts
-        - 'interactions' is are the types of each interaction
+def export_paths(path_list: Paths | list[Paths]) -> list[dict[str, Any]]:
+    """Export Sionna paths to filtered dictionaries with the relevant fields.
 
     Args:
-        paths (Paths): Sionna Paths object
+        path_list (Paths | list[Paths]): Paths object (single TX) or list of Paths (multi-TX).
 
     Returns:
-        List[dict]: List of dictionaries with only selected keys
+        list[dict[str, Any]]: Paths converted to dictionaries with only the keys we need.
 
+    Notes:
+        Shared fields: tau, phi_r, phi_t, theta_r, theta_t, sources, targets, vertices,
+        rx_array, tx_array.
+
+        Sionna 0.x: ``a`` is complex, ``types`` holds interaction types.
+
+        Sionna 1.x: ``a`` is (real, imag) tuple, ``interactions`` holds interaction types,
+        and targets/sources are transposed.
     """
     sionna_v1 = is_sionna_v1()
     relevant_keys = [
@@ -118,14 +111,14 @@ def export_paths(path_list):
 
 
 def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int]]:
-    """Export the materials in a Sionna Scene to a list of dictionaries.
+    """Export materials in a Sionna Scene.
 
     Args:
-        scene (Scene): Sionna Scene object
+        scene (Scene): Sionna Scene object.
 
     Returns:
-        Tuple[List[Dict[str, Any]], List[int]]: List of dictionaries with material properties and indices
-
+        tuple[list[dict[str, Any]], list[int]]: Material property dictionaries and the material
+        index per object.
     """
     obj_materials = []
     for _, obj in scene._scene_objects.items():
@@ -187,8 +180,16 @@ def _scene_to_dict(scene: Scene) -> dict[str, Any]:
     return data
 
 
-def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> dict[str, Any]:
-    """Extract parameters from Scene (and from compute_paths arguments)"""
+def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[str, Any]:
+    """Extract ray-tracing parameters from a Scene and ``compute_paths`` arguments.
+
+    Args:
+        scene (Scene): Sionna Scene object.
+        **compute_paths_kwargs: Keyword arguments passed to ``compute_paths``.
+
+    Returns:
+        dict[str, Any]: Consolidated ray-tracing parameters.
+    """
     scene_dict = _scene_to_dict(scene)
 
     # Safely get antenna positions for rx_array and tx_array
@@ -268,10 +269,14 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs) -> dict[str, An
 
 
 def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
-    """Export the vertices and faces of buildings in a Sionna Scene.
-    Output:
-        vertice_matrix: n_vertices_in_scene x 3 (xyz coordinates)
-        obj_index_map: Dict with object name as key and (start_idx, end_idx) as value
+    """Export building geometry from a Sionna Scene.
+
+    Args:
+        scene (Scene): Sionna Scene object.
+
+    Returns:
+        tuple[np.ndarray, dict]: ``vertice_matrix`` (n_vertices x 3) and ``obj_index_map``
+        mapping object name to (start_idx, end_idx).
     """
     all_vertices = []
     obj_index_map = {}  # Stores the name and starting index of each object
@@ -335,18 +340,15 @@ def sionna_exporter(
     - Scene geometry (vertices and objects)
 
     Args:
-        scene (Scene): The Sionna Scene object containing the simulation environment
-        path_list (List[Paths] | Paths): Ray paths computed by Sionna's ray tracer, either
-            for a single transmitter (Paths) or multiple transmitters (List[Paths])
-        my_compute_path_params (Dict): Dictionary containing the parameters used in
-            Sionna's compute_paths() function. This is needed since Sionna does not
-            save these parameters internally.
-        save_folder (str): Directory path where the exported files will be saved
+        scene (Scene): Sionna Scene containing the simulation environment.
+        path_list (list[Paths] | Paths): Ray paths from Sionna's ray tracer (single or multi TX).
+        my_compute_path_params (dict): Parameters passed to ``compute_paths`` (Sionna does not
+            persist them internally).
+        save_folder (str): Directory to write the exported files.
 
-    Note:
-        - This function has been tested with Sionna v0.19.1 and v1.0.2.
-        - In Sionna 1.x, the paths are exported during RT, so no need to export them here
-
+    Notes:
+        - Tested with Sionna v0.19.1 and v1.0.2.
+        - In Sionna 1.x, paths are exported during RT, so they may already be serialized.
     """
     if get_sionna_version() not in SUPPORTED_SIONNA_VERSIONS:
         raise ValueError(

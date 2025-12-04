@@ -64,6 +64,25 @@ doc = [
     # Themes
     "sphinx-rtd-theme>=2.0.0",                   # RTD theme
     # "furo",                                      # Works with 2024.8.6
+    # MkDocs stack for the new site
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.7",
+    "mkdocs-jupyter>=0.25",
+    "pymdown-extensions>=10.0",
+    "mkdocs-material-extensions>=1.3",
+    # MkDocs API docs
+    "mkdocstrings[python]>=0.25",
+    "mkdocs-autorefs>=1.2",
+    "mkdocs-exclude>=1.0",
+    # Signature formatting for mkdocstrings
+    "ruff>=0.6.9",
+    # Jupyter/platformdirs pins to avoid deprecation warnings
+    "jupyter-core>=5.7,<6.0",
+    "jupyter-client>=8.6.3",
+    "platformdirs>=4.3.0",
+    # Better nbconvert handling for Colab MIME quirks
+    "nbconvert>=7.16",
+    "nbformat>=5.10",
 ]
 
 aodt = [

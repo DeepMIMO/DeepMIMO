@@ -11,6 +11,7 @@
 deepmimo_scenarios*
 
 # Artifacts
+site/
 **/osm_root/*
 **/blender_addons/*
 manuals/*
@@ -71,3 +72,4 @@ wheels/
 .installed.cfg
 *.egg
 *.vscode
+*.mp4

@@ -72,9 +72,9 @@ The dimensions are:
 
 | Dataset Attribute | Dimensions | Type | Description |
 |------------------|------------|------|-------------|
-| dataset[scene][tx]['chs'] | N_RX_ant × N_TX_ant × N_subcarriers | complex64 | Channel matrices |
-| dataset[scene][tx]['distances'] | N × 1 | float32 | TX-RX distances |
-| dataset[scene][tx]['pathloss'] | N × 1 | float32 | Path loss values |
+| `dataset[scene][tx]['chs']` | N_RX_ant × N_TX_ant × N_subcarriers | complex64 | Channel matrices |
+| `dataset[scene][tx]['distances']` | N × 1 | float32 | TX-RX distances |
+| `dataset[scene][tx]['pathloss']` | N × 1 | float32 | Path loss values |
 
 Computed matrices are continuously added for convenience of operations. Check `dm.info()` for a complete list.
 

@@ -19,9 +19,8 @@ dataset = dm.load(scenario)
 
 Load will open the ray tracing scenario matrices, such as the received powers, times of arrival, and angles.
 
-```{tip}
-`dm.download()` requires an internet connection. If the scenario already exists in `./deepmimo_scenarios`, the download is skipped. 
-```
+!!! tip
+    `dm.download()` requires an internet connection. If the scenario already exists in `./deepmimo_scenarios`, the download is skipped.
 
 ## Compute channels
     
@@ -34,9 +33,8 @@ print(dataset.channels.shape)
 # (131931, 1, 8, 1)
 ```
 
-```{tip}
-See the <a href="manual_full.html#channel-generation">Channel Generation Examples</a> for the default parameters and how to configure channel generation.
-```
+!!! tip
+    See the [Channel Generation Examples](manual.ipynb#channel-generation) for the default parameters and how to configure channel generation.
 
 ## Visualize Dataset
 
@@ -46,7 +44,7 @@ See the <a href="manual_full.html#channel-generation">Channel Generation Example
 dataset.scene.plot()
 ```
 
-![Basic scene visualization](_static/basic_scene.png)
+![Basic scene visualization](assets/images/basic_scene.png)
 
 ### Coverage Maps
 
@@ -54,7 +52,7 @@ dataset.scene.plot()
     # Plot power coverage map (power is [n_ue, n_paths])
     dataset.power.plot() # selects first path by default
 ```
-![Coverage map visualization](_static/coverage_map.png)
+![Coverage map visualization](assets/images/coverage_map.png)
 
 ### Rays
 
@@ -64,7 +62,7 @@ dataset.scene.plot()
     dataset.plot_rays(los_user)
 ```
 
-![Ray paths visualization](_static/ray_paths.png)
+![Ray paths visualization](assets/images/ray_paths.png)
 
 ## Inspect Dataset
 
@@ -118,5 +116,4 @@ This will print 3 tables, the fundamental matrices, the computed attributes, and
 All these attributes can be accessed via dataset.`<attribute_name>`, just like we did in `dataset.power.plot()`
 
 
-For more advanced usage and features, we recommend exploring the 
-<a href="manual_full.html">Examples Manual</a>, leveraging the API reference when needed.
+For more advanced usage and features, we recommend exploring the [Examples Manual](manual.ipynb), leveraging the API reference when needed.
