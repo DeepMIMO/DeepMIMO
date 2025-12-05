@@ -188,7 +188,7 @@ def plot_summary(scenario_name: str | None = None, save_imgs: bool = False,
         List of paths to generated images
     """
     # Import load function here to avoid circular import
-    from .generator.core import load
+    from .dataset.load import load
     
     # Create figures directory if it doesn't exist
     temp_dir = './figures'

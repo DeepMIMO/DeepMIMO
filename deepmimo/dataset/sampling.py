@@ -1,24 +1,21 @@
 """
-Utilities Module for DeepMIMO Dataset Processing.
+User Sampling Utilities for DeepMIMO Datasets.
 
-This module provides utility functions and classes for processing DeepMIMO datasets,
+This module provides utility functions for sampling users from DeepMIMO datasets,
 including:
-- Unit conversions (dBW to Watts)
-- Array steering vector calculations
-- Path analysis and feature extraction
-- Position sampling and filtering utilities
+- Linear path sampling
+- Uniform grid sampling
+- Grid-based row/column sampling
+- Position-based filtering with coordinate limits
 
-The module serves as a collection of helper functions used throughout the DeepMIMO
-dataset generation process.
+These functions are used by the Dataset class for various user selection operations.
 """
 
 # Standard library imports
-from typing import List, Optional
+from typing import List
 
 # Third-party imports
 import numpy as np
-
-################################## For User ###################################
 
 def get_linear_idxs(rx_pos: np.ndarray, start_pos: np.ndarray, end_pos: np.ndarray, 
                     n_steps: int, filter_repeated: bool = True) -> np.ndarray:
@@ -55,21 +52,6 @@ def get_linear_idxs(rx_pos: np.ndarray, start_pos: np.ndarray, end_pos: np.ndarr
     if filter_repeated:
         idxs = np.concatenate(([idxs[0]], idxs[1:][(idxs[1:] - idxs[:-1]) != 0]))
     return idxs
-
-
-def dbw2watt(val: float | np.ndarray) -> float | np.ndarray:
-    """Convert power from dBW to Watts.
-    
-    This function performs the standard conversion from decibel-watts (dBW)
-    to linear power in Watts.
-
-    Args:
-        val: Power value(s) in dBW
-
-    Returns:
-        Power value(s) in Watts
-    """
-    return 10**(val/10)
 
 def get_uniform_idxs(n_ue: int, grid_size: np.ndarray, steps: List[int]) -> np.ndarray:
     """Return indices of users at uniform intervals.
@@ -174,4 +156,4 @@ def get_idxs_with_limits(data_pos: np.ndarray, **limits) -> np.ndarray:
             
         valid_idxs = valid_idxs[mask]
     
-    return valid_idxs
+    return valid_idxs 

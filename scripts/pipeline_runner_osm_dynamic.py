@@ -92,8 +92,8 @@ import deepmimo as dm
 
 d = dm.load('asu_campus_3p5')
 
-seq_idxs1 = dm.LinearPath(d.rx_pos, [170, -115], [170, 85], n_steps=200).idxs
-seq_idxs2 = dm.LinearPath(d.rx_pos, [170, 85], [-130, 85], n_steps=300).idxs
+seq_idxs1 = dm.get_linear_idxs(d.rx_pos, [170, -115], [170, 85], n_steps=200)
+seq_idxs2 = dm.get_linear_idxs(d.rx_pos, [170, 85], [-130, 85], n_steps=300)
 seq_idxs = np.concatenate([seq_idxs1, seq_idxs2]) # 500 of them
 
 tx_pos_seq = d.rx_pos[seq_idxs[::5]] # 100 of them

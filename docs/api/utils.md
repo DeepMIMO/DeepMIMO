@@ -1,14 +1,16 @@
 # Utilities
 
-DeepMIMO provides two utility modules:
+DeepMIMO provides utility modules organized as follows:
 ```
 deepmimo/general_utils.py
   ├── Scenario Management (get_available_scenarios, get_params_path, get_scenario_folder)
   └── Zip & Unzip (zip, unzip)
 
-deepmimo/generator/generator_utils.py
-  ├── Unit Conversion (dbw2watt)
-  └── Position Sampling (get_uniform_idxs, LinearPath)
+deepmimo/dataset/sampling.py
+  └── User Sampling (get_uniform_idxs, get_grid_idxs, get_linear_idxs, get_idxs_with_limits)
+
+deepmimo/dataset/dataset.py
+  └── Unit Conversion (dbw2watt)
 
 deepmimo/generator/geometry.py
   └── Beamforming (steering_vec)
@@ -60,18 +62,13 @@ idxs = dm.get_idxs_with_limits(
     z_min=0, z_max=50
 )
 
-# Create linear path through dataset
-path = dm.LinearPath(
+# Get indices along a linear path
+idxs = dm.get_linear_idxs(
     rx_pos,               # Receiver positions
-    first_pos=[0, 0, 0],  # Start position
-    last_pos=[100, 0, 0], # End position
-    res=1.0,              # Spatial resolution
+    start_pos=[0, 0, 0],  # Start position
+    end_pos=[100, 0, 0],  # End position
     n_steps=100           # Number of steps
 )
-
-# Access path data
-positions = path.pos
-indices = path.idxs
 ```
 
 ```{tip}
@@ -80,16 +77,13 @@ See the <a href="../manual_full.html#user-sampling">User Sampling Section</a> of
 
 ```{eval-rst}
 
-.. autofunction:: deepmimo.generator.generator_utils.get_uniform_idxs
+.. autofunction:: deepmimo.dataset.sampling.get_uniform_idxs
 
-.. autofunction:: deepmimo.generator.generator_utils.get_idxs_with_limits
+.. autofunction:: deepmimo.dataset.sampling.get_idxs_with_limits
 
-.. autofunction:: deepmimo.generator.generator_utils.get_grid_idxs
+.. autofunction:: deepmimo.dataset.sampling.get_grid_idxs
 
-.. autoclass:: deepmimo.generator.generator_utils.LinearPath
-   :members:
-   :undoc-members:
-   :show-inheritance:
+.. autofunction:: deepmimo.dataset.sampling.get_linear_idxs
 
 ```
 
@@ -117,7 +111,7 @@ power_w = dm.dbw2watt(power_dbw)
 ```
 
 ```{eval-rst}
-.. autofunction:: deepmimo.generator.generator_utils.dbw2watt
+.. autofunction:: deepmimo.dataset.dataset.dbw2watt
 ```
 
 ## Zip & Unzip

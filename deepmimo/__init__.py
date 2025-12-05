@@ -9,7 +9,15 @@ from .generator.core import (
     generate,
     load,
 )
-from .dataset import Dataset, MacroDataset, DynamicDataset
+from .dataset import (
+    Dataset, 
+    MacroDataset, 
+    DynamicDataset,
+    get_linear_idxs,
+    get_uniform_idxs,
+    get_grid_idxs,
+    get_idxs_with_limits
+)
 
 # TX/RX handling
 from .txrx import (
@@ -137,4 +145,10 @@ __all__ = [
 
     # Beamforming utils
     'steering_vec',
+    
+    # User sampling utils
+    'get_linear_idxs',
+    'get_uniform_idxs',
+    'get_grid_idxs',
+    'get_idxs_with_limits',
 ]

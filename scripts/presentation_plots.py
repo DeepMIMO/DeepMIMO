@@ -68,8 +68,8 @@ plt.rcParams['ytick.color'] = 'white'
 plt.rcParams['axes.labelcolor'] = 'white'
 plt.rcParams['font.size'] = 16
 
-seq_idxs1 = dm.LinearPath(dataset.rx_pos, [150, -120], [150, 80], n_steps=200).idxs
-seq_idxs2 = dm.LinearPath(dataset.rx_pos, [150, 85], [-120, 85], n_steps=200).idxs
+seq_idxs1 = dm.get_linear_idxs(dataset.rx_pos, [150, -120], [150, 80], n_steps=200)
+seq_idxs2 = dm.get_linear_idxs(dataset.rx_pos, [150, 85], [-120, 85], n_steps=200)
 seq_idxs = np.concatenate([seq_idxs1, seq_idxs2])
 
 n = 8

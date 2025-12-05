@@ -684,3 +684,5 @@ def load_pickle(filename: str) -> Any:
     """
     with open(filename, 'rb') as file:
         return pickle.load(file)
+
+

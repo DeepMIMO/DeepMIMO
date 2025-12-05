@@ -1,23 +1,12 @@
 """
 Dataset module for DeepMIMO.
 
-This module provides two main classes:
-
-Dataset: For managing individual DeepMIMO datasets, including:
+This module provides the Dataset class for managing individual DeepMIMO datasets, including:
 - Channel matrices 
 - Path information (angles, powers, delays)
 - Position information
 - TX/RX configuration information
 - Metadata
-
-MacroDataset: For managing collections of related DeepMIMO datasets that *may* share:
-- Scene configuration
-- Material properties
-- Loading parameters 
-- Ray-tracing parameters
-
-DynamicDataset: For dynamic datasets that consist of multiple (macro)datasets across time snapshots:
-- All txrx sets are the same for all time snapshots
 
 The Dataset class is organized into several logical sections:
 1. Core Dictionary Interface - Basic dictionary-like operations and key resolution
@@ -39,18 +28,18 @@ import numpy as np
 from tqdm import tqdm
 
 # Base utilities
-from .general_utils import DotDict, spherical_to_cartesian, DelegatingList
-from . import consts as c
-from .info import info
-from .visualization import plot_coverage, plot_rays
-from .generator.array_wrapper import DeepMIMOArray
+from ..general_utils import DotDict, spherical_to_cartesian, DelegatingList
+from .. import consts as c
+from ..info import info
+from ..visualization import plot_coverage, plot_rays
+from .array_wrapper import DeepMIMOArray
 
 # Channel generation
-from .generator.channel import _generate_MIMO_channel, ChannelParameters
+from ..generator.channel import _generate_MIMO_channel, ChannelParameters
 
 # Antenna patterns and geometry
-from .generator.ant_patterns import AntennaPattern
-from .generator.geometry import (
+from ..generator.ant_patterns import AntennaPattern
+from ..generator.geometry import (
     _rotate_angles_batch,
     _apply_FoV_batch,
     _array_response_batch,
@@ -58,21 +47,21 @@ from .generator.geometry import (
 )
 
 # Utilities
-from .generator.generator_utils import (
-    dbw2watt,
+from .sampling import (
     get_uniform_idxs,
     get_grid_idxs,
-    get_linear_idxs
+    get_linear_idxs,
+    get_idxs_with_limits,
 )
 
 # Converter utilities
-from .converters import converter_utils as cu
+from ..converters import converter_utils as cu
 
 # Txrx set information
-from .txrx import get_txrx_sets, TxRxSet
+from ..txrx import get_txrx_sets, TxRxSet
 
 # Summary
-from .summary import plot_summary
+from ..summary import plot_summary
 
 # Parameters that should remain consistent across datasets in a MacroDataset
 SHARED_PARAMS = [
@@ -82,6 +71,19 @@ SHARED_PARAMS = [
     c.RT_PARAMS_PARAM_NAME,       # Ray-tracing parameters
 ]
 
+def dbw2watt(val: float | np.ndarray) -> float | np.ndarray:
+    """Convert power from dBW to Watts.
+    
+    This function performs the standard conversion from decibel-watts (dBW)
+    to linear power in Watts.
+
+    Args:
+        val: Power value(s) in dBW
+
+    Returns:
+        Power value(s) in Watts
+    """
+    return 10**(val/10)
 
 class Dataset(DotDict):
     """Class for managing DeepMIMO datasets.
@@ -1676,208 +1678,4 @@ class Dataset(DotDict):
             param_name = resolved_name
             
         info(param_name)
-
-
-class MacroDataset:
-    """A container class that holds multiple Dataset instances and propagates operations to all children.
-    
-    This class acts as a simple wrapper around a list of Dataset objects. When any attribute
-    or method is accessed on the MacroDataset, it automatically propagates that operation
-    to all contained Dataset instances. If the MacroDataset contains only one dataset,
-    it will return single value instead of a list with a single element.
-    """
-    
-    # Methods that should only be called on the first dataset
-    SINGLE_ACCESS_METHODS = [
-        'info',  # Parameter info should only be shown once
-    ]
-    
-    # Methods that should be propagated to children - automatically populated from Dataset methods
-    PROPAGATE_METHODS = {
-        name for name, _ in inspect.getmembers(Dataset, predicate=inspect.isfunction)
-        if not name.startswith('__')  # Skip dunder methods
-    }
-    
-    def __init__(self, datasets: list[Dataset] | None = None):
-        """Initialize with optional list of Dataset instances.
-        
-        Args:
-            datasets: List of Dataset instances. If None, creates empty list.
-        """
-        self.datasets = datasets if datasets is not None else []
-        
-    def _get_single(self, key):
-        """Get a single value from the first dataset for shared parameters.
-        
-        Args:
-            key: Key to get value for
-            
-        Returns:
-            Single value from first dataset if key is in SHARED_PARAMS,
-            otherwise returns list of values from all datasets
-        """
-        if not self.datasets:
-            raise IndexError("MacroDataset is empty")
-        return self.datasets[0][key]
-        
-    def __getattr__(self, name):
-        """Propagate any attribute/method access to all datasets.
-        
-        If the attribute is a method in PROPAGATE_METHODS, call it on all children.
-        If the attribute is in SHARED_PARAMS, return from first dataset.
-        If there is only one dataset, return single value instead of lists.
-        Otherwise, return list of results from all datasets.
-        """
-        # Check if it's a method we should propagate
-        if name in self.PROPAGATE_METHODS:
-            if name in self.SINGLE_ACCESS_METHODS:
-                # For single access methods, only call on first dataset
-                def single_method(*args, **kwargs):
-                    return getattr(self.datasets[0], name)(*args, **kwargs)
-                return single_method
-            else:
-                # For normal methods, propagate to all datasets
-                def propagated_method(*args, **kwargs):
-                    results = [getattr(dataset, name)(*args, **kwargs) for dataset in self.datasets]
-                    return results[0] if len(results) == 1 else results
-                return propagated_method
-            
-        # Handle shared parameters
-        if name in SHARED_PARAMS:
-            return self._get_single(name)
-            
-        # Default: propagate to all datasets
-        results = [getattr(dataset, name) for dataset in self.datasets]
-        return results[0] if len(results) == 1 else results
-        
-    def __getitem__(self, idx):
-        """Get dataset at specified index if idx is integer, otherwise propagate to all datasets.
-        
-        Args:
-            idx: Integer index to get specific dataset, or string key to get attribute from all datasets
-            
-        Returns:
-            Dataset instance if idx is integer,
-            single value if idx is in SHARED_PARAMS or if there is only one dataset,
-            or list of results if idx is string and there are multiple datasets
-        """
-        if isinstance(idx, (int, slice)):
-            return self.datasets[idx]
-        if idx in SHARED_PARAMS:
-            return self._get_single(idx)
-        results = [dataset[idx] for dataset in self.datasets]
-        return results[0] if len(results) == 1 else results
-        
-    def __setitem__(self, key, value):
-        """Set item on all contained datasets.
-        
-        Args:
-            key: Key to set
-            value: Value to set
-        """
-        for dataset in self.datasets:
-            dataset[key] = value
-        
-    def __len__(self):
-        """Return number of contained datasets."""
-        return len(self.datasets)
-        
-    def append(self, dataset):
-        """Add a dataset to the collection.
-        
-        Args:
-            dataset: Dataset instance to add
-        """
-        self.datasets.append(dataset)
-        
-
-class DynamicDataset(MacroDataset):
-    """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
-    
-    def __init__(self, datasets: list[MacroDataset], name: str):
-        """Initialize a dynamic dataset.
-        
-        Args:
-            datasets: List of MacroDataset instances, each representing a time snapshot
-            name: Base name of the scenario (without time suffix)
-        """
-        super().__init__(datasets)
-        self.name = name
-        self.names = [dataset.name for dataset in datasets]
-        self.n_scenes = len(datasets)
-
-        for dataset in datasets:
-            dataset.parent_name = name
-            
-    def _get_single(self, key):
-        """Override _get_single to handle scene differently from other shared parameters.
-        
-        For scene, return a DelegatingList of scenes from all datasets.
-        For other shared parameters, use parent class behavior.
-        """
-        if key == 'scene':
-            return DelegatingList([dataset.scene for dataset in self.datasets])
-        return super()._get_single(key)
-        
-    def __getattr__(self, name):
-        """Override __getattr__ to handle txrx_sets specially."""
-        if name == 'txrx_sets':
-            return get_txrx_sets(self.name)
-        return super().__getattr__(name)
-    
-    def set_timestamps(self, timestamps: int | float | list[int | float] | np.ndarray) -> None:
-        """Set the timestamps for the dataset.
-
-        Args:
-            timestamps(int | float | list[int | float] | np.ndarray): 
-                Timestamps for each scene in the dataset. Can be:
-                - Single value: Creates evenly spaced timestamps
-                - List/array: Custom timestamps for each scene
-        """
-        self.timestamps = np.zeros(self.n_scenes)
-        
-        if isinstance(timestamps, (float, int)):
-            self.timestamps = np.arange(0, timestamps * self.n_scenes, timestamps)
-        elif isinstance(timestamps, list):
-            self.timestamps = np.array(timestamps)
-        
-        if len(self.timestamps) != self.n_scenes:
-            raise ValueError(f'Time reference must be a single value or a list of {self.n_scenes} values')
-        
-        if self.timestamps.ndim != 1:
-            raise ValueError(f'Time reference must be single dimension.')
-
-        self._compute_speeds()
-    
-    def _compute_speeds(self) -> None:
-        """Compute the speeds of each scene based on the position and time differences.""" 
-        # Compute position & time differences to compute speeds for each scene
-        for i in range(1, self.n_scenes - 1):
-            time_diff = (self.timestamps[i] - self.timestamps[i - 1])
-            dataset_curr = self.datasets[i]
-            dataset_prev = self.datasets[i - 1]
-            rx_pos_diff = dataset_curr.rx_pos - dataset_prev.rx_pos
-            tx_pos_diff = dataset_curr.tx_pos - dataset_prev.tx_pos
-            obj_pos_diff = (np.vstack(dataset_curr.scene.objects.position) -
-                            np.vstack(dataset_prev.scene.objects.position))
-            dataset_curr.rx_vel = rx_pos_diff / time_diff
-            dataset_curr.tx_vel = tx_pos_diff[0] / time_diff
-            dataset_curr.scene.objects.vel = [v for v in obj_pos_diff / time_diff]
-
-            # For the first and last pair of scenes, assume that the position and time differences 
-            # are the same as for the second and second-from-last pair of scenes, respectively.
-            if i == 1:
-                i2 = 0
-            elif i == self.n_scenes - 2:
-                i2 = self.n_scenes - 1
-            else:
-                i2 = None
-
-            if i2 is not None:
-                dataset_2 = self.datasets[i2]
-                dataset_2.rx_vel = dataset_curr.rx_vel
-                dataset_2.tx_vel = dataset_curr.tx_vel
-                dataset_2.scene.objects.vel = dataset_curr.scene.objects.vel
-        
-        return
     

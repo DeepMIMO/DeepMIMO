@@ -27,15 +27,16 @@ deepmimo/
 ├── exporters/              # Data exporters
 │   ├── aodt_exporter.py    # AODT format exporter
 │   └── sionna_exporter.py  # Sionna format exporter
-├── generator/              # Dataset generator
-│   ├── core.py             # Core generation functionality
+├── dataset/                # Dataset management
 │   ├── dataset.py          # Dataset class and management
+│   ├── load.py             # Dataset loading functions
+│   ├── sampling.py         # User sampling utilities
+│   └── array_wrapper.py    # Array management utilities
+├── generator/              # Channel generation
+│   ├── core.py             # Core generation functionality
 │   ├── channel.py          # Channel generation
 │   ├── geometry.py         # Geometric calculations
-│   ├── ant_patterns.py     # Antenna pattern definitions
-│   ├── array_wrapper.py    # Array management utilities
-│   ├── visualization.py    # Visualization tools
-│   └── generator_utils.py  # Generator utilities
+│   └── ant_patterns.py     # Antenna pattern definitions
 ├── integrations/           # Integrations with 5G simulation tools
 │   ├── sionna_adapter.py   # Sionna integration
 │   └── matlab/             # Matlab 5GNR integration
