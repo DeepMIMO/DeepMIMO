@@ -8,7 +8,7 @@ deepmimo/general_utils.py
 
 deepmimo/generator/generator_utils.py
   ├── Unit Conversion (dbw2watt)
-  └── Position Sampling (get_uniform_idxs, LinearPath)
+  └── Position Sampling (get_uniform_idxs, get_linear_idxs)
 
 deepmimo/generator/geometry.py
   └── Beamforming (steering_vec)
@@ -27,14 +27,11 @@ folder = dm.get_scenario_folder('scenario_name')
 params = dm.get_params_path('scenario_name')
 ```
 
-```{eval-rst}
+::: deepmimo.general_utils.get_scenario_folder
 
-.. autofunction:: deepmimo.general_utils.get_scenario_folder
+::: deepmimo.general_utils.get_params_path
 
-.. autofunction:: deepmimo.general_utils.get_params_path
-
-.. autofunction:: deepmimo.general_utils.get_available_scenarios
-```
+::: deepmimo.general_utils.get_available_scenarios
 
 ## User Sampling
 
@@ -60,54 +57,36 @@ idxs = dm.get_idxs_with_limits(
     z_min=0, z_max=50
 )
 
-# Create linear path through dataset
-path = dm.LinearPath(
-    rx_pos,               # Receiver positions
-    first_pos=[0, 0, 0],  # Start position
-    last_pos=[100, 0, 0], # End position
-    res=1.0,              # Spatial resolution
-    n_steps=100           # Number of steps
+# Create linear sampling along a path
+idxs = dm.get_linear_idxs(
+    rx_pos,               # Receiver positions [N, 3]
+    start_pos=[0, 0, 0],  # Start position
+    end_pos=[100, 0, 0],  # End position
+    n_steps=100           # Number of samples
 )
-
-# Access path data
-positions = path.pos
-indices = path.idxs
 ```
 
-```{tip}
-See the <a href="../manual_full.html#user-sampling">User Sampling Section</a> of the DeepMIMO Manual for examples.
-```
+!!! tip "User sampling examples"
+    See the <a href="../manual/#user-sampling">User Sampling</a> section of the DeepMIMO Manual for examples.
 
-```{eval-rst}
+::: deepmimo.generator.generator_utils.get_uniform_idxs
 
-.. autofunction:: deepmimo.generator.generator_utils.get_uniform_idxs
+::: deepmimo.generator.generator_utils.get_idxs_with_limits
 
-.. autofunction:: deepmimo.generator.generator_utils.get_idxs_with_limits
+::: deepmimo.generator.generator_utils.get_grid_idxs
 
-.. autofunction:: deepmimo.generator.generator_utils.get_grid_idxs
-
-.. autoclass:: deepmimo.generator.generator_utils.LinearPath
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-```
+::: deepmimo.generator.generator_utils.get_linear_idxs
 
 
-```{tip}
-See the User Sampling Section of the DeepMIMO Manual for examples.
-```
+!!! tip "User sampling examples"
+    See the <a href="../manual/#user-sampling">User Sampling</a> section of the DeepMIMO Manual for examples.
 
 ## Beamforming
 
-```{tip}
-See the <a href="../manual_full.html#beamforming">Beamforming Section</a> of the DeepMIMO Manual for examples.
-```
+!!! tip "Beamforming examples"
+    See the <a href="../manual/#beamforming">Beamforming</a> section of the DeepMIMO Manual for examples.
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.generator.geometry.steering_vec
-```
+::: deepmimo.generator.geometry.steering_vec
 
 ## Unit Conversions
 
@@ -116,9 +95,7 @@ See the <a href="../manual_full.html#beamforming">Beamforming Section</a> of the
 power_w = dm.dbw2watt(power_dbw)
 ```
 
-```{eval-rst}
-.. autofunction:: deepmimo.generator.generator_utils.dbw2watt
-```
+::: deepmimo.generator.generator_utils.dbw2watt
 
 ## Zip & Unzip
 ```python
@@ -127,8 +104,6 @@ dm.zip('path/to/folder')
 dm.unzip('path/to/file.zip')
 ```
 
-```{eval-rst}
-.. autofunction:: deepmimo.general_utils.zip
+::: deepmimo.general_utils.zip
 
-.. autofunction:: deepmimo.general_utils.unzip
-```
+::: deepmimo.general_utils.unzip

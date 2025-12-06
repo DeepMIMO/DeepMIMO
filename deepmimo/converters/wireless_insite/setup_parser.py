@@ -1,5 +1,4 @@
-"""
-Wireless Insite Setup File Parser.
+"""Wireless Insite Setup File Parser.
 
 This module provides functionality to parse Wireless Insite setup files into Python objects.
 
@@ -12,7 +11,7 @@ This module provides:
 The module serves as the interface between Wireless Insite's file formats and DeepMIMO's
 internal data structures.
 
-The processed file looks like a list of nodes, and nodes are dictionaries with 
+The processed file looks like a list of nodes, and nodes are dictionaries with
 certain fields. Print the document to see all the elements.
 
 The pseudo-grammar for a TXRX file looks like this:
@@ -23,9 +22,9 @@ values := (node | line_value)*
 line_value := (STR | "yes" | "no" | INT | FLOAT)+ NL
 """
 
-from dataclasses import dataclass, field
 import re
-from typing import Any, Dict, Tuple
+from dataclasses import dataclass, field
+from typing import Any
 
 RE_BOOL_TRUE = re.compile(r"yes")
 RE_BOOL_FALSE = re.compile(r"no")
@@ -37,22 +36,23 @@ RE_LABEL = re.compile(r"\S+")
 
 NL_TOKEN = "\n"
 
+
 def tokenize_file(path: str) -> str:
     """Break a Wireless Insite file into whitespace-separated tokens.
-    
+
     Args:
         path (str): Path to the file to tokenize
-        
+
     Returns:
         str: Generator yielding tokens from the file
-        
+
     Notes:
         Special handling is applied to the first line if it contains format information.
-    """
 
-    with open(path, "r") as f:
+    """
+    with open(path) as f:
         first_line = f.readline()
-        if first_line.startswith('Format type:keyword version:'):
+        if first_line.startswith("Format type:keyword version:"):
             # print(f'Ignoring first line: {first_line.lower()}')
             pass
         else:
@@ -60,6 +60,7 @@ def tokenize_file(path: str) -> str:
         for line in f:
             yield from line.split()
             yield NL_TOKEN
+
 
 class peekable:
     """Makes it possible to peek at the next value of an iterator."""
@@ -96,11 +97,12 @@ class peekable:
             return next_value
         return next(self._iterator)
 
+
 @dataclass
 class Node:
     """Node representation for Wireless Insite setup file sections.
-    
-    This class represents a section in a Wireless Insite setup file delimited by 
+
+    This class represents a section in a Wireless Insite setup file delimited by
     begin_<...> and end_<...> tags. It provides structured access to section data
     through dictionary-like interface.
 
@@ -117,64 +119,71 @@ class Node:
         >>> node["frequency"] = 28e9
         >>> node.values["frequency"]
         28000000000.0
+
     """
 
-    name: str = ''
-    kind: str = ''
+    name: str = ""
+    kind: str = ""
     values: dict = field(default_factory=dict)
     labels: list = field(default_factory=list)
     data: list = field(default_factory=list)
 
     def __getitem__(self, key: str) -> Any:
         """Access node values using dictionary notation.
-        
+
         Args:
             key (str): Key to look up in values dictionary
-            
+
         Returns:
             Any: Value associated with key
-            
+
         Raises:
             KeyError: If key not found in values dictionary
+
         """
         return self.values.__getitem__(key)
 
     def __setitem__(self, key: str, value: Any) -> None:
         """Set node values using dictionary notation.
-        
+
         Args:
             key (str): Key to set in values dictionary
             value (Any): Value to associate with key
+
         """
         return self.values.__setitem__(key, value)
 
     def __delitem__(self, key: str) -> None:
         """Delete node values using dictionary notation.
-        
+
         Args:
             key (str): Key to delete from values dictionary
-            
+
         Raises:
             KeyError: If key not found in values dictionary
+
         """
         return self.values.__delitem__(key)
+
 
 def eat(tokens, expected):
     """Ensures the next token is what's expected."""
     if (tok := next(tokens)) != expected:
         raise RuntimeError(f"Expected token {expected!r}, got {tok!r}.")
 
-def parse_document(tokens) -> Dict[str, Node]:
+
+def parse_document(tokens) -> dict[str, Node]:
     """Parse a Wireless Insite setup document into a dictionary of nodes.
-    
+
     Args:
         tokens: Iterator of tokens from tokenize_file()
-        
+
     Returns:
         Dict[str, Node]: Dictionary mapping node names to Node objects
-        
+
     Raises:
         RuntimeError: If document structure is invalid or contains duplicate nodes
+
     """
     if not isinstance(tokens, peekable):
         tokens = peekable(tokens)
@@ -187,25 +196,27 @@ def parse_document(tokens) -> Dict[str, Node]:
 
         node_name, node = parse_node(tokens)
         node.kind = node_name
-        potential_name = '_'.join(tok.split(' ')[1:])[:-1]
+        potential_name = "_".join(tok.split(" ")[1:])[:-1]
         node_name = potential_name if potential_name else node.name
         if node_name in document:
             raise RuntimeError(f"Node with duplicate name {node_name} found.")
         document[node_name] = node
     return document
 
-def parse_node(tokens) -> Tuple[str, Node]:
+
+def parse_node(tokens) -> tuple[str, Node]:
     """Parse a node section from a Wireless Insite setup file.
-    
+
     Args:
         tokens: Iterator of tokens from tokenize_file()
-        
+
     Returns:
         Tuple[str, Node]: Node name and parsed Node object
-        
+
     Notes:
         A node section starts with begin_<name> and ends with end_<name>.
         The node may have an optional identifier after the begin tag.
+
     """
     node = Node()
     begin_tag = next(tokens)
@@ -214,10 +225,10 @@ def parse_node(tokens) -> Tuple[str, Node]:
 
     # Is there a name?
     while tokens.peek() != NL_TOKEN:
-        node.name += next(tokens) + ' '
-    
+        node.name += next(tokens) + " "
+
     # Remove possible ' ' at end of name
-    if node.name and node.name[-1] == ' ':
+    if node.name and node.name[-1] == " ":
         node.name = node.name[:-1]
 
     eat(tokens, NL_TOKEN)
@@ -241,6 +252,7 @@ def parse_node(tokens) -> Tuple[str, Node]:
 
     return node_name, node
 
+
 def parse_values(tokens):
     """Parse the lines of values within a node.
 
@@ -253,28 +265,30 @@ def parse_values(tokens):
 
         if RE_END_NODE.match(tok):
             return lines
-        elif RE_BEGIN_NODE.match(tok):
+        if RE_BEGIN_NODE.match(tok):
             lines.append(parse_node(tokens))
         else:
             lines.append(parse_line_value(tokens))
 
     return lines
 
-def parse_line_value(tokens) -> Tuple:
+
+def parse_line_value(tokens) -> tuple:
     """Parse a single line value from a Wireless Insite setup file.
-    
+
     Args:
         tokens: Iterator of tokens from tokenize_file()
-        
+
     Returns:
         Tuple: Tuple of parsed values with appropriate types (bool, int, float, str)
-        
+
     Notes:
         Values are converted to appropriate types based on their format:
         - "yes"/"no" -> bool
         - Integer strings -> int
         - Float strings -> float
         - Other strings -> str
+
     """
     values = []
 
@@ -294,20 +308,23 @@ def parse_line_value(tokens) -> Tuple:
     eat(tokens, NL_TOKEN)
     return tuple(values)
 
-def parse_file(file_path: str) -> Dict[str, Node]:
+
+def parse_file(file_path: str) -> dict[str, Node]:
     """Parse a Wireless Insite setup file into a dictionary of nodes.
-    
+
     Args:
         file_path (str): Path to the setup file to parse
-        
+
     Returns:
         Dict[str, Node]: Dictionary mapping node names to Node objects
-        
+
     Raises:
         FileNotFoundError: If file_path does not exist
         RuntimeError: If file structure is invalid
+
     """
     return parse_document(tokenize_file(file_path))
+
 
 if __name__ == "__main__":
     tokens = tokenize_file("sample.txrx")

@@ -64,6 +64,25 @@ doc = [
     # Themes
     "sphinx-rtd-theme>=2.0.0",                   # RTD theme
     # "furo",                                      # Works with 2024.8.6
+    # MkDocs stack for the new site
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.7",
+    "mkdocs-jupyter>=0.25",
+    "pymdown-extensions>=10.0",
+    "mkdocs-material-extensions>=1.3",
+    # MkDocs API docs
+    "mkdocstrings[python]>=0.25",
+    "mkdocs-autorefs>=1.2",
+    "mkdocs-exclude>=1.0",
+    # Signature formatting for mkdocstrings
+    "ruff>=0.6.9",
+    # Jupyter/platformdirs pins to avoid deprecation warnings
+    "jupyter-core>=5.7,<6.0",
+    "jupyter-client>=8.6.3",
+    "platformdirs>=4.3.0",
+    # Better nbconvert handling for Colab MIME quirks
+    "nbconvert>=7.16",
+    "nbformat>=5.10",
 ]
 
 aodt = [
@@ -189,12 +208,25 @@ all = [
     "ipykernel>=6.0.0"
 ]
 
-# TODO: check which are more updated, the packages in [all] or in [doc]
-#       & Update the other
-#doc = [
-#    "sphinx>=7.2.6,<8.0.0",
-#    "myst-parser",
-#    "myst-nb>=0.17.2",
-#    "sphinxext-opengraph>=0.8.0",
-#    "sphinx-design>=0.4.1",
-#]
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # Incompatible
+    "D203",    # 1 blank line required before class docstring (incompatible with D211)
+    "D213",    # Multi-line docstring summary should start at the second line (incompatible with D212)
+    "COM812",  # Trailing comma missing (conflicts with formatter)
+
+    # Life quality
+    "T201",    # Allow "print" in production code
+    
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "S101",    # Use of assert detected (standard in pytest)
+    "PLR2004", # Magic value used in comparison (acceptable in tests)
+]

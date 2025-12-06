@@ -1,0 +1,132 @@
+site_name: DeepMIMO Documentation
+site_description: Open datasets, converters, and tooling for realistic MIMO channel research.
+site_url: https://deepmimo.github.io/DeepMIMO/
+repo_name: DeepMIMO/DeepMIMO
+repo_url: https://github.com/DeepMIMO/DeepMIMO
+edit_uri: edit/mkdocs/docs/
+docs_dir: docs
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: installation.md
+      - Quickstart: quickstart.md
+      - User Manual: manual.ipynb
+  - API Reference:
+      - Generator: api/generator.md
+      - Converter: api/converter.md
+      - Visualization: api/visualization.md
+      - Database: api/database.md
+      - Scene: api/scene.md
+      - Materials: api/materials.md
+      - Integrations: api/integrations.md
+      - Pipelines: api/pipelines.md
+      - Utilities: api/utils.md
+      - Configuration: api/config.md
+  - Resources:
+      - Ray Tracing Guidelines: resources/raytracing_guidelines.md
+      - Comparing Ray Tracers: resources/comparing_raytracers.md
+      - Scenario Specs: resources/specs.md
+      - Converters Capabilities: resources/converters_capabilities.md
+      - Conventions: resources/conventions.md
+      - Contributing: resources/contributing.md
+      - Need Help?: resources/need_help.md
+      - Documentation Workflow: resources/workflow.md
+
+theme:
+  name: material
+  language: en
+  logo: download.png
+  favicon: assets/images/ray_paths.png
+  icon:
+    repo: fontawesome/brands/github
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.footer
+    - toc.follow
+    - toc.integrate
+    - search.suggest
+    - search.highlight
+    - content.action.edit
+    - content.code.annotate
+    - content.code.copy
+    - content.tabs.link
+  palette:
+    - scheme: deepmimo-dark
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+    - scheme: deepmimo
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+  font:
+    text: "Plus Jakarta Sans"
+    code: "JetBrains Mono"
+
+plugins:
+  - search
+  - mkdocs-jupyter:
+      include_source: true
+      ignore_h1_titles: true
+      execute: false
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            docstring_section_style: table
+            heading_level: 3
+            show_signature: true
+            separate_signature: true
+            show_source: false
+            merge_init_into_class: true
+            members_order: source
+            filters:
+              - "!^_"
+            inherited_members: true
+            show_if_no_docstring: true
+            signature_crossrefs: false
+  - exclude:
+      glob:
+        - "_build/**"
+        - "manual_full.ipynb"
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - toc:
+      permalink: true
+      toc_depth: 2
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.magiclink
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.tasklist:
+      custom_checkbox: true
+
+extra_css:
+  - assets/stylesheets/custom.css
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DeepMIMO/DeepMIMO
+    - icon: fontawesome/brands/linkedin
+      link: https://www.linkedin.com/company/deepmimo/

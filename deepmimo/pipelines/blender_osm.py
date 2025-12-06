@@ -1,140 +1,148 @@
-"""
-Blender Script: Convert OSM Data to PLY Files (Folder Naming Based on Bounding Box)
+"""Blender Script: Convert OSM Data to PLY Files (Folder Naming Based on Bounding Box)
 Each scenario's output is stored in a folder named after its bounding box.
 """
 
-import bpy # type: ignore
 import os
 
+import bpy  # type: ignore
+
 from .utils.blender_utils import (
-	log_local_setup,
-	install_blender_addon,
-	set_LOGGER,
-	export_mitsuba_scene,
-	save_osm_origin,
-	save_bbox_metadata,
-	convert_objects_to_mesh,
-	export_mesh_obj_to_ply,
-	clear_blender,
-	configure_osm_import,
-	create_ground_plane,
-	setup_world_lighting,
-	create_camera_and_render,  # sometimes incompatible in headless servers
-	add_materials_to_objs,
-	process_roads,
-	get_xy_bounds_from_latlon
+    add_materials_to_objs,
+    clear_blender,
+    configure_osm_import,
+    convert_objects_to_mesh,
+    create_camera_and_render,  # sometimes incompatible in headless servers
+    create_ground_plane,
+    export_mesh_obj_to_ply,
+    export_mitsuba_scene,
+    get_xy_bounds_from_latlon,
+    install_blender_addon,
+    log_local_setup,
+    process_roads,
+    save_bbox_metadata,
+    save_osm_origin,
+    set_LOGGER,
+    setup_world_lighting,
 )
 
-def fetch_osm_scene(minlat: float, minlon: float, maxlat: float, maxlon: float, 
-					output_folder: str, output_formats: list[str] = ["insite"]) -> None:
-	"""
-	Process an OpenStreetMap scene and export it in the specified formats.
-	
-	Args:
-		minlat (float): Minimum latitude of the bounding box
-		minlon (float): Minimum longitude of the bounding box
-		maxlat (float): Maximum latitude of the bounding box
-		maxlon (float): Maximum longitude of the bounding box
-		output_folder (str): Path to the output folder
-		output_formats (list[str], optional): List of output formats. Defaults to ["insite"].
-											  Possible values: "insite", "sionna"
-	"""
-	# Check if the folder already exists
-	if os.path.exists(output_folder):
-		print(f"⏩ Folder '{output_folder}' already exists. Skipping OSM extraction.")
-		return
-	
-	# Create output directory if it doesn't exist
-	os.makedirs(output_folder, exist_ok=True)
 
-	# Setup logging to both console and file (great for debugging)
-	log_file = os.path.join(output_folder, 'logging_blender_osm.txt')
-	logger = log_local_setup(log_file)
-	set_LOGGER(logger)  # So the inner functions can log
-	
-	logger.info(f"📍 Processing Scenario: [{minlat}, {minlon}] to [{maxlat}, {maxlon}]")
-	logger.info(f"📂 Saving output to: {output_folder}")
-	logger.info(f"📊 Output formats: {output_formats}")
+def fetch_osm_scene(
+    minlat: float,
+    minlon: float,
+    maxlat: float,
+    maxlon: float,
+    output_folder: str,
+    output_formats: list[str] = ["insite"],
+) -> None:
+    """Process an OpenStreetMap scene and export it in the specified formats.
 
-	# Clear existing objects in Blender
-	clear_blender()
+    Args:
+            minlat (float): Minimum latitude of the bounding box
+            minlon (float): Minimum longitude of the bounding box
+            maxlat (float): Maximum latitude of the bounding box
+            maxlon (float): Maximum longitude of the bounding box
+            output_folder (str): Path to the output folder
+            output_formats (list[str], optional): List of output formats. Defaults to ["insite"].
+                                                                                      Possible values: "insite", "sionna"
 
-	# Automatically install all addons
-	install_blender_addon('blosm')
-	if "sionna" in output_formats:
-		install_blender_addon('mitsuba-blender')
+    """
+    # Check if the folder already exists
+    if os.path.exists(output_folder):
+        print(f"⏩ Folder '{output_folder}' already exists. Skipping OSM extraction.")
+        return
 
-	# Configure & Fetch OSM data
-	configure_osm_import(output_folder, minlat, maxlat, minlon, maxlon)
-	bpy.ops.blosm.import_data()
-	logger.info("✅ OSM data imported successfully.")
+    # Create output directory if it doesn't exist
+    os.makedirs(output_folder, exist_ok=True)
 
-	# Save OSM GPS origin (needed for pipeline!)
-	save_osm_origin(output_folder)
+    # Setup logging to both console and file (great for debugging)
+    log_file = os.path.join(output_folder, "logging_blender_osm.txt")
+    logger = log_local_setup(log_file)
+    set_LOGGER(logger)  # So the inner functions can log
 
-	# Save bbox (lats and lons) to a file (just for reference)
-	save_bbox_metadata(output_folder, minlat, minlon, maxlat, maxlon)
+    logger.info(f"📍 Processing Scenario: [{minlat}, {minlon}] to [{maxlat}, {maxlon}]")
+    logger.info(f"📂 Saving output to: {output_folder}")
+    logger.info(f"📊 Output formats: {output_formats}")
 
-	# Initialize scene
-	setup_world_lighting()
+    # Clear existing objects in Blender
+    clear_blender()
 
-	BUILDING_MATERIAL = 'itu_concrete'
-	ROAD_MATERIAL = 'itu_brick'
+    # Automatically install all addons
+    install_blender_addon("blosm")
+    if "sionna" in output_formats:
+        install_blender_addon("mitsuba-blender")
 
-	# Create materials (for lighting/coloring and downstream processing)
-	building_material = bpy.data.materials.new(name=BUILDING_MATERIAL)
-	building_material.diffuse_color = (0.75, 0.40, 0.16, 1)  # Beige
-	road_material = bpy.data.materials.new(name=ROAD_MATERIAL)
-	road_material.diffuse_color = (0.29, 0.25, 0.21, 1)  # Dark grey
+    # Configure & Fetch OSM data
+    configure_osm_import(output_folder, minlat, maxlat, minlon, maxlon)
+    bpy.ops.blosm.import_data()
+    logger.info("✅ OSM data imported successfully.")
 
-	# Convert all to meshes
-	convert_objects_to_mesh()
+    # Save OSM GPS origin (needed for pipeline!)
+    save_osm_origin(output_folder)
 
-	# Render original scene (no processing)
-	im_path = os.path.join(output_folder, 'figs', 'cam_org.png')
-	create_camera_and_render(im_path)
+    # Save bbox (lats and lons) to a file (just for reference)
+    save_bbox_metadata(output_folder, minlat, minlon, maxlat, maxlon)
 
-	# Process buildings
-	add_materials_to_objs('building', building_material)
+    # Initialize scene
+    setup_world_lighting()
 
-	# Process roads
-	terrain_bounds = get_xy_bounds_from_latlon(minlat, minlon, maxlat, maxlon, pad=40)
-	process_roads(terrain_bounds, road_material)  # Filter, trim to bounds and add material
+    BUILDING_MATERIAL = "itu_concrete"
+    ROAD_MATERIAL = "itu_brick"
 
-	# Render processed scene
-	create_camera_and_render(im_path.replace('.png', '_processed.png'))
+    # Create materials (for lighting/coloring and downstream processing)
+    building_material = bpy.data.materials.new(name=BUILDING_MATERIAL)
+    building_material.diffuse_color = (0.75, 0.40, 0.16, 1)  # Beige
+    road_material = bpy.data.materials.new(name=ROAD_MATERIAL)
+    road_material.diffuse_color = (0.29, 0.25, 0.21, 1)  # Dark grey
 
-	# Export based on the selected format
-	if "insite" in output_formats:
-		logger.info("🔄 Outputting InSite scene...")
-		
-		# Export buildings and roads
-		export_mesh_obj_to_ply("building", output_folder)
-		export_mesh_obj_to_ply("road", output_folder)
-		
-		logger.info("✅ InSite scene exported.")
+    # Convert all to meshes
+    convert_objects_to_mesh()
 
-	if "sionna" in output_formats:
-		logger.info("🔄 Outputting Sionna scene...")
-		
-		# Create ground plane
-		create_ground_plane(minlat, maxlat, minlon, maxlon)
+    # Render original scene (no processing)
+    im_path = os.path.join(output_folder, "figs", "cam_org.png")
+    create_camera_and_render(im_path)
 
-		# Create scene
-		export_mitsuba_scene(output_folder)
+    # Process buildings
+    add_materials_to_objs("building", building_material)
 
-		logger.info("✅ Sionna scene exported.")
+    # Process roads
+    terrain_bounds = get_xy_bounds_from_latlon(minlat, minlon, maxlat, maxlon, pad=40)
+    process_roads(terrain_bounds, road_material)  # Filter, trim to bounds and add material
 
-	# Quit Blender   
-	bpy.ops.wm.quit_blender()
+    # Render processed scene
+    create_camera_and_render(im_path.replace(".png", "_processed.png"))
+
+    # Export based on the selected format
+    if "insite" in output_formats:
+        logger.info("🔄 Outputting InSite scene...")
+
+        # Export buildings and roads
+        export_mesh_obj_to_ply("building", output_folder)
+        export_mesh_obj_to_ply("road", output_folder)
+
+        logger.info("✅ InSite scene exported.")
+
+    if "sionna" in output_formats:
+        logger.info("🔄 Outputting Sionna scene...")
+
+        # Create ground plane
+        create_ground_plane(minlat, maxlat, minlon, maxlon)
+
+        # Create scene
+        export_mitsuba_scene(output_folder)
+
+        logger.info("✅ Sionna scene exported.")
+
+    # Quit Blender
+    bpy.ops.wm.quit_blender()
+
 
 if __name__ == "__main__":
-	# Example usage
-	minlat = 40.68503298
-	minlon = -73.84682129
-	maxlat = 40.68597435
-	maxlon = -73.84336302
-	output_folder = "C:/Users/jmora/Downloads/osm_root/city_0_newyork_3p5_119"
-	output_formats = ["insite"]  # or ["insite", "sionna"] for both formats
-	
-	fetch_osm_scene(minlat, minlon, maxlat, maxlon, output_folder, output_formats)
+    # Example usage
+    minlat = 40.68503298
+    minlon = -73.84682129
+    maxlat = 40.68597435
+    maxlon = -73.84336302
+    output_folder = "C:/Users/jmora/Downloads/osm_root/city_0_newyork_3p5_119"
+    output_formats = ["insite"]  # or ["insite", "sionna"] for both formats
+
+    fetch_osm_scene(minlat, minlon, maxlat, maxlon, output_folder, output_formats)

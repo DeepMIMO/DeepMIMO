@@ -1,107 +1,110 @@
-"""
-AODT Materials Module.
+"""AODT Materials Module.
 
 This module handles reading and processing material properties from materials.parquet,
 following ITU-R P.2040 standard for building materials and structures.
 """
 
 import os
-import numpy as np
-from .safe_import import pd
 from dataclasses import dataclass
-from typing import Dict, Tuple
+
+import numpy as np
 
 from ...materials import Material, MaterialList
 from .. import converter_utils as cu
+from .safe_import import pd
+
 
 @dataclass
 class AODTMaterial:
     """AODT material representation following ITU-R P.2040 standard.
-    
+
     This class represents materials as defined in AODT, including their
     electromagnetic, scattering, and frequency-dependent properties.
 
     Attributes:
         id (int): Material identifier
         label (str): Material name/label
-        
+
         # ITU-R P.2040 parameters for frequency-dependent permittivity
         # ε = a + b*f^c + j*(d*f^c), where f is frequency in GHz
         itu_r_p2040_a (float): Constant term in real part
         itu_r_p2040_b (float): Coefficient of frequency-dependent term in real part
         itu_r_p2040_c (float): Frequency exponent
         itu_r_p2040_d (float): Coefficient of frequency-dependent imaginary part
-        
+
         # Scattering properties based on Degli-Esposti model
         scattering_coeff (float): Scattering coefficient (0-1)
         scattering_xpd (float): Cross-polarization discrimination ratio
         rms_roughness (float): RMS surface roughness in meters
-        
+
         # Directive scattering parameters
         exponent_alpha_r (float): Real part of scattering exponent
         exponent_alpha_i (float): Imaginary part of scattering exponent
         lambda_r (float): Real part of wavelength factor
-        
+
         # Physical properties
         thickness_m (float): Material thickness in meters
 
     References:
-        [1] ITU-R P.2040-3: "Effects of building materials and structures on radio wave 
+        [1] ITU-R P.2040-3: "Effects of building materials and structures on radio wave
             propagation above about 100 MHz"
-        [2] V. Degli-Esposti et al.: "Measurement and modelling of scattering 
+        [2] V. Degli-Esposti et al.: "Measurement and modelling of scattering
             from buildings"
-        [3] E. M. Vitucci et al.: "A Reciprocal Heuristic Model for Diffuse 
+        [3] E. M. Vitucci et al.: "A Reciprocal Heuristic Model for Diffuse
             Scattering From Walls and Surfaces"
+
     """
+
     # Fields match exactly with materials.parquet columns
     id: int
     label: str
-    
+
     # ITU-R P.2040 parameters
     itu_r_p2040_a: float
     itu_r_p2040_b: float
     itu_r_p2040_c: float
     itu_r_p2040_d: float
-    
+
     # Scattering properties
     scattering_coeff: float
     scattering_xpd: float
     rms_roughness: float
-    
+
     # Directive scattering parameters
     exponent_alpha_r: float
     exponent_alpha_i: float
     lambda_r: float
-    
+
     # Physical properties
     thickness_m: float
 
     def to_material(self, freq_ghz: float = 1.0) -> Material:
         """Convert AODTMaterial to standard DeepMIMO Material.
-        
+
         Args:
             freq_ghz: Frequency in GHz for calculating permittivity. Defaults to 1.0 GHz.
-            
+
         Returns:
             Material: Standardized material representation
-            
+
         Notes:
             - Permittivity is calculated using ITU-R P.2040 formula at the specified frequency
             - Conductivity is derived from the imaginary part of permittivity
             - AODT uses directive scattering by default
             - Both calculated permittivity/conductivity and ITU parameters are stored
+
         """
         # Calculate complex permittivity at specified frequency
         # ε = a + b*f^c + j*(d*f^c)
         eps_real = self.itu_r_p2040_a + self.itu_r_p2040_b * (freq_ghz**self.itu_r_p2040_c)
         eps_imag = self.itu_r_p2040_d * (freq_ghz**self.itu_r_p2040_c)
-        
+
         # Convert imaginary permittivity to conductivity
         # σ = ω*ε0*ε" = 2π*f*ε0*(d*f^c)
         # ε0 = 8.854e-12 F/m
         eps0 = 8.854e-12
         conductivity = 2 * np.pi * (freq_ghz * 1e9) * eps0 * eps_imag
-        
+
         return Material(
             id=self.id,
             name=self.label,
@@ -121,10 +124,11 @@ class AODTMaterial:
             alpha_i=self.exponent_alpha_i,
             lambda_param=self.lambda_r,
             roughness=self.rms_roughness,
-            thickness=self.thickness_m
+            thickness=self.thickness_m,
         )
 
-def read_materials(rt_folder: str, save_folder: str = None) -> Tuple[Dict, Dict[str, int]]:
+
+def read_materials(rt_folder: str, save_folder: str = None) -> tuple[dict, dict[str, int]]:
     """Read material properties from materials.parquet.
 
     Args:
@@ -139,8 +143,9 @@ def read_materials(rt_folder: str, save_folder: str = None) -> Tuple[Dict, Dict[
     Raises:
         FileNotFoundError: If materials.parquet is not found
         ValueError: If required parameters are missing
+
     """
-    materials_file = os.path.join(rt_folder, 'materials.parquet')
+    materials_file = os.path.join(rt_folder, "materials.parquet")
     if not os.path.exists(materials_file):
         raise FileNotFoundError(f"materials.parquet not found in {rt_folder}")
 
@@ -158,19 +163,19 @@ def read_materials(rt_folder: str, save_folder: str = None) -> Tuple[Dict, Dict[
     for i, mat in df.iterrows():
         # Create AODT material directly from dataframe row
         mat_dict = mat.to_dict()
-        mat_dict['id'] = i  # Add ID to the dictionary
+        mat_dict["id"] = i  # Add ID to the dictionary
         aodt_material = AODTMaterial(**mat_dict)
-        
+
         # Convert to DeepMIMO material
         material = aodt_material.to_material()
         materials.append(material)
-        material_indices[mat['label']] = i
+        material_indices[mat["label"]] = i
 
     # Add all materials to the list
     material_list.add_materials(materials)
 
     # Save material indices only if save_folder is provided
     if save_folder is not None:
-        cu.save_mat(material_indices, 'materials', save_folder)
+        cu.save_mat(material_indices, "materials", save_folder)
 
     return material_list.to_dict()

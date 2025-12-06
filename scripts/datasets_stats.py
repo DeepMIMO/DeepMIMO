@@ -1,12 +1,13 @@
 import deepmimo as dm
+
 scen_list = dm.get_available_scenarios()
 
 scen_name_list = []
 n_ue_list = []
 n_active_list = []
 for scen in scen_list:
-    if 'city_' in scen:
-        city_idx = int(scen.split('_')[1])
+    if "city_" in scen:
+        city_idx = int(scen.split("_")[1])
         if city_idx > 20:
             print(scen)
             dataset = dm.load(scen)[0]

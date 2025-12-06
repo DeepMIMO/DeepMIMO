@@ -14,11 +14,7 @@ converters/
       └── insite_converter.py
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.converters.convert
-   :noindex:
-```
+::: deepmimo.converters.convert
 
 ```python
 import deepmimo as dm
@@ -52,9 +48,8 @@ scenario = dm.convert(
    - Save `vertices.mat` and `objects.json`
 7. Save `params.json`
 
-```{tip}
-*Always* the auto converter that detects which converter should be used based on the contents of the folder. The conversion parameters should match one of the converters below. 
-```
+!!! tip "Use the auto converter"
+    Always let the auto converter pick the right converter based on folder contents. Your parameters must match one of the converters below.
 
 
 ## Wireless InSite
@@ -72,15 +67,10 @@ scenario = insite_rt_converter('path/to/insite_project')
 # - <p2m_folder>/*.pl (Pathloss files)
 ```
 
-```{tip}
-Check <a href="../manual_full.html#from-wireless-insite">Conversion From Wireless InSite</a> section in DeepMIMO manual for a full end-to-end example of conversion from a Wireless InSite simulation.
-```
+!!! tip "Wireless InSite example"
+    See the <a href="../manual/#from-wireless-insite">Conversion From Wireless InSite</a> section in the manual for an end-to-end example.
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.converters.wireless_insite.insite_converter.insite_rt_converter
-
-```
+::: deepmimo.converters.wireless_insite.insite_converter.insite_rt_converter
 
 ## Sionna RT
 
@@ -102,11 +92,7 @@ sionna_exporter(
 )
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.exporters.sionna_exporter.sionna_exporter
-
-```
+::: deepmimo.exporters.sionna_exporter.sionna_exporter
 
 ### Converting
 
@@ -119,15 +105,10 @@ scenario = sionna_rt_converter(sionna_save_folder)
 # - *.pkl (Scene data)
 ```
 
-```{tip}
-Check <a href="../manual_full.html#from-sionna-rt">Conversion From Sionna RT</a> section in DeepMIMO manual for a conversion example using Sionna 0.19. Sionna 1.0 support is coming in May 2025.
-```
+!!! tip "Sionna RT example"
+    See the <a href="../manual/#from-sionna-rt">Conversion From Sionna RT</a> section in the manual for an example (Sionna 1.0 support coming May 2025).
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.converters.sionna_rt.sionna_converter.sionna_rt_converter
-
-```
+::: deepmimo.converters.sionna_rt.sionna_converter.sionna_rt_converter
 
 ## AODT
 
@@ -159,11 +140,7 @@ aodt_rt_folder = aodt_exporter(
 )
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.exporters.aodt_exporter.aodt_exporter
-
-```
+::: deepmimo.exporters.aodt_exporter.aodt_exporter
 
 ### Converting
 
@@ -183,10 +160,4 @@ scenario = aodt_rt_converter(aodt_rt_folder)
 # - time_info.parquet (Time information)
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.converters.aodt.aodt_converter.aodt_rt_converter
-
-```
-
-
+::: deepmimo.converters.aodt.aodt_converter.aodt_rt_converter

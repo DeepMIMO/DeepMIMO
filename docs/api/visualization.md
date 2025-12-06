@@ -2,9 +2,8 @@
 
 The visualization module provides tools for visualizing DeepMIMO datasets, including coverage maps, ray paths, and channel characteristics.
 
-```{tip}
-Many more visualization examples are available in the <a href="../manual_full.html#visualization">Visualization Section</a> of the DeepMIMO Manual.
-```
+!!! tip "More visualization examples"
+    See the <a href="../manual/#visualization">Visualization</a> section of the DeepMIMO Manual for additional examples.
 
 ## Coverage Maps
 
@@ -44,11 +43,7 @@ for key in features:
     dataset.plot_coverage(plt_var, title=key)  # wrapper to plot_coverage(dataset.rx_pos)
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.generator.visualization.plot_coverage
-
-```
+::: deepmimo.generator.visualization.plot_coverage
 
 ## Rays
 Plot ray paths between transmitter and receiver with interaction points.
@@ -75,8 +70,4 @@ fig, ax = dm.plot_rays(
 dataset.plot_rays(10)  # user index
 ```
 
-```{eval-rst}
-
-.. autofunction:: deepmimo.generator.visualization.plot_rays
-
-```
+::: deepmimo.generator.visualization.plot_rays

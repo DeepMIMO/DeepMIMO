@@ -1,5 +1,4 @@
-"""
-AODT (Aerial Optical Digital Twin) to DeepMIMO Scenario Converter.
+"""AODT (Aerial Optical Digital Twin) to DeepMIMO Scenario Converter.
 
 This module serves as the main entry point for converting AODT raytracing simulation
 outputs into DeepMIMO-compatible scenario files. It processes parquet files containing:
@@ -20,25 +19,30 @@ Main Entry Point:
 
 import os
 import shutil
-from typing import Optional
 from pprint import pprint
 
 from ... import consts as c
 from .. import converter_utils as cu
-
-from .aodt_rt_params import read_rt_params
-from .aodt_txrx import read_txrx
-from .aodt_paths import read_paths
 from .aodt_materials import read_materials
+from .aodt_paths import read_paths
+from .aodt_rt_params import read_rt_params
 from .aodt_scene import read_scene
+from .aodt_txrx import read_txrx
 
-def aodt_rt_converter(rt_folder: str, copy_source: bool = False,
-                      overwrite: Optional[bool] = None, vis_scene: bool = True, 
-                      scenario_name: str = '', print_params: bool = True,
-                      parent_folder: str = '', num_scenes: int = 1) -> str:
+
+def aodt_rt_converter(
+    rt_folder: str,
+    copy_source: bool = False,
+    overwrite: bool | None = None,
+    vis_scene: bool = True,
+    scenario_name: str = "",
+    print_params: bool = True,
+    parent_folder: str = "",
+    num_scenes: int = 1,
+) -> str:
     """Convert AODT ray-tracing data to DeepMIMO format.
 
-    This function handles the conversion of AODT ray-tracing simulation 
+    This function handles the conversion of AODT ray-tracing simulation
     data into the DeepMIMO dataset format. It processes parquet files containing
     path data, scenario parameters, and transmitter/receiver configurations.
 
@@ -54,22 +58,23 @@ def aodt_rt_converter(rt_folder: str, copy_source: bool = False,
 
     Returns:
         str: Path to output folder containing converted DeepMIMO dataset.
-        
+
     Raises:
         FileNotFoundError: If required parquet files are missing.
         ValueError: If transmitter or receiver IDs are invalid.
+
     """
-    print('Converting from AODT')
+    print("Converting from AODT")
 
     # Get scenario name from folder if not provided
-    rt_folder = rt_folder[:-1] if rt_folder[-1] in ['/', '\\'] else rt_folder
+    rt_folder = rt_folder[:-1] if rt_folder[-1] in ["/", "\\"] else rt_folder
     scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
 
     # Check if scenario already exists in the scenarios folder
     scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
     if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite):
-        return
-    
+        return None
+
     # Setup temporary output folder
     temp_folder = os.path.join(rt_folder, scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
     if os.path.exists(temp_folder):
@@ -99,14 +104,14 @@ def aodt_rt_converter(rt_folder: str, copy_source: bool = False,
     # Visualize if requested
     if vis_scene and scene:
         scene.plot()
-    
+
     # Save parameters to params.json
     params = {
         c.VERSION_PARAM_NAME: c.VERSION,
         c.RT_PARAMS_PARAM_NAME: rt_params,
         c.TXRX_PARAM_NAME: txrx_dict,
         c.MATERIALS_PARAM_NAME: materials_dict,
-        c.SCENE_PARAM_NAME: scene_dict
+        c.SCENE_PARAM_NAME: scene_dict,
     }
     cu.save_params(params, temp_folder)
     if print_params:
@@ -114,10 +119,9 @@ def aodt_rt_converter(rt_folder: str, copy_source: bool = False,
 
     # Save scenario to deepmimo scenarios folder
     cu.save_scenario(temp_folder, scenarios_folder)
-    
+
     # Copy source files if requested
     if copy_source:
-        cu.save_rt_source_files(rt_folder, ['.parquet'])
-    
+        cu.save_rt_source_files(rt_folder, [".parquet"])
+
     return scen_name
-    

@@ -1,5 +1,4 @@
-"""
-AODT Scene Module.
+"""AODT Scene Module.
 
 This module handles reading and processing scene geometry from world.parquet,
 including primitive paths, materials, and RF properties.
@@ -9,8 +8,10 @@ is defined by its path in the stage hierarchy.
 """
 
 import os
+from typing import Any
+
 from .safe_import import pd
-from typing import Dict, Any, Optional
+
 
 class AODTScene:
     """Class representing an AODT scene with geometry and RF properties.
@@ -37,6 +38,7 @@ class AODTScene:
                 - is_rf_diffuse: Whether primitive enables diffuse scattering
                 - is_rf_diffraction: Whether primitive enables diffraction
                 - is_rf_transmission: Whether primitive enables transmission
+
         """
         self.primitives = []
         self.materials = []
@@ -44,14 +46,16 @@ class AODTScene:
 
         # Process each primitive
         for _, prim in world_df.iterrows():
-            self.primitives.append(prim['prim_path'])
-            self.materials.append(prim['material'])
-            self.rf_properties.append({
-                'active': bool(prim['is_rf_active']),
-                'diffuse': bool(prim['is_rf_diffuse']),
-                'diffraction': bool(prim['is_rf_diffraction']),
-                'transmission': bool(prim['is_rf_transmission'])
-            })
+            self.primitives.append(prim["prim_path"])
+            self.materials.append(prim["material"])
+            self.rf_properties.append(
+                {
+                    "active": bool(prim["is_rf_active"]),
+                    "diffuse": bool(prim["is_rf_diffuse"]),
+                    "diffraction": bool(prim["is_rf_diffraction"]),
+                    "transmission": bool(prim["is_rf_transmission"]),
+                },
+            )
 
     def plot(self) -> None:
         """Plot the scene geometry.
@@ -61,9 +65,8 @@ class AODTScene:
         library is being used.
         """
         # TODO: Implement scene visualization
-        pass
 
-    def export_data(self, output_folder: str) -> Dict[str, Any]:
+    def export_data(self, output_folder: str) -> dict[str, Any]:
         """Export scene data to dictionary format.
 
         Args:
@@ -74,14 +77,16 @@ class AODTScene:
                 - primitives: List of primitive paths
                 - materials: List of material names
                 - rf_properties: List of RF property dictionaries
+
         """
         return {
-            'primitives': self.primitives,
-            'materials': self.materials,
-            'rf_properties': self.rf_properties
+            "primitives": self.primitives,
+            "materials": self.materials,
+            "rf_properties": self.rf_properties,
         }
 
-def read_scene(rt_folder: str) -> Optional[AODTScene]:
+
+def read_scene(rt_folder: str) -> AODTScene | None:
     """Read scene data from world.parquet.
 
     Args:
@@ -93,8 +98,9 @@ def read_scene(rt_folder: str) -> Optional[AODTScene]:
 
     Raises:
         FileNotFoundError: If world.parquet is not found.
+
     """
-    world_file = os.path.join(rt_folder, 'world.parquet')
+    world_file = os.path.join(rt_folder, "world.parquet")
     if not os.path.exists(world_file):
         raise FileNotFoundError(f"world.parquet not found in {rt_folder}")
 
@@ -104,4 +110,3 @@ def read_scene(rt_folder: str) -> Optional[AODTScene]:
         return None
 
     return AODTScene(df)
-    
