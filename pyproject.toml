@@ -43,7 +43,9 @@ dev = [
     "build",
     "jupyter",
     "twine==6.0.1",
-    "ipykernel"
+    "ipykernel",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
 ]
 
 doc = [
@@ -230,3 +232,14 @@ ignore = [
     "S101",    # Use of assert detected (standard in pytest)
     "PLR2004", # Magic value used in comparison (acceptable in tests)
 ]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+norecursedirs = [
+    "tests/webtests",
+    "deepmimo_scenarios",
+    "docs",
+    "DeepMIMO.egg-info",
+]
+addopts = "-q"
