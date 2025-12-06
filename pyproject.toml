@@ -89,8 +89,8 @@ insite = [
     
     "bpy==3.6.0; python_version == '3.10'",  # ()
     "bpy==4.4.0; python_version == '3.11'",  # WARNING - this may not work with >=3.11
-    "numpy<2.0; python_version == '3.11'",   
-    # TODO: UPDATE bpy==5.0 (numpy >2)
+    "numpy==1.26.4; python_version == '3.11'",  # needed because bpy ships with this, and can break ABI
+    # TODO: UPDATE bpy==5.0
 
     "ipykernel",
 
