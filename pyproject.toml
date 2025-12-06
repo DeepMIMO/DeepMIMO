@@ -14,7 +14,7 @@ description = "DeepMIMO dataset generator library"
 license = "GPL-2.0-or-later"
 license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">=3.11"  # 3.10 dropped due to bpy constraints; docs require 3.11+
+requires-python = ">=3.11"
 keywords = ["MIMO", "ray tracing", "dataset", "DeepMIMO", "raytracing", "wireless"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -49,39 +49,27 @@ dev = [
 ]
 
 doc = [
-    "sphinx>=7.2.6,<8.0.0",                      # Stable Sphinx
-    "myst-parser",                               # Avoids footnote detector error
-    "myst-nb>=0.17.2",                           # Notebook support
-    "sphinx-autodoc-typehints>=1.25.0",          # Better type hints rendering
-    "sphinx-copybutton>=0.5.0",                  # Copy buttons
-    "sphinx-automodapi>=0.15.0",                 # Optional: for module API docs
-    "sphinxext-opengraph>=0.8.0",                # Social previews
-    "sphinx-design>=0.4.1",                      # Grids/cards
-    # "sphinx-plotly-directive>=0.1.0",            # Plotly directive
-    # "sphinx-contrib-bibtex>=2.6.2",              # Citations
-    "ipykernel>=6.0.0",                          # Needed for notebook execution
+    "ipykernel>=6.0.0",
     "docutils>=0.19",
-    # "beautifulsoup4>=4.12.0",
-    # "git+https://github.com/pradyunsg/sphinx-remove-toctrees.git"  # ToC pruning
-    # Themes
-    "sphinx-rtd-theme>=2.0.0",                   # RTD theme
-    # "furo",                                      # Works with 2024.8.6
-    # MkDocs stack for the new site
     "mkdocs>=1.6",
     "mkdocs-material>=9.7",
     "mkdocs-jupyter>=0.25",
     "pymdown-extensions>=10.0",
     "mkdocs-material-extensions>=1.3",
+
     # MkDocs API docs
     "mkdocstrings[python]>=0.25",
     "mkdocs-autorefs>=1.2",
     "mkdocs-exclude>=1.0",
+
     # Signature formatting for mkdocstrings
     "ruff>=0.6.9",
+
     # Jupyter/platformdirs pins to avoid deprecation warnings
     "jupyter-core>=5.7,<6.0",
     "jupyter-client>=8.6.3",
     "platformdirs>=4.3.0",
+
     # Better nbconvert handling for Colab MIME quirks
     "nbconvert>=7.16",
     "nbformat>=5.10",
