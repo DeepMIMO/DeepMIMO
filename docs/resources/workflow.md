@@ -22,6 +22,44 @@ This page captures the legacy Sphinx workflow so contributors can reproduce the 
    ```
 6. Replace the committed `docs/manual.ipynb` with the cleaned notebook and re-run the docs build.
 
+## Testing tutorials
+
+The tutorials in `docs/tutorials/*.py` can be tested to ensure they execute without errors:
+
+1. Run all tutorial tests with pytest:
+   ```bash
+   pytest tests/test_tutorials_run.py
+   ```
+2. Run a specific tutorial:
+   ```bash
+   python docs/tutorials/1_getting_started.py
+   ```
+3. The tests use `runpy` to execute each `.py` file as a script, catching any runtime errors.
+
+## Building docs with tutorial execution
+
+By default, tutorials are rendered but not executed during docs build (`execute: false` in `mkdocs.yml`).
+
+To build docs with tutorials executed:
+
+1. Temporarily set `execute: true` in `mkdocs.yml`:
+   ```yaml
+   plugins:
+     - mkdocs-jupyter:
+         execute: true
+         allow_errors: false
+   ```
+2. Run the build:
+   ```bash
+   mkdocs build
+   ```
+3. Revert the change before committing (unless this is for a release build).
+
+**Note**: Executing tutorials during build will:
+- Download datasets (requires internet)
+- Take significantly longer (5-15 minutes vs. seconds)
+- Fail the build if any tutorial has errors
+
 ## Publishing changes
 
 1. Run the site build locally:

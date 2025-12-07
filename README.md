@@ -145,6 +145,8 @@ After cloning the repository:
 | Install | `pip install .[doc]`    | Install docs dependencies          |
 | Serve   | `mkdocs serve`          | Preview at http://localhost:8000   |
 
+Change `execute: false` to `execute: true` in `mkdocs.yml` to run the tutorials and preserve cell outputs. 
+
 ## Contributing
 
 We welcome contributions to DeepMIMO! To contribute:
