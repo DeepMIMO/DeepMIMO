@@ -8,7 +8,7 @@ the interaction type conversion between Sionna and DeepMIMO formats.
 import numpy as np
 
 from deepmimo import consts as c
-from deepmimo.converters.sionna_rt.sionna_converter import get_sionna_interaction_types
+from deepmimo.converters.sionna_rt.sionna_paths import _get_sionna_interaction_types as get_sionna_interaction_types
 
 
 def test_get_sionna_interaction_types():

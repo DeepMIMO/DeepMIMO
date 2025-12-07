@@ -5,7 +5,7 @@ import time
 
 import numpy as np
 
-from deepmimo.generator.geometry import rotate_angles, rotate_angles_batch
+from deepmimo.generator.geometry import _rotate_angles as rotate_angles, _rotate_angles_batch as rotate_angles_batch
 
 
 def run_correctness_tests():

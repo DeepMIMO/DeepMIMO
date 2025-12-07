@@ -4,7 +4,10 @@
 import time
 
 import numpy as np
-from deepmimo.generator.python.geometry import apply_FoV, apply_FoV_batch
+from deepmimo.generator.geometry import (
+	_apply_FoV as apply_FoV,
+	_apply_FoV_batch as apply_FoV_batch,
+)
 
 
 def run_correctness_tests():

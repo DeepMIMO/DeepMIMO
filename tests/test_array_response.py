@@ -4,7 +4,11 @@
 import time
 
 import numpy as np
-from deepmimo.generator.python.geometry import ant_indices, array_response, array_response_batch
+from deepmimo.generator.geometry import (
+	_ant_indices as ant_indices,
+	_array_response as array_response,
+	_array_response_batch as array_response_batch,
+)
 
 
 def test_array_response_batch_matches_single():
