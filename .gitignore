@@ -22,6 +22,8 @@ api_keys.py
 .DS_Store
 .vscode
 .coverage
+coverage.xml
+
 
 # Development:
 #   For wireless insite outputs
