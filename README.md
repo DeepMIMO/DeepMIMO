@@ -8,6 +8,7 @@
     <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/DeepMIMO/DeepMIMO.svg"></a>
     <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv"></a>
     <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
+    <a href="https://codecov.io/gh/DeepMIMO/DeepMIMO"><img src="https://codecov.io/gh/DeepMIMO/DeepMIMO/graph/badge.svg?token=CODECOV_TOKEN" alt="codecov"></a>
   </p>
   <img src="docs/assets/dm.gif" alt="DeepMIMO animated showcase" width="800"/>
 </div>
