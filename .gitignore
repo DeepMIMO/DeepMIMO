@@ -19,6 +19,9 @@ manuals/*
 *.mp4
 *.npy
 api_keys.py
+.DS_Store
+.vscode
+.coverage
 
 # Development:
 #   For wireless insite outputs
