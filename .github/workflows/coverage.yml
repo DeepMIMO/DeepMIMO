@@ -2,9 +2,8 @@ name: Coverage
 
 on:
   push:
-    branches: [ main ]
-  pull_request:
-    branches: [ main ]
+    branches:
+      - joao/add_tests
 
 jobs:
   build:
