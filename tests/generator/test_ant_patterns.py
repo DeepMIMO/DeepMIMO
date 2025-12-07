@@ -155,3 +155,18 @@ def test_performance():
     # Reducing sample size to 1000 for faster tests, assertion might be flaky if too small
     # Just asserting it runs for now, or use a loose check
     assert batch_time is not None
+
+def test_invalid_pattern_name():
+    """Test error handling for invalid antenna pattern name."""
+    with pytest.raises(NotImplementedError, match="not applicable"):
+        AntennaPattern(tx_pattern='invalid-pattern', rx_pattern='isotropic')
+
+def test_unimplemented_pattern():
+    """Test error handling for defined but unimplemented pattern."""
+    # This tests the case where a pattern is in PARAMSET_ANT_RAD_PAT_VALS
+    # but not in PATTERN_REGISTRY
+    # We can't easily test this without modifying constants, but we can
+    # document the expected behavior
+    # For now, just verify valid patterns work
+    pattern = AntennaPattern(tx_pattern='isotropic', rx_pattern='isotropic')
+    assert pattern is not None

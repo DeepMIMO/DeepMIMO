@@ -178,3 +178,21 @@ def test_ant_indices():
 	zs = ants[:, 2]
 	assert len(np.unique(ys)) == 6 # y dims
 	assert len(np.unique(zs)) == 4 # z dims
+
+
+def test_rotate_angles_batch_single_rotation():
+	"""Test rotate_angles_batch with single rotation for multiple angles."""
+	# Multiple angles, single rotation
+	theta = np.array([[30.0, 45.0], [60.0, 90.0]])  # [2, 2]
+	phi = np.array([[0.0, 90.0], [180.0, 270.0]])  # [2, 2]
+	
+	# Single rotation applied to all (note: function signature is (rotation, theta, phi))
+	rotation = np.array([10.0, 20.0, 30.0])  # [3] - will be broadcast
+	
+	theta_rot, phi_rot = rotate_angles_batch(rotation, theta, phi)
+	assert theta_rot.shape == theta.shape
+	assert phi_rot.shape == phi.shape
+	
+	# Verify rotation was applied (angles in degrees initially, returned in degrees)
+	# The rotation should change the angles
+	assert not np.allclose(theta_rot, theta)  # Should be different after rotation

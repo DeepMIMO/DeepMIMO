@@ -82,3 +82,17 @@ def test_repr(reset_config):
     assert "DeepMIMO Configuration:" in repr_str
     assert "use_gpu: False" in repr_str
 
+def test_print_config(reset_config, capsys):
+    """Test print_config method."""
+    config.print_config()
+    captured = capsys.readouterr()
+    assert "DeepMIMO Configuration:" in captured.out
+    assert "use_gpu" in captured.out
+
+def test_call_no_args(reset_config, capsys):
+    """Test calling config with no arguments prints configuration."""
+    config()  # Should print config
+    captured = capsys.readouterr()
+    assert "DeepMIMO Configuration:" in captured.out
+    assert "use_gpu" in captured.out
+

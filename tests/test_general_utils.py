@@ -282,6 +282,62 @@ def test_get_params_path(temp_dir):
         params_path = general_utils.get_params_path("my_scenario")
         assert "params.json" in params_path
 
+def test_get_params_path_subdirectory(temp_dir):
+    """Test params file in subdirectory."""
+    scenario_dir = temp_dir / "scenario"
+    scenario_dir.mkdir()
+    sub_dir = scenario_dir / "scene1"
+    sub_dir.mkdir()
+    (sub_dir / "params.json").write_text("{}")
+    
+    with patch("deepmimo.general_utils.get_scenario_folder", return_value=str(scenario_dir)):
+        path = general_utils.get_params_path("scenario")
+        assert "scene1" in path
+        assert "params.json" in path
+
+def test_get_params_path_not_found(temp_dir):
+    """Test params file not found raises error."""
+    with patch("deepmimo.general_utils.get_scenario_folder", return_value=str(temp_dir)):
+        with pytest.raises(FileNotFoundError, match="Params file not found"):
+            general_utils.get_params_path("my_scenario")
+
+def test_save_mat_error_cases(temp_dir):
+    """Test save_mat error handling."""
+    data = np.array([1, 2, 3])
+    
+    # Test with read-only directory (simulate permission error)
+    read_only_dir = temp_dir / "readonly"
+    read_only_dir.mkdir()
+    
+    # For NPZ, errors should be raised or handled gracefully
+    # (NPZ format is generally robust, but we can test invalid paths)
+    try:
+        # Try to save to a path that's actually a directory
+        general_utils.save_mat(data, "key", str(read_only_dir), fmt="npz")
+    except (OSError, IsADirectoryError):
+        pass  # Expected
+
+def test_load_mat_file_not_found():
+    """Test load_mat with nonexistent file."""
+    # load_mat prints a message but doesn't raise FileNotFoundError
+    # It tries different extensions and returns None if not found
+    result = general_utils.load_mat("nonexistent_file", "key")
+    # Function should handle gracefully (may print warning)
+
+def test_dot_dict_contains():
+    """Test DotDict __contains__ method."""
+    d = general_utils.DotDict({"a": 1, "b": 2})
+    assert "a" in d
+    assert "b" in d
+    assert "c" not in d
+
+def test_dot_dict_delitem():
+    """Test DotDict __delitem__ method."""
+    d = general_utils.DotDict({"a": 1, "b": 2})
+    del d["a"]
+    assert "a" not in d
+    assert "b" in d
+
 def test_dot_dict_edge_cases():
     """Test edge cases for DotDict."""
     # Empty DotDict

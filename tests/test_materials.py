@@ -213,3 +213,23 @@ def test_material_list_empty_operations():
     # Iteration
     for m in ml:
         assert False, "Should not iterate over empty list"
+
+def test_material_list_repr():
+    """Test MaterialList __repr__ method."""
+    ml = MaterialList()
+    ml.add_materials([Material(0, "Concrete", 5.0, 0.1)])
+    
+    repr_str = repr(ml)
+    assert "MaterialList" in repr_str
+    assert "1" in repr_str  # Should show count
+    
+def test_material_list_str():
+    """Test MaterialList __str__ method."""
+    ml = MaterialList()
+    ml.add_materials([
+        Material(0, "Concrete", 5.0, 0.1),
+        Material(1, "Glass", 6.0, 0.01)
+    ])
+    
+    str_str = str(ml)
+    assert "Concrete" in str_str or "Material" in str_str  # Should show materials
