@@ -56,7 +56,8 @@ def tokenize_file(path: str) -> str:
             # print(f'Ignoring first line: {first_line.lower()}')
             pass
         else:
-            yield first_line
+            yield from first_line.split()
+            yield NL_TOKEN
         for line in f:
             yield from line.split()
             yield NL_TOKEN

@@ -157,6 +157,7 @@ class InsiteFoliage:
             scattering_model=Material.SCATTERING_NONE,
             vertical_attenuation=self.vertical_attenuation,
             horizontal_attenuation=self.horizontal_attenuation,
+            conductivity=0.0,
         )
 
 

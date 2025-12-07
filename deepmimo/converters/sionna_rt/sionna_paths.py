@@ -271,8 +271,27 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
     """
     # Ensure types is a numpy array
     types = np.asarray(types)
-    if types.ndim == 0:
+    original_shape = types.shape
+
+    # Flatten if multidimensional to simplify processing
+    if types.ndim > 1:
+        types_flat = types.flatten()
+        n_paths = len(types_flat)
+        # inter_pos is assumed to be (..., max_interactions, 3) matching types structure
+        # We flatten the batch dimensions of inter_pos to match types_flat
+        # Target shape: (n_paths, max_interactions, 3)
+        if inter_pos.ndim >= 2:
+            max_interactions = inter_pos.shape[-2]
+            inter_pos_flat = inter_pos.reshape(n_paths, max_interactions, 3)
+        else:
+            # Handle unexpected shape gracefully or let downstream error catch it
+            inter_pos_flat = inter_pos
+
+        types = types_flat
+        inter_pos = inter_pos_flat
+    elif types.ndim == 0:
         types = np.array([types])
+        original_shape = (1,)
 
     # Get number of paths
     n_paths = len(types)
@@ -281,10 +300,11 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
     # For each path
     for path_idx in range(n_paths):
         # Skip if no type (nan or 0)
-        if np.isnan(types[path_idx]) or types[path_idx] == 0:
+        current_type = types[path_idx]
+        if np.any(np.isnan(current_type)) or np.all(current_type == 0):
             continue
 
-        sionna_type = int(types[path_idx])
+        sionna_type = int(current_type) if np.ndim(current_type) == 0 else int(current_type[0])
 
         # Handle LoS case (type 0)
         if sionna_type == 0:
@@ -323,7 +343,7 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
         else:
             raise ValueError(f"Unknown Sionna interaction type: {sionna_type}")
 
-    return result
+    return result.reshape(original_shape)
 
 
 def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_version: str) -> None:

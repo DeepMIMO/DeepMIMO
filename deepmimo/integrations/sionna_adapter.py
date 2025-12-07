@@ -64,12 +64,13 @@ class SionnaAdapter:
 
         # Extract number of antennas from the DeepMIMO dataset
         # (Assumption: all BSs and UEs have the same number of antennas)
-        self.num_rx_ant = dataset.channels.shape[1]
-        self.num_tx_ant = dataset.channels.shape[2]
+        first_ds = self.dataset[0]
+        self.num_rx_ant = first_ds.channels.shape[1]
+        self.num_tx_ant = first_ds.channels.shape[2]
 
-        assert dataset.ch_params.freq_domain == False, "Sionna adapter needs time domain channels"
+        assert first_ds.ch_params.freq_domain == False, "Sionna adapter needs time domain channels"
 
-        self.num_paths = dataset.channels.shape[-1]
+        self.num_paths = first_ds.channels.shape[-1]
         self.num_time_steps = 1  # Time step = 1 for static scenarios
 
         # The required path power shape for Sionna
@@ -85,7 +86,7 @@ class SionnaAdapter:
         # The required path delay shape for Sionna
         self.t_shape = (self.num_rx, self.num_tx, self.num_paths)
 
-        self.num_rx_samples = dataset.n_ue  # number of UE samples
+        self.num_rx_samples = first_ds.n_ue  # number of UE samples
         self.num_tx_samples = self.num_tx  # number of BS samples
         self.num_samples = self.num_rx_samples * self.num_tx_samples  # total number of samples
 

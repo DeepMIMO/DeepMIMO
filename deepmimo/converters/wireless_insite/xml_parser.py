@@ -65,7 +65,8 @@ def parse_insite_xml(xml_file: str) -> dict[str, Any]:
 
     # Parse XML and convert to dict
     root = ET.fromstring(content)
-    return xml_to_dict(root)
+    # Include root element in result
+    return {root.tag: xml_to_dict(root)}
 
 
 def _get_ray_tracing_params(xml_file: str) -> dict[str, Any]:

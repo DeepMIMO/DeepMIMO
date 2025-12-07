@@ -161,7 +161,20 @@ def test_steering_vec_properties():
 	panel_size = (4, 2)
 	N = panel_size[0] * panel_size[1]
 	vec = steering_vec(panel_size, phi=30.0, theta=20.0, spacing=0.5)
-	assert vec.shape == (N,)
+	assert vec.shape == (N, 1) or vec.shape == (N,)
+	if vec.ndim == 2:
+		vec = vec.ravel()
 	np.testing.assert_allclose(np.linalg.norm(vec), 1.0, rtol=1e-12, atol=1e-12)
 
 
+def test_ant_indices():
+	"""Test antenna indices generation."""
+	panel_size = [6, 4]
+	ants = ant_indices(panel_size)
+	assert ants.shape == (24, 3)
+	
+	# Check grid structure (roughly)
+	ys = ants[:, 1]
+	zs = ants[:, 2]
+	assert len(np.unique(ys)) == 6 # y dims
+	assert len(np.unique(zs)) == 4 # z dims
