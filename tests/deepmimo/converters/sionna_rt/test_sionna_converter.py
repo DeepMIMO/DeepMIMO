@@ -7,10 +7,13 @@ the interaction type conversion between Sionna and DeepMIMO formats.
 # %%
 import numpy as np
 import pytest
+from unittest.mock import patch, MagicMock
+import os
+import shutil
 
 from deepmimo import consts as c
 from deepmimo.converters.sionna_rt.sionna_paths import _get_sionna_interaction_types as get_sionna_interaction_types
-
+from deepmimo.converters.sionna_rt.sionna_converter import sionna_rt_converter
 
 def test_get_sionna_interaction_types():
     """Test conversion of Sionna interaction types to DeepMIMO codes."""
@@ -106,3 +109,51 @@ def test_edge_cases():
     result = get_sionna_interaction_types(types, inter_pos)
     assert np.all(result == 0), "All zeros test failed"
 
+@patch("deepmimo.converters.sionna_rt.sionna_converter.read_rt_params")
+@patch("deepmimo.converters.sionna_rt.sionna_converter.read_txrx")
+@patch("deepmimo.converters.sionna_rt.sionna_converter.read_paths")
+@patch("deepmimo.converters.sionna_rt.sionna_converter.read_materials")
+@patch("deepmimo.converters.sionna_rt.sionna_converter.read_scene")
+@patch("deepmimo.converters.sionna_rt.sionna_converter.cu")
+@patch("shutil.rmtree")
+@patch("os.makedirs")
+def test_sionna_rt_converter_flow(
+    mock_makedirs,
+    mock_rmtree,
+    mock_cu,
+    mock_read_scene,
+    mock_read_materials,
+    mock_read_paths,
+    mock_read_txrx,
+    mock_read_rt_params
+):
+    """Test the full flow of sionna_rt_converter orchestrator."""
+    
+    # Setup mocks
+    mock_cu.check_scenario_exists.return_value = True
+    mock_read_rt_params.return_value = {"raytracer_version": "0.19.0"}
+    mock_read_txrx.return_value = {}
+    mock_read_materials.return_value = ({}, {})
+    
+    mock_scene_obj = MagicMock()
+    mock_scene_obj.export_data.return_value = {}
+    mock_read_scene.return_value = mock_scene_obj
+    
+    # Run converter
+    rt_folder = "/path/to/rt_folder"
+    result = sionna_rt_converter(rt_folder, scenario_name="test_scen")
+    
+    # Verify calls
+    assert result == "test_scen"
+    mock_read_rt_params.assert_called_once_with(rt_folder)
+    mock_read_txrx.assert_called_once()
+    mock_read_paths.assert_called_once()
+    mock_read_materials.assert_called_once()
+    mock_read_scene.assert_called_once()
+    mock_cu.save_params.assert_called_once()
+    mock_cu.save_scenario.assert_called_once()
+
+    # Test failure if scenario check fails
+    mock_cu.check_scenario_exists.return_value = False
+    result_fail = sionna_rt_converter(rt_folder)
+    assert result_fail is None

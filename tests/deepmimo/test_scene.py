@@ -2,7 +2,6 @@
 
 import pytest
 import numpy as np
-import matplotlib.pyplot as plt
 from unittest.mock import patch, MagicMock
 from deepmimo.scene import (
     BoundingBox, Face, PhysicalElement, PhysicalElementGroup, Scene,

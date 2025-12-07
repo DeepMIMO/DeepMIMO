@@ -3,9 +3,8 @@
 import os
 import pytest
 import numpy as np
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from deepmimo import general_utils
-from deepmimo.config import config
 
 @pytest.fixture
 def temp_dir(tmp_path):

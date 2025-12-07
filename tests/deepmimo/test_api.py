@@ -26,7 +26,8 @@ class TestDeepMIMOAPI(unittest.TestCase):
             result = api._dm_upload_api_call("test_file.zip", "fake_key")
             assert result is None
         finally:
-            os.remove("test_file.zip")
+            if os.path.exists("test_file.zip"):
+                os.remove("test_file.zip")
 
     @patch('deepmimo.api.requests.get')
     @patch('deepmimo.api.requests.put')
@@ -55,7 +56,8 @@ class TestDeepMIMOAPI(unittest.TestCase):
             result = api._dm_upload_api_call("test_file.zip", "fake_key")
             assert result == "test_file.zip"
         finally:
-            os.remove("test_file.zip")
+            if os.path.exists("test_file.zip"):
+                os.remove("test_file.zip")
 
     def test_process_params_data(self):
         """Test parameter processing."""
@@ -121,6 +123,13 @@ Title line
         mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Server Error")
         mock_post.return_value = mock_response
         
+        result = api.search({})
+        assert result is None
+
+    @patch('deepmimo.api.requests.post')
+    def test_search_connection_error(self, mock_post):
+        """Test search connection error."""
+        mock_post.side_effect = requests.exceptions.ConnectionError("Connection failed")
         result = api.search({})
         assert result is None
 

@@ -1,7 +1,5 @@
 """Tests for DeepMIMO info module."""
 
-import pytest
-from unittest.mock import patch
 from deepmimo import info
 from deepmimo import consts as c
 

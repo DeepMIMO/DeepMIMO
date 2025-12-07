@@ -510,7 +510,10 @@ def _generate_MIMO_channel(
             # Pad zeros for invalid paths to preserve last_ch_dim
             shape = (M_rx, M_tx, P_max) if Nt == 1 else (M_rx, M_tx, P_max, Nt)
             out = np.zeros(shape, dtype=np.complex64)
-            out[..., :n_paths] = Hi_pt[..., 0] if Nt == 1 else Hi_pt
+            if Nt == 1:
+                out[..., :n_paths] = Hi_pt[..., 0]
+            else:
+                out[..., :n_paths, :] = Hi_pt
             channel[i] = out
 
     return channel

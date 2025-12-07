@@ -2061,7 +2061,7 @@ class DynamicDataset(MacroDataset):
     def _compute_speeds(self) -> None:
         """Compute the speeds of each scene based on the position and time differences."""
         # Compute position & time differences to compute speeds for each scene
-        for i in range(1, self.n_scenes - 1):
+        for i in range(1, self.n_scenes):
             time_diff = self.timestamps[i] - self.timestamps[i - 1]
             dataset_curr = self.datasets[i]
             dataset_prev = self.datasets[i - 1]
@@ -2088,3 +2088,4 @@ class DynamicDataset(MacroDataset):
                 dataset_2.rx_vel = dataset_curr.rx_vel
                 dataset_2.tx_vel = dataset_curr.tx_vel
                 dataset_2.scene.objects.vel = dataset_curr.scene.objects.vel
+
