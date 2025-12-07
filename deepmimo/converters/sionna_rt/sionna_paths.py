@@ -135,6 +135,7 @@ def _process_paths_batch(
             # the vertices are always (max_depth, n_rx, n_tx, max_paths, 3)
             # i.e. no antenna dimensions in vertices in sionna 0.x
             vertices = vertices[:, :, tx_idx, ...]
+            types = types[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
         else:
             types = types[:, :, rx_ant_idx, :, tx_ant_idx]
             vertices = vertices[:, :, rx_ant_idx, tx_idx, tx_ant_idx, :]
@@ -148,6 +149,9 @@ def _process_paths_batch(
         theta_r = theta_r[:, tx_idx, :]
         theta_t = theta_t[:, tx_idx, :]
         vertices = vertices[:, :, tx_idx, ...]
+        
+        if not sionna_v1:
+            types = types[:, 0, tx_idx, 0, :]
 
     n_rx = a.shape[0]
     for rel_rx_idx in range(n_rx):
@@ -193,7 +197,7 @@ def _process_paths_batch(
             path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0, 1)
             inter_types = _transform_interaction_types(path_types)
         else:
-            inter_types = _get_sionna_interaction_types(types[path_idxs], inter_pos_rx)
+            inter_types = _get_sionna_interaction_types(types[rel_rx_idx, path_idxs], inter_pos_rx)
 
         data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = inter_types
 

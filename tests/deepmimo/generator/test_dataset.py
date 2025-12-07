@@ -1,6 +1,69 @@
 import pytest
 import numpy as np
 from deepmimo.generator.dataset import Dataset
+from deepmimo import consts as c
+
+def create_test_dataset():
+    """Create a minimal test dataset"""
+    dataset = Dataset()
+
+    # Mock basic properties
+    dataset.tx_pos = np.array([0, 0, 10])  # BS at origin, 10m high
+    dataset.rx_pos = np.array(
+        [
+            [100, 0, 1.5],  # UE1: 100m east
+            [0, 100, 1.5],  # UE2: 100m north
+            [-100, 0, 1.5],  # UE3: 100m west
+            [0, -100, 1.5],  # UE4: 100m south
+            [100, 100, 1.5],  # UE5: 100m northeast
+        ],
+    )
+
+    # Mock channel parameters
+    class MockChannelParams:
+        def __init__(self):
+            self.bs_antenna = {c.PARAMSET_ANT_ROTATION: np.array([0, 0, 0])}
+            self.ue_antenna = {c.PARAMSET_ANT_ROTATION: np.zeros((5, 3))}
+
+    dataset.ch_params = MockChannelParams()
+
+    # Mock the cache clearing function
+    dataset._clear_cache_rotated_angles = lambda: None
+
+    return dataset
+
+def test_dataset_look_at():
+    """Test bs_look_at and ue_look_at functionality"""
+    dataset = create_test_dataset()
+
+    # Test bs_look_at
+    # Point BS toward first UE (should be 0° azimuth, negative elevation)
+    target_ue = dataset.rx_pos[0]  # [100, 0, 1.5]
+    dataset.bs_look_at(target_ue)
+    bs_rotation = dataset.ch_params.bs_antenna[c.PARAMSET_ANT_ROTATION]
+    
+    # Verify angles
+    expected_azimuth = 0.0  # Due east
+    expected_elevation = np.degrees(np.arctan2(1.5 - 10, 100))  # ~-4.8°
+
+    assert np.isclose(bs_rotation[0], expected_azimuth, atol=1e-2)
+    assert np.isclose(bs_rotation[1], expected_elevation, atol=1e-2)
+    assert np.isclose(bs_rotation[2], 0.0)
+
+    # Test ue_look_at
+    # Point all UEs toward BS
+    dataset.ue_look_at(dataset.tx_pos)
+    ue_rotations = dataset.ch_params.ue_antenna[c.PARAMSET_ANT_ROTATION]
+
+    # Verify each UE points toward BS
+    for i, (ue_pos, rotation) in enumerate(zip(dataset.rx_pos, ue_rotations)):
+        expected_azimuth = np.degrees(np.arctan2(0 - ue_pos[1], 0 - ue_pos[0]))
+        # Distance on ground plane
+        dist_ground = np.sqrt((0 - ue_pos[0]) ** 2 + (0 - ue_pos[1]) ** 2)
+        expected_elevation = np.degrees(np.arctan2(10 - ue_pos[2], dist_ground))
+
+        assert np.isclose(rotation[0], expected_azimuth, atol=1e-2)
+        assert np.isclose(rotation[1], expected_elevation, atol=1e-2)
 
 def test_dataset_subset_rows_cols():
     """Test dataset subsetting by rows and columns."""
