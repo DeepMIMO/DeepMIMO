@@ -30,6 +30,7 @@ The Dataset class is organized into several logical sections:
 """
 
 # Standard library imports
+from __future__ import annotations
 import inspect
 from typing import Any
 
