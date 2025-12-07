@@ -46,8 +46,10 @@ def xml_to_dict(element: ET.Element) -> dict[str, Any] | str | None:
         else:
             result[tag] = child_data
 
-    # If the element has no children and no attributes, return None
+    # If the element has no children and no attributes, check for text
     if not result and not element.attrib:
+        if element.text and element.text.strip():
+            return element.text.strip()
         return None
 
     return result

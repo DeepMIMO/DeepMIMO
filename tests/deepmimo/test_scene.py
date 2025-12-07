@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from unittest.mock import patch, MagicMock
 from deepmimo.scene import (
     BoundingBox, Face, PhysicalElement, PhysicalElementGroup, Scene,
-    CAT_BUILDINGS, CAT_TERRAIN, CAT_OBJECTS
+    CAT_BUILDINGS, CAT_TERRAIN, CAT_OBJECTS, get_object_faces
 )
 
 # --- BoundingBox Tests ---
@@ -145,3 +145,15 @@ def test_scene_plot(mock_subplots):
     scene.plot(proj_3D=False)
     # Check if fill was called
     assert mock_ax.fill.called
+
+def test_get_object_faces():
+    # Test fast mode (convex hull)
+    # Cube vertices
+    vertices = [
+        [0,0,0], [1,0,0], [1,1,0], [0,1,0],
+        [0,0,1], [1,0,1], [1,1,1], [0,1,1]
+    ]
+    faces = get_object_faces(vertices, fast=True)
+    assert len(faces) >= 6 # Cube has 6 faces, but convex hull generator might return more or less depending on collinearity
+    # For simple cube, it should return top, bottom + 4 sides = 6.
+    assert len(faces) == 6
