@@ -61,8 +61,12 @@ def test_read_paths(mock_save_mat, mock_makedirs, mock_exists, mock_pd):
     # Mock column access on cirs_df slice
     def cir_col_access(key):
         m = MagicMock()
-        if key in ["cir_re", "cir_im", "cir_delay"]:
-            m.to_numpy.return_value = np.array([1.0]) # single path
+        # Only check string keys to avoid truth value ambiguity with arrays
+        if isinstance(key, str) and key in ["cir_re", "cir_im", "cir_delay"]:
+            m.to_numpy.return_value = np.array([[1.0]]) # wrap in array for [0] indexing
+        elif not isinstance(key, str):
+            # For boolean indexing (e.g., df[df["col"] == val]), return mock_cirs_df
+            return mock_cirs_df
         return m
         
     mock_cirs_df.__getitem__.side_effect = cir_col_access
