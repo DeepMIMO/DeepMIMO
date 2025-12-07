@@ -3,7 +3,7 @@ name: Coverage
 on:
   push:
     branches:
-      - joao/add_tests
+      - main
 
 jobs:
   build:
