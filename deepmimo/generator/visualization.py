@@ -11,6 +11,7 @@ The module uses matplotlib for generating plots and supports both 2D and 3D visu
 
 # Standard library imports
 import csv
+from pathlib import Path
 from typing import Any
 
 import matplotlib.pyplot as plt
@@ -310,7 +311,7 @@ def export_xyz_csv(
     # Equivalent in pandas (opted out to minimize dependencies.)
     # pd.DataFrame.from_dict(data_dict).to_csv(outfile, index=False)
 
-    with open(outfile, mode="w", newline="") as file:
+    with Path(outfile).open(mode="w", newline="") as file:
         writer = csv.writer(file)
         # Write the header
         writer.writerow(data_dict.keys())

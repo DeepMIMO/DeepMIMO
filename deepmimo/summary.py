@@ -32,7 +32,6 @@ Three functions:
 """
 
 # Standard library imports
-import os
 import time
 from pathlib import Path
 
@@ -225,7 +224,7 @@ def plot_summary(
     # Image 1: 3D Scene
     if 0 in plot_idx:
         try:
-            scene_img_path = os.path.join(temp_dir, f"scene_{timestamp:016d}.png")
+            scene_img_path = str(Path(temp_dir) / f"scene_{timestamp:016d}.png")
             dataset.scene.plot()
             if save_imgs:
                 plt.savefig(scene_img_path, dpi=100, bbox_inches="tight")
@@ -240,7 +239,7 @@ def plot_summary(
     # Image 2: Scenario summary (2D view)
     if 1 in plot_idx:
         try:
-            img2_path = os.path.join(temp_dir, f"scenario_summary_{timestamp:016d}.png")
+            img2_path = str(Path(temp_dir) / f"scenario_summary_{timestamp:016d}.png")
             txrx_sets = dataset.txrx_sets
 
             tx_set = next(s for s in txrx_sets if s.is_tx)

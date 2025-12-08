@@ -4,8 +4,8 @@ This module provides functionality to generate XML files for electromagnetic sim
 including study area, ray tracing parameters, and features.
 """
 
-import os
 import xml.etree.ElementTree as ET
+from pathlib import Path
 
 from lxml import etree
 
@@ -72,9 +72,9 @@ class XmlGenerator:
         self.city = Material.from_file(self.setup.get_city_path())
         # self.road = Material.from_file(self.setup.get_road_path())
 
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.xml_template_folder = os.path.join(script_dir, "..", "resources", "xml")
-        study_area_template = os.path.join(self.xml_template_folder, "template.study_area.xml")
+        script_dir = str(Path(str(Path(__file__).resolve()).parent))
+        self.xml_template_folder = str(Path(script_dir) / "..", "resources", "xml")
+        study_area_template = str(Path(self.xml_template_folder) / "template.study_area.xml")
         if self.version >= 4:
             study_area_template = study_area_template.replace(".xml", ".v4.xml")
         self.xml = etree.parse(study_area_template, XML_PARSER)
@@ -87,11 +87,11 @@ class XmlGenerator:
 
     def load_templates(self) -> None:
         """Load XML templates for antennas, geometries, and transmitters/receivers."""
-        antenna_path = os.path.join(self.xml_template_folder, "Antenna.xml")
-        geometry_city_path = os.path.join(self.xml_template_folder, "GeometryCity.xml")
-        geometry_terrain_path = os.path.join(self.xml_template_folder, "GeometryTerrain.xml")
-        tx_point_path = os.path.join(self.xml_template_folder, "TxRxPoint.xml")
-        tx_grid_path = os.path.join(self.xml_template_folder, "TxRxGrid.xml")
+        antenna_path = str(Path(self.xml_template_folder) / "Antenna.xml")
+        geometry_city_path = str(Path(self.xml_template_folder) / "GeometryCity.xml")
+        geometry_terrain_path = str(Path(self.xml_template_folder) / "GeometryTerrain.xml")
+        tx_point_path = str(Path(self.xml_template_folder) / "TxRxPoint.xml")
+        tx_grid_path = str(Path(self.xml_template_folder) / "TxRxGrid.xml")
 
         if self.version >= 4:
             paths_to_replace = [
@@ -412,8 +412,8 @@ class XmlGenerator:
         t = "<!DOCTYPE InSite>\n" + t
         t = t.replace("remcom__rxapi__", "remcom::rxapi::")
         # clean the output file before writing
-        open(save_path, "w+").close()
-        with open(save_path, "w") as f:
+        Path(save_path).open("w+").close()
+        with Path(save_path).open("w") as f:
             f.write(t)
 
 

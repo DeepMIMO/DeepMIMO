@@ -4,9 +4,9 @@ Many of them will only work inside Blender.
 
 import logging
 import math
-import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 # Blender imports
@@ -30,7 +30,7 @@ ADDON_URLS = {
 
 # Material names for scene objects
 FLOOR_MATERIAL = "itu_wet_ground"
-PROJ_ROOT = os.path.dirname(os.path.abspath(__file__))
+PROJ_ROOT = str(Path(str(Path(__file__).resolve()).parent))
 
 # Blender version
 BLENDER_MAJOR_VERSION = bpy.app.version[0]
@@ -49,7 +49,7 @@ def log_local_setup(log_file_path: str) -> logging.Logger:
         log_file_path (str): Full path to the log file
 
     """
-    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+    Path(str(Path(log_file_path).parent)).mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(
         level=logging.DEBUG,
@@ -59,7 +59,7 @@ def log_local_setup(log_file_path: str) -> logging.Logger:
             logging.FileHandler(log_file_path, mode="w"),  # File handler
         ],
     )
-    return logging.getLogger(os.path.basename(log_file_path))
+    return logging.getLogger(Path(log_file_path).name)
 
 
 def set_LOGGER(logger: Any) -> None:
@@ -75,15 +75,15 @@ def set_LOGGER(logger: Any) -> None:
 
 def download_addon(addon_name: str) -> str:
     """Download a file from a URL and save it to a local path."""
-    output_path = os.path.join(PROJ_ROOT, "blender_addons", ADDONS[addon_name])
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    output_path = str(Path(PROJ_ROOT) / "blender_addons", ADDONS[addon_name])
+    Path(str(Path(output_path).parent)).mkdir(parents=True, exist_ok=True)
 
     url = ADDON_URLS[addon_name]
     LOGGER.info(f"📥 Downloading file from {url} to {output_path}")
     try:
         response = requests.get(url)
         response.raise_for_status()
-        with open(output_path, "wb") as f:
+        with Path(output_path).open("wb") as f:
             f.write(response.content)
     except Exception as e:
         error_msg = f"❌ Failed to download file from {url}: {e!s}"
@@ -125,8 +125,8 @@ def install_blender_addon(addon_name: str) -> None:
             bpy.ops.preferences.addon_enable(module=addon_name)
             bpy.ops.wm.save_userpref()
     else:
-        addon_zip_path = os.path.join(PROJ_ROOT, "blender_addons", zip_name)
-        if not os.path.exists(addon_zip_path):
+        addon_zip_path = str(Path(PROJ_ROOT) / "blender_addons", zip_name)
+        if not Path(addon_zip_path).exists():
             LOGGER.warning(f"⚠ Add-on zip file not found: {addon_zip_path}")
             LOGGER.info(f"Attempting to download {addon_zip_path}")
             addon_zip_path = download_addon(addon_name)
@@ -194,8 +194,8 @@ def save_osm_origin(scene_folder: str) -> None:
     origin_lon = bpy.data.scenes["Scene"]["lon"]
     LOGGER.info(f"📍 Saving OSM origin coordinates: [{origin_lat}, {origin_lon}]")
     try:
-        output_path = os.path.join(scene_folder, "osm_gps_origin.txt")
-        with open(output_path, "w") as f:
+        output_path = str(Path(scene_folder) / "osm_gps_origin.txt")
+        with Path(output_path).open("w") as f:
             f.write(f"{origin_lat}\n{origin_lon}\n")
         LOGGER.info("✅ OSM origin saved")
     except Exception as e:
@@ -319,9 +319,9 @@ def create_camera_and_render(
     """Add a camera, render the scene, and delete the camera."""
     LOGGER.info(f"📸 Setting up camera for render at {output_path}")
     scene = bpy.context.scene
-    output_folder = os.path.dirname(output_path)
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder, exist_ok=True)
+    output_folder = str(Path(output_path).parent)
+    if not Path(output_folder).exists():
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
         LOGGER.debug(f"📸 Created output folder = {output_folder}")
 
     bpy.ops.object.select_all(action="DESELECT")
@@ -587,8 +587,8 @@ def export_mitsuba_scene(scene_folder: str) -> None:
     LOGGER.info("📤 Exporting Sionna Scene")
 
     try:
-        mitsuba_path = os.path.join(scene_folder, "scene.xml")
-        blend_path = os.path.join(scene_folder, "scene.blend")
+        mitsuba_path = str(Path(scene_folder) / "scene.xml")
+        blend_path = str(Path(scene_folder) / "scene.blend")
 
         bpy.ops.export_scene.mitsuba(
             filepath=mitsuba_path,
@@ -626,7 +626,7 @@ def export_mesh_obj_to_ply(object_type: str, output_folder: str) -> None:
     if objects:
         emoji = "🏗" if "building" in object_type else "🛣"
         LOGGER.info(f"{emoji} Exporting {len(objects)} {object_type}s to .ply")
-        ply_path = os.path.join(output_folder, f"{object_type}s.ply")
+        ply_path = str(Path(output_folder) / f"{object_type}s.ply")
         if BLENDER_MAJOR_VERSION >= 4:
             bpy.ops.wm.ply_export(
                 filepath=ply_path,
@@ -654,8 +654,8 @@ def save_bbox_metadata(
     """Save scenario properties to a metadata file."""
     LOGGER.info("📝 Saving scenario metadata")
     try:
-        metadata_path = os.path.join(output_folder, "scenario_info.txt")
-        with open(metadata_path, "w") as meta_file:
+        metadata_path = str(Path(output_folder) / "scenario_info.txt")
+        with Path(metadata_path).open("w") as meta_file:
             meta_file.write(f"Bounding Box: [{minlat}, {minlon}] to [{maxlat}, {maxlon}]\n")
         LOGGER.info("✅ Scenario metadata saved.")
     except Exception as e:

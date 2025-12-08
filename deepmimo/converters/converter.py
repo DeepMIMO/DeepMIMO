@@ -6,7 +6,6 @@ a standardized scenario format.
 """
 
 # Standard library imports
-import os
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -30,7 +29,7 @@ def _find_converter_from_dir(directory: str) -> Callable | None:
         Optional[Callable]: The converter function if a converter is found, or None if no converter is found
 
     """
-    files_in_dir = os.listdir(directory)
+    files_in_dir = [p.name for p in Path(directory).iterdir()]
     if cu.ext_in_list(".parquet", files_in_dir):
         print("Using AODT converter")
         return aodt_rt_converter
@@ -72,11 +71,12 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any 
     else:  # Possibly a time-varying scenario
         print(f"No converter match found for root directory: {path_to_rt_folder}")
         print("Checking subdirectories...")
+        rt_path = Path(path_to_rt_folder)
         subdirs = sorted(
             [
-                str(Path(path_to_rt_folder) / d)
-                for d in os.listdir(path_to_rt_folder)
-                if os.path.isdir(str(Path(path_to_rt_folder) / d))
+                str(rt_path / d.name)
+                for d in rt_path.iterdir()
+                if d.is_dir()
             ],
         )
         if len(subdirs) > 0:

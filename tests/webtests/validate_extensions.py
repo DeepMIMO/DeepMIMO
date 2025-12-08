@@ -1,7 +1,7 @@
 import json
-import os
 import sys
 import zipfile
+from pathlib import Path
 
 ALLOWED_EXTENSIONS = {".mat", ".city", ".ter", ".txrx", ".setup"}
 MAX_FILES = 20
@@ -24,7 +24,7 @@ def validate_zip_contents(zip_path):
             # Check each file's extension
             for file in actual_files:
                 # Get file extension (lowercase for consistency)
-                ext = os.path.splitext(file)[1].lower()
+                ext = Path(file).suffix.lower()
 
                 # If file has an extension and it's not in allowed list
                 if ext and ext not in ALLOWED_EXTENSIONS:

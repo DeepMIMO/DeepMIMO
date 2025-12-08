@@ -1,5 +1,6 @@
 """Tests for Wireless Insite Setup Parser."""
 
+from pathlib import Path
 from unittest.mock import mock_open, patch
 
 import pytest
@@ -9,13 +10,13 @@ from deepmimo.converters.wireless_insite import setup_parser
 
 def test_tokenize_file() -> None:
     file_content = "begin_<test>\nparam 1.0\nend_<test>\n"
-    with patch("builtins.open", mock_open(read_data=file_content)):
+    with patch.object(Path, "open", mock_open(read_data=file_content)):
         tokens = list(setup_parser.tokenize_file("dummy"))
         assert tokens == ["begin_<test>", "\n", "param", "1.0", "\n", "end_<test>", "\n"]
 
     # Test ignoring first line if special format
     file_content_ignored = "Format type:keyword version: 1.0\nbegin_<test>\nend_<test>\n"
-    with patch("builtins.open", mock_open(read_data=file_content_ignored)):
+    with patch.object(Path, "open", mock_open(read_data=file_content_ignored)):
         tokens = list(setup_parser.tokenize_file("dummy"))
         assert tokens == ["begin_<test>", "\n", "end_<test>", "\n"]
 

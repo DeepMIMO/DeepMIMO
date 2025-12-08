@@ -76,9 +76,9 @@ class TestWebExport(unittest.TestCase):
 
     def test_save_binary_array(self) -> None:
         arr = np.array([1.0, 2.0], dtype=np.float32)
-        with patch("builtins.open", mock_open()) as mock_file:
+        with patch.object(Path, "open", mock_open()) as mock_file:
             web_export._save_binary_array(arr, "test.bin")
-            mock_file.assert_called_with("test.bin", "wb")
+            mock_file.assert_called_with("wb")
             # Check writes: dtype, shape dims, shape values, data
             handle = mock_file()
             assert handle.write.called

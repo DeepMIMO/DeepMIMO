@@ -1,5 +1,6 @@
 """Tests for Wireless Insite Scene conversion."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.wireless_insite import insite_scene
@@ -24,12 +25,12 @@ def test_extract_objects() -> None:
     assert len(objects[0]) == 4  # 4 unique vertices (0,0,0), (1,0,0), (0,1,0), (0,0,1)
 
 
-@patch("builtins.open")
+@patch.object(Path, "open")
 @patch("deepmimo.converters.wireless_insite.insite_scene.get_object_faces")
-def test_physical_object_parser(mock_get_faces, mock_open) -> None:
+def test_physical_object_parser(mock_get_faces, mock_path_open) -> None:
     mock_file = MagicMock()
     mock_file.read.return_value = "dummy content"
-    mock_open.return_value.__enter__.return_value = mock_file
+    mock_path_open.return_value.__enter__.return_value = mock_file
 
     # Mock extract_objects to return dummy vertices
     with patch(

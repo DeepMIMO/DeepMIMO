@@ -17,7 +17,6 @@ Main Entry Point:
     aodt_rt_converter(): Converts a complete AODT scenario to DeepMIMO format
 """
 
-import os
 import shutil
 from pathlib import Path
 
@@ -72,15 +71,15 @@ def aodt_rt_converter(
     scen_name = scenario_name if scenario_name else Path(rt_folder).name.lower()
 
     # Check if scenario already exists in the scenarios folder
-    scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
+    scenarios_folder = str(Path(c.SCENARIOS_FOLDER) / parent_folder)
     if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite):
         return None
 
     # Setup temporary output folder
-    temp_folder = os.path.join(rt_folder, scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
+    temp_folder = str(Path(rt_folder) / (scen_name + c.DEEPMIMO_CONVERSION_SUFFIX))
     if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
-    os.makedirs(temp_folder)
+    Path(temp_folder).mkdir(parents=True)
 
     # Read ray tracing parameters from scenario.parquet
     rt_params = read_rt_params(rt_folder)

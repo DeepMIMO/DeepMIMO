@@ -16,10 +16,10 @@ The utilities here are designed to be reusable across different pipeline stages
 and provide consistent handling of coordinates, parameters, and system operations.
 """
 
-import os
 import random
 import subprocess
 from dataclasses import dataclass
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -75,9 +75,9 @@ def get_origin_coords(osm_folder: str) -> tuple[float, float]:
         Tuple[float, float]: Origin coordinates (latitude, longitude)
 
     """
-    origin_file = os.path.join(osm_folder, "osm_gps_origin.txt")
+    origin_file = str(Path(osm_folder) / "osm_gps_origin.txt")
     # Check if the file exists
-    if not os.path.exists(origin_file):
+    if not Path(origin_file).exists():
         msg = (
             f"❌ Origin coordinates file not found at {origin_file}\n"
             "Ensure that Blender has been run successfully."
@@ -86,7 +86,7 @@ def get_origin_coords(osm_folder: str) -> tuple[float, float]:
             msg,
         )
 
-    with open(origin_file) as f:
+    with Path(origin_file).open() as f:
         origin_coords = f.read().split("\n")
     return float(origin_coords[0]), float(origin_coords[1])
 

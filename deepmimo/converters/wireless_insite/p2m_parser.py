@@ -23,7 +23,6 @@ Note:
 
 """
 
-import os
 import re
 from pathlib import Path
 
@@ -77,7 +76,7 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
     """
     # Read file
     print(f"Reading p2m paths file: {Path(file).name}...")
-    with open(file) as file:
+    with Path(file).open() as file:
         lines = file.readlines()
 
     n_rxs = int(lines[LINE_START - 1])
@@ -172,7 +171,7 @@ def extract_tx_pos(filename: str) -> np.ndarray:
     # Read file
     print("Reading paths file looking for tx position... ", end="")
 
-    with open(filename) as file:
+    with Path(filename).open() as file:
         for _ in range(LINE_START - 1):  # Skip the first 20 lines
             next(file)
 
@@ -216,7 +215,7 @@ def extract_tx_pos(filename: str) -> np.ndarray:
         new_str += str_list[-4:]  # add end ('.p2m')
 
         new_basename = "".join(new_str)
-        new_filename = os.path.join(str(Path(filename).parent), new_basename)
+        new_filename = str(Path(str(Path(filename).parent)) / new_basename)
 
         # Step 2 - parse pl file to get tx pos
         try:
@@ -257,7 +256,7 @@ def read_pl_p2m_file(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]
     # Define (regex) patterns to match numbers (optionally signed floats)
     re_data = r"-?\d+\.?\d*"
 
-    with open(filename) as fp:
+    with Path(filename).open() as fp:
         lines = fp.readlines()
 
     for line in lines:

@@ -5,6 +5,7 @@ used in electromagnetic simulations.
 """
 
 from math import cos, radians, sin
+from pathlib import Path
 
 
 class ObjectEditor:
@@ -31,7 +32,7 @@ class ObjectEditor:
 
     def read_file(self) -> None:
         """Read the object file into memory."""
-        with open(self.infile_path) as f:
+        with Path(self.infile_path).open() as f:
             self.file = f.readlines()
         print()
 
@@ -84,9 +85,9 @@ class ObjectEditor:
 
         """
         # clean the output file before writing
-        open(outfile_path, "w+").close()
+        Path(outfile_path).open("w+").close()
 
-        with open(outfile_path, "w") as out:
+        with Path(outfile_path).open("w") as out:
             out.writelines(self.file)
 
 

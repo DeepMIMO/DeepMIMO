@@ -177,7 +177,7 @@ class PhysicalObjectParser:
 
         """
         # Read file content
-        with open(self.file_path) as f:
+        with Path(self.file_path).open() as f:
             content = f.read()
 
         file_base = Path(self.file_path).name

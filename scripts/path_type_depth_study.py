@@ -1,4 +1,6 @@
 # %%
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -138,7 +140,7 @@ for combo_idx, (path_types, max_depth) in enumerate(path_combinations):
         depth_str = str(max_depth) if max_depth is not None else "all-depths"
         exp_str = f"{combo_idx:03d}_{path_type_str}_{depth_str}"
         save_path = f"{save_dir}/pwr_exp_{exp_str}.png"
-        os.makedirs(save_dir, exist_ok=True)
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path)
 
     plt.show()
@@ -151,7 +153,6 @@ for combo_idx, (path_types, max_depth) in enumerate(path_combinations):
 
 # %%
 
-import os
 from collections import defaultdict
 
 import matplotlib.image as mpimg
@@ -168,7 +169,7 @@ desired_depths = ["1", "2", "3", "4", "5", "6"]
 image_grid = defaultdict(dict)
 
 # Parse files from extracted folder
-for fname in os.listdir(save_dir):
+for fname in [p.name for p in Path(save_dir).iterdir()]:
     if not fname.endswith(".png"):
         continue
 
@@ -184,14 +185,14 @@ for fname in os.listdir(save_dir):
     # Map type strings to our desired format
     if type_str in ["LoS", "R", "D", "S", "R-D", "R-S", "R-D-S", "LoS-R-D-S"]:
         display_type = type_str if type_str == "LoS" else type_str.replace("-", "+")
-        image_grid[depth_str][display_type] = os.path.join(save_dir, fname)
+        image_grid[depth_str][display_type] = str(Path(save_dir) / fname)
 
 # Debug print
 print("\nAvailable combinations:")
 for depth in sorted(image_grid.keys()):
     print(f"\nDepth {depth}:")
     for type_key in sorted(image_grid[depth].keys()):
-        print(f"  {type_key}: {os.path.basename(image_grid[depth][type_key])}")
+        print(f"  {type_key}: {Path(image_grid[depth][type_key]).name}")
 
 # Create the montage figure
 nrows = len(desired_depths)
@@ -218,7 +219,7 @@ for i, row_key in enumerate(desired_depths):
         ax = axes[i][j]
         img_path = image_grid.get(row_key, {}).get(col_key)
 
-        if img_path and os.path.exists(img_path):
+        if img_path and Path(img_path).exists():
             # Read and trim the image
             img = mpimg.imread(img_path)
             # Trim the image using the specified coordinates

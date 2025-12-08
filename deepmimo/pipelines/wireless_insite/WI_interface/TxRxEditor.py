@@ -5,8 +5,8 @@ for Wireless InSite simulations. It supports both single points and arrays of po
 transmitter and receiver positions.
 """
 
-import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import numpy as np
 
@@ -74,8 +74,8 @@ class TxRxEditor:
         self.txpower = 0  # only supports tx_power = 0
         self.template_path = template_path
         if template_path is None:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            self.template_path = os.path.join(script_dir, "..", "resources", "txrx")
+            script_dir = str(Path(str(Path(__file__).resolve()).parent))
+            self.template_path = str(Path(script_dir) / "..", "resources", "txrx")
 
     def add_txrx(
         self,
@@ -129,9 +129,9 @@ class TxRxEditor:
 
         """
         # clean the output file before writing
-        open(outfile_path, "w+").close()
+        Path(outfile_path).open("w+").close()
         for x in self.txrx:
-            with open(self.template_path + "/" + x.txrx_type + ".txt") as f:
+            with Path(self.template_path + "/" + x.txrx_type + ".txt").open() as f:
                 template = f.readlines()
             for i, line in enumerate(template):
                 if ("begin_<points>" in line) or ("begin_<grid>" in line):
@@ -164,7 +164,7 @@ class TxRxEditor:
                     template[i + 2] = f"spacing {np.float32(x.grid_spacing):.5f}\n"
                 if line.split(" ")[0] == "power":
                     template[i] = f"power {self.txpower:.5f}\n"
-            with open(outfile_path, "a") as out:
+            with Path(outfile_path).open("a") as out:
                 out.writelines(template)
 
 

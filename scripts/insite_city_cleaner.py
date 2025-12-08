@@ -1,7 +1,6 @@
 # %%
-import glob
-import os
 import shutil
+from pathlib import Path
 
 import pandas as pd
 
@@ -10,10 +9,10 @@ def safe_delete(path, safe_mode=True) -> None:
     """Helper function to delete files or directories with safe mode support."""
     print(f"{'[SAFE MODE] ' if safe_mode else ''}Would delete: {path}")
     if not safe_mode:
-        if os.path.isdir(path):
+        if Path(path).is_dir():
             shutil.rmtree(path)
         else:
-            os.remove(path)
+            Path(path).unlink()
 
 
 def clean_city_folders(csv_path, base_folder, safe_mode=True) -> None:
@@ -32,8 +31,8 @@ def clean_city_folders(csv_path, base_folder, safe_mode=True) -> None:
             f"{row['bbox_minlat']}_{row['bbox_minlon']}_{row['bbox_maxlat']}_{row['bbox_maxlon']}"
         )
         bbox_str = bbox_str.replace(".", "-")
-        bbox_pattern = os.path.join(base_folder, f"bbox_*{bbox_str}*")
-        matching_folders = glob.glob(bbox_pattern)
+        bbox_pattern = str(Path(base_folder) / f"bbox_*{bbox_str}*")
+        matching_folders = list(Path().glob(bbox_pattern))
 
         if matching_folders:
             bbox_folder = matching_folders[0]  # Take the first matching folder
@@ -43,18 +42,18 @@ def clean_city_folders(csv_path, base_folder, safe_mode=True) -> None:
 
             # First, handle the osm folder and other root level files
             print(f"\n{'[SAFE MODE] ' if safe_mode else ''}Cleaning root directory...")
-            for item in os.listdir(bbox_folder):
+            for item in [p.name for p in Path(bbox_folder).iterdir()]:
                 print(f"item = {item}")
                 if item.startswith("insite_"):
                     continue
-                safe_delete(os.path.join(bbox_folder, item), safe_mode)
+                safe_delete(str(Path(bbox_folder) / item), safe_mode)
 
             # Rename the folder
-            new_path = os.path.join(base_folder, new_folder_name)
+            new_path = str(Path(base_folder) / new_folder_name)
             print(f"{'[SAFE MODE] ' if safe_mode else ''}Would rename: {bbox_folder} -> {new_path}")
 
             if not safe_mode:
-                os.rename(bbox_folder, new_path)
+                Path(bbox_folder).rename(new_path)
                 process_folder_contents(new_path, safe_mode)
             else:
                 process_folder_contents(bbox_folder, safe_mode)
@@ -68,24 +67,24 @@ def clean_city_folders(csv_path, base_folder, safe_mode=True) -> None:
 def process_folder_contents(folder_path, safe_mode=True) -> None:
     # Find the insite folder
     insite_folder = None
-    for item in os.listdir(folder_path):
+    for item in [p.name for p in Path(folder_path).iterdir()]:
         if item.startswith("insite"):
-            insite_folder = os.path.join(folder_path, item)
+            insite_folder = str(Path(folder_path) / item)
             break
 
     if insite_folder:
         print(f"{'[SAFE MODE] ' if safe_mode else ''}Found insite folder: {insite_folder}")
         # Move all contents from insite folder up one level
-        for item in os.listdir(insite_folder):
-            src = os.path.join(insite_folder, item)
-            dst = os.path.join(folder_path, item)
+        for item in [p.name for p in Path(insite_folder).iterdir()]:
+            src = str(Path(insite_folder) / item)
+            dst = str(Path(folder_path) / item)
             print(f"{'[SAFE MODE] ' if safe_mode else ''}Would move: {src} -> {dst}")
 
             if not safe_mode:
                 shutil.move(src, dst)
 
         if not safe_mode:
-            os.rmdir(insite_folder)
+            Path(insite_folder).rmdir()
         print(
             f"{'[SAFE MODE] ' if safe_mode else ''}Would remove empty insite folder: {insite_folder}",
         )
@@ -93,8 +92,8 @@ def process_folder_contents(folder_path, safe_mode=True) -> None:
     # Delete specific folders and files
     items_to_delete = ["intermediate_files", "study_area_mat", "parameters.txt"]
     for item in items_to_delete:
-        item_path = os.path.join(folder_path, item)
-        if os.path.exists(item_path):
+        item_path = str(Path(folder_path) / item)
+        if Path(item_path).exists():
             safe_delete(item_path, safe_mode)
 
 

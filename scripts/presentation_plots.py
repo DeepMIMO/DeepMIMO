@@ -1,6 +1,6 @@
 # %% Base Imports
 
-import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -132,7 +132,7 @@ plt.rcParams["ytick.color"] = "white"
 plt.rcParams["axes.labelcolor"] = "white"
 proj_3D = True
 folder = f"dm_scene_doppler_dynamic2_{'3D' if proj_3D else '2D'}"
-os.makedirs(folder, exist_ok=True)
+Path(folder).mkdir(parents=True, exist_ok=True)
 
 s = 200  # terrain size in meters (width and length)
 
@@ -219,7 +219,7 @@ plt.rcParams["ytick.color"] = "white"
 plt.rcParams["axes.labelcolor"] = "white"
 proj_3D = True
 folder = f"dm_scene_doppler_dynamic_static_{'3D' if proj_3D else '2D'}"
-os.makedirs(folder, exist_ok=True)
+Path(folder).mkdir(parents=True, exist_ok=True)
 
 s = 200  # terrain size in meters (width and length)
 
@@ -311,9 +311,9 @@ subprocess.run(
 # FUTURE: Read the first image size and configure the command (in 3000x2400)
 
 # Clean up PNG files
-# for file in os.listdir(folder):
+# for file in [p.name for p in Path(folder).iterdir()]:
 #     if file.endswith('.png'):
-#         os.remove(os.path.join(folder, file))
+#         Path(str(Path(folder) / file).unlink())
 
 # %% Repeat for Dynamic Scene
 
@@ -343,7 +343,7 @@ pwr_lims = (-146, -60)  # min first, max second
 
 save = True
 folder = "dm_scene_doppler_dynamic_car_rxgrid_2D_5R1D"
-os.makedirs(folder, exist_ok=True)
+Path(folder).mkdir(parents=True, exist_ok=True)
 
 n_scenes = len(dataset_dyn)
 for i in range(n_scenes):

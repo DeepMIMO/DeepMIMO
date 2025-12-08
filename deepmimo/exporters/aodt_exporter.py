@@ -5,7 +5,6 @@ Note: This functionality requires additional dependencies.
 Install them using: pip install 'deepmimo[aodt]'
 """
 
-import os
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -103,7 +102,7 @@ def aodt_exporter(
     if n_times == 1:  # Static
         target_dirs += [export_dir]
     elif n_times > 1:  # Dynamic
-        target_dirs += [os.path.join(export_dir, f"scene_{t:04d}") for t in range(n_times)]
+        target_dirs += [str(Path(export_dir) / f"scene_{t:04d}") for t in range(n_times)]
 
     # Current information:
     direct_tables = ["db_info", "materials", "panels", "patterns", "runs", "scenario"]
@@ -125,7 +124,7 @@ def aodt_exporter(
             if time_indexing_needed:
                 table_df = table_df[table_df[TIME_COL] == time_idx]
 
-            output_file = os.path.join(target_dir, f"{table}.parquet")
+            output_file = str(Path(target_dir) / f"{table}.parquet")
             table_df.to_parquet(output_file, index=False)
             print(f"Exported table {table} ({len(table_df)} rows) to {output_file}")
 

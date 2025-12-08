@@ -1,5 +1,7 @@
 """Tests for Wireless Insite P2M parser."""
 
+from pathlib import Path
+
 import numpy as np
 import pytest
 
@@ -11,7 +13,7 @@ from deepmimo.converters.wireless_insite import p2m_parser
 def sample_paths_file(tmp_path):
     """Create a sample .paths.p2m file."""
     file_path = tmp_path / "test.paths.p2m"
-    with open(file_path, "w") as f:
+    with Path(file_path).open("w") as f:
         # 21 header lines
         f.writelines(f"# Header {i + 1}\n" for i in range(21))
 
@@ -43,7 +45,7 @@ def sample_paths_file(tmp_path):
 def sample_pl_file(tmp_path):
     """Create a sample .pl.p2m file."""
     file_path = tmp_path / "test.pl.p2m"
-    with open(file_path, "w") as f:
+    with Path(file_path).open("w") as f:
         f.write("# Header\n")
         # idx X Y Z dist loss
         f.write("0 10.0 20.0 30.0 100.0 80.0\n")

@@ -1,5 +1,6 @@
 # %%
 import xml.etree.ElementTree as ET
+from pathlib import Path
 from typing import Any
 
 # InSite XML type constants
@@ -57,7 +58,7 @@ def xml_to_dict(element: ET.Element) -> dict[str, Any] | str | None:
 def parse_insite_xml(xml_file: str) -> dict[str, Any]:
     """Parse InSite XML file into a dictionary."""
     # Read and clean the XML content
-    with open(xml_file, encoding="utf-8") as f:
+    with Path(xml_file).open(encoding="utf-8") as f:
         content = f.read()
 
     # Remove DOCTYPE and replace :: with _

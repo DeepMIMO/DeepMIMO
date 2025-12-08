@@ -15,9 +15,9 @@ The text files are useful for debugging and verification in the Wireless InSite 
 # %% Imports
 
 # Standard library imports
-import os
 from dataclasses import fields
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 # Third-party imports
@@ -57,16 +57,16 @@ def create_directory_structure(osm_folder: str, rt_params: dict[str, Any]) -> tu
         f"{rt_params['max_reflections']}R_{rt_params['max_diffractions']}D_"
         f"{1 if rt_params['ds_enable'] else 0}S"
     )
-    insite_path = os.path.join(osm_folder, folder_name)
-    if os.path.exists(insite_path):
+    insite_path = str(Path(osm_folder) / folder_name)
+    if Path(insite_path).exists():
         dt = datetime.now()
         insite_path += "_" + dt.strftime("%Y%m%d_%H%M%S")
 
-    study_area_path = os.path.join(insite_path, "study_area")
+    study_area_path = str(Path(insite_path) / "study_area")
 
     # Create directories
     for path in [insite_path, study_area_path]:
-        os.makedirs(path, exist_ok=True)
+        Path(path).mkdir(parents=True, exist_ok=True)
 
     return insite_path, study_area_path
 
@@ -147,7 +147,7 @@ def raytrace_insite(
     terrain_editor = TerrainEditor()
     terrain_editor.set_vertex(xmin=xmin_pad, ymin=ymin_pad, xmax=xmax_pad, ymax=ymax_pad)
     terrain_editor.set_material(rt_params["terrain_material"])
-    terrain_editor.save(os.path.join(insite_path, TERRAIN_TEMPLATE))
+    terrain_editor.save(str(Path(insite_path) / TERRAIN_TEMPLATE))
 
     # Configure Tx/Rx (.txrx)
     txrx_editor = TxRxEditor()
@@ -189,7 +189,7 @@ def raytrace_insite(
             grid_spacing=rt_params["grid_spacing"],
             conform_to_terrain=rt_params["conform_to_terrain"],
         )
-    txrx_editor.save(os.path.join(insite_path, "insite.txrx"))
+    txrx_editor.save(str(Path(insite_path) / "insite.txrx"))
 
     # Get ray tracing parameter names from the dataclass
     rt_param_names = {field.name for field in fields(RayTracingParam)}
@@ -229,7 +229,7 @@ def raytrace_insite(
     wi_major_version = int(config.get("wireless_insite_version")[0])
     xml_generator = XmlGenerator(insite_path, scenario, txrx_editor, version=wi_major_version)
     xml_generator.update()
-    xml_path = os.path.join(insite_path, "insite.study_area.xml")
+    xml_path = str(Path(insite_path) / "insite.study_area.xml")
     xml_generator.save(xml_path)
 
     license_info = ["-set_licenses", rt_params["wi_lic"]] if wi_major_version >= 4 else []

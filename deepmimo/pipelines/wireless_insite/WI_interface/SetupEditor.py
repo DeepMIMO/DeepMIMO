@@ -4,8 +4,8 @@ This module provides functionality to create, edit, and save setup files for
 electromagnetic simulations, including study area, ray tracing parameters, and features.
 """
 
-import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -103,11 +103,11 @@ class SetupEditor:
         """
         self.scenario_path = scenario_path
 
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        setup_template_folder = os.path.join(script_dir, "..", "resources", "setup")
-        with open(os.path.join(setup_template_folder, "feature.txt")) as f1:
+        script_dir = str(Path(str(Path(__file__).resolve()).parent))
+        setup_template_folder = str(Path(script_dir) / "..", "resources", "setup")
+        with (Path(setup_template_folder) / "feature.txt").open() as f1:
             self.feature_template = f1.readlines()
-        with open(os.path.join(setup_template_folder, "txrx.txt")) as f1:
+        with (Path(setup_template_folder) / "txrx.txt").open() as f1:
             self.txrx_template = f1.readlines()
 
         self.num_feature = 0
@@ -115,7 +115,7 @@ class SetupEditor:
         self.feature_sec = []
         self.txrx_sec = self.txrx_template.copy()
 
-        with open(os.path.join(setup_template_folder, "template.setup")) as f:
+        with (Path(setup_template_folder) / "template.setup").open() as f:
             self.setup_file = f.readlines()
         self.name = self.setup_file[1].split(" ")[-1][:-1]
 
@@ -183,8 +183,8 @@ class SetupEditor:
         """
         num_txrx = 0
         self.txrx_filename = txrx_filename
-        txrx_file_path = os.path.join(self.scenario_path, txrx_filename)
-        with open(txrx_file_path) as f1:
+        txrx_file_path = str(Path(self.scenario_path) / txrx_filename)
+        with Path(txrx_file_path).open() as f1:
             txrx_file = f1.readlines()
 
         for line in txrx_file:
@@ -334,30 +334,30 @@ class SetupEditor:
 
         """
         if not save_path:
-            save_path = os.path.join(self.scenario_path, name + ".setup")
+            save_path = str(Path(self.scenario_path) / name + ".setup")
         self.update_all()
         self.setup_file[1] = self.setup_file[1].replace("template", name)
 
         # clean the output file before writing
-        open(save_path, "w+").close()
-        with open(save_path, "w") as f:
+        Path(save_path).open("w+").close()
+        with Path(save_path).open("w") as f:
             f.writelines(self.setup_file)
 
     def get_txrx_path(self) -> str:
         """Return full path to TXRX file."""
-        return os.path.join(self.scenario_path, self.txrx_filename)
+        return str(Path(self.scenario_path) / self.txrx_filename)
 
     def get_terrain_path(self) -> str:
         """Return full path to terrain file."""
-        return os.path.join(self.scenario_path, self.terrain_filename)
+        return str(Path(self.scenario_path) / self.terrain_filename)
 
     def get_city_path(self) -> str:
         """Return full path to city file."""
-        return os.path.join(self.scenario_path, self.city_filename)
+        return str(Path(self.scenario_path) / self.city_filename)
 
     def get_road_path(self) -> str:
         """Return full path to road file."""
-        return os.path.join(self.scenario_path, self.road_filename)
+        return str(Path(self.scenario_path) / self.road_filename)
 
 
 if __name__ == "__main__":

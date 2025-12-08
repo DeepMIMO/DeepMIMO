@@ -11,6 +11,7 @@ Pipeline untested for versions <0.19 and >1.0.2.
 # Standard library imports
 import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress TensorFlow (excessive) logging
@@ -135,14 +136,14 @@ def raytrace_sionna(
             f"{1 if rt_params['ds_enable'] else 0}S"
         )
 
-        scene_folder = os.path.join(base_folder, scene_name)
+        scene_folder = str(Path(base_folder) / scene_name)
     else:
         scene_folder = base_folder
 
     if rt_params["use_builtin_scene"]:
         xml_path = getattr(sionna.rt.scene, rt_params["builtin_scene_path"], None)
     else:
-        xml_path = os.path.join(base_folder, "scene.xml")  # Created by Blender OSM Export!
+        xml_path = str(Path(base_folder) / "scene.xml")  # Created by Blender OSM Export!
 
     print(f"XML scene path: {xml_path}")
     scene = create_base_scene(xml_path, rt_params["carrier_freq"])

@@ -45,7 +45,7 @@ def export_dataset_to_binary(dataset, dataset_name: str, output_dir: str = "./da
         "txRxSets": tx_rx_sets_info,
     }
 
-    with open(base_dir / "metadata.bin", "w") as f:
+    with Path(base_dir / "metadata.bin").open("w") as f:
         json.dump(metadata, f)
 
     print(f"Export completed for {dataset_name} with {len(tx_rx_sets_info)} TX/RX sets")
@@ -89,7 +89,7 @@ def _save_binary_array(arr: np.ndarray, file_path: str | Path) -> None:
 
     """
     try:
-        with open(file_path, "wb") as f:
+        with Path(file_path).open("wb") as f:
             # Write dtype code (padded to 4 bytes for alignment)
             dtype_code = {
                 "float32": b"f\x00\x00\x00",

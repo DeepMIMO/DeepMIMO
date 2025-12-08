@@ -1,6 +1,7 @@
 import os
 import re
 import shutil
+from pathlib import Path
 
 
 def find_files_to_delete(
@@ -18,7 +19,7 @@ def find_files_to_delete(
 
     """
     # Ensure base path exists
-    if not os.path.exists(base_path):
+    if not Path(base_path).exists():
         print(f"Base path {base_path} does not exist!")
         return
 
@@ -74,7 +75,7 @@ def find_files_to_delete(
                         print(f"Would delete file: {file.path}")
                     else:
                         print(f"Deleting file: {file.path}")
-                        os.remove(file.path)
+                        Path(file.path).unlink()
                 if file.name.endswith(".txrx") or file.name.endswith(".setup"):
                     print(file.name)
             continue
@@ -83,7 +84,7 @@ def find_files_to_delete(
             xml_referenced_files = []
 
             try:
-                with open(xml_file) as file:
+                with Path(xml_file).open() as file:
                     for line in file:
                         line = line.strip()
                         if any(line.endswith(end) for end in xml_line_endings):
@@ -100,7 +101,7 @@ def find_files_to_delete(
                                     print(f"Would delete file: {file.path}")
                                 else:
                                     print(f"Deleting file: {file.path}")
-                                    os.remove(file.path)
+                                    Path(file.path).unlink()
 
             except Exception as e:
                 print(f"Error processing files: {e}")
@@ -117,7 +118,7 @@ def find_files_to_delete(
                             print(f"Would delete file: {file.path}")
                         else:
                             print(f"Deleting file: {file.path}")
-                            os.remove(file.path)
+                            Path(file.path).unlink()
         break
 
 

@@ -4,7 +4,7 @@ This module provides functionality to create and edit terrain (.ter) files for
 electromagnetic simulations, including setting vertex positions and material properties.
 """
 
-import os
+from pathlib import Path
 
 import numpy as np
 
@@ -31,16 +31,15 @@ class TerrainEditor:
         """
         self.template_ter_file = template_ter_file
         if template_ter_file is None:
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            self.template_ter_file = os.path.join(
-                script_dir,
-                "..",
+            script_dir = str(Path(str(Path(__file__).resolve()).parent))
+            self.template_ter_file = str(Path(
+                script_dir) / "..",
                 "resources",
                 "feature",
                 "newTerrain.ter",
             )
 
-        with open(self.template_ter_file) as f:
+        with Path(self.template_ter_file).open() as f:
             self.file = f.readlines()
 
     def set_vertex(self, xmin: float, ymin: float, xmax: float, ymax: float, z: float = 0) -> None:
@@ -81,7 +80,7 @@ class TerrainEditor:
             material_path (str): Path to the material file
 
         """
-        with open(material_path) as f:
+        with Path(material_path).open() as f:
             self.material_file = f.readlines()
 
         # Find the material section in the terrain file
@@ -110,9 +109,9 @@ class TerrainEditor:
 
         """
         # clean the output file before writing
-        open(outfile_path, "w+").close()
+        Path(outfile_path).open("w+").close()
 
-        with open(outfile_path, "w") as out:
+        with Path(outfile_path).open("w") as out:
             out.writelines(self.file)
 
 

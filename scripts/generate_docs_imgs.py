@@ -7,7 +7,7 @@ This script generates the images used in the quickstart guide:
 - ray_paths.png: Ray tracing paths visualization
 """
 
-import os
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,15 +15,15 @@ import numpy as np
 import deepmimo as dm
 
 # Create _static directory if it doesn't exist
-static_dir = os.path.join("docs", "_static")
-os.makedirs(static_dir, exist_ok=True)
+static_dir = str(Path("docs") / "_static")
+Path(static_dir).mkdir(parents=True, exist_ok=True)
 
 
 def save_fig(name, tight=True, dpi=300) -> None:
     """Helper to save figures with consistent settings."""
     if tight:
         plt.tight_layout()
-    plt.savefig(os.path.join(static_dir, f"{name}.png"), dpi=dpi, bbox_inches="tight")
+    plt.savefig(str(Path(static_dir) / f"{name}.png"), dpi=dpi, bbox_inches="tight")
     plt.close()
 
 

@@ -26,7 +26,6 @@ Main Entry Point:
 """
 
 # Standard library imports
-import os
 import shutil
 from pathlib import Path
 
@@ -89,17 +88,17 @@ def insite_rt_converter(
     scen_name = scenario_name if scenario_name else Path(rt_folder).name.lower()
 
     # Check if scenario already exists in the scenarios folder
-    scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
+    scenarios_folder = str(Path(c.SCENARIOS_FOLDER) / parent_folder)
     if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite):
         return None
 
     # Get paths for input and output folders
-    temp_folder = os.path.join(str(Path(rt_folder).parent), scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
+    temp_folder = str(Path(str(Path(rt_folder).parent)) / (scen_name + c.DEEPMIMO_CONVERSION_SUFFIX))
 
     # Create output folder
     if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
-    os.makedirs(temp_folder)
+    Path(temp_folder).mkdir(parents=True)
 
     # Read ray tracing parameters
     rt_params = read_rt_params(rt_folder)

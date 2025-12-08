@@ -21,8 +21,8 @@ Variables:
     DEGREE_TO_METER (float): Conversion factor from degrees to meters at equator
 """
 
-import os
 from math import atan2, cos, radians, sin, sqrt
+from pathlib import Path
 
 import numpy as np
 import requests
@@ -270,7 +270,7 @@ def fetch_satellite_view(
 
     """
     # Create the directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
 
     # Calculate the center of the bounding box
     center_lat = (minlat + maxlat) / 2
@@ -293,8 +293,8 @@ def fetch_satellite_view(
 
     # Save the image in the specified directory
     if response.status_code == 200:
-        image_path = os.path.join(save_dir, "satellite_view.png")
-        with open(image_path, "wb") as f:
+        image_path = str(Path(save_dir) / "satellite_view.png")
+        with Path(image_path).open("wb") as f:
             f.write(response.content)
         print(f"Satellite view saved as '{image_path}'")
     else:

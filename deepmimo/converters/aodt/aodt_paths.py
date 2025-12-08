@@ -5,7 +5,6 @@ This module handles reading and processing:
 2. Channel Impulse Response (CIR) from cirs.parquet
 """
 
-import os
 from pathlib import Path
 from typing import Any
 
@@ -142,7 +141,7 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
         raise ValueError(msg)
 
     # Create output folder
-    os.makedirs(output_folder, exist_ok=True)
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
 
     # Check if we have single UE with multiple TX/RX pairs
     unique_ues = paths_df["ue_id"].unique()

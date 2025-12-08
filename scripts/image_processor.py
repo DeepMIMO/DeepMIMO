@@ -1,4 +1,6 @@
 # %%
+from pathlib import Path
+
 from PIL import Image
 
 
@@ -33,11 +35,10 @@ def process_image(input_path, output_path, zoom_factor=1.5) -> None:
 
 # %%
 if __name__ == "__main__":
-    import os
 
     # Example usage
     folder = "M:/AutoRayTracingSionna/all_runs_sionna/run_04-07-2025_18H13M23S/city_1_losangeles_3p5_s/figs/"
-    fold_name = os.path.basename(os.path.dirname(os.path.dirname(folder)))
+    fold_name = Path(str(Path(str(Path(folder).parent).parent).name))
     input_image = folder + f"{fold_name}_processed.png"  # Replace with your input image path
     output_image = (
         folder + f"{fold_name}_processed_zoomed.png"
@@ -52,7 +53,7 @@ if __name__ == "__main__":
     # %%
 
     main_folder = "M:/AutoRayTracingSionna/all_runs_sionna/run_04-07-2025_18H13M23S/"
-    for folder in os.listdir(main_folder):
+    for folder in [p.name for p in Path(main_folder).iterdir()]:
         if folder.startswith("._") or not folder.startswith("city_"):
             continue
         print(f"running: {folder}")

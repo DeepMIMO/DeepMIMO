@@ -2,7 +2,7 @@
 Each scenario's output is stored in a folder named after its bounding box.
 """
 
-import os
+from pathlib import Path
 
 import bpy  # type: ignore
 
@@ -49,15 +49,15 @@ def fetch_osm_scene(
     # Check if the folder already exists
     if output_formats is None:
         output_formats = ["insite"]
-    if os.path.exists(output_folder):
+    if Path(output_folder).exists():
         print(f"⏩ Folder '{output_folder}' already exists. Skipping OSM extraction.")
         return
 
     # Create output directory if it doesn't exist
-    os.makedirs(output_folder, exist_ok=True)
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
 
     # Setup logging to both console and file (great for debugging)
-    log_file = os.path.join(output_folder, "logging_blender_osm.txt")
+    log_file = str(Path(output_folder) / "logging_blender_osm.txt")
     logger = log_local_setup(log_file)
     set_LOGGER(logger)  # So the inner functions can log
 
@@ -100,7 +100,7 @@ def fetch_osm_scene(
     convert_objects_to_mesh()
 
     # Render original scene (no processing)
-    im_path = os.path.join(output_folder, "figs", "cam_org.png")
+    im_path = str(Path(output_folder) / "figs", "cam_org.png")
     create_camera_and_render(im_path)
 
     # Process buildings

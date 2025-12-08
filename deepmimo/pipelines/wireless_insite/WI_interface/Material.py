@@ -5,6 +5,7 @@ and a method to parse material properties from a file.
 """
 
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import Self, TypeVar
 
 import numpy as np
@@ -58,7 +59,7 @@ class Material:
 
         """
         try:
-            with open(file_path) as f:
+            with Path(file_path).open() as f:
                 file_lines = f.readlines()
         except FileNotFoundError:
             return None

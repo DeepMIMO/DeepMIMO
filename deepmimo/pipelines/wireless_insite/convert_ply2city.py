@@ -4,7 +4,7 @@ This module provides functionality to convert PLY (Polygon File Format) files to
 city files used in electromagnetic simulations, including material properties.
 """
 
-import os
+from pathlib import Path
 
 from plyfile import PlyData  # type: ignore
 
@@ -32,10 +32,10 @@ def convert_ply2city(
         object_name = ply_path.split(".")[0].split("/")[-1]
 
     ply_data = PlyData.read(ply_path)
-    with open(material_path) as f:
+    with Path(material_path).open() as f:
         material_sec = f.readlines()
 
-    with open(save_path, "w") as f:
+    with Path(save_path).open("w") as f:
         f.write("Format type:keyword version: 1.1.0\n")
         f.write("begin_<city> " + object_name + "\n")
         write_reference_sec(f)
@@ -52,9 +52,9 @@ def write_reference_sec(f) -> None:
         f: File object to write to
 
     """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    ref_path = os.path.join(script_dir, "resources", "reference_section.txt")
-    with open(ref_path) as f1:
+    script_dir = str(Path(str(Path(__file__).resolve()).parent))
+    ref_path = str(Path(script_dir) / "resources", "reference_section.txt")
+    with Path(ref_path).open() as f1:
         reference_sec = f1.readlines()
     return f.writelines(reference_sec)
 
@@ -128,10 +128,10 @@ def convert_to_city_file(
         Optional[str]: Name of the city file if conversion successful, None otherwise
 
     """
-    ply_path = os.path.join(ply_root, f"{feature_name}.ply")
-    save_path = os.path.join(city_root, f"{feature_name}.city")
+    ply_path = str(Path(ply_root) / f"{feature_name}.ply")
+    save_path = str(Path(city_root) / f"{feature_name}.city")
 
-    if os.path.exists(ply_path):
+    if Path(ply_path).exists():
         num_vertex, num_faces = convert_ply2city(ply_path, material_path, save_path)
         print(f"Converted {num_vertex} vertices and {num_faces} faces for {feature_name}")
         return f"{feature_name}.city"

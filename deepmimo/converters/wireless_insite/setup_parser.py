@@ -25,6 +25,7 @@ line_value := (STR | "yes" | "no" | INT | FLOAT)+ NL
 import contextlib
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 RE_BOOL_TRUE = re.compile(r"yes")
@@ -51,7 +52,7 @@ def tokenize_file(path: str) -> str:
         Special handling is applied to the first line if it contains format information.
 
     """
-    with open(path) as f:
+    with Path(path).open() as f:
         first_line = f.readline()
         if first_line.startswith("Format type:keyword version:"):
             # print(f'Ignoring first line: {first_line.lower()}')

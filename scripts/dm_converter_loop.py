@@ -3,6 +3,7 @@
 import json
 import os
 import time
+from pathlib import Path
 
 import deepmimo as dm
 
@@ -16,10 +17,10 @@ subfolders = [f.path for f in os.scandir(base_path) if f.is_dir()]
 
 # Load previous errors if in retry mode
 error_scenarios = []
-if EXECUTION_MODE == "retry_errors" and os.path.exists(ERROR_LOG_FILE):
-    with open(ERROR_LOG_FILE) as f:
+if EXECUTION_MODE == "retry_errors" and Path(ERROR_LOG_FILE).exists():
+    with Path(ERROR_LOG_FILE).open() as f:
         error_scenarios_to_retry = {item[0] for item in json.load(f)}
-    subfolders = [f for f in subfolders if os.path.basename(f) in error_scenarios_to_retry]
+    subfolders = [f for f in subfolders if Path(f).name in error_scenarios_to_retry]
 
 # %%
 
@@ -27,7 +28,7 @@ timing_results = {}
 
 # For conversion
 # for subfolder in subfolders:
-#     scen_name = os.path.basename(subfolder)
+#     scen_name = Path(subfolder).name
 #     print(f'running: {subfolder}')
 
 # For zipping
@@ -55,7 +56,7 @@ for scen_name in dm.get_available_scenarios():
             raise  # Re-raise the exception in retry mode
         error_scenarios.append((scen_name, str(e)))
         if EXECUTION_MODE == "collect_errors" and error_scenarios:
-            with open(ERROR_LOG_FILE, "w") as f:
+            with Path(ERROR_LOG_FILE).open("w") as f:
                 json.dump(error_scenarios, f, indent=2)
 
     timing_results[scen_name] = stop - start
@@ -76,6 +77,6 @@ if error_scenarios:
     print(f"\nError scenarios saved to {ERROR_LOG_FILE}")
 
 # Cleanup in retry mode if all successful
-if EXECUTION_MODE == "retry_errors" and not error_scenarios and os.path.exists(ERROR_LOG_FILE):
-    os.remove(ERROR_LOG_FILE)
+if EXECUTION_MODE == "retry_errors" and not error_scenarios and Path(ERROR_LOG_FILE).exists():
+    Path(ERROR_LOG_FILE).unlink()
     print("All retries successful - error log removed")
