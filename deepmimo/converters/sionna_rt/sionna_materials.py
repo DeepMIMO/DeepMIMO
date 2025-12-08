@@ -3,7 +3,7 @@
 This module handles loading and converting material data from Sionna's format to DeepMIMO's format.
 """
 
-import os
+from pathlib import Path
 
 from deepmimo.general_utils import load_pickle
 from deepmimo.materials import Material, MaterialList
@@ -21,8 +21,8 @@ def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:
 
     """
     # Load Sionna materials
-    material_properties = load_pickle(os.path.join(load_folder, "sionna_materials.pkl"))
-    material_indices = load_pickle(os.path.join(load_folder, "sionna_material_indices.pkl"))
+    material_properties = load_pickle(str(Path(load_folder) / "sionna_materials.pkl"))
+    material_indices = load_pickle(str(Path(load_folder) / "sionna_material_indices.pkl"))
 
     # Initialize material list
     material_list = MaterialList()

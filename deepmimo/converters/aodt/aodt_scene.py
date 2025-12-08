@@ -7,7 +7,7 @@ The scene geometry follows the NVIDIA Omniverse USD format, where each primitive
 is defined by its path in the stage hierarchy.
 """
 
-import os
+from pathlib import Path
 from typing import Any
 
 from .safe_import import pd
@@ -100,8 +100,8 @@ def read_scene(rt_folder: str) -> AODTScene | None:
         FileNotFoundError: If world.parquet is not found.
 
     """
-    world_file = os.path.join(rt_folder, "world.parquet")
-    if not os.path.exists(world_file):
+    world_file = str(Path(rt_folder) / "world.parquet")
+    if not Path(world_file).exists():
         msg = f"world.parquet not found in {rt_folder}"
         raise FileNotFoundError(msg)
 

@@ -42,7 +42,6 @@ Search flow:
 
 import hashlib
 import json
-import os
 import shutil
 import time
 from pathlib import Path
@@ -82,7 +81,7 @@ class _ProgressFileReader:
     def __init__(self, file_path, progress_bar) -> None:
         self.file_path = file_path
         self.progress_bar = progress_bar
-        self.file_object = open(file_path, "rb")
+        self.file_object = Path(file_path).open("rb")
         self.len = Path(file_path).stat().st_size
         self.bytes_read = 0
 
@@ -115,8 +114,9 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:
     """
     try:
         # Get file info
-        filename = os.path.basename(file)
-        file_size = os.path.getsize(file)
+        file_path = Path(file)
+        filename = file_path.name
+        file_size = file_path.stat().st_size
 
         if file_size > FILE_SIZE_LIMIT:
             print(f"Error: File size limit of {FILE_SIZE_LIMIT / 1024**3} GB exceeded.")
@@ -145,7 +145,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:
 
         # Calculate file hash
         sha1 = hashlib.sha1()
-        with open(file, "rb") as f:
+        with file_path.open("rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
                 sha1.update(chunk)
         file_hash = sha1.hexdigest()
@@ -438,8 +438,9 @@ def upload_images(scenario_name: str, img_paths: list[str], key: str) -> list[di
 
     # Iterate directly over img_paths
     for i, img_path in enumerate(img_paths):
-        filename = os.path.basename(img_path)
-        filesize = os.path.getsize(img_path)
+        img_path_obj = Path(img_path)
+        filename = img_path_obj.name
+        filesize = img_path_obj.stat().st_size
 
         if filesize > IMAGE_SIZE_LIMIT:
             print(f"Warning: Image {filename} is too large to upload. Skipping...")
@@ -456,7 +457,7 @@ def upload_images(scenario_name: str, img_paths: list[str], key: str) -> list[di
             )
 
             # Prepare form data
-            with open(img_path, "rb") as img_file:
+            with img_path_obj.open("rb") as img_file:
                 files = {"image": (filename, img_file, "image/png")}  # Key is 'image' now
                 data = {
                     "heading": default_info["heading"],
@@ -697,12 +698,13 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
     print(f"Attempting to upload RT source for scenario: {scenario_name}")
     print(f"Using RT source file: {rt_zip_path}")
 
-    if not os.path.exists(rt_zip_path):
+    rt_zip_path_obj = Path(rt_zip_path)
+    if not rt_zip_path_obj.exists():
         print(f"Error: RT source file not found at {rt_zip_path}")
         return False
 
     target_filename = f"{scenario_name}.zip"
-    file_size = os.path.getsize(rt_zip_path)
+    file_size = rt_zip_path_obj.stat().st_size
 
     if file_size > RT_FILE_SIZE_LIMIT:
         print(f"Error: RT source file size limit of {RT_FILE_SIZE_LIMIT / 1024**3} GB exceeded.")
@@ -736,7 +738,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
 
         # 2. Calculate file hash (using the local rt_zip_path file)
         sha1 = hashlib.sha1()
-        with open(rt_zip_path, "rb") as f:
+        with rt_zip_path_obj.open("rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
                 sha1.update(chunk)
         file_hash = sha1.hexdigest()
@@ -878,7 +880,7 @@ def download(
             total_size = int(download_resp.headers.get("content-length", 0))
 
             with (
-                open(output_path, "wb") as file,
+                Path(output_path).open("wb") as file,
                 tqdm(
                     total=total_size,
                     unit="B",
@@ -896,8 +898,9 @@ def download(
 
         except requests.exceptions.RequestException as e:
             print(f"Download failed: {e!s}")
-            if os.path.exists(output_path):
-                os.remove(output_path)  # Clean up partial download
+            output_path_obj = Path(output_path)
+            if output_path_obj.exists():
+                output_path_obj.unlink()  # Clean up partial download
             return None
     else:  # Extract the zip if it exists, don't download again
         print(f'Scenario zip file "{output_path}" already exists.')
@@ -913,15 +916,15 @@ def download(
         rt_extracted_path = get_rt_source_folder(scenario_name)
         unzipped_folder_without_suffix = unzipped_folder.replace("_rt_source", "")
 
-        os.makedirs(rt_sources_dir, exist_ok=True)
+        Path(rt_sources_dir).mkdir(parents=True, exist_ok=True)
 
         # If the target already exists, remove it first
-        if os.path.exists(rt_extracted_path):
+        if Path(rt_extracted_path).exists():
             shutil.rmtree(rt_extracted_path)
 
         # Rename the unzipped folder and move to RT sources directory
         if unzipped_folder != unzipped_folder_without_suffix:
-            os.rename(unzipped_folder, unzipped_folder_without_suffix)
+            Path(unzipped_folder).rename(unzipped_folder_without_suffix)
         shutil.move(unzipped_folder_without_suffix, rt_extracted_path)
 
         print(f"✓ RT source files extracted to {rt_extracted_path}")
@@ -934,16 +937,17 @@ def download(
         unzipped_folder_without_suffix = unzipped_folder.replace("_downloaded", "")
 
         # Check if there's a nested directory with the scenario name
-        nested_path = os.path.join(unzipped_folder, scenario_name)
-        if os.path.exists(nested_path) and os.path.isdir(nested_path):
+        unzipped_folder_path = Path(unzipped_folder)
+        nested_path = unzipped_folder_path / scenario_name
+        if nested_path.exists() and nested_path.is_dir():
             tmp_path = unzipped_folder + "_tmp"
             shutil.move(unzipped_folder, tmp_path)
-            shutil.move(os.path.join(tmp_path, scenario_name), unzipped_folder)
+            shutil.move(str(Path(tmp_path) / scenario_name), unzipped_folder)
             shutil.rmtree(tmp_path)
             print(f"✓ Flattened nested directory '{scenario_name}'")
 
-        os.makedirs(scenarios_dir, exist_ok=True)
-        os.rename(unzipped_folder, unzipped_folder_without_suffix)
+        Path(scenarios_dir).mkdir(parents=True, exist_ok=True)
+        Path(unzipped_folder).rename(unzipped_folder_without_suffix)
         shutil.move(unzipped_folder_without_suffix, scenario_folder)
         print(f"✓ Unzipped and moved to {scenarios_dir}")
         print(f"✓ Scenario '{scenario_name}' ready to use!")

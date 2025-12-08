@@ -14,7 +14,6 @@ The module serves as a bridge between Wireless Insite's XML-based configuration
 and DeepMIMO's standardized dataset format.
 """
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -395,7 +394,7 @@ def read_txrx(folder: str, plot: bool = False) -> dict[str, Any]:
     # Parse TX/RX sets
     xml_file = str(xml_files[0])
 
-    print(f"Reading xml file: {os.path.basename(xml_file)}")
+    print(f"Reading xml file: {Path(xml_file).name}")
 
     insite_sets = get_txrx_insite_sets_from_xml(xml_file)
     txrx_sets, point_locations = convert_sets_to_deepmimo(insite_sets)

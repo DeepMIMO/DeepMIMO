@@ -1,6 +1,6 @@
 """Tests for DeepMIMO general utilities."""
 
-import os
+from pathlib import Path
 from unittest.mock import patch
 
 import numpy as np
@@ -32,11 +32,11 @@ def test_get_dirs(temp_dir) -> None:
     # Patch deepmimo.general_utils.config
     with patch("deepmimo.general_utils.config.get", return_value="scenarios"):
         with patch("deepmimo.general_utils.os.getcwd", return_value=str(temp_dir)):
-            assert general_utils.get_scenarios_dir() == os.path.join(str(temp_dir), "scenarios")
+            assert general_utils.get_scenarios_dir() == str(Path(temp_dir) / "scenarios")
 
             # Test get_scenario_folder
-            assert general_utils.get_scenario_folder("my_scen") == os.path.join(
-                str(temp_dir), "scenarios", "my_scen"
+            assert general_utils.get_scenario_folder("my_scen") == str(
+                Path(temp_dir) / "scenarios" / "my_scen"
             )
 
 
@@ -56,14 +56,14 @@ def test_mat_save_load(temp_dir) -> None:
 
     # Skip MAT format due to scipy/numpy 2.x compatibility issue in Python 3.14
     # Test NPZ format
-    npz_path = os.path.join(temp_dir, "test_npz.npz")
+    npz_path = str(Path(temp_dir) / "test_npz.npz")
     general_utils.save_mat(data, key, npz_path, fmt="npz")
     # load_mat tries extension replacement, so pass .mat or .npz
     loaded_npz = general_utils.load_mat(npz_path, key)
     np.testing.assert_array_equal(data, loaded_npz)
 
     # Test NPY format
-    npy_path = os.path.join(temp_dir, "test_npy.npy")
+    npy_path = str(Path(temp_dir) / "test_npy.npy")
     general_utils.save_mat(data, key, npy_path, fmt="npy")
     loaded_npy = general_utils.load_mat(npy_path)  # NPY doesn't need key
     np.testing.assert_array_equal(data, loaded_npy)
@@ -72,7 +72,7 @@ def test_mat_save_load(temp_dir) -> None:
 def test_json_save_load(temp_dir) -> None:
     """Test saving and loading JSON files."""
     data = {"a": 1, "b": [1, 2, 3], "c": np.array([4, 5, 6])}
-    json_path = os.path.join(temp_dir, "test.json")
+    json_path = str(Path(temp_dir) / "test.json")
 
     general_utils.save_dict_as_json(json_path, data)
     loaded = general_utils.load_dict_from_json(json_path)
@@ -226,7 +226,7 @@ def test_comp_next_pwr_10() -> None:
 def test_pickle_save_load(temp_dir) -> None:
     """Test pickle save and load functionality."""
     data = {"array": np.array([1, 2, 3]), "value": 42, "nested": {"a": 1}}
-    pkl_path = os.path.join(temp_dir, "test.pkl")
+    pkl_path = str(Path(temp_dir) / "test.pkl")
 
     general_utils.save_pickle(data, pkl_path)
     loaded = general_utils.load_pickle(pkl_path)
@@ -247,7 +247,7 @@ def test_zip_unzip(temp_dir) -> None:
     # Zip folder - general_utils.zip takes only one argument
     zip_path = general_utils.zip(str(test_folder))
 
-    assert os.path.exists(zip_path)
+    assert Path(zip_path).exists()
     assert zip_path == str(test_folder) + ".zip"
 
     # Unzip folder - returns path to parent directory of extracted content

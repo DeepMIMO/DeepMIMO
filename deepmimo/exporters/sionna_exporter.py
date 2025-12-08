@@ -21,7 +21,7 @@ sionna_exporter(scene, path_list, my_compute_path_params, save_folder)
 
 """
 
-import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -366,7 +366,7 @@ def sionna_exporter(
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
 
-    os.makedirs(save_folder, exist_ok=True)
+    Path(save_folder).mkdir(parents=True, exist_ok=True)
 
     save_vars_dict = {
         # filename: variable_to_save
@@ -379,7 +379,7 @@ def sionna_exporter(
     }
 
     for filename, variable in save_vars_dict.items():
-        save_pickle(variable, os.path.join(save_folder, filename))
+        save_pickle(variable, str(Path(save_folder) / filename))
 
 
 # Explicitly declare what should be imported when using 'from .sionna_exporter import *'

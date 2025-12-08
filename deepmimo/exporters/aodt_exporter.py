@@ -6,6 +6,7 @@ Install them using: pip install 'deepmimo[aodt]'
 """
 
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 Client = "Client" if TYPE_CHECKING else Any  # from clickhouse_driver import Client
@@ -95,7 +96,7 @@ def aodt_exporter(
     n_times = len(time_table) - 1  # AODT always outputs one more time index than necessary
 
     target_dirs = []
-    export_dir = os.path.join(output_dir, database)
+    export_dir = str(Path(output_dir) / database)
     if n_times < 1:
         msg = "Empty simulation"
         raise Exception(msg)
@@ -109,7 +110,7 @@ def aodt_exporter(
     time_idx_tables = ["cirs", "raypaths"]
     TIME_COL = "time_idx"
     for time_idx, target_dir in enumerate(target_dirs):
-        os.makedirs(target_dir, exist_ok=True)
+        Path(target_dir).mkdir(parents=True, exist_ok=True)
         for table in tables_to_export:
             # Decide whether to export table with or without indexing time
             if table in direct_tables:

@@ -6,6 +6,7 @@ This module handles reading and processing:
 """
 
 import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -126,10 +127,10 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
 
     """
     # Read both parquet files
-    paths_file = os.path.join(rt_folder, "raypaths.parquet")
-    cirs_file = os.path.join(rt_folder, "cirs.parquet")
+    paths_file = str(Path(rt_folder) / "raypaths.parquet")
+    cirs_file = str(Path(rt_folder) / "cirs.parquet")
 
-    if not os.path.exists(paths_file) or not os.path.exists(cirs_file):
+    if not Path(paths_file).exists() or not Path(cirs_file).exists():
         msg = "Both raypaths.parquet and cirs.parquet are required"
         raise FileNotFoundError(msg)
 
@@ -263,4 +264,4 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
         # Save data for all UEs of this RU
         for key in data:
             mat_filename = gu.get_mat_filename(key, tx_set_id, tx_idx, rx_set_id)
-            gu.save_mat(data[key], key, os.path.join(output_folder, mat_filename))
+            gu.save_mat(data[key], key, str(Path(output_folder) / mat_filename))

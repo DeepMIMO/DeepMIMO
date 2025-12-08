@@ -8,6 +8,7 @@ a standardized scenario format.
 # Standard library imports
 import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 # Local imports
@@ -73,9 +74,9 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any 
         print("Checking subdirectories...")
         subdirs = sorted(
             [
-                os.path.join(path_to_rt_folder, d)
+                str(Path(path_to_rt_folder) / d)
                 for d in os.listdir(path_to_rt_folder)
-                if os.path.isdir(os.path.join(path_to_rt_folder, d))
+                if os.path.isdir(str(Path(path_to_rt_folder) / d))
             ],
         )
         if len(subdirs) > 0:
@@ -97,7 +98,7 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any 
         if "scenario_name" in conversion_params:
             scenario = conversion_params.pop("scenario_name")
         else:
-            scenario = os.path.basename(path_to_rt_folder)
+            scenario = Path(path_to_rt_folder).name
 
         # Replace the scenario_name string in the conversion_params by parent_folder
         conversion_params["parent_folder"] = scenario

@@ -7,7 +7,7 @@ This module handles reading and processing:
 4. Antenna patterns from patterns.parquet
 """
 
-import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -37,8 +37,8 @@ def read_panels(rt_folder: str) -> dict[str, Any]:
         Dict[str, Any]: Dictionary mapping panel IDs to configurations.
 
     """
-    panels_file = os.path.join(rt_folder, "panels.parquet")
-    if not os.path.exists(panels_file):
+    panels_file = str(Path(rt_folder) / "panels.parquet")
+    if not Path(panels_file).exists():
         return {}
 
     df = pd.read_parquet(panels_file)
@@ -151,8 +151,8 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
 
     """
     # Read patterns file
-    patterns_file = os.path.join(rt_folder, "patterns.parquet")
-    if not os.path.exists(patterns_file):
+    patterns_file = str(Path(rt_folder) / "patterns.parquet")
+    if not Path(patterns_file).exists():
         msg = f"patterns.parquet not found in {rt_folder}"
         raise FileNotFoundError(msg)
 
@@ -219,8 +219,8 @@ def read_transmitters(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, 
 
     """
     # Read RUs file
-    rus_file = os.path.join(rt_folder, "rus.parquet")
-    if not os.path.exists(rus_file):
+    rus_file = str(Path(rt_folder) / "rus.parquet")
+    if not Path(rus_file).exists():
         msg = f"rus.parquet not found in {rt_folder}"
         raise FileNotFoundError(msg)
 
@@ -264,8 +264,8 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
 
     """
     # Read UEs file
-    ues_file = os.path.join(rt_folder, "ues.parquet")
-    if not os.path.exists(ues_file):
+    ues_file = str(Path(rt_folder) / "ues.parquet")
+    if not Path(ues_file).exists():
         msg = f"ues.parquet not found in {rt_folder}"
         raise FileNotFoundError(msg)
 
@@ -391,7 +391,7 @@ def read_txrx(rt_folder: str, rt_params: dict[str, Any]) -> dict[str, Any]:
     first_rx = receivers[0]
 
     # Get initial positions from route data (time_idx = 0)
-    time_idx = int(os.path.basename(rt_folder).split("_")[-1]) if is_dynamic(rt_params) else 0
+    time_idx = int(Path(rt_folder).name.split("_")[-1]) if is_dynamic(rt_params) else 0
 
     rx_positions = [
         au.process_points(rx["mobility"]["route"]["positions"][0])[time_idx] for rx in receivers

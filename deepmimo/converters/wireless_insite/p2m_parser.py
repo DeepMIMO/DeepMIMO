@@ -25,6 +25,7 @@ Note:
 
 import os
 import re
+from pathlib import Path
 
 import numpy as np
 from tqdm import tqdm
@@ -75,7 +76,7 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
 
     """
     # Read file
-    print(f"Reading p2m paths file: {os.path.basename(file)}...")
+    print(f"Reading p2m paths file: {Path(file).name}...")
     with open(file) as file:
         lines = file.readlines()
 
@@ -203,7 +204,7 @@ def extract_tx_pos(filename: str) -> np.ndarray:
         )
 
         # Step 1 - swapping tx and rx indices in the filename
-        basename = os.path.basename(filename)
+        basename = Path(filename).name
         str_list = list(basename)
 
         # Objective: 'O1_28.paths.t001_21.r014.p2m' -> 'O1_28.paths.t001_14.r021.p2m'
@@ -215,7 +216,7 @@ def extract_tx_pos(filename: str) -> np.ndarray:
         new_str += str_list[-4:]  # add end ('.p2m')
 
         new_basename = "".join(new_str)
-        new_filename = os.path.join(os.path.dirname(filename), new_basename)
+        new_filename = os.path.join(str(Path(filename).parent), new_basename)
 
         # Step 2 - parse pl file to get tx pos
         try:

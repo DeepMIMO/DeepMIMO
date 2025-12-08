@@ -1,5 +1,6 @@
 """Tests for AODT RT Parameters."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.aodt import aodt_rt_params
@@ -39,7 +40,7 @@ def test_read_rt_params(mock_pd) -> None:
 
     mock_pd.read_parquet.side_effect = read_parquet_side_effect
 
-    with patch("os.path.exists", return_value=True):
+    with patch.object(Path, "exists", return_value=True):
         params = aodt_rt_params.read_rt_params("dummy_folder")
         assert params["raytracer_name"] == "Aerial Omniverse Digital Twin"
         # Frequency is currently 0 in AODT params

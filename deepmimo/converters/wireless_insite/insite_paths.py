@@ -17,7 +17,6 @@ Main Functions:
     update_txrx_points(): Update TX/RX point information with path data
 """
 
-import os
 from pathlib import Path
 
 import numpy as np
@@ -148,7 +147,7 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
                 # Save each data key using the set's id
                 for key in data:
                     mat_file = get_mat_filename(key, tx_set["id"], tx_idx, rx_set["id"])
-                    save_mat(data[key], key, os.path.join(output_folder, mat_file))
+                    save_mat(data[key], key, str(Path(output_folder) / mat_file))
 
     # Remove TX sets that have no paths with any receivers
     for tx_set in tx_sets:

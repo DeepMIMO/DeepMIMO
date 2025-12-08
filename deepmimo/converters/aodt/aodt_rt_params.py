@@ -12,7 +12,6 @@ The module serves as the interface between AODT's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -82,8 +81,8 @@ class AODTRayTracingParameters(RayTracingParameters):
 
         """
         # Load scenario parameters
-        scenario_file = os.path.join(rt_folder, "scenario.parquet")
-        if not os.path.exists(scenario_file):
+        scenario_file = str(Path(rt_folder) / "scenario.parquet")
+        if not Path(scenario_file).exists():
             msg = f"scenario.parquet not found in {rt_folder}"
             raise FileNotFoundError(msg)
 

@@ -15,6 +15,7 @@ import pickle
 import zipfile
 from collections.abc import Mapping
 from copy import deepcopy
+from pathlib import Path
 from pprint import pformat
 from typing import Any, TypeVar
 
@@ -65,7 +66,7 @@ def get_scenarios_dir() -> str:
         str: Absolute path to the scenarios directory
 
     """
-    return os.path.join(os.getcwd(), config.get("scenarios_folder"))
+    return str(Path.cwd() / config.get("scenarios_folder"))
 
 
 def get_scenario_folder(scenario_name: str) -> str:
@@ -79,7 +80,7 @@ def get_scenario_folder(scenario_name: str) -> str:
 
     """
     check_scen_name(scenario_name)
-    return os.path.join(get_scenarios_dir(), scenario_name)
+    return str(Path(get_scenarios_dir()) / scenario_name)
 
 
 def get_rt_sources_dir() -> str:
@@ -91,7 +92,7 @@ def get_rt_sources_dir() -> str:
         str: Absolute path to the RT sources directory
 
     """
-    return os.path.join(os.getcwd(), config.get("rt_sources_folder"))
+    return str(Path.cwd() / config.get("rt_sources_folder"))
 
 
 def get_rt_source_folder(scenario_name: str) -> str:
@@ -105,7 +106,7 @@ def get_rt_source_folder(scenario_name: str) -> str:
 
     """
     check_scen_name(scenario_name)
-    return os.path.join(get_rt_sources_dir(), scenario_name)
+    return str(Path(get_rt_sources_dir()) / scenario_name)
 
 
 def get_params_path(scenario_name: str) -> str:
@@ -123,28 +124,25 @@ def get_params_path(scenario_name: str) -> str:
     """
     check_scen_name(scenario_name)
     scenario_folder = get_scenario_folder(scenario_name)
-    if not os.path.exists(scenario_folder):
+    scenario_folder_path = Path(scenario_folder)
+    if not scenario_folder_path.exists():
         msg = f"Scenario folder not found: {scenario_name}"
         raise FileNotFoundError(msg)
 
     # Check if there is a params file in the scenario folder
-    path = os.path.join(scenario_folder, f"{c.PARAMS_FILENAME}.json")
-    if not os.path.exists(path):
+    path = scenario_folder_path / f"{c.PARAMS_FILENAME}.json"
+    if not path.exists():
         # Check if there are multiple scene folders
-        subdirs = [
-            d
-            for d in os.listdir(scenario_folder)
-            if os.path.isdir(os.path.join(scenario_folder, d))
-        ]
+        subdirs = [d for d in scenario_folder_path.iterdir() if d.is_dir()]
         if subdirs:
             # Check if there is a params file in each subdirectory
-            path = os.path.join(scenario_folder, subdirs[0], f"{c.PARAMS_FILENAME}.json")
+            path = subdirs[0] / f"{c.PARAMS_FILENAME}.json"
 
-    if not os.path.exists(path):
+    if not path.exists():
         msg = f"Params file not found for scenario: {scenario_name}"
         raise FileNotFoundError(msg)
 
-    return path
+    return str(path)
 
 
 def get_available_scenarios() -> list:
@@ -155,13 +153,12 @@ def get_available_scenarios() -> list:
 
     """
     scenarios_dir = get_scenarios_dir()
-    if not os.path.exists(scenarios_dir):
+    scenarios_dir_path = Path(scenarios_dir)
+    if not scenarios_dir_path.exists():
         return []
 
     # Get all subdirectories in the scenarios folder
-    scenarios = [
-        f for f in os.listdir(scenarios_dir) if os.path.isdir(os.path.join(scenarios_dir, f))
-    ]
+    scenarios = [f.name for f in scenarios_dir_path.iterdir() if f.is_dir()]
     return sorted(scenarios)
 
 
@@ -233,11 +230,12 @@ def load_mat(mat_path: str, key: str | None = None) -> Any:
     """
     # Try each supported format by replacing extension (mat, npz, npy)
     supported_formats = [".mat", ".npz", ".npy"]
-    base_path = os.path.splitext(mat_path)[0]
+    mat_path_obj = Path(mat_path)
+    base_path = mat_path_obj.parent / mat_path_obj.stem
 
     for fmt in supported_formats:
-        try_path = base_path + fmt
-        if os.path.exists(try_path):
+        try_path = base_path.with_suffix(fmt)
+        if try_path.exists():
             if fmt == ".mat":
                 return scipy.io.loadmat(try_path)[key]
             if fmt == ".npz":
@@ -269,7 +267,7 @@ def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
     def numpy_handler(x: Any) -> list[Any] | str:
         return x.tolist() if isinstance(x, np.ndarray) else str(x)
 
-    with open(output_path, "w") as f:
+    with Path(output_path).open("w") as f:
         json.dump(data_dict, f, indent=2, default=numpy_handler)
 
 
@@ -283,7 +281,7 @@ def load_dict_from_json(file_path: str) -> dict[str, Any]:
         Dictionary containing loaded data
 
     """
-    with open(file_path) as f:
+    with Path(file_path).open() as f:
         return json.load(f)
 
 
@@ -579,10 +577,10 @@ def zip(folder_path: str) -> str:
     for root, _, files in os.walk(folder_path):
         for file in files:
             # Get full path of file
-            file_path = os.path.join(root, file)
+            file_path = Path(root) / file
             # Get relative path from the base folder for preserving structure
-            rel_path = os.path.relpath(file_path, folder_path)
-            all_files.append((file_path, rel_path))
+            rel_path = file_path.relative_to(folder_path)
+            all_files.append((str(file_path), str(rel_path)))
 
     # Create a zip file
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
@@ -762,7 +760,7 @@ def save_pickle(obj: Any, filename: str) -> None:
         IOError: If file cannot be written
 
     """
-    with open(filename, "wb") as file:
+    with Path(filename).open("wb") as file:
         pickle.dump(obj, file)
 
 
@@ -780,5 +778,5 @@ def load_pickle(filename: str) -> Any:
         pickle.UnpicklingError: If file cannot be unpickled
 
     """
-    with open(filename, "rb") as file:
+    with Path(filename).open("rb") as file:
         return pickle.load(file)

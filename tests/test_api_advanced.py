@@ -120,6 +120,36 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
             def mkdir(self, **kwargs) -> None:
                 pass
 
+            def open(self, mode="r"):
+                from unittest.mock import mock_open
+                return mock_open()(self.path_str, mode)
+
+            @property
+            def name(self):
+                return self.path_str.split("/")[-1]
+
+            @property
+            def parent(self):
+                return MockPath("/".join(self.path_str.split("/")[:-1]))
+
+            def stat(self):
+                return type("stat", (), {"st_size": 1000})()
+
+            def unlink(self):
+                pass
+
+            def rmdir(self):
+                pass
+
+            def iterdir(self):
+                return []
+
+            def is_dir(self):
+                return False
+
+            def rename(self, target):
+                pass
+
         mock_path.side_effect = MockPath
 
         # Case 1: Scenario already exists

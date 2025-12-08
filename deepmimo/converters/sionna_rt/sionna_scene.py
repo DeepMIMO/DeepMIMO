@@ -3,7 +3,7 @@
 This module handles loading and converting scene data from Sionna's format to DeepMIMO's format.
 """
 
-import os
+from pathlib import Path
 
 from deepmimo.general_utils import load_pickle
 from deepmimo.scene import (
@@ -35,9 +35,9 @@ def read_scene(load_folder: str, material_indices: list[int]) -> Scene:
 
     """
     # Load raw data - already in correct format
-    vertices = load_pickle(os.path.join(load_folder, "sionna_vertices.pkl"))  # (N_VERTICES, 3)
+    vertices = load_pickle(str(Path(load_folder) / "sionna_vertices.pkl"))  # (N_VERTICES, 3)
     objects = load_pickle(
-        os.path.join(load_folder, "sionna_objects.pkl"),
+        str(Path(load_folder) / "sionna_objects.pkl"),
     )  # Dict with vertex index ranges
 
     # Create scene

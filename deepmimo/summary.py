@@ -34,6 +34,7 @@ Three functions:
 # Standard library imports
 import os
 import time
+from pathlib import Path
 
 # Third-party imports
 import matplotlib.pyplot as plt
@@ -203,7 +204,7 @@ def plot_summary(
     # Create figures directory if it doesn't exist
     temp_dir = "./figures"
     if save_imgs:
-        os.makedirs(temp_dir, exist_ok=True)
+        Path(temp_dir).mkdir(parents=True, exist_ok=True)
 
     # Load the dataset
     if dataset is None:
@@ -335,7 +336,7 @@ def plot_summary(
     # Image 3: Line of Sight (LOS)
     # plot_coverage(dataset.rx_pos, dataset.los, bs_pos=dataset.bs_pos, bs_ori=dataset.bs_ori,
     #               cmap='viridis', cbar_labels='LoS status')
-    # los_img_path = os.path.join(temp_dir, 'los.png')
+    # los_img_path = str(Path(temp_dir) / 'los.png')
     # plt.savefig(los_img_path, dpi=100, bbox_inches='tight')
     # plt.close()
     # img_paths.append(los_img_path)

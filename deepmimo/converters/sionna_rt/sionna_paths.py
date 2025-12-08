@@ -3,7 +3,7 @@
 This module handles loading and converting path data from Sionna's format to DeepMIMO's format.
 """
 
-import os
+from pathlib import Path
 
 import numpy as np
 from tqdm import tqdm
@@ -394,7 +394,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
     - For multi-antenna arrays, each antenna element is treated as a separate transmitter
 
     """
-    path_dict_list = load_pickle(os.path.join(load_folder, "sionna_paths.pkl"))
+    path_dict_list = load_pickle(str(Path(load_folder) / "sionna_paths.pkl"))
 
     # Collect all unique TX positions from all path dictionaries
     all_tx_pos = np.unique(
@@ -497,7 +497,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
         for key in data:
             idx = tx_ant_idx if multi_tx_ant else tx_idx
             mat_file = get_mat_filename(key, 0, idx, 1)  # tx_set=0, tx_idx=tx_ant_idx, rx_set=1
-            save_mat(data[key], key, os.path.join(save_folder, mat_file))
+            save_mat(data[key], key, str(Path(save_folder) / mat_file))
 
         if bs_bs_paths:
             if multi_tx_ant:
@@ -538,7 +538,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
                     tx_ant_idx,
                     0,
                 )  # tx_set=0, tx_idx=tx_ant_idx, rx_set=0
-                save_mat(data_bs_bs[key], key, os.path.join(save_folder, mat_file))
+                save_mat(data_bs_bs[key], key, str(Path(save_folder) / mat_file))
 
     if bs_bs_paths:
         txrx_dict["txrx_set_0"]["is_rx"] = True  # add BS set also as RX

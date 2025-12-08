@@ -1,5 +1,6 @@
 """Tests for DeepMIMO Core Generation Module."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -24,8 +25,9 @@ def mock_utils():
         patch("deepmimo.generator.core.get_params_path") as get_params,
         patch("deepmimo.generator.core.Scene") as mock_scene,
         patch("deepmimo.generator.core.MaterialList") as mock_mat_list,
-        patch("os.path.exists") as mock_exists,
+        patch.object(Path, "exists") as mock_exists,
     ):
+        mock_exists.return_value = True
         yield {
             "load_json": load_json,
             "load_mat": load_mat,

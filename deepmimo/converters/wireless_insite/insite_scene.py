@@ -4,7 +4,6 @@ This module provides functionality to parse physical object files (.city, .ter, 
 from Wireless InSite into DeepMIMO's physical object representation.
 """
 
-import os
 import re
 from pathlib import Path
 
@@ -181,7 +180,7 @@ class PhysicalObjectParser:
         with open(self.file_path) as f:
             content = f.read()
 
-        file_base = os.path.basename(self.file_path)
+        file_base = Path(self.file_path).name
 
         # Extract objects using extract_objects
         object_vertices = extract_objects(content)

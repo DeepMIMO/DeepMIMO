@@ -275,7 +275,7 @@ if __name__ == "__main__":
     for root, _, filenames in os.walk(test_dir):
         for filename in filenames:
             if filename.endswith(".setup"):
-                setup_file = os.path.join(root, filename)
+                setup_file = str(Path(root) / filename)
                 break
         if setup_file:
             break

@@ -9,6 +9,7 @@ into the DeepMIMO format. It handles reading and processing ray tracing data inc
 
 import os
 import shutil
+from pathlib import Path
 
 from deepmimo import consts as c
 from deepmimo.converters import converter_utils as cu
@@ -61,7 +62,7 @@ def sionna_rt_converter(
 
     # Get scenario name from folder if not provided
     rt_folder = rt_folder[:-1] if rt_folder[-1] in ["/", "\\"] else rt_folder
-    scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
+    scen_name = scenario_name if scenario_name else Path(rt_folder).name.lower()
 
     # Check if scenario already exists in the scenarios folder
     scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
@@ -70,7 +71,7 @@ def sionna_rt_converter(
 
     # Setup temporary output folder
     temp_folder = os.path.join(rt_folder, scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
-    if os.path.exists(temp_folder):
+    if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
     os.makedirs(temp_folder)
 
@@ -122,7 +123,7 @@ if __name__ == "__main__":
         "C:/Users/jmora/Documents/GitHub/AutoRayTracing/"
         "all_runs/run_02-02-2025_15H45M26S/scen_0/DeepMIMO_folder"
     )
-    temp_folder = os.path.join(rt_folder, "test_deepmimo")
+    temp_folder = str(Path(rt_folder) / "test_deepmimo")
 
     rt_params = read_rt_params(rt_folder)
     txrx_dict = read_txrx(rt_params)

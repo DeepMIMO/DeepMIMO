@@ -1,3 +1,4 @@
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.aodt import aodt_materials
@@ -29,7 +30,7 @@ def test_aodt_material_conversion() -> None:
 
 
 @patch("deepmimo.converters.aodt.aodt_materials.pd")
-@patch("os.path.exists")
+@patch.object(Path, "exists")
 def test_read_materials(mock_exists, mock_pd) -> None:
     mock_exists.return_value = True
 

@@ -11,7 +11,7 @@ The module serves as the main entry point for creating DeepMIMO datasets from ra
 """
 
 # Standard library imports
-import os
+from pathlib import Path
 from typing import Any
 
 # Third-party imports
@@ -128,14 +128,14 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
     scen_name = scen_name.lower()
 
     # Handle absolute paths
-    if os.path.isabs(scen_name):
+    if Path(scen_name).is_absolute():
         scen_folder = scen_name
-        scen_name = os.path.basename(scen_folder)
+        scen_name = Path(scen_folder).name
     else:
         scen_folder = get_scenario_folder(scen_name)
 
     # Download scenario if needed
-    if not os.path.exists(scen_folder):
+    if not Path(scen_folder).exists():
         print("Scenario not found. Would you like to download it? [Y/n]")
         response = input().lower()
         if response in ["", "y", "yes"]:
@@ -152,11 +152,10 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
     n_snapshots = params[c.SCENE_PARAM_NAME][c.SCENE_PARAM_NUMBER_SCENES]
     if n_snapshots > 1:  # dynamic (multiple scenes)
         dataset_list = []
-        scene_folders = sorted(
-            [d for d in os.listdir(scen_folder) if os.path.isdir(os.path.join(scen_folder, d))],
-        )
+        scen_folder_path = Path(scen_folder)
+        scene_folders = sorted([d.name for d in scen_folder_path.iterdir() if d.is_dir()])
         for snapshot_i in range(n_snapshots):
-            snapshot_folder = os.path.join(scen_folder, scene_folders[snapshot_i])
+            snapshot_folder = str(scen_folder_path / scene_folders[snapshot_i])
             print(f"Scene {snapshot_i + 1}/{n_snapshots}")
             dataset_list += [_load_dataset(snapshot_folder, params, load_params)]
         dataset = DynamicDataset(dataset_list, scen_name)
@@ -180,7 +179,7 @@ def _load_dataset(folder: str, params: dict, load_params: dict) -> Dataset | Mac
     dataset = _load_raytracing_scene(folder, params[c.TXRX_PARAM_NAME], **load_params)
 
     # Set shared parameters
-    dataset[c.NAME_PARAM_NAME] = os.path.basename(folder)
+    dataset[c.NAME_PARAM_NAME] = Path(folder).name
 
     dataset[c.RT_PARAMS_PARAM_NAME] = params[c.RT_PARAMS_PARAM_NAME]
     dataset[c.SCENE_PARAM_NAME] = Scene.from_data(folder)
@@ -317,7 +316,7 @@ def _load_tx_rx_raydata(
             continue
 
         mat_filename = get_mat_filename(key, tx_set_id, tx_idx, rx_set_id)
-        mat_path = os.path.join(rayfolder, mat_filename)
+        mat_path = str(Path(rayfolder) / mat_filename)
 
         if verbose:
             print(f"Loading {mat_filename}...", end="")

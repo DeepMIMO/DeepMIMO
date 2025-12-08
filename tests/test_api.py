@@ -1,7 +1,7 @@
 """Tests for DeepMIMO API module."""
 
-import os
 import unittest
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import requests
@@ -19,15 +19,16 @@ class TestDeepMIMOAPI(unittest.TestCase):
         mock_get.return_value = mock_response
 
         # Create a dummy file
-        with open("test_file.zip", "w") as f:
+        with Path("test_file.zip").open("w") as f:
             f.write("dummy content")
 
         try:
             result = api._dm_upload_api_call("test_file.zip", "fake_key")
             assert result is None
         finally:
-            if os.path.exists("test_file.zip"):
-                os.remove("test_file.zip")
+            test_file = Path("test_file.zip")
+            if test_file.exists():
+                test_file.unlink()
 
     @patch("deepmimo.api.requests.get")
     @patch("deepmimo.api.requests.put")
@@ -49,15 +50,16 @@ class TestDeepMIMOAPI(unittest.TestCase):
         mock_put.return_value = upload_response
 
         # Create a dummy file
-        with open("test_file.zip", "w") as f:
+        with Path("test_file.zip").open("w") as f:
             f.write("dummy content")
 
         try:
             result = api._dm_upload_api_call("test_file.zip", "fake_key")
             assert result == "test_file.zip"
         finally:
-            if os.path.exists("test_file.zip"):
-                os.remove("test_file.zip")
+            test_file = Path("test_file.zip")
+            if test_file.exists():
+                test_file.unlink()
 
     def test_process_params_data(self) -> None:
         """Test parameter processing."""
@@ -142,7 +144,7 @@ Title line
     def test_upload_images(self, mock_post) -> None:
         """Test image upload."""
         # Create dummy image
-        with open("test_img.png", "wb") as f:
+        with Path("test_img.png").open("wb") as f:
             f.write(b"fake png content")
 
         try:
@@ -155,15 +157,16 @@ Title line
             assert len(results) == 1
             assert results[0]["id"] == "img1"
         finally:
-            if os.path.exists("test_img.png"):
-                os.remove("test_img.png")
+            test_img = Path("test_img.png")
+            if test_img.exists():
+                test_img.unlink()
 
     @patch("deepmimo.api.requests.get")
     @patch("deepmimo.api.requests.put")
     def test_upload_rt_source(self, mock_put, mock_get) -> None:
         """Test RT source upload."""
         # Create dummy zip
-        with open("test_rt.zip", "wb") as f:
+        with Path("test_rt.zip").open("wb") as f:
             f.write(b"fake zip content")
 
         try:
@@ -185,5 +188,6 @@ Title line
             result = api.upload_rt_source("test_scen", "test_rt.zip", "key")
             assert result is True
         finally:
-            if os.path.exists("test_rt.zip"):
-                os.remove("test_rt.zip")
+            test_rt = Path("test_rt.zip")
+            if test_rt.exists():
+                test_rt.unlink()

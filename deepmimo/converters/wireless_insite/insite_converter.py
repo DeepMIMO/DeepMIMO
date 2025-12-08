@@ -28,6 +28,7 @@ Main Entry Point:
 # Standard library imports
 import os
 import shutil
+from pathlib import Path
 
 from deepmimo import consts as c
 
@@ -85,7 +86,7 @@ def insite_rt_converter(
     """
     # Get scenario name from folder if not provided
     rt_folder = rt_folder[:-1] if rt_folder[-1] in ["/", "\\"] else rt_folder
-    scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
+    scen_name = scenario_name if scenario_name else Path(rt_folder).name.lower()
 
     # Check if scenario already exists in the scenarios folder
     scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
@@ -93,10 +94,10 @@ def insite_rt_converter(
         return None
 
     # Get paths for input and output folders
-    temp_folder = os.path.join(os.path.dirname(rt_folder), scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
+    temp_folder = os.path.join(str(Path(rt_folder).parent), scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
 
     # Create output folder
-    if os.path.exists(temp_folder):
+    if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
     os.makedirs(temp_folder)
 

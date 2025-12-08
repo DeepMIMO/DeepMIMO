@@ -261,7 +261,7 @@ if __name__ == "__main__":
     files = []
     for root, _, filenames in os.walk(test_dir):
         for filename in filenames:
-            files.append(os.path.join(root, filename))
+            files.append(str(Path(root) / filename))
 
     print(f"\nTesting materials extraction from: {test_dir}")
     print("-" * 50)

@@ -12,8 +12,8 @@ The module serves as the interface between Sionna's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
-import os
 from dataclasses import dataclass
+from pathlib import Path
 
 from deepmimo.config import config
 from deepmimo.consts import RAYTRACER_NAME_SIONNA
@@ -80,7 +80,7 @@ class SionnaRayTracingParameters(RayTracingParameters):
 
         """
         # Load original parameters
-        raw_params = load_pickle(os.path.join(load_folder, "sionna_rt_params.pkl"))
+        raw_params = load_pickle(str(Path(load_folder) / "sionna_rt_params.pkl"))
 
         # Raise error if los is not present
         if "los" not in raw_params or not raw_params["los"]:

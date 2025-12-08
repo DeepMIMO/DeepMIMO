@@ -19,6 +19,7 @@ Main Entry Point:
 
 import os
 import shutil
+from pathlib import Path
 
 from deepmimo import consts as c
 from deepmimo.converters import converter_utils as cu
@@ -68,7 +69,7 @@ def aodt_rt_converter(
 
     # Get scenario name from folder if not provided
     rt_folder = rt_folder[:-1] if rt_folder[-1] in ["/", "\\"] else rt_folder
-    scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
+    scen_name = scenario_name if scenario_name else Path(rt_folder).name.lower()
 
     # Check if scenario already exists in the scenarios folder
     scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
@@ -77,7 +78,7 @@ def aodt_rt_converter(
 
     # Setup temporary output folder
     temp_folder = os.path.join(rt_folder, scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
-    if os.path.exists(temp_folder):
+    if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
     os.makedirs(temp_folder)
 

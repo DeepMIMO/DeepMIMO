@@ -1,5 +1,6 @@
 """Tests for AODT Scene."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.aodt import aodt_scene
@@ -22,7 +23,7 @@ def test_read_scene(mock_pd) -> None:
     df.iterrows.return_value = [(0, row)]
     mock_pd.read_parquet.return_value = df
 
-    with patch("os.path.exists", return_value=True):
+    with patch.object(Path, "exists", return_value=True):
         scene = aodt_scene.read_scene("dummy_folder")
         assert len(scene.primitives) == 1
         # Check if object parsed correctly

@@ -4,8 +4,8 @@ This module handles reading and processing material properties from materials.pa
 following ITU-R P.2040 standard for building materials and structures.
 """
 
-import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
@@ -146,8 +146,8 @@ def read_materials(rt_folder: str, save_folder: str | None = None) -> tuple[dict
         ValueError: If required parameters are missing
 
     """
-    materials_file = os.path.join(rt_folder, "materials.parquet")
-    if not os.path.exists(materials_file):
+    materials_file = str(Path(rt_folder) / "materials.parquet")
+    if not Path(materials_file).exists():
         msg = f"materials.parquet not found in {rt_folder}"
         raise FileNotFoundError(msg)
 

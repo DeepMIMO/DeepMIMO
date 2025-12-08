@@ -1,5 +1,6 @@
 """Tests for AODT Paths."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -23,7 +24,7 @@ def test_transform_interaction_types() -> None:
 
 
 @patch("deepmimo.converters.aodt.aodt_paths.pd")
-@patch("deepmimo.converters.aodt.aodt_paths.os.path.exists")
+@patch.object(Path, "exists")
 @patch("deepmimo.converters.aodt.aodt_paths.os.makedirs")
 @patch("deepmimo.converters.aodt.aodt_paths.gu.save_mat")
 def test_read_paths(mock_save_mat, mock_makedirs, mock_exists, mock_pd) -> None:

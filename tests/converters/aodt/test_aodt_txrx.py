@@ -1,5 +1,6 @@
 """Tests for AODT TXRX."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.aodt import aodt_txrx
@@ -130,7 +131,7 @@ def test_read_txrx(mock_pd) -> None:
         "raw_params": {"duration": 1, "interval": 1},  # Avoid ZeroDivisionError
     }
 
-    with patch("os.path.exists", return_value=True):
+    with patch.object(Path, "exists", return_value=True):
         txrx = aodt_txrx.read_txrx("dummy_folder", rt_params)
     assert len(txrx) == 2
     assert txrx["txrx_set_0"]["is_tx"]

@@ -11,8 +11,8 @@ This module provides:
 The module serves as a shared utility library for all DeepMIMO converters.
 """
 
-import os
 import shutil
+from pathlib import Path
 from typing import Any
 
 import numpy as np
@@ -37,7 +37,7 @@ def check_scenario_exists(
         bool: True if scenario should be overwritten, False if should be skipped
 
     """
-    if os.path.exists(os.path.join(scenarios_folder, scen_name)):
+    if (Path(scenarios_folder) / scen_name).exists():
         if overwrite is None:
             print(
                 f'Scenario with name "{scen_name}" already exists in '
@@ -75,20 +75,21 @@ def save_rt_source_files(sim_folder: str, source_exts: list[str]) -> None:
         verbose (bool): Whether to print progress messages. Defaults to True.
 
     """
-    rt_source_folder = os.path.basename(sim_folder) + "_raytracing_source"
-    files_in_sim_folder = os.listdir(sim_folder)
+    sim_folder_path = Path(sim_folder)
+    rt_source_folder = sim_folder_path.name + "_raytracing_source"
+    files_in_sim_folder = [f.name for f in sim_folder_path.iterdir()]
     print(f"Copying raytracing source files to {rt_source_folder}")
-    zip_temp_folder = os.path.join(sim_folder, rt_source_folder)
-    os.makedirs(zip_temp_folder)
+    zip_temp_folder = sim_folder_path / rt_source_folder
+    zip_temp_folder.mkdir(parents=True)
 
     for ext in source_exts:
         # copy all files with extensions to temp folder
         for file in ext_in_list(ext, files_in_sim_folder):
-            curr_file_path = os.path.join(sim_folder, file)
-            new_file_path = os.path.join(zip_temp_folder, file)
+            curr_file_path = sim_folder_path / file
+            new_file_path = zip_temp_folder / file
 
             # vprint(f'Adding {file}')
-            shutil.copy(curr_file_path, new_file_path)
+            shutil.copy(str(curr_file_path), str(new_file_path))
 
     # Zip the temp folder
     zip(zip_temp_folder)
@@ -113,11 +114,11 @@ def save_scenario(sim_folder: str, target_folder: str = c.SCENARIOS_FOLDER) -> s
     new_scen_folder = sim_folder.replace(c.DEEPMIMO_CONVERSION_SUFFIX, "")
 
     # Get output scenario folder
-    scen_name = os.path.basename(new_scen_folder)
-    scen_path = os.path.join(target_folder, scen_name)
+    scen_name = Path(new_scen_folder).name
+    scen_path = Path(target_folder) / scen_name
 
     # Delete scenario if it exists
-    if os.path.exists(scen_path):
+    if scen_path.exists():
         shutil.rmtree(scen_path)
 
     # Move simulation folder to scenarios folder
@@ -226,7 +227,7 @@ def save_params(params_dict: dict[str, Any], output_folder: str) -> None:
 
     """
     # Get standardized path for params.json
-    params_path = os.path.join(output_folder, c.PARAMS_FILENAME + ".json")
+    params_path = str(Path(output_folder) / (c.PARAMS_FILENAME + ".json"))
 
     # Save using JSON serializer that properly handles numeric types
     save_dict_as_json(params_path, params_dict)
