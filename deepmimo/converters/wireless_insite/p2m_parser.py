@@ -151,7 +151,6 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
     return cu.compress_path_data(data)
 
 
-
 def extract_tx_pos(filename: str) -> np.ndarray:
     """Extract transmitter position from a paths.p2m file.
 

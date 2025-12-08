@@ -249,10 +249,7 @@ class ChannelParameters(DotDict):
         # OFDM selected subcarriers validation (indices within [0, N_sc-1])
         if c.PARAMSET_OFDM in self.keys():
             ofdm_params = self[c.PARAMSET_OFDM]
-            if (
-                c.PARAMSET_OFDM_SC_SAMP in ofdm_params
-                and c.PARAMSET_OFDM_SC_NUM in ofdm_params
-            ):
+            if c.PARAMSET_OFDM_SC_SAMP in ofdm_params and c.PARAMSET_OFDM_SC_NUM in ofdm_params:
                 sc_sel = np.asarray(ofdm_params[c.PARAMSET_OFDM_SC_SAMP])
                 if sc_sel.ndim > 1:
                     msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a 1-D array"

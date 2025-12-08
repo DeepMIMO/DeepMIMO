@@ -112,7 +112,6 @@ def get_uniform_idxs(n_ue: int, grid_size: np.ndarray, steps: list[int]) -> np.n
     return np.array([j + i * _grid_size[0] for i in rows for j in cols])
 
 
-
 def get_grid_idxs(
     grid_size: np.ndarray,
     axis: str,

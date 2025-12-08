@@ -431,7 +431,8 @@ class PhysicalElement:
             Face(vertices=vertices[vertex_idxs], material_idx=material_idx)
             for vertex_idxs, material_idx in zip(
                 data["face_vertex_idxs"],
-                data["face_material_idxs"], strict=False,
+                data["face_material_idxs"],
+                strict=False,
             )
         ]
         return cls(faces=faces, name=data["name"], object_id=data["id"], label=data["label"])
@@ -1461,7 +1462,6 @@ def get_object_faces(
         return None
 
     return _get_faces_convex_hull(vertices) if fast else _get_2d_face(vertices)
-
 
 
 if __name__ == "__main__":

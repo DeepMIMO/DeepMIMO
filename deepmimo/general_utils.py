@@ -268,6 +268,7 @@ def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
 
     def numpy_handler(x):
         return x.tolist() if isinstance(x, np.ndarray) else str(x)
+
     with open(output_path, "w") as f:
         json.dump(data_dict, f, indent=2, default=numpy_handler)
 

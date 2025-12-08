@@ -243,7 +243,9 @@ class SetupEditor:
                 self.setup_file[i + 9] = f"zmax {self.study_area.zmax:.6f}\n"
                 self.setup_file[i + 10] = "nVertices %d\n" % self.study_area.num_vertex
                 for j in range(self.study_area.num_vertex):
-                    self.setup_file[i + j + 11] = f"{self.study_area.all_vertex[j, 0]:.6f} {self.study_area.all_vertex[j, 1]:.6f} {self.study_area.all_vertex[j, 2]:.6f}\n"
+                    self.setup_file[i + j + 11] = (
+                        f"{self.study_area.all_vertex[j, 0]:.6f} {self.study_area.all_vertex[j, 1]:.6f} {self.study_area.all_vertex[j, 2]:.6f}\n"
+                    )
                 return
 
     def update_origin(self) -> None:

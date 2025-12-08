@@ -56,7 +56,6 @@ def _preallocate_data(n_rx: int) -> dict:
     }
 
 
-
 def _process_paths_batch(
     paths_dict: dict,
     data: dict,

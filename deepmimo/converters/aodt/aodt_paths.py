@@ -112,7 +112,6 @@ def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> dict:
     }
 
 
-
 def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) -> None:
     """Read and process ray paths and channel responses.
 

@@ -132,7 +132,9 @@ def test_export_scene_rt_params(mock_ver, mock_v1, mock_scene) -> None:
 @patch("deepmimo.exporters.sionna_exporter.save_pickle")
 @patch("os.makedirs")
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
-def test_sionna_exporter_flow(mock_v1, mock_makedirs, mock_save, mock_ver, mock_scene, mock_paths) -> None:
+def test_sionna_exporter_flow(
+    mock_v1, mock_makedirs, mock_save, mock_ver, mock_scene, mock_paths
+) -> None:
     mock_v1.return_value = False
     mock_ver.return_value = "0.19.1"
     with (

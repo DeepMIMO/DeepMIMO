@@ -177,9 +177,9 @@ ignore = [
     "D213",    # Multi-line docstring summary should start at the second line (incompatible with D212)
     "COM812",  # Trailing comma missing (conflicts with formatter)
 
-    # Life quality
+    # Life quality  
     "T201",    # Allow "print" in production code
-    
+    "T203",    # Allow pprint in production code
 ]
 
 [tool.ruff.lint.per-file-ignores]

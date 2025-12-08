@@ -1,6 +1,5 @@
 """Tests for Wireless Insite P2M parser."""
 
-
 import numpy as np
 import pytest
 

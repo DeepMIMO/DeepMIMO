@@ -1,6 +1,5 @@
 """Tests for DeepMIMO RT Parameters module."""
 
-
 import pytest
 
 from deepmimo.rt_params import RayTracingParameters

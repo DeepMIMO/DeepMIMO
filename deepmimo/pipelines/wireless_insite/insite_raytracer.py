@@ -235,7 +235,16 @@ def raytrace_insite(
     license_info = ["-set_licenses", rt_params["wi_lic"]] if wi_major_version >= 4 else []
 
     # Run Wireless InSite using the XML file
-    command = [rt_params["wi_exe"], "-f", xml_path, "-out", study_area_path, "-p", "insite", *license_info]
+    command = [
+        rt_params["wi_exe"],
+        "-f",
+        xml_path,
+        "-out",
+        study_area_path,
+        "-p",
+        "insite",
+        *license_info,
+    ]
     run_command(command, "RAY TRACING: Wireless InSite")
 
     return insite_path

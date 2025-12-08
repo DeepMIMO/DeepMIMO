@@ -1,6 +1,5 @@
 """End-to-end flow tests for DeepMIMO."""
 
-
 import numpy as np
 
 from deepmimo import Dataset

@@ -1,6 +1,5 @@
 """Tests for DeepMIMO constants."""
 
-
 from deepmimo import consts
 
 

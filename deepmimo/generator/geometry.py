@@ -160,7 +160,6 @@ def _apply_FoV(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> 
     return np.logical_and(path_inclusion_phi, path_inclusion_theta)
 
 
-
 def _apply_FoV_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
     """Apply field of view constraints to angles in batch.
 
@@ -197,7 +196,6 @@ def _apply_FoV_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarra
 
     # Combine horizontal and vertical masks - exactly matching original function
     return np.logical_and(path_inclusion_phi, path_inclusion_theta)
-
 
 
 def _rotate_angles(

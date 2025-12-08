@@ -32,6 +32,7 @@ The Dataset class is organized into several logical sections:
 # Standard library imports
 from __future__ import annotations
 
+import contextlib
 import inspect
 from typing import Any
 
@@ -272,10 +273,8 @@ class Dataset(DotDict):
 
         # Create a deep copy of the parameters to ensure isolation
         old_params = None
-        try:
+        with contextlib.suppress(KeyError):
             old_params = super().__getitem__(c.CH_PARAMS_PARAM_NAME)
-        except KeyError:
-            pass
         self.ch_params = params.deepcopy()
 
         # If rotation has changed, clear rotated angles cache
