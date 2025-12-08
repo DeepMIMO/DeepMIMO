@@ -80,7 +80,7 @@ print(f"Steering vectors shape: {steering_vectors.shape}")
 
 # %%
 # Compute beamforming gain for a specific user
-user_idx = 0
+user_idx = 10
 h = channels[user_idx, 0, :, 0]  # Channel vector (RX ant 0, all TX ants, path 0)
 
 # Matched filter beamformer (MF)

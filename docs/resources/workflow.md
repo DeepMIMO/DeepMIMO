@@ -22,19 +22,19 @@ This page captures the legacy Sphinx workflow so contributors can reproduce the 
    ```
 6. Replace the committed `docs/manual.ipynb` with the cleaned notebook and re-run the docs build.
 
-## Testing tutorials
+## Running Tutorial Tests
 
-The tutorials in `docs/tutorials/*.py` can be tested to ensure they execute without errors:
+Tutorial tests execute each `.py` tutorial file in `docs/tutorials/` to ensure they run without errors. These tests are **excluded by default** from `pytest` runs to save time (tutorials take ~6 minutes).
 
-1. Run all tutorial tests with pytest:
-   ```bash
-   pytest tests/test_tutorials_run.py
-   ```
-2. Run a specific tutorial:
-   ```bash
-   python docs/tutorials/1_getting_started.py
-   ```
-3. The tests use `runpy` to execute each `.py` file as a script, catching any runtime errors.
+| Command | Description |
+|---------|-------------|
+| `uv run pytest` | Run all tests **except** tutorials (default, fast) |
+| `uv run pytest tests/tutorials/` | Run **all** tutorial tests (~6 min) |
+| `uv run pytest tests/tutorials/test_1_getting_started.py` | Run **one** specific tutorial test |
+| `uv run pytest -m tutorial` | Run all tutorial tests (alternative method) |
+| `uv run python docs/tutorials/1_getting_started.py` | Run tutorial directly (not as test) |
+
+**Note**: Tutorials are excluded via `norecursedirs` in `pyproject.toml`, so running `pytest` alone will skip them for fast iteration. Explicitly specify `tests/tutorials/` to include them.
 
 ## Building docs with tutorial execution
 

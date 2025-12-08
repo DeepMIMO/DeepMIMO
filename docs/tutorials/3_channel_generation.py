@@ -75,7 +75,7 @@ print(f"Shape: [num_rx, num_rx_ant, num_tx_ant, num_paths]")
 
 # %%
 # Visualize channel impulse response for one user
-user_idx = 0
+user_idx = 10
 cir = time_channels[user_idx, 0, 0, :]  # First RX ant, first TX ant
 
 plt.figure(figsize=(10, 5))
@@ -107,7 +107,7 @@ print(f"Shape: [num_rx, num_rx_ant, num_tx_ant, num_subcarriers]")
 
 # %%
 # Visualize frequency response for one user
-user_idx = 0
+user_idx = 10
 freq_response = freq_channels[user_idx, 0, 0, :]  # First RX ant, first TX ant
 
 plt.figure(figsize=(10, 5))
