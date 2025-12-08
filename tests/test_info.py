@@ -1,7 +1,7 @@
 """Tests for DeepMIMO info module."""
 
-from deepmimo import info
 from deepmimo import consts as c
+from deepmimo import info
 
 
 def test_info_general(capsys):

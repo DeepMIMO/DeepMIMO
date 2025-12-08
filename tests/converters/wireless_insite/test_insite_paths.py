@@ -1,8 +1,9 @@
 """Tests for Wireless Insite Paths."""
 
-import pytest
+from unittest.mock import patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
+
 from deepmimo.converters.wireless_insite import insite_paths
 
 

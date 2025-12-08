@@ -1,6 +1,7 @@
 """Tests for AODT Converter."""
 
 from unittest.mock import patch
+
 from deepmimo.converters.aodt import aodt_converter
 
 

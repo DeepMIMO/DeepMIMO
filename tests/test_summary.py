@@ -2,11 +2,13 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 import numpy as np
 
-# Correctly import functions from the module
-from deepmimo.summary import summary, plot_summary
 from deepmimo import consts as c
+
+# Correctly import functions from the module
+from deepmimo.summary import plot_summary, summary
 
 
 class TestSummary(unittest.TestCase):

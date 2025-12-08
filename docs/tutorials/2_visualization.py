@@ -1,5 +1,4 @@
-"""
-# Visualization and Scene
+"""# Visualization and Scene
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/2_visualization.py)
 &nbsp;
@@ -23,6 +22,7 @@
 # Import libraries
 import matplotlib.pyplot as plt
 import numpy as np
+
 import deepmimo as dm
 
 # %%
@@ -96,7 +96,7 @@ if hasattr(dataset, "interactions"):
     )
 
     plt.figure(figsize=(10, 6))
-    plt.hist(num_interactions.flatten(), bins=range(0, 10))
+    plt.hist(num_interactions.flatten(), bins=range(10))
     plt.xlabel("Number of Interactions")
     plt.ylabel("Count")
     plt.title("Distribution of Interaction Counts")

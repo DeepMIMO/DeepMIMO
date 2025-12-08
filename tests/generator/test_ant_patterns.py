@@ -1,8 +1,10 @@
 """Test module for antenna pattern functionality."""
 
+import time
+
 import numpy as np
 import pytest
-import time
+
 from deepmimo.generator.ant_patterns import AntennaPattern
 
 

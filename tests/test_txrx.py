@@ -1,15 +1,15 @@
 """Tests for DeepMIMO TXRX module."""
 
-import pytest
 from unittest.mock import patch
+
+from deepmimo import consts as c
 from deepmimo.txrx import (
-    TxRxSet,
     TxRxPair,
-    get_txrx_sets,
+    TxRxSet,
     get_txrx_pairs,
+    get_txrx_sets,
     print_available_txrx_pair_ids,
 )
-from deepmimo import consts as c
 
 
 def test_txrx_set_initialization():

@@ -1,8 +1,9 @@
 """Tests for Sionna RT Params."""
 
 from unittest.mock import patch
-from deepmimo.converters.sionna_rt import sionna_rt_params
+
 from deepmimo import consts as c
+from deepmimo.converters.sionna_rt import sionna_rt_params
 
 
 @patch("deepmimo.converters.sionna_rt.sionna_rt_params.load_pickle")

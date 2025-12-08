@@ -1,10 +1,11 @@
 """Tests for AODT Paths."""
 
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-import pytest
-from unittest.mock import patch, MagicMock
-from deepmimo.converters.aodt import aodt_paths
+
 from deepmimo import consts as c
+from deepmimo.converters.aodt import aodt_paths
 
 
 def test_transform_interaction_types():

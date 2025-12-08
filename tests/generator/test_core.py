@@ -1,11 +1,12 @@
 """Tests for DeepMIMO Core Generation Module."""
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-import os
-from deepmimo.generator import core
+import pytest
+
 from deepmimo import consts as c
+from deepmimo.generator import core
 
 
 @pytest.fixture

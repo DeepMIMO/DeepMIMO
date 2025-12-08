@@ -1,7 +1,9 @@
 """Tests for Wireless Insite Setup Parser."""
 
+from unittest.mock import mock_open, patch
+
 import pytest
-from unittest.mock import patch, mock_open
+
 from deepmimo.converters.wireless_insite import setup_parser
 
 

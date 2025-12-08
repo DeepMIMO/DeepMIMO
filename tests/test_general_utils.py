@@ -1,9 +1,11 @@
 """Tests for DeepMIMO general utilities."""
 
 import os
-import pytest
-import numpy as np
 from unittest.mock import patch
+
+import numpy as np
+import pytest
+
 from deepmimo import general_utils
 
 

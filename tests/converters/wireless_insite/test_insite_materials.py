@@ -1,6 +1,7 @@
 """Tests for Wireless Insite Materials."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from deepmimo.converters.wireless_insite import insite_materials
 from deepmimo.materials import Material
 

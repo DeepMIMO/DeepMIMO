@@ -1,5 +1,4 @@
-"""
-# Migration Guide: DeepMIMO v3 to v4
+"""# Migration Guide: DeepMIMO v3 to v4
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/8_migration_guide.py)
 &nbsp;
@@ -20,8 +19,6 @@
 """
 
 # %%
-import matplotlib.pyplot as plt
-import numpy as np
 
 # %% [markdown]
 # ## Overview
@@ -82,7 +79,7 @@ ch_params.ue_antenna.shape = [1, 1]
 dataset.compute_channels(ch_params)
 channels = dataset.channel
 
-print(f"v4 Dataset loaded successfully")
+print("v4 Dataset loaded successfully")
 print(f"Channel shape: {channels.shape}")
 
 # %% [markdown]
@@ -190,7 +187,7 @@ delay = dataset.delay
 aoa_az = dataset.aoa_az
 aod_az = dataset.aod_az
 
-print(f"v4 data access (direct):")
+print("v4 data access (direct):")
 print(f"  Power shape: {power.shape}")
 print(f"  Delay shape: {delay.shape}")
 print(f"  AOA (az) shape: {aoa_az.shape}")
@@ -221,7 +218,7 @@ print(v3_user_selection)
 row_idxs = dataset.get_idxs(mode="row", row_idxs=list(range(0, 100, 10)))
 subset = dataset.trim(idxs=row_idxs)
 
-print(f"v4 user selection (post-loading):")
+print("v4 user selection (post-loading):")
 print(f"  Selected {len(row_idxs)} users")
 
 # %% [markdown]

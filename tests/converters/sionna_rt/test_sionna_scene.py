@@ -1,7 +1,9 @@
 """Tests for Sionna Scene."""
 
-import numpy as np
 from unittest.mock import patch
+
+import numpy as np
+
 from deepmimo.converters.sionna_rt import sionna_scene
 
 

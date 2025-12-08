@@ -1,9 +1,9 @@
 """Tests for AODT Exporter."""
 
-import pytest
-import os
 import sys
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Mock pandas and pyarrow before importing exporter
 mock_pandas = MagicMock()
@@ -11,8 +11,8 @@ mock_pandas.DataFrame = MagicMock
 sys.modules["pandas"] = mock_pandas
 sys.modules["pyarrow"] = MagicMock()
 
-import pandas as pd
-import deepmimo.exporters.aodt_exporter as aodt_exporter
+
+from deepmimo.exporters import aodt_exporter
 
 
 @pytest.fixture

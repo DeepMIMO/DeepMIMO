@@ -1,9 +1,11 @@
 """Tests for DeepMIMO Web Export."""
 
 import unittest
-from unittest.mock import MagicMock, patch, mock_open, call
-import numpy as np
 from pathlib import Path
+from unittest.mock import MagicMock, mock_open, patch
+
+import numpy as np
+
 from deepmimo import web_export
 
 
@@ -48,7 +50,7 @@ class TestWebExport(unittest.TestCase):
         dataset.inter_pos = np.zeros((10, 2, 1, 3))
 
         # Test processing
-        res = web_export._process_single_dataset_to_binary(dataset, Path("."), 1, 1)
+        res = web_export._process_single_dataset_to_binary(dataset, Path(), 1, 1)
 
         assert res["totalUsers"] == 10
         mock_save.assert_called()  # Should save rx_pos, tx_pos, etc.
@@ -66,7 +68,7 @@ class TestWebExport(unittest.TestCase):
 
         scene.get_objects.return_value = [mock_obj]
 
-        web_export._process_scene_to_binary(scene, Path("."))
+        web_export._process_scene_to_binary(scene, Path())
 
         # Should call save for buildings, terrain, vegetation
         # Since get_objects returns list for all calls (mock default), it saves all.

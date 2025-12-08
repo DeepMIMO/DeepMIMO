@@ -1,6 +1,7 @@
 """Tests for Wireless Insite XML Parser."""
 
 import xml.etree.ElementTree as ET
+
 from deepmimo.converters.wireless_insite import xml_parser
 
 

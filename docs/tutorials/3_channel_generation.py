@@ -1,5 +1,4 @@
-"""
-# Detailed Channel Generation
+"""# Detailed Channel Generation
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/3_channel_generation.py)
 &nbsp;
@@ -21,6 +20,7 @@
 # %%
 import matplotlib.pyplot as plt
 import numpy as np
+
 import deepmimo as dm
 
 # %%
@@ -71,7 +71,7 @@ ch_params.freq_domain = False
 dataset.compute_channels(ch_params)
 time_channels = dataset.channel
 print(f"Time domain channel shape: {time_channels.shape}")
-print(f"Shape: [num_rx, num_rx_ant, num_tx_ant, num_paths]")
+print("Shape: [num_rx, num_rx_ant, num_tx_ant, num_paths]")
 
 # %%
 # Visualize channel impulse response for one user
@@ -103,7 +103,7 @@ ch_params.ofdm.rx_filter = False  # No low-pass filter
 dataset.compute_channels(ch_params)
 freq_channels = dataset.channel
 print(f"Frequency domain channel shape: {freq_channels.shape}")
-print(f"Shape: [num_rx, num_rx_ant, num_tx_ant, num_subcarriers]")
+print("Shape: [num_rx, num_rx_ant, num_tx_ant, num_subcarriers]")
 
 # %%
 # Visualize frequency response for one user

@@ -1,8 +1,7 @@
 """Tests for AODT TXRX."""
 
-import pytest
-import numpy as np
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from deepmimo.converters.aodt import aodt_txrx
 
 

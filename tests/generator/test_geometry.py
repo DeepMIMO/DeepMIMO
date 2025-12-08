@@ -2,13 +2,27 @@ import numpy as np
 import pytest
 
 from deepmimo.generator.geometry import (
-    _array_response as array_response,
-    _array_response_batch as array_response_batch,
     _ant_indices as ant_indices,
+)
+from deepmimo.generator.geometry import (
     _apply_FoV as apply_FoV,
+)
+from deepmimo.generator.geometry import (
     _apply_FoV_batch as apply_FoV_batch,
+)
+from deepmimo.generator.geometry import (
+    _array_response as array_response,
+)
+from deepmimo.generator.geometry import (
+    _array_response_batch as array_response_batch,
+)
+from deepmimo.generator.geometry import (
     _rotate_angles as rotate_angles,
+)
+from deepmimo.generator.geometry import (
     _rotate_angles_batch as rotate_angles_batch,
+)
+from deepmimo.generator.geometry import (
     steering_vec,
 )
 

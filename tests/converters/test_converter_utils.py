@@ -1,11 +1,11 @@
 """Tests for DeepMIMO Converter Utilities."""
 
-import pytest
+from unittest.mock import patch
+
 import numpy as np
-import os
-from unittest.mock import patch, MagicMock
-from deepmimo.converters import converter_utils as cu
+
 from deepmimo import consts as c
+from deepmimo.converters import converter_utils as cu
 
 
 def test_ext_in_list():

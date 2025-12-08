@@ -1,6 +1,7 @@
 """Tests for AODT Utils."""
 
 import numpy as np
+
 from deepmimo.converters.aodt import aodt_utils
 
 

@@ -1,17 +1,19 @@
 """Tests for DeepMIMO Scene module."""
 
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
+import pytest
+
 from deepmimo.scene import (
+    CAT_BUILDINGS,
+    CAT_OBJECTS,
+    CAT_TERRAIN,
     BoundingBox,
     Face,
     PhysicalElement,
     PhysicalElementGroup,
     Scene,
-    CAT_BUILDINGS,
-    CAT_TERRAIN,
-    CAT_OBJECTS,
     get_object_faces,
 )
 

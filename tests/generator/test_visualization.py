@@ -2,11 +2,13 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
-import numpy as np
+
 import matplotlib
+import numpy as np
 
 matplotlib.use("Agg")  # Use non-interactive backend for tests
 import matplotlib.pyplot as plt
+
 from deepmimo.generator import visualization
 
 

@@ -1,7 +1,7 @@
 """Tests for Wireless Insite Converter."""
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from deepmimo.converters.wireless_insite import insite_converter
 from deepmimo.scene import Scene
 

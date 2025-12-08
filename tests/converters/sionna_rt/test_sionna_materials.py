@@ -1,6 +1,7 @@
 """Tests for Sionna Materials."""
 
 from unittest.mock import patch
+
 from deepmimo.converters.sionna_rt import sionna_materials
 
 

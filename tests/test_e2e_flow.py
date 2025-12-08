@@ -1,11 +1,11 @@
 """End-to-end flow tests for DeepMIMO."""
 
-import pytest
+
 import numpy as np
-import os
+
 from deepmimo import Dataset
-from deepmimo.generator.channel import ChannelParameters
 from deepmimo import consts as c
+from deepmimo.generator.channel import ChannelParameters
 
 
 def test_full_generation_flow():

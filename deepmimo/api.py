@@ -44,6 +44,7 @@ import hashlib
 import json
 import os
 import shutil
+import time
 
 import requests
 from tqdm import tqdm
@@ -59,10 +60,7 @@ from .general_utils import (
     unzip,
     zip,
 )
-from .summary import summary, plot_summary
-
-import json
-import time
+from .summary import plot_summary, summary
 
 API_BASE_URL = "https://deepmimo.net"
 
@@ -542,7 +540,7 @@ def _make_submission_on_server(
         )
     except Exception as e:
         print("Error: Failed to process parameters and generate key components")
-        raise RuntimeError(f"Failed to process parameters and generate key components - {str(e)}")
+        raise RuntimeError(f"Failed to process parameters and generate key components - {e!s}")
 
     submission_data = {
         "title": submission_scenario_name,

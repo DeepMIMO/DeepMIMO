@@ -1,6 +1,7 @@
 """Tests for DeepMIMO configuration module."""
 
 import pytest
+
 from deepmimo import config
 
 

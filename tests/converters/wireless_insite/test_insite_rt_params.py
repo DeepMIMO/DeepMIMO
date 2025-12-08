@@ -1,10 +1,11 @@
 """Tests for Wireless Insite RT Parameters."""
 
-import pytest
+from unittest.mock import MagicMock, patch
+
 import numpy as np
-from unittest.mock import patch, MagicMock
-from deepmimo.converters.wireless_insite import insite_rt_params
+
 from deepmimo.consts import RAYTRACER_NAME_WIRELESS_INSITE
+from deepmimo.converters.wireless_insite import insite_rt_params
 
 
 def test_get_gps_bbox():

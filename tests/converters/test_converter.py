@@ -1,6 +1,7 @@
 """Tests for DeepMIMO Converter module."""
 
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from deepmimo.converters import converter
 
 

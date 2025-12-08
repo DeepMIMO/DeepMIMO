@@ -75,6 +75,7 @@ def export_paths(path_list: Paths | list[Paths]) -> list[dict[str, Any]]:
 
         Sionna 1.x: ``a`` is (real, imag) tuple, ``interactions`` holds interaction types,
         and targets/sources are transposed.
+
     """
     sionna_v1 = is_sionna_v1()
     relevant_keys = [
@@ -119,6 +120,7 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
     Returns:
         tuple[list[dict[str, Any]], list[int]]: Material property dictionaries and the material
         index per object.
+
     """
     obj_materials = []
     for _, obj in scene._scene_objects.items():
@@ -189,6 +191,7 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[st
 
     Returns:
         dict[str, Any]: Consolidated ray-tracing parameters.
+
     """
     scene_dict = _scene_to_dict(scene)
 
@@ -277,6 +280,7 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
     Returns:
         tuple[np.ndarray, dict]: ``vertice_matrix`` (n_vertices x 3) and ``obj_index_map``
         mapping object name to (start_idx, end_idx).
+
     """
     all_vertices = []
     obj_index_map = {}  # Stores the name and starting index of each object
@@ -349,6 +353,7 @@ def sionna_exporter(
     Notes:
         - Tested with Sionna v0.19.1 and v1.0.2.
         - In Sionna 1.x, paths are exported during RT, so they may already be serialized.
+
     """
     if get_sionna_version() not in SUPPORTED_SIONNA_VERSIONS:
         raise ValueError(

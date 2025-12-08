@@ -1,7 +1,7 @@
 """Tests for DeepMIMO Generator Utilities."""
 
-import pytest
 import numpy as np
+
 from deepmimo.generator import generator_utils as gu
 
 

@@ -1,6 +1,6 @@
 """Tests for DeepMIMO constants."""
 
-import pytest
+
 from deepmimo import consts
 
 

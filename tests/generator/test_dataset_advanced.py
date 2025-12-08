@@ -2,7 +2,9 @@
 
 import numpy as np
 import pytest
-from deepmimo import Dataset, consts as c
+
+from deepmimo import Dataset
+from deepmimo import consts as c
 
 
 @pytest.fixture

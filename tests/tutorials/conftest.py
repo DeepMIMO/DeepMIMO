@@ -28,6 +28,7 @@ def run_tutorial(tutorial_name: str) -> None:
 
     Args:
         tutorial_name: Name of the tutorial file (e.g., "1_getting_started.py")
+
     """
     tutorials_dir = pathlib.Path(__file__).parent.parent.parent / "docs" / "tutorials"
     tutorial_path = tutorials_dir / tutorial_name

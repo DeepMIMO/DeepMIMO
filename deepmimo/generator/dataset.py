@@ -31,6 +31,7 @@ The Dataset class is organized into several logical sections:
 
 # Standard library imports
 from __future__ import annotations
+
 import inspect
 from typing import Any
 
@@ -1030,7 +1031,7 @@ class Dataset(DotDict):
     # 7. Trimming
     ###########################################
 
-    def _trim_by_path(self, path_mask: np.ndarray) -> "Dataset":
+    def _trim_by_path(self, path_mask: np.ndarray) -> Dataset:
         """Helper function to trim paths based on a boolean mask.
 
         Args:
@@ -1095,7 +1096,7 @@ class Dataset(DotDict):
 
         return aux_dataset
 
-    def _trim_by_index(self, idxs: np.ndarray) -> "Dataset":
+    def _trim_by_index(self, idxs: np.ndarray) -> Dataset:
         """Create a new dataset containing only the selected indices.
 
         Args:
@@ -1138,7 +1139,7 @@ class Dataset(DotDict):
         self,
         bs_fov: np.ndarray | list | tuple | None = None,
         ue_fov: np.ndarray | list | tuple | None = None,
-    ) -> "Dataset":
+    ) -> Dataset:
         """Trim the dataset by field of view and return a new dataset.
 
         This function removes paths that fall outside the specified FoV at the
@@ -1181,7 +1182,7 @@ class Dataset(DotDict):
         # Physically remove paths outside FoV and return new dataset
         return self._trim_by_path(path_mask)
 
-    def _trim_by_path_depth(self, path_depth: int) -> "Dataset":
+    def _trim_by_path_depth(self, path_depth: int) -> Dataset:
         """Trim the dataset to keep only paths with at most the specified number of interactions.
 
         Args:
@@ -1202,7 +1203,7 @@ class Dataset(DotDict):
 
         return self._trim_by_path(path_mask)
 
-    def _trim_by_path_type(self, allowed_types: list[str]) -> "Dataset":
+    def _trim_by_path_type(self, allowed_types: list[str]) -> Dataset:
         """Trim the dataset to keep only paths with allowed interaction types.
 
         Args:
@@ -1254,7 +1255,7 @@ class Dataset(DotDict):
         ue_fov: np.ndarray | list | tuple | None = None,
         path_depth: int | None = None,
         path_types: list[str] | None = None,
-    ) -> "Dataset":
+    ) -> Dataset:
         """Return a new dataset after applying multiple trims in optimal order.
 
         Order applied (to minimize work for complex trims):

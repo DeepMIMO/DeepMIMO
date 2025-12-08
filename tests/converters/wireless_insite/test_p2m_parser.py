@@ -1,10 +1,11 @@
 """Tests for Wireless Insite P2M parser."""
 
-import os
-import pytest
+
 import numpy as np
-from deepmimo.converters.wireless_insite import p2m_parser
+import pytest
+
 from deepmimo import consts as c
+from deepmimo.converters.wireless_insite import p2m_parser
 
 
 @pytest.fixture
@@ -13,8 +14,7 @@ def sample_paths_file(tmp_path):
     file_path = tmp_path / "test.paths.p2m"
     with open(file_path, "w") as f:
         # 21 header lines
-        for i in range(21):
-            f.write(f"# Header {i + 1}\n")
+        f.writelines(f"# Header {i + 1}\n" for i in range(21))
 
         # Line 22: n_rxs = 2
         f.write("2\n")

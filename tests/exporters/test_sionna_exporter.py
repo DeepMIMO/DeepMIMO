@@ -1,9 +1,10 @@
 """Tests for Sionna Exporter."""
 
-import pytest
-import numpy as np
-from unittest.mock import MagicMock, patch, Mock
 import sys
+from unittest.mock import MagicMock, Mock, patch
+
+import numpy as np
+import pytest
 
 # Mock sionna before importing exporter
 mock_sionna = MagicMock()
@@ -12,7 +13,7 @@ mock_sionna.rt.Scene = MagicMock
 sys.modules["sionna"] = mock_sionna
 sys.modules["sionna.rt"] = mock_sionna.rt
 
-import deepmimo.exporters.sionna_exporter as sionna_exporter
+from deepmimo.exporters import sionna_exporter
 
 
 @pytest.fixture

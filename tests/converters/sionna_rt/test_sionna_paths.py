@@ -1,8 +1,9 @@
 """Tests for Sionna Paths module."""
 
-import pytest
+from unittest.mock import patch
+
 import numpy as np
-from unittest.mock import MagicMock, patch
+
 from deepmimo.converters.sionna_rt import sionna_paths
 
 

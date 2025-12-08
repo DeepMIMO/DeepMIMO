@@ -1,5 +1,4 @@
-"""
-# Getting Started with DeepMIMO
+"""# Getting Started with DeepMIMO
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/1_getting_started.py)
 &nbsp;
@@ -28,8 +27,8 @@
 
 # %%
 # Import necessary libraries
-import matplotlib.pyplot as plt
 import numpy as np
+
 import deepmimo as dm
 
 # %% [markdown]
@@ -109,7 +108,7 @@ for txrx_set in txrx_sets:
 # Get TX/RX pair information
 pairs = dm.get_txrx_pairs(txrx_sets)
 print(f"Number of TX/RX pairs: {len(pairs)}")
-print(f"First few pairs:")
+print("First few pairs:")
 for pair in pairs[:5]:
     print(f"  {pair}")
 
@@ -192,8 +191,8 @@ dm.info("rx_pos")  # This is an alias
 # %%
 # Common aliases
 print("Using aliases:")
-print(f"  dataset.user_pos (alias) -> dataset.rx_pos (actual)")
-print(f"  dataset.bs_pos (alias) -> dataset.tx_pos (actual)")
+print("  dataset.user_pos (alias) -> dataset.rx_pos (actual)")
+print("  dataset.bs_pos (alias) -> dataset.tx_pos (actual)")
 print(f"  RX positions shape: {dataset.rx_pos.shape}")
 
 # %% [markdown]

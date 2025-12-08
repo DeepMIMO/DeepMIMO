@@ -5,17 +5,16 @@ the interaction type conversion between Sionna and DeepMIMO formats.
 """
 
 # %%
+from unittest.mock import MagicMock, patch
+
 import numpy as np
 import pytest
-from unittest.mock import patch, MagicMock
-import os
-import shutil
 
 from deepmimo import consts as c
+from deepmimo.converters.sionna_rt.sionna_converter import sionna_rt_converter
 from deepmimo.converters.sionna_rt.sionna_paths import (
     _get_sionna_interaction_types as get_sionna_interaction_types,
 )
-from deepmimo.converters.sionna_rt.sionna_converter import sionna_rt_converter
 
 
 def test_get_sionna_interaction_types():
@@ -93,7 +92,6 @@ def test_get_sionna_interaction_types():
 
 def test_edge_cases():
     """Test edge cases for interaction type conversion."""
-
     # Test empty arrays
     types = np.zeros((0, 5), dtype=np.float32)
     inter_pos = np.zeros((0, 5, 3, 3), dtype=np.float32)
@@ -132,7 +130,6 @@ def test_sionna_rt_converter_flow(
     mock_read_rt_params,
 ):
     """Test the full flow of sionna_rt_converter orchestrator."""
-
     # Setup mocks
     mock_cu.check_scenario_exists.return_value = True
     mock_read_rt_params.return_value = {"raytracer_version": "0.19.0"}

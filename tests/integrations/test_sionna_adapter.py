@@ -1,10 +1,11 @@
 """Tests for Sionna Adapter."""
 
-import pytest
-import numpy as np
 from unittest.mock import MagicMock
+
+import numpy as np
+import pytest
+
 from deepmimo.integrations.sionna_adapter import SionnaAdapter
-from deepmimo.generator.dataset import Dataset, MacroDataset
 
 
 class MockDataset:

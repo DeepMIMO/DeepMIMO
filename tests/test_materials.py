@@ -1,10 +1,8 @@
 """Tests for DeepMIMO Materials module."""
 
-import pytest
-import numpy as np
 from dataclasses import asdict
+
 from deepmimo.materials import Material, MaterialList
-from deepmimo import consts as c
 
 
 def test_material_initialization():

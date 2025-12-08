@@ -1,9 +1,8 @@
 """Advanced tests for DeepMIMO API."""
 
 import unittest
-from unittest.mock import patch, MagicMock, mock_open
-import os
-import json
+from unittest.mock import MagicMock, mock_open, patch
+
 from deepmimo import api
 
 

@@ -1,11 +1,12 @@
-import pytest
 import numpy as np
+import pytest
+
+from deepmimo import consts as c
 from deepmimo.generator.channel import (
     ChannelParameters,
-    _generate_MIMO_channel,
     _convert_lists_to_arrays,
+    _generate_MIMO_channel,
 )
-from deepmimo import consts as c
 
 
 def test_channel_parameters_defaults():

@@ -1,10 +1,9 @@
 """Tests for Wireless Insite Scene conversion."""
 
-import pytest
-import numpy as np
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from deepmimo.converters.wireless_insite import insite_scene
-from deepmimo.scene import Scene, CAT_BUILDINGS
+from deepmimo.scene import CAT_BUILDINGS
 
 
 def test_extract_objects():

@@ -1,7 +1,7 @@
 """Tests for AODT Scene."""
 
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from deepmimo.converters.aodt import aodt_scene
 
 

@@ -1,8 +1,9 @@
-import os
-import pytest
+
 import numpy as np
-from deepmimo.generator.dataset import Dataset, MacroDataset, DynamicDataset
+import pytest
+
 from deepmimo import consts as c
+from deepmimo.generator.dataset import Dataset, DynamicDataset, MacroDataset
 
 
 @pytest.fixture
