@@ -32,8 +32,8 @@ class TerrainEditor:
         self.template_ter_file = template_ter_file
         if template_ter_file is None:
             script_dir = str(Path(str(Path(__file__).resolve()).parent))
-            self.template_ter_file = str(Path(
-                script_dir) / "..",
+            self.template_ter_file = str(
+                Path(script_dir) / "..",
                 "resources",
                 "feature",
                 "newTerrain.ter",

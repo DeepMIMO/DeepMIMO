@@ -35,7 +35,6 @@ def process_image(input_path, output_path, zoom_factor=1.5) -> None:
 
 # %%
 if __name__ == "__main__":
-
     # Example usage
     folder = "M:/AutoRayTracingSionna/all_runs_sionna/run_04-07-2025_18H13M23S/city_1_losangeles_3p5_s/figs/"
     fold_name = Path(str(Path(str(Path(folder).parent).parent).name))

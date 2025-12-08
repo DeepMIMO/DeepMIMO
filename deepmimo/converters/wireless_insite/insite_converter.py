@@ -93,7 +93,9 @@ def insite_rt_converter(
         return None
 
     # Get paths for input and output folders
-    temp_folder = str(Path(str(Path(rt_folder).parent)) / (scen_name + c.DEEPMIMO_CONVERSION_SUFFIX))
+    temp_folder = str(
+        Path(str(Path(rt_folder).parent)) / (scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
+    )
 
     # Create output folder
     if Path(temp_folder).exists():

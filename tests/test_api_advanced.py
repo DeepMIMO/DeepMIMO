@@ -122,6 +122,7 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
 
             def open(self, mode="r"):
                 from unittest.mock import mock_open
+
                 return mock_open()(self.path_str, mode)
 
             @property

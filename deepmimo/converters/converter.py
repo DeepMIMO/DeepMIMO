@@ -73,11 +73,7 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any 
         print("Checking subdirectories...")
         rt_path = Path(path_to_rt_folder)
         subdirs = sorted(
-            [
-                str(rt_path / d.name)
-                for d in rt_path.iterdir()
-                if d.is_dir()
-            ],
+            [str(rt_path / d.name) for d in rt_path.iterdir() if d.is_dir()],
         )
         if len(subdirs) > 0:
             rt_converter = _find_converter_from_dir(subdirs[0])
