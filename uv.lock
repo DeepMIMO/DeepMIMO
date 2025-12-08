@@ -743,6 +743,7 @@ dev = [
     { name = "nbmake" },
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "ruff" },
     { name = "twine" },
 ]
 doc = [
@@ -852,6 +853,7 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "requests" },
     { name = "ruff", marker = "extra == 'all'", specifier = ">=0.6.9" },
+    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.6.9" },
     { name = "ruff", marker = "extra == 'doc'", specifier = ">=0.6.9" },
     { name = "scipy", specifier = ">=1.6.2" },
     { name = "shapely", marker = "extra == 'all'" },
