@@ -32,7 +32,7 @@ def fetch_osm_scene(
     maxlat: float,
     maxlon: float,
     output_folder: str,
-    output_formats: list[str] = ["insite"],
+    output_formats: list[str] | None = None,
 ) -> None:
     """Process an OpenStreetMap scene and export it in the specified formats.
 
@@ -47,6 +47,8 @@ def fetch_osm_scene(
 
     """
     # Check if the folder already exists
+    if output_formats is None:
+        output_formats = ["insite"]
     if os.path.exists(output_folder):
         print(f"⏩ Folder '{output_folder}' already exists. Skipping OSM extraction.")
         return

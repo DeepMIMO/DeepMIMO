@@ -27,7 +27,7 @@ class AODTScene:
     - Diffraction can only occur once per ray
     """
 
-    def __init__(self, world_df: "pd.DataFrame"):
+    def __init__(self, world_df: "pd.DataFrame") -> None:
         """Initialize scene from world dataframe.
 
         Args:
@@ -102,7 +102,8 @@ def read_scene(rt_folder: str) -> AODTScene | None:
     """
     world_file = os.path.join(rt_folder, "world.parquet")
     if not os.path.exists(world_file):
-        raise FileNotFoundError(f"world.parquet not found in {rt_folder}")
+        msg = f"world.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     # Read world data
     df = pd.read_parquet(world_file)

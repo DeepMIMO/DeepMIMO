@@ -4,11 +4,11 @@ import pathlib
 import runpy
 import warnings
 
-import matplotlib
+import matplotlib as mpl
 import pytest
 
 # Set matplotlib to non-interactive backend before any tutorials import it
-matplotlib.use("Agg")
+mpl.use("Agg")
 
 # Suppress matplotlib warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="matplotlib")
@@ -20,7 +20,7 @@ warnings.filterwarnings("ignore", message="FigureCanvasAgg is non-interactive")
 def cleanup_figures():
     """Clean up matplotlib figures after each test."""
     yield
-    matplotlib.pyplot.close("all")
+    mpl.pyplot.close("all")
 
 
 def run_tutorial(tutorial_name: str) -> None:
@@ -34,6 +34,7 @@ def run_tutorial(tutorial_name: str) -> None:
     tutorial_path = tutorials_dir / tutorial_name
 
     if not tutorial_path.exists():
-        raise FileNotFoundError(f"Tutorial not found: {tutorial_path}")
+        msg = f"Tutorial not found: {tutorial_path}"
+        raise FileNotFoundError(msg)
 
     runpy.run_path(str(tutorial_path), run_name="__main__")

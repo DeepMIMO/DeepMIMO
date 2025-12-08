@@ -5,7 +5,7 @@ import xml.etree.ElementTree as ET
 from deepmimo.converters.wireless_insite import xml_parser
 
 
-def test_xml_to_dict():
+def test_xml_to_dict() -> None:
     xml = """
     <root>
         <remcom::rxapi::Child Value="10" />
@@ -21,7 +21,7 @@ def test_xml_to_dict():
     assert d["remcom_rxapi_List"]["Item"] == ["A", "B"]
 
 
-def test_parse_insite_xml(tmp_path):
+def test_parse_insite_xml(tmp_path) -> None:
     xml_content = """<remcom::rxapi::Job>
         <remcom::rxapi::Scene>
             <remcom::rxapi::TxRxSetList>

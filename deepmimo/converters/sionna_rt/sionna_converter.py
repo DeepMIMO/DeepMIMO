@@ -9,10 +9,10 @@ into the DeepMIMO format. It handles reading and processing ray tracing data inc
 
 import os
 import shutil
-from pprint import pprint
 
-from ... import consts as c
-from .. import converter_utils as cu
+from deepmimo import consts as c
+from deepmimo.converters import converter_utils as cu
+
 from .sionna_materials import read_materials
 from .sionna_paths import read_paths
 from .sionna_rt_params import read_rt_params
@@ -23,7 +23,7 @@ from .sionna_txrx import read_txrx
 def sionna_rt_converter(
     rt_folder: str,
     copy_source: bool = False,
-    overwrite: bool = None,
+    overwrite: bool | None = None,
     vis_scene: bool = True,
     scenario_name: str = "",
     print_params: bool = False,
@@ -105,7 +105,7 @@ def sionna_rt_converter(
     }
     cu.save_params(params, temp_folder)
     if print_params:
-        pprint(params)
+        pass
 
     # Save (move) scenario to deepmimo scenarios folder
     cu.save_scenario(temp_folder, scenarios_folder)

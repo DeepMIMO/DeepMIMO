@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from deepmimo.converters import converter
 
 
-def test_find_converter_from_dir(tmp_path):
+def test_find_converter_from_dir(tmp_path) -> None:
     # Create dummy files
     (tmp_path / "test.parquet").touch()
     conv = converter._find_converter_from_dir(str(tmp_path))
@@ -27,7 +27,7 @@ def test_find_converter_from_dir(tmp_path):
 
 
 @patch("deepmimo.converters.converter._find_converter_from_dir")
-def test_convert_root(mock_find, tmp_path):
+def test_convert_root(mock_find, tmp_path) -> None:
     mock_converter = MagicMock()
     mock_find.return_value = mock_converter
 
@@ -38,7 +38,7 @@ def test_convert_root(mock_find, tmp_path):
 
 
 @patch("deepmimo.converters.converter._find_converter_from_dir")
-def test_convert_subdir(mock_find, tmp_path):
+def test_convert_subdir(mock_find, tmp_path) -> None:
     # Mock finding only in subdir
     def side_effect(path):
         if path == str(tmp_path):
@@ -50,7 +50,7 @@ def test_convert_subdir(mock_find, tmp_path):
     subdir = tmp_path / "scene1"
     subdir.mkdir()
 
-    res = converter.convert(str(tmp_path))
+    converter.convert(str(tmp_path))
 
     # Should have called find on subdir
     mock_find.assert_any_call(str(subdir))

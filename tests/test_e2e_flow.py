@@ -8,7 +8,7 @@ from deepmimo import consts as c
 from deepmimo.generator.channel import ChannelParameters
 
 
-def test_full_generation_flow():
+def test_full_generation_flow() -> None:
     """Test a complete dataset generation and channel computation flow."""
     # 1. Initialize Dataset
     ds = Dataset()
@@ -18,7 +18,7 @@ def test_full_generation_flow():
 
     # Mock Scene
     class MockScene:
-        def __init__(self):
+        def __init__(self) -> None:
             self.objects = []
 
     ds.scene = MockScene()
@@ -56,7 +56,7 @@ def test_full_generation_flow():
     assert not np.isnan(pl).any()
 
 
-def test_dynamic_dataset_flow():
+def test_dynamic_dataset_flow() -> None:
     """Test dynamic dataset flow."""
     # Create two datasets representing time steps
     ds1 = Dataset({"name": "ds1"})
@@ -71,7 +71,7 @@ def test_dynamic_dataset_flow():
 
     # Mock scene objects for speed computation
     class MockObjectList:
-        def __init__(self):
+        def __init__(self) -> None:
             class Obj:
                 position = np.array([0, 0, 0])
                 vel = np.array([0, 0, 0])
@@ -87,7 +87,7 @@ def test_dynamic_dataset_flow():
             return [o.vel for o in self.objs]
 
         @vel.setter
-        def vel(self, v):
+        def vel(self, v) -> None:
             for i, o in enumerate(self.objs):
                 o.vel = v[i]
 

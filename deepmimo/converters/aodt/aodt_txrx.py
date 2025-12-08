@@ -12,7 +12,8 @@ from typing import Any
 
 import numpy as np
 
-from ...txrx import TxRxSet
+from deepmimo.txrx import TxRxSet
+
 from . import aodt_utils as au
 from .safe_import import pd
 
@@ -152,18 +153,21 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
     # Read patterns file
     patterns_file = os.path.join(rt_folder, "patterns.parquet")
     if not os.path.exists(patterns_file):
-        raise FileNotFoundError(f"patterns.parquet not found in {rt_folder}")
+        msg = f"patterns.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     patterns_df = pd.read_parquet(patterns_file)
     if len(patterns_df) == 0:
-        raise ValueError("patterns.parquet is empty")
+        msg = "patterns.parquet is empty"
+        raise ValueError(msg)
 
     # Check that each panel has exactly one pattern ID
     for panel_id, panel in panels.items():
         unique_pattern_ids = np.unique(panel["pattern_indices"])
         if len(unique_pattern_ids) != 1:
+            msg = f"Panel {panel_id} has {len(unique_pattern_ids)} patterns. Expected exactly 1."
             raise ValueError(
-                f"Panel {panel_id} has {len(unique_pattern_ids)} patterns. Expected exactly 1.",
+                msg,
             )
 
     # Get all unique pattern IDs across all panels
@@ -176,7 +180,8 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
     for pattern_id in unique_pattern_ids:
         pattern = patterns_df[patterns_df["pattern_id"] == pattern_id]
         if len(pattern) == 0:
-            raise ValueError(f"Pattern ID {pattern_id} not found in patterns.parquet")
+            msg = f"Pattern ID {pattern_id} not found in patterns.parquet"
+            raise ValueError(msg)
 
         pattern_type = pattern.iloc[0]["pattern_type"]
         if pattern_type == 2:
@@ -189,9 +194,12 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
                 pattern_type,
                 "custom" if pattern_type >= 100 else "unknown",
             )
-            raise ValueError(
+            msg = (
                 f"Pattern ID {pattern_id} uses {pattern_desc} antenna (type={pattern_type}). "
-                "Only isotropic antennas (type=0) are supported.",
+                "Only isotropic antennas (type=0) are supported."
+            )
+            raise ValueError(
+                msg,
             )
 
 
@@ -213,11 +221,13 @@ def read_transmitters(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, 
     # Read RUs file
     rus_file = os.path.join(rt_folder, "rus.parquet")
     if not os.path.exists(rus_file):
-        raise FileNotFoundError(f"rus.parquet not found in {rt_folder}")
+        msg = f"rus.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     rus_df = pd.read_parquet(rus_file)
     if len(rus_df) == 0:
-        raise ValueError("rus.parquet is empty")
+        msg = "rus.parquet is empty"
+        raise ValueError(msg)
 
     # Process RUs
     transmitters = []
@@ -230,7 +240,7 @@ def read_transmitters(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, 
             "mech_azimuth": float(ru["mech_azimuth"]),
             "scs": int(ru["subcarrier_spacing"]),
             "fft_size": int(ru["fft_size"]),
-            "panel": [panels[i] for i in ru["panel"]][0],  # use only first panel
+            "panel": next(panels[i] for i in ru["panel"]),  # use only first panel
             "du_id": int(ru["du_id"]) if not pd.isna(ru["du_id"]) else None,
             "du_manual_assign": bool(ru["du_manual_assign"]),
         }
@@ -256,14 +266,15 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
     # Read UEs file
     ues_file = os.path.join(rt_folder, "ues.parquet")
     if not os.path.exists(ues_file):
-        raise FileNotFoundError(f"ues.parquet not found in {rt_folder}")
+        msg = f"ues.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     ues_df = pd.read_parquet(ues_file)
     if len(ues_df) == 0:
-        raise ValueError("ues.parquet is empty")
+        msg = "ues.parquet is empty"
+        raise ValueError(msg)
 
     # Process UEs
-    time_idx = 0  # TODO: this should be passed as a parameter for Dynamic scenes
     receivers = []
     for _, ue in ues_df.iterrows():
         # Get initial orientation (azimuth) from route if available
@@ -277,7 +288,8 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
         # The orientations are not clear...
         # raise issue if ue has multiple panels
         if len(ue["panel"]) > 1:
-            raise ValueError(f"UE {ue['ID']} has multiple panels: {ue['panel']}")
+            msg = f"UE {ue['ID']} has multiple panels: {ue['panel']}"
+            raise ValueError(msg)
 
         rx = {
             "id": int(ue["ID"]),
@@ -287,7 +299,7 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
             "height": float(ue["height"]),
             "mech_tilt": float(ue["mech_tilt"]),
             "mech_azimuth": initial_azimuth,  # Using initial orientation from route
-            "panel": [panels[i] for i in ue["panel"]][0],
+            "panel": next(panels[i] for i in ue["panel"]),
             "indoor": bool(ue["is_indoor_mobility"]),
             "bler_target": float(ue["bler_target"]),
             "mobility": {
@@ -379,10 +391,7 @@ def read_txrx(rt_folder: str, rt_params: dict[str, Any]) -> dict[str, Any]:
     first_rx = receivers[0]
 
     # Get initial positions from route data (time_idx = 0)
-    if is_dynamic(rt_params):
-        time_idx = int(os.path.basename(rt_folder).split("_")[-1])
-    else:
-        time_idx = 0
+    time_idx = int(os.path.basename(rt_folder).split("_")[-1]) if is_dynamic(rt_params) else 0
 
     rx_positions = [
         au.process_points(rx["mobility"]["route"]["positions"][0])[time_idx] for rx in receivers

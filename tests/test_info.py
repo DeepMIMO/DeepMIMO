@@ -4,7 +4,7 @@ from deepmimo import consts as c
 from deepmimo import info
 
 
-def test_info_general(capsys):
+def test_info_general(capsys) -> None:
     """Test general info output."""
     info()
     captured = capsys.readouterr()
@@ -13,7 +13,7 @@ def test_info_general(capsys):
     assert "Additional Dataset Fields" in captured.out
 
 
-def test_info_specific_param(capsys):
+def test_info_specific_param(capsys) -> None:
     """Test info for specific parameter."""
     info("power")
     captured = capsys.readouterr()
@@ -21,7 +21,7 @@ def test_info_specific_param(capsys):
     assert "num_rx, num_paths" in captured.out
 
 
-def test_info_alias(capsys):
+def test_info_alias(capsys) -> None:
     """Test info for alias parameter."""
     # aliases are resolved in Dataset.info, but info() function handles strings too?
     # deepmimo.info.info(param_name) checks dictionary.
@@ -36,14 +36,14 @@ def test_info_alias(capsys):
     assert "Channel matrix between TX and RX antennas" in captured.out
 
 
-def test_info_not_found(capsys):
+def test_info_not_found(capsys) -> None:
     """Test info for non-existent parameter."""
     info("non_existent_param")
     captured = capsys.readouterr()
     assert "Unknown parameter: non_existent_param" in captured.out
 
 
-def test_info_ch_params(capsys):
+def test_info_ch_params(capsys) -> None:
     """Test info for channel parameters."""
     info("ch_params")
     captured = capsys.readouterr()
@@ -51,14 +51,14 @@ def test_info_ch_params(capsys):
     assert c.PARAMSET_ANT_BS in captured.out
 
 
-def test_info_channel_params_alias(capsys):
+def test_info_channel_params_alias(capsys) -> None:
     """Test info for channel_params alias."""
     info("channel_params")
     captured = capsys.readouterr()
     assert "Channel Generation Parameters" in captured.out
 
 
-def test_info_all(capsys):
+def test_info_all(capsys) -> None:
     """Test info for all parameters."""
     info("all")
     captured = capsys.readouterr()
@@ -67,7 +67,7 @@ def test_info_all(capsys):
     assert "Additional Dataset Fields" in captured.out
 
 
-def test_info_with_object():
+def test_info_with_object() -> None:
     """Test info with a non-string object (should call help())."""
     # Should call built-in help, which prints to stdout
     # We can't easily capture help() output, so just ensure it doesn't crash
@@ -76,7 +76,7 @@ def test_info_with_object():
     info(sys)  # Pass a module object
 
 
-def test_info_fundamental_matrices(capsys):
+def test_info_fundamental_matrices(capsys) -> None:
     """Test info for various fundamental matrices."""
     for param in [c.AOA_AZ_PARAM_NAME, c.AOD_EL_PARAM_NAME, c.INTERACTIONS_POS_PARAM_NAME]:
         info(param)
@@ -84,7 +84,7 @@ def test_info_fundamental_matrices(capsys):
         assert param in captured.out or "alias" in captured.out.lower()
 
 
-def test_info_computed_matrices(capsys):
+def test_info_computed_matrices(capsys) -> None:
     """Test info for various computed matrices."""
     for param in [c.LOS_PARAM_NAME, c.PATHLOSS_PARAM_NAME, c.NUM_PATHS_PARAM_NAME]:
         info(param)
@@ -92,7 +92,7 @@ def test_info_computed_matrices(capsys):
         assert param in captured.out or "alias" in captured.out.lower()
 
 
-def test_info_additional_fields(capsys):
+def test_info_additional_fields(capsys) -> None:
     """Test info for additional fields."""
     for param in [c.SCENE_PARAM_NAME, c.MATERIALS_PARAM_NAME, c.TXRX_PARAM_NAME]:
         info(param)

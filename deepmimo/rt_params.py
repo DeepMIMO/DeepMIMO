@@ -114,4 +114,5 @@ class RayTracingParameters:
             NotImplementedError: If not implemented by subclass
 
         """
-        raise NotImplementedError("Must be implemented by subclass")
+        msg = "Must be implemented by subclass"
+        raise NotImplementedError(msg)

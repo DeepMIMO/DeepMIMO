@@ -2,7 +2,7 @@
 from PIL import Image
 
 
-def process_image(input_path, output_path, zoom_factor=1.5):
+def process_image(input_path, output_path, zoom_factor=1.5) -> None:
     # Open the image
     img = Image.open(input_path)
 

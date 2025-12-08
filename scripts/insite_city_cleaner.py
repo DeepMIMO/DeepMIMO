@@ -6,8 +6,8 @@ import shutil
 import pandas as pd
 
 
-def safe_delete(path, safe_mode=True):
-    """Helper function to delete files or directories with safe mode support"""
+def safe_delete(path, safe_mode=True) -> None:
+    """Helper function to delete files or directories with safe mode support."""
     print(f"{'[SAFE MODE] ' if safe_mode else ''}Would delete: {path}")
     if not safe_mode:
         if os.path.isdir(path):
@@ -16,14 +16,14 @@ def safe_delete(path, safe_mode=True):
             os.remove(path)
 
 
-def clean_city_folders(csv_path, base_folder, safe_mode=True):
+def clean_city_folders(csv_path, base_folder, safe_mode=True) -> None:
     print(f"{'[SAFE MODE] ' if safe_mode else ''}Starting folder processing...")
 
     # Read the CSV file
     df = pd.read_csv(csv_path)
 
     # Iterate through each row in the CSV
-    for index, row in df.iterrows():
+    for _index, row in df.iterrows():
         city_name = row["name"].lower()  # Get the first column value and convert to lowercase
         new_folder_name = f"{city_name}_28"
 
@@ -65,7 +65,7 @@ def clean_city_folders(csv_path, base_folder, safe_mode=True):
             continue
 
 
-def process_folder_contents(folder_path, safe_mode=True):
+def process_folder_contents(folder_path, safe_mode=True) -> None:
     # Find the insite folder
     insite_folder = None
     for item in os.listdir(folder_path):

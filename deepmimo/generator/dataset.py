@@ -39,23 +39,23 @@ from typing import Any
 import numpy as np
 from tqdm import tqdm
 
-from .. import consts as c
+from deepmimo import consts as c
 
 # Converter utilities
-from ..converters import converter_utils as cu
+from deepmimo.converters import converter_utils as cu
 
 # Base utilities
-from ..general_utils import DelegatingList, DotDict, spherical_to_cartesian
-from ..info import info
+from deepmimo.general_utils import DelegatingList, DotDict, spherical_to_cartesian
+from deepmimo.info import info
 
 # Summary
-from ..summary import plot_summary
+from deepmimo.summary import plot_summary
 
 # Txrx set information
-from ..txrx import TxRxSet, get_txrx_sets
+from deepmimo.txrx import TxRxSet, get_txrx_sets
 
 # Web export functionality
-from ..web_export import export_dataset_to_binary
+from deepmimo.web_export import export_dataset_to_binary
 
 # Antenna patterns and geometry
 from .ant_patterns import AntennaPattern
@@ -133,7 +133,7 @@ class Dataset(DotDict):
         (See aliases dictionary for complete mapping)
     """
 
-    def __init__(self, data: dict[str, Any] | None = None):
+    def __init__(self, data: dict[str, Any] | None = None) -> None:
         """Initialize dataset with optional data.
 
         Args:
@@ -273,7 +273,7 @@ class Dataset(DotDict):
         # Create a deep copy of the parameters to ensure isolation
         old_params = (
             super().__getitem__(c.CH_PARAMS_PARAM_NAME)
-            if c.CH_PARAMS_PARAM_NAME in super().keys()
+            if c.CH_PARAMS_PARAM_NAME in super()
             else None
         )
         self.ch_params = params.deepcopy()
@@ -536,12 +536,14 @@ class Dataset(DotDict):
             else:
                 # Different position for each UE
                 if look_pos.shape[0] != self.n_ue:
+                    msg = f"Number of target positions ({look_pos.shape[0]}) must match number of users ({self.n_ue})"
                     raise ValueError(
-                        f"Number of target positions ({look_pos.shape[0]}) must match number of users ({self.n_ue})",
+                        msg,
                     )
                 target_positions = look_pos
         else:
-            raise ValueError("look_pos must be 1D or 2D array")
+            msg = "look_pos must be 1D or 2D array"
+            raise ValueError(msg)
 
         # Calculate rotation parameters for all UEs at once
         azimuth_degrees, elevation_degrees = self._look_at(self.rx_pos, target_positions)
@@ -872,7 +874,7 @@ class Dataset(DotDict):
         )
 
     def _compute_power_linear(self) -> np.ndarray:
-        """Internal method to compute linear power from power in dBm"""
+        """Internal method to compute linear power from power in dBm."""
         return dbw2watt(self.power)
 
     ###########################################
@@ -1025,7 +1027,8 @@ class Dataset(DotDict):
             return self._get_col_idxs(kwargs["col_idxs"])
         if m == "limits":
             return get_idxs_with_limits(self.rx_pos, **kwargs)
-        raise ValueError(f"Unknown mode: {mode}")
+        msg = f"Unknown mode: {mode}"
+        raise ValueError(msg)
 
     ###########################################
     # 7. Trimming
@@ -1123,7 +1126,7 @@ class Dataset(DotDict):
         # Copy all attributes
         for attr, value in self.to_dict().items():
             # skip private and already handled attributes
-            if not attr.startswith("_") and attr not in SHARED_PARAMS + ["n_ue"]:
+            if not attr.startswith("_") and attr not in [*SHARED_PARAMS, "n_ue"]:
                 if isinstance(value, np.ndarray) and len(value.shape) == 0:
                     print(f"{attr} is a scalar")
                 if isinstance(value, np.ndarray) and value.ndim > 0 and value.shape[0] == self.n_ue:
@@ -1396,7 +1399,7 @@ class Dataset(DotDict):
         """
         self._clear_cache_doppler()
 
-        if isinstance(velocities, list) or isinstance(velocities, tuple):
+        if isinstance(velocities, (list, tuple)):
             velocities = np.array(velocities)
 
         if velocities.ndim == 1:
@@ -1404,9 +1407,11 @@ class Dataset(DotDict):
             self._rx_vel = np.repeat(velocities[None, :], self.n_ue, axis=0)
         else:
             if velocities.shape[1] != 3:
-                raise ValueError("Velocities must be in cartesian coordinates (n_ue, 3)")
+                msg = "Velocities must be in cartesian coordinates (n_ue, 3)"
+                raise ValueError(msg)
             if velocities.shape[0] != self.n_ue:
-                raise ValueError("Number of users must match number of velocities (n_ue, 3)")
+                msg = "Number of users must match number of velocities (n_ue, 3)"
+                raise ValueError(msg)
 
             self._rx_vel = velocities
 
@@ -1422,7 +1427,8 @@ class Dataset(DotDict):
 
         """
         if idx < 0 or idx >= self.n_ue:
-            raise IndexError(f"User index {idx} is out of range [0, {self.n_ue})")
+            msg = f"User index {idx} is out of range [0, {self.n_ue})"
+            raise IndexError(msg)
 
         # If path_idxs is None, use all valid paths
         if path_idxs is None:
@@ -1431,7 +1437,8 @@ class Dataset(DotDict):
             path_idxs = np.array(path_idxs)
             # Validate path indices
             if np.any((path_idxs < 0) | (path_idxs >= self.num_paths[idx])):
-                raise IndexError(f"Path indices must be in range [0, {self.num_paths[idx]})")
+                msg = f"Path indices must be in range [0, {self.num_paths[idx]})"
+                raise IndexError(msg)
 
         print("\nUser Information:")
         print(f"Position: {self.rx_pos[idx]}")
@@ -1459,7 +1466,7 @@ class Dataset(DotDict):
                 print(f"  Path {path_idx}: No interactions")
                 continue
             print(f"  Path {path_idx} ({n_inter} interactions):")
-            for i in range(n_inter):
+            for _i in range(n_inter):
                 print(f"    {p_idx + 1}: {self.inter_pos[idx][path_idx][p_idx]}")
 
         if self.hasattr("inter_objects"):
@@ -1470,7 +1477,7 @@ class Dataset(DotDict):
                     print(f"  Path {path_idx}: No interactions")
                     continue
                 print(f"  Path {path_idx} ({n_inter} interactions):")
-                for i in range(n_inter):
+                for _i in range(n_inter):
                     print(f"    {p_idx + 1}: {self.inter_objects[idx][path_idx][p_idx]}")
 
     @property
@@ -1498,11 +1505,12 @@ class Dataset(DotDict):
         """
         self._clear_cache_doppler()
 
-        if isinstance(velocities, list) or isinstance(velocities, tuple):
+        if isinstance(velocities, (list, tuple)):
             velocities = np.array(velocities)
 
         if velocities.ndim != 1:
-            raise ValueError("Tx velocity must be in a single cartesian coordinate (3,)")
+            msg = "Tx velocity must be in a single cartesian coordinate (3,)"
+            raise ValueError(msg)
 
         self._tx_vel = velocities
         return
@@ -1533,7 +1541,8 @@ class Dataset(DotDict):
         ):
             pass
         else:
-            raise ValueError(f"Invalid doppler shape: {doppler.shape}")
+            msg = f"Invalid doppler shape: {doppler.shape}"
+            raise ValueError(msg)
 
         self.doppler = doppler
 
@@ -1552,12 +1561,13 @@ class Dataset(DotDict):
             None
 
         """
-        if isinstance(vel, list) or isinstance(vel, tuple):
+        if isinstance(vel, (list, tuple)):
             vel = np.array(vel)
         if vel.ndim == 1:
             vel = np.repeat(vel[None, :], len(obj_idx), axis=0)
         if vel.shape[0] != len(obj_idx):
-            raise ValueError("Number of velocities must match number of objects")
+            msg = "Number of velocities must match number of objects"
+            raise ValueError(msg)
 
         if isinstance(obj_idx, int):
             obj_idx = [obj_idx]
@@ -1666,10 +1676,7 @@ class Dataset(DotDict):
                 # For each pair of consecutive interactions, compute the angle
                 for i in range(-1, int(n_inter)):
                     # Get positions of current and next interaction
-                    if i == -1:
-                        pos1 = self.tx_pos
-                    else:
-                        pos1 = self.inter_pos[ue_i, path_i, i]
+                    pos1 = self.tx_pos if i == -1 else self.inter_pos[ue_i, path_i, i]
 
                     if i == n_inter - 1:
                         pos2 = self.rx_pos[ue_i]
@@ -1700,7 +1707,8 @@ class Dataset(DotDict):
         # Ensure there is only one terrain object
         terrain_objs = [obj for obj in self.scene.objects if obj.label == "terrain"]
         if len(terrain_objs) > 1:
-            raise ValueError("There should be only one terrain object")
+            msg = "There should be only one terrain object"
+            raise ValueError(msg)
         terrain_obj = terrain_objs[0]
         terrain_z_coord = terrain_obj.bounding_box.z_max  # [m]
 
@@ -1882,7 +1890,7 @@ class MacroDataset:
         if not name.startswith("__")  # Skip dunder methods
     }
 
-    def __init__(self, datasets: list[Dataset] | None = None):
+    def __init__(self, datasets: list[Dataset] | None = None) -> None:
         """Initialize with optional list of Dataset instances.
 
         Args:
@@ -1903,7 +1911,8 @@ class MacroDataset:
 
         """
         if not self.datasets:
-            raise IndexError("MacroDataset is empty")
+            msg = "MacroDataset is empty"
+            raise IndexError(msg)
         return self.datasets[0][key]
 
     def __getattr__(self, name):
@@ -1957,7 +1966,7 @@ class MacroDataset:
         results = [dataset[idx] for dataset in self.datasets]
         return results[0] if len(results) == 1 else results
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key, value) -> None:
         """Set item on all contained datasets.
 
         Args:
@@ -1968,11 +1977,11 @@ class MacroDataset:
         for dataset in self.datasets:
             dataset[key] = value
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return number of contained datasets."""
         return len(self.datasets)
 
-    def append(self, dataset: Dataset | MacroDataset):
+    def append(self, dataset: Dataset | MacroDataset) -> None:
         """Add a dataset to the collection.
 
         Args:
@@ -2001,7 +2010,7 @@ class MacroDataset:
 class DynamicDataset(MacroDataset):
     """A dataset that contains multiple (macro)datasets, each representing a different time snapshot."""
 
-    def __init__(self, datasets: list[MacroDataset], name: str):
+    def __init__(self, datasets: list[MacroDataset], name: str) -> None:
         """Initialize a dynamic dataset.
 
         Args:
@@ -2051,12 +2060,14 @@ class DynamicDataset(MacroDataset):
             self.timestamps = np.array(timestamps)
 
         if len(self.timestamps) != self.n_scenes:
+            msg = f"Time reference must be a single value or a list of {self.n_scenes} values"
             raise ValueError(
-                f"Time reference must be a single value or a list of {self.n_scenes} values",
+                msg,
             )
 
         if self.timestamps.ndim != 1:
-            raise ValueError("Time reference must be single dimension.")
+            msg = "Time reference must be single dimension."
+            raise ValueError(msg)
 
         self._compute_speeds()
 
@@ -2074,7 +2085,7 @@ class DynamicDataset(MacroDataset):
             )
             dataset_curr.rx_vel = rx_pos_diff / time_diff
             dataset_curr.tx_vel = tx_pos_diff[0] / time_diff
-            dataset_curr.scene.objects.vel = [v for v in obj_pos_diff / time_diff]
+            dataset_curr.scene.objects.vel = list(obj_pos_diff / time_diff)
 
             # For the first and last pair of scenes, assume that the position and time differences
             # are the same as for the second and second-from-last pair of scenes, respectively.

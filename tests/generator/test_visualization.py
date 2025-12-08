@@ -3,17 +3,17 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-import matplotlib
+import matplotlib as mpl
 import numpy as np
 
-matplotlib.use("Agg")  # Use non-interactive backend for tests
+mpl.use("Agg")  # Use non-interactive backend for tests
 import matplotlib.pyplot as plt
 
 from deepmimo.generator import visualization
 
 
 class TestVisualization(unittest.TestCase):
-    def test_plot_coverage_realistic(self):
+    def test_plot_coverage_realistic(self) -> None:
         """Test plot_coverage with real data (Agg backend)."""
         ue_pos = np.random.rand(100, 3) * 100  # 100 UEs in 100x100 grid
         los = np.random.choice([0, 1], size=(100,))  # Random LoS/NLoS
@@ -32,7 +32,7 @@ class TestVisualization(unittest.TestCase):
         plt.close("all")
 
     @patch("deepmimo.generator.visualization.plt")
-    def test_plot_coverage(self, mock_plt):
+    def test_plot_coverage(self, mock_plt) -> None:
         ue_pos = np.random.rand(10, 3) * 100
         los = np.random.choice([0, 1], size=(10,))
 
@@ -52,7 +52,7 @@ class TestVisualization(unittest.TestCase):
         # With different colors/labels
         visualization.plot_coverage(ue_pos, los, cbar_labels=["NLoS", "LoS"])
 
-    def test_plot_rays_realistic(self):
+    def test_plot_rays_realistic(self) -> None:
         """Test plot_rays with real data (Agg backend)."""
         # Realistic scenario: TX at building roof, RX at ground
         tx_loc = np.array([0, 0, 25])  # 25m high
@@ -78,7 +78,7 @@ class TestVisualization(unittest.TestCase):
         plt.close("all")
 
     @patch("deepmimo.generator.visualization.plt")
-    def test_plot_rays(self, mock_plt):
+    def test_plot_rays(self, mock_plt) -> None:
         # Mock data
         tx_loc = np.array([0, 0, 10])
         rx_loc = np.array([10, 0, 1.5])
@@ -107,7 +107,7 @@ class TestVisualization(unittest.TestCase):
         assert mock_ax.plot.called
 
     @patch("deepmimo.generator.visualization.plt")
-    def test_plot_power_discarding(self, mock_plt):
+    def test_plot_power_discarding(self, mock_plt) -> None:
         # Mock dataset
         ds = MagicMock()
         # 2 users, 2 paths

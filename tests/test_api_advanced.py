@@ -3,6 +3,8 @@
 import unittest
 from unittest.mock import MagicMock, mock_open, patch
 
+import pytest
+
 from deepmimo import api
 
 
@@ -21,7 +23,7 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
         mock_make_sub,
         mock_upload_api,
         mock_zip,
-    ):
+    ) -> None:
         """Test the high-level upload function."""
         mock_get_folder.return_value = "scenarios/MyScenario"
         mock_get_params.return_value = "scenarios/MyScenario/params.json"
@@ -47,7 +49,7 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
 
         # Test parsing error
         mock_load_json.side_effect = Exception("Parse error")
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             api.upload("MyScenario", "key")
 
     @patch("deepmimo.api.requests.post")
@@ -58,7 +60,7 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
     @patch("deepmimo.api.upload_images")
     def test_make_submission_on_server(
         self, mock_upl_imgs, mock_plot, mock_gen_key, mock_proc_params, mock_summary, mock_post
-    ):
+    ) -> None:
         """Test making submission on server."""
         mock_proc_params.return_value = {"primaryParameters": {}, "advancedParameters": {}}
         mock_gen_key.return_value = {"sections": []}
@@ -77,7 +79,7 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
         # Test failure
         mock_post.return_value.raise_for_status.side_effect = Exception("Server error")
         mock_post.return_value.text = '{"error": "msg"}'
-        with self.assertRaises(RuntimeError):
+        with pytest.raises(RuntimeError):
             api._make_submission_on_server("MyScenario", "key", {}, [], {}, include_images=False)
 
     @patch("deepmimo.api.requests.get")
@@ -98,7 +100,7 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
         mock_get_folder,
         mock_get_scenarios_dir,
         mock_get,
-    ):
+    ) -> None:
         """Test downloading a scenario."""
         mock_get_scenarios_dir.return_value = "scenarios"
         mock_get_folder.return_value = "scenarios/myscenario"
@@ -126,7 +128,7 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
             mock_unzip.assert_called()
             mock_move.assert_called()
 
-    def test_format_section(self):
+    def test_format_section(self) -> None:
         """Test HTML formatting of summary sections."""
         lines = ["Header", "- Item 1", "- Item 2", "", "Para"]
         res = api._format_section("Test", lines)

@@ -37,7 +37,7 @@ def mock_utils():
         }
 
 
-def test_load_single_scene(mock_utils, mock_dataset_cls):
+def test_load_single_scene(mock_utils, mock_dataset_cls) -> None:
     """Test loading a single scene."""
     # Setup mocks
     mock_utils["exists"].return_value = True
@@ -59,7 +59,7 @@ def test_load_single_scene(mock_utils, mock_dataset_cls):
     mock_utils["load_mat"].return_value = np.zeros((10, 5))  # 10 RX, 5 paths
 
     # Call load
-    dataset = core.load("test_scen")
+    core.load("test_scen")
 
     # Verify calls
     mock_utils["get_folder"].assert_called_with("test_scen")
@@ -69,7 +69,7 @@ def test_load_single_scene(mock_utils, mock_dataset_cls):
     # ds_instance = dataset
 
 
-def test_generate(mock_utils, mock_dataset_cls):
+def test_generate(mock_utils, mock_dataset_cls) -> None:
     """Test generate function."""
     # Setup mocks similar to load
     mock_utils["exists"].return_value = True
@@ -95,7 +95,7 @@ def test_generate(mock_utils, mock_dataset_cls):
     ds_mock.compute_channels.assert_called()
 
 
-def test_validate_txrx_sets():
+def test_validate_txrx_sets() -> None:
     """Test _validate_txrx_sets logic."""
     txrx_dict = {
         "txrx_set_0": {"id": 0, "is_tx": True, "is_rx": False, "num_points": 5},

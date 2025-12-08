@@ -7,7 +7,7 @@ import numpy as np
 from deepmimo.converters.sionna_rt import sionna_paths
 
 
-def test_get_sionna_interaction_types():
+def test_get_sionna_interaction_types() -> None:
     # Mock paths object
     # Using a complex mock structure to simulate Sionna paths data
     # Since _get_sionna_interaction_types logic was fixed, we test it here.
@@ -22,7 +22,7 @@ def test_get_sionna_interaction_types():
 
 
 @patch("deepmimo.converters.sionna_rt.sionna_paths.load_pickle")
-def test_read_paths(mock_load):
+def test_read_paths(mock_load) -> None:
     # Create mock paths data structure
     # Match expected shape for Sionna < 1.0
     # a has time dimension (7D) because it's sliced with [..., 0]

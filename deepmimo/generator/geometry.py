@@ -157,9 +157,8 @@ def _apply_FoV(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> 
     )
 
     # Combine horizontal and vertical masks
-    path_inclusion = np.logical_and(path_inclusion_phi, path_inclusion_theta)
+    return np.logical_and(path_inclusion_phi, path_inclusion_theta)
 
-    return path_inclusion
 
 
 def _apply_FoV_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
@@ -197,9 +196,8 @@ def _apply_FoV_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarra
     )
 
     # Combine horizontal and vertical masks - exactly matching original function
-    path_inclusion = np.logical_and(path_inclusion_phi, path_inclusion_theta)
+    return np.logical_and(path_inclusion_phi, path_inclusion_theta)
 
-    return path_inclusion  # [batch_size, n_paths]
 
 
 def _rotate_angles(

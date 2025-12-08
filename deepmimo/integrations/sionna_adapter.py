@@ -16,7 +16,7 @@ can be generated using (transpose) reciprocity.
 import numpy as np
 from numpy.typing import NDArray
 
-from ..generator.dataset import Dataset, MacroDataset
+from deepmimo.generator.dataset import Dataset, MacroDataset
 
 
 class SionnaAdapter:
@@ -68,7 +68,7 @@ class SionnaAdapter:
         self.num_rx_ant = first_ds.channels.shape[1]
         self.num_tx_ant = first_ds.channels.shape[2]
 
-        assert first_ds.ch_params.freq_domain == False, "Sionna adapter needs time domain channels"
+        assert not first_ds.ch_params.freq_domain, "Sionna adapter needs time domain channels"
 
         self.num_paths = first_ds.channels.shape[-1]
         self.num_time_steps = 1  # Time step = 1 for static scenarios

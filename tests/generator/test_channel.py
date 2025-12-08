@@ -9,16 +9,16 @@ from deepmimo.generator.channel import (
 )
 
 
-def test_channel_parameters_defaults():
-    """Test default channel parameters"""
+def test_channel_parameters_defaults() -> None:
+    """Test default channel parameters."""
     params = ChannelParameters()
     assert c.PARAMSET_ANT_BS in params
     assert c.PARAMSET_ANT_UE in params
     assert params[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_SPACING] == 0.5
 
 
-def test_channel_parameters_validation():
-    """Test parameter validation"""
+def test_channel_parameters_validation() -> None:
+    """Test parameter validation."""
     params = ChannelParameters()
     # Test valid params
     params.validate(n_ues=10)
@@ -35,16 +35,16 @@ def test_channel_parameters_validation():
         params.validate(n_ues=10)
 
 
-def test_convert_lists_to_arrays():
-    """Test helper for converting lists to arrays"""
+def test_convert_lists_to_arrays() -> None:
+    """Test helper for converting lists to arrays."""
     data = {"a": [1, 2, 3], "b": {"c": [4, 5]}}
     converted = _convert_lists_to_arrays(data)
     assert isinstance(converted["a"], np.ndarray)
     assert isinstance(converted["b"]["c"], np.ndarray)
 
 
-def test_generate_mimo_channel_time_domain():
-    """Test channel generation in time domain"""
+def test_generate_mimo_channel_time_domain() -> None:
+    """Test channel generation in time domain."""
     # Setup mock inputs
     n_users = 2
     n_rx_ant = 1
@@ -73,8 +73,8 @@ def test_generate_mimo_channel_time_domain():
     assert np.allclose(np.abs(channel), 1.0)
 
 
-def test_generate_mimo_channel_freq_domain():
-    """Test channel generation in frequency domain (OFDM)"""
+def test_generate_mimo_channel_freq_domain() -> None:
+    """Test channel generation in frequency domain (OFDM)."""
     n_users = 1
     n_rx_ant = 1
     n_tx_ant = 1
@@ -108,8 +108,8 @@ def test_generate_mimo_channel_freq_domain():
     assert np.allclose(np.abs(channel), expected_mag, rtol=1e-5)
 
 
-def test_doppler_progression():
-    """Test that channel evolves with time due to Doppler"""
+def test_doppler_progression() -> None:
+    """Test that channel evolves with time due to Doppler."""
     n_users = 1
     n_rx_ant = 1
     n_tx_ant = 1

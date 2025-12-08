@@ -6,7 +6,7 @@ from deepmimo.converters.wireless_insite import insite_materials
 from deepmimo.materials import Material
 
 
-def test_insite_material_conversion():
+def test_insite_material_conversion() -> None:
     imat = insite_materials.InsiteMaterial(
         id=1,
         name="Concrete",
@@ -25,7 +25,7 @@ def test_insite_material_conversion():
     assert mat.scattering_coefficient == 0.5
 
 
-def test_insite_foliage_conversion():
+def test_insite_foliage_conversion() -> None:
     ifol = insite_materials.InsiteFoliage(
         id=2, name="Tree", thickness=5.0, vertical_attenuation=1.0, permittivity_vr=1.2
     )
@@ -38,7 +38,7 @@ def test_insite_foliage_conversion():
 
 
 @patch("deepmimo.converters.wireless_insite.insite_materials.parse_file")
-def test_read_materials(mock_parse):
+def test_read_materials(mock_parse) -> None:
     # Mock document structure
     mat_node = MagicMock()
     mat_node.name = "Mat1"

@@ -17,8 +17,8 @@ from typing import Any
 
 import numpy as np
 
-from .. import consts as c
-from ..general_utils import save_dict_as_json, zip
+from deepmimo import consts as c
+from deepmimo.general_utils import save_dict_as_json, zip
 
 
 def check_scenario_exists(
@@ -44,7 +44,7 @@ def check_scenario_exists(
                 f"{scenarios_folder}. Delete? (Y/n)",
             )
             ans = input()
-            overwrite = False if "n" in ans.lower() else True
+            overwrite = "n" not in ans.lower()
         return overwrite
     return True
 

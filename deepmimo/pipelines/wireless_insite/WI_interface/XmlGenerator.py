@@ -145,12 +145,12 @@ class XmlGenerator:
 
         X = tmp.findall(".//X")[0]
         X[0].attrib["Value"] = " ".join(
-            ["%.4g" % i for i in self.setup.study_area.all_vertex[:, 0]],
+            [f"{i:.4g}" for i in self.setup.study_area.all_vertex[:, 0]],
         )
 
         Y = tmp.findall(".//Y")[0]
         Y[0].attrib["Value"] = " ".join(
-            ["%.4g" % i for i in self.setup.study_area.all_vertex[:, 1]],
+            [f"{i:.4g}" for i in self.setup.study_area.all_vertex[:, 1]],
         )
 
     def set_origin(self) -> None:

@@ -19,6 +19,7 @@ Constants:
     DEGREE_TO_METER (float): Conversion factor from degrees to meters at equator
 """
 
+import contextlib
 from dataclasses import dataclass
 from math import cos, pi, sin
 from typing import Optional
@@ -86,16 +87,12 @@ class Building:
 
             # Try different height tags
             if "height" in properties:
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     height = float(properties["height"])
-                except (ValueError, TypeError):
-                    pass
 
             if height is None and "building:height" in properties:
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     height = float(properties["building:height"])
-                except (ValueError, TypeError):
-                    pass
 
             return cls(
                 geometry=buffered_polygon,
@@ -173,10 +170,7 @@ def is_point_clear_of_buildings(point: Point, buildings: list[Building]) -> bool
 
     buffer_degrees = meter_to_degree(MIN_DISTANCE_FROM_BUILDING, point.y)
 
-    for building in buildings:
-        if building.geometry.distance(point) < buffer_degrees:
-            return False
-    return True
+    return all(building.geometry.distance(point) >= buffer_degrees for building in buildings)
 
 
 def find_nearest_clear_location(

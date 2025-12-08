@@ -8,7 +8,7 @@ from deepmimo.converters.wireless_insite import insite_txrx
 from deepmimo.txrx import TxRxSet
 
 
-def test_insite_txrx_set_grid():
+def test_insite_txrx_set_grid() -> None:
     data = {
         "ConformToTerrain": {"remcom_rxapi_Boolean": True},
         "OutputID": {"remcom_rxapi_Integer": 1},
@@ -39,7 +39,7 @@ def test_insite_txrx_set_grid():
     assert len(points) == 9
 
 
-def test_convert_sets_to_deepmimo():
+def test_convert_sets_to_deepmimo() -> None:
     # Mock InSiteTxRxSet
     iset = MagicMock(spec=insite_txrx.InSiteTxRxSet)
     iset.data = {}  # Explicitly add data attribute as dict
@@ -78,7 +78,7 @@ def test_convert_sets_to_deepmimo():
 
 @patch("deepmimo.converters.wireless_insite.insite_txrx.parse_insite_xml")
 @patch("deepmimo.converters.wireless_insite.insite_txrx.Path")
-def test_read_txrx(mock_path, mock_parse_xml):
+def test_read_txrx(mock_path, mock_parse_xml) -> None:
     """Test reading TXRX sets from XML."""
     # Mock glob to return a file
     mock_path.return_value.glob.return_value = ["test.xml"]

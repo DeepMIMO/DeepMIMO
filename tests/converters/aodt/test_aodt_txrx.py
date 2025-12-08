@@ -6,7 +6,7 @@ from deepmimo.converters.aodt import aodt_txrx
 
 
 @patch("deepmimo.converters.aodt.aodt_txrx.pd")
-def test_read_txrx(mock_pd):
+def test_read_txrx(mock_pd) -> None:
     # Mock scenario dataframe for tx/rx info
     df = MagicMock()
     # Iterate over rows

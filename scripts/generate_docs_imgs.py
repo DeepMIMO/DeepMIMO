@@ -19,7 +19,7 @@ static_dir = os.path.join("docs", "_static")
 os.makedirs(static_dir, exist_ok=True)
 
 
-def save_fig(name, tight=True, dpi=300):
+def save_fig(name, tight=True, dpi=300) -> None:
     """Helper to save figures with consistent settings."""
     if tight:
         plt.tight_layout()

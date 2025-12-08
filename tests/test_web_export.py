@@ -13,7 +13,7 @@ class TestWebExport(unittest.TestCase):
     @patch("deepmimo.web_export.Path")
     @patch("deepmimo.web_export.json.dump")
     @patch("deepmimo.web_export._process_single_dataset_to_binary")
-    def test_export_dataset_to_binary_single(self, mock_process, mock_json, mock_path):
+    def test_export_dataset_to_binary_single(self, mock_process, mock_json, mock_path) -> None:
         dataset = MagicMock()
         # Simulate single dataset by removing 'datasets' attribute
         if hasattr(dataset, "datasets"):
@@ -29,7 +29,7 @@ class TestWebExport(unittest.TestCase):
     @patch("deepmimo.web_export.Path")
     @patch("deepmimo.web_export.json.dump")
     @patch("deepmimo.web_export._process_macro_dataset")
-    def test_export_dataset_to_binary_macro(self, mock_process, mock_json, mock_path):
+    def test_export_dataset_to_binary_macro(self, mock_process, mock_json, mock_path) -> None:
         dataset = MagicMock()
         dataset.datasets = [MagicMock()]
 
@@ -42,7 +42,7 @@ class TestWebExport(unittest.TestCase):
 
     @patch("deepmimo.web_export._save_binary_array")
     @patch("deepmimo.web_export._process_scene_to_binary")
-    def test_process_single_dataset(self, mock_scene_proc, mock_save):
+    def test_process_single_dataset(self, mock_scene_proc, mock_save) -> None:
         dataset = MagicMock()
         dataset.rx_pos = np.zeros((10, 3))
         dataset.tx_pos = np.zeros((1, 3))
@@ -57,7 +57,7 @@ class TestWebExport(unittest.TestCase):
         mock_scene_proc.assert_called()
 
     @patch("deepmimo.web_export._save_binary_array")
-    def test_process_scene(self, mock_save):
+    def test_process_scene(self, mock_save) -> None:
         scene = MagicMock()
 
         # Mock objects
@@ -74,7 +74,7 @@ class TestWebExport(unittest.TestCase):
         # Since get_objects returns list for all calls (mock default), it saves all.
         assert mock_save.call_count >= 1
 
-    def test_save_binary_array(self):
+    def test_save_binary_array(self) -> None:
         arr = np.array([1.0, 2.0], dtype=np.float32)
         with patch("builtins.open", mock_open()) as mock_file:
             web_export._save_binary_array(arr, "test.bin")

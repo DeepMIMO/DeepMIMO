@@ -9,7 +9,7 @@ from deepmimo.integrations.sionna_adapter import SionnaAdapter
 
 
 class MockDataset:
-    def __init__(self, n_ue=2, num_rx_ant=4, num_tx_ant=8, num_paths=5):
+    def __init__(self, n_ue=2, num_rx_ant=4, num_tx_ant=8, num_paths=5) -> None:
         self.n_ue = n_ue
         self.channels = np.zeros((n_ue, num_rx_ant, num_tx_ant, num_paths))
         # Add some data to verify
@@ -21,7 +21,7 @@ class MockDataset:
         self.ch_params.freq_domain = False
 
 
-def test_sionna_adapter_init_single():
+def test_sionna_adapter_init_single() -> None:
     # Create a dummy object that passes isinstance(x, Dataset) if we patch Dataset in the module
     # But patching a class in a module where it is imported...
     # from ..generator.dataset import Dataset
@@ -68,7 +68,7 @@ def test_sionna_adapter_init_single():
         assert tau.shape == (1, 1, 5)
 
 
-def test_sionna_adapter_macro():
+def test_sionna_adapter_macro() -> None:
     # For macro, isinstance(ds, Dataset) must be False.
     # So we pass a list.
 
@@ -114,7 +114,7 @@ def test_sionna_adapter_macro():
     assert np.allclose(a[0, :, 1, :, :, 0], 1.0)
 
     # 2nd sample: UE0, BS1
-    a, tau = next(gen)
+    a, _tau = next(gen)
     # BS1 data (twos)
     assert np.allclose(a[0, :, 0, :, :, 0], 2.0)
     assert np.allclose(a[0, :, 1, :, :, 0], 2.0)

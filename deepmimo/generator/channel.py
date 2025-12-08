@@ -15,8 +15,8 @@ from typing import Any
 import numpy as np
 from tqdm import tqdm
 
-from .. import consts as c
-from ..general_utils import DotDict, compare_two_dicts, deep_dict_merge
+from deepmimo import consts as c
+from deepmimo.general_utils import DotDict, compare_two_dicts, deep_dict_merge
 
 
 def _convert_lists_to_arrays(obj: Any) -> Any:
@@ -165,7 +165,7 @@ class ChannelParameters(DotDict):
         },
     }
 
-    def __init__(self, data: dict | None = None, **kwargs: Any):
+    def __init__(self, data: dict | None = None, **kwargs: Any) -> None:
         """Initialize channel generation parameters.
 
         Args:
@@ -214,7 +214,7 @@ class ChannelParameters(DotDict):
             print(additional_keys)
 
         # BS Antenna Rotation
-        if c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_BS].keys():
+        if c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_BS]:
             self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
                 self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION],
             )
@@ -222,7 +222,7 @@ class ChannelParameters(DotDict):
             self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
 
         # UE Antenna Rotation
-        if c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_UE].keys():
+        if c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_UE]:
             self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
                 self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION],
                 n_ues,
@@ -231,7 +231,7 @@ class ChannelParameters(DotDict):
             self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
 
         # BS Antenna Radiation Pattern
-        if c.PARAMSET_ANT_RAD_PAT in self[c.PARAMSET_ANT_BS].keys():
+        if c.PARAMSET_ANT_RAD_PAT in self[c.PARAMSET_ANT_BS]:
             self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
                 self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT],
             )
@@ -239,7 +239,7 @@ class ChannelParameters(DotDict):
             self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[0]
 
         # UE Antenna Radiation Pattern
-        if c.PARAMSET_ANT_RAD_PAT in self[c.PARAMSET_ANT_UE].keys():
+        if c.PARAMSET_ANT_RAD_PAT in self[c.PARAMSET_ANT_UE]:
             self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
                 self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT],
             )
@@ -250,21 +250,24 @@ class ChannelParameters(DotDict):
         if c.PARAMSET_OFDM in self.keys():
             ofdm_params = self[c.PARAMSET_OFDM]
             if (
-                c.PARAMSET_OFDM_SC_SAMP in ofdm_params.keys()
-                and c.PARAMSET_OFDM_SC_NUM in ofdm_params.keys()
+                c.PARAMSET_OFDM_SC_SAMP in ofdm_params
+                and c.PARAMSET_OFDM_SC_NUM in ofdm_params
             ):
                 sc_sel = np.asarray(ofdm_params[c.PARAMSET_OFDM_SC_SAMP])
                 if sc_sel.ndim > 1:
-                    raise ValueError(f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a 1-D array")
+                    msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a 1-D array"
+                    raise ValueError(msg)
                 if sc_sel.size == 0:
-                    raise ValueError(f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a non-empty array")
+                    msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a non-empty array"
+                    raise ValueError(msg)
                 if not np.issubdtype(sc_sel.dtype, np.integer):
                     try:
                         sc_sel = sc_sel.astype(int, copy=False)
                         self[c.PARAMSET_OFDM][c.PARAMSET_OFDM_SC_SAMP] = sc_sel
                     except Exception:
+                        msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices"
                         raise ValueError(
-                            f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices",
+                            msg,
                         )
                 n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]
                 if np.any(sc_sel < 0) or np.any(sc_sel >= n_sc):
@@ -293,7 +296,7 @@ class OFDM_PathGenerator:
 
     """
 
-    def __init__(self, params: dict, subcarriers: np.ndarray):
+    def __init__(self, params: dict, subcarriers: np.ndarray) -> None:
         """Initialize OFDM path generator.
 
         Args:
@@ -342,9 +345,9 @@ class OFDM_PathGenerator:
         dopplers = np.asarray(dopplers)
 
         times = np.atleast_1d(times).astype(float)  # [N_t]
-        Nt = times.shape[0]
-        K = len(self.subcarriers)
-        P = pwr.shape[0]
+        times.shape[0]
+        len(self.subcarriers)
+        pwr.shape[0]
 
         # Base dimensions
         power = pwr[:, None]  # [P, 1]

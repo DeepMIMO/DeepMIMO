@@ -87,7 +87,7 @@ def download_addon(addon_name: str) -> str:
             f.write(response.content)
     except Exception as e:
         error_msg = f"❌ Failed to download file from {url}: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
     return output_path
@@ -106,7 +106,7 @@ def install_python_package(pckg_name: str) -> None:
         LOGGER.info(f"✅ Successfully installed {pckg_name}")
     except Exception as e:
         error_msg = f"❌ Failed to install {pckg_name}: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
 
@@ -118,7 +118,7 @@ def install_blender_addon(addon_name: str) -> None:
         LOGGER.error(f"❌ No zip file defined for add-on '{addon_name}'")
         return
 
-    if addon_name in bpy.context.preferences.addons.keys():
+    if addon_name in bpy.context.preferences.addons:
         LOGGER.info(f"📌 Add-on '{addon_name}' is already installed")
         if not bpy.context.preferences.addons[addon_name].module:
             LOGGER.info(f"  Enabling add-on '{addon_name}'")
@@ -137,7 +137,7 @@ def install_blender_addon(addon_name: str) -> None:
             bpy.ops.wm.save_userpref()
             LOGGER.info(f"✅ Add-on '{addon_name}' installed and enabled")
         except Exception as e:
-            LOGGER.error(f"❌ Failed to install/enable add-on '{addon_name}': {e!s}")
+            LOGGER.exception(f"❌ Failed to install/enable add-on '{addon_name}': {e!s}")
             raise
 
     # Special handling for Mitsuba
@@ -184,7 +184,7 @@ def configure_osm_import(
         LOGGER.info("✅ OSM import configuration complete")
     except Exception as e:
         error_msg = f"❌ Failed to configure OSM import: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
 
@@ -200,7 +200,7 @@ def save_osm_origin(scene_folder: str) -> None:
         LOGGER.info("✅ OSM origin saved")
     except Exception as e:
         error_msg = f"❌ Failed to save OSM origin: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
 
@@ -307,7 +307,7 @@ def setup_world_lighting() -> None:
         LOGGER.info("✅ World lighting configured")
     except Exception as e:
         error_msg = f"❌ Failed to setup world lighting: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
 
@@ -339,7 +339,7 @@ def create_camera_and_render(
         LOGGER.debug("📸 Camera deleted!")
     except Exception as e:
         error_msg = f"❌ Failed to render scene: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
 
@@ -380,7 +380,8 @@ def create_ground_plane(
 
         plane = bpy.data.objects.get("Plane")
         if plane is None:
-            raise ValueError("Failed to create ground plane")
+            msg = "Failed to create ground plane"
+            raise ValueError(msg)
         plane.scale = (x_size, y_size, 1)
         plane.name = "terrain"
 
@@ -388,7 +389,7 @@ def create_ground_plane(
         plane.data.materials.append(floor_material)
     except Exception as e:
         error_msg = f"❌ Failed to create ground plane: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
     return plane
@@ -416,7 +417,7 @@ def add_materials_to_objs(
         return obj
     except Exception as e:
         error_msg = f"❌ Failed to process objects with pattern '{name_pattern}': {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
 
@@ -504,7 +505,7 @@ def trim_faces_outside_bounds(
 
     except Exception as e:
         error_msg = f"❌ Failed to trim faces for {obj.name}: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
 
@@ -521,7 +522,7 @@ def convert_objects_to_mesh() -> None:
             LOGGER.warning("⚠ No objects found for conversion. Skipping.")
     except Exception as e:
         error_msg = f"❌ Failed to convert objects to mesh: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)
 
 
@@ -600,7 +601,7 @@ def export_mitsuba_scene(scene_folder: str) -> None:
         LOGGER.info("✅ Mitsuba scene export complete")
     except Exception as e:
         error_msg = f"❌ Failed to export scene: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
 
 
 ###############################################################################
@@ -659,5 +660,5 @@ def save_bbox_metadata(
         LOGGER.info("✅ Scenario metadata saved.")
     except Exception as e:
         error_msg = f"❌ Failed to save scenario metadata: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
         raise Exception(error_msg)

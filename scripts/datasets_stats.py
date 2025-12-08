@@ -20,7 +20,7 @@ print("\nScenario Statistics:")
 print("-" * 65)
 print(f"{'Scenario':<32} | {'Total':<8} | {'Active':<8} | {'Ratio':<8}")
 print("-" * 65)
-for scen, n_ue, n_active in zip(scen_name_list, n_ue_list, n_active_list):
+for scen, n_ue, n_active in zip(scen_name_list, n_ue_list, n_active_list, strict=False):
     ratio = n_active / n_ue if n_ue > 0 else 0
     print(f"{scen:<32} | {n_ue:>8} | {n_active:>8} | {ratio:>8.0%}")
 print("-" * 65)

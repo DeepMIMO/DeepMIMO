@@ -15,7 +15,7 @@ def temp_dir(tmp_path):
     return tmp_path
 
 
-def test_check_scen_name():
+def test_check_scen_name() -> None:
     """Test scenario name validation."""
     general_utils.check_scen_name("valid_name")
 
@@ -26,7 +26,7 @@ def test_check_scen_name():
         general_utils.check_scen_name("invalid\\name")
 
 
-def test_get_dirs(temp_dir):
+def test_get_dirs(temp_dir) -> None:
     """Test directory getter functions."""
     # Mock config to return a path inside temp_dir
     # Patch deepmimo.general_utils.config
@@ -40,7 +40,7 @@ def test_get_dirs(temp_dir):
             )
 
 
-def test_get_mat_filename():
+def test_get_mat_filename() -> None:
     """Test MAT filename generation."""
     fname = general_utils.get_mat_filename("channel", 1, 2, 3)
     assert fname == "channel_t001_tx002_r003.npz"
@@ -49,7 +49,7 @@ def test_get_mat_filename():
     assert fname_npz == "channel_t001_tx002_r003.npz"
 
 
-def test_mat_save_load(temp_dir):
+def test_mat_save_load(temp_dir) -> None:
     """Test saving and loading MAT files."""
     data = np.array([[1, 2], [3, 4]])
     key = "test_data"
@@ -69,7 +69,7 @@ def test_mat_save_load(temp_dir):
     np.testing.assert_array_equal(data, loaded_npy)
 
 
-def test_json_save_load(temp_dir):
+def test_json_save_load(temp_dir) -> None:
     """Test saving and loading JSON files."""
     data = {"a": 1, "b": [1, 2, 3], "c": np.array([4, 5, 6])}
     json_path = os.path.join(temp_dir, "test.json")
@@ -82,7 +82,7 @@ def test_json_save_load(temp_dir):
     assert loaded["c"] == [4, 5, 6]  # Converted to list
 
 
-def test_deep_dict_merge():
+def test_deep_dict_merge() -> None:
     """Test deep merging of dictionaries."""
     d1 = {"a": 1, "b": {"c": 2, "d": 3}}
     d2 = {"b": {"c": 4}, "e": 5}
@@ -95,7 +95,7 @@ def test_deep_dict_merge():
     assert merged["e"] == 5  # Added
 
 
-def test_dot_dict():
+def test_dot_dict() -> None:
     """Test DotDict functionality."""
     d = general_utils.DotDict({"a": 1, "b": {"c": 2}})
 
@@ -118,7 +118,7 @@ def test_dot_dict():
     assert d.new_attr == "test"
 
     # Dictionary methods
-    assert "a" in d.keys()
+    assert "a" in d
     assert 10 in d.values()
 
     # To dict
@@ -129,7 +129,7 @@ def test_dot_dict():
     assert not isinstance(reg_dict["b"], general_utils.DotDict)
 
 
-def test_coordinate_conversion():
+def test_coordinate_conversion() -> None:
     """Test coordinate conversion functions."""
     # Test cartesian to spherical
     cart = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
@@ -171,11 +171,11 @@ def test_coordinate_conversion():
     assert np.allclose(back_cart, cart, atol=1e-7)
 
 
-def test_delegating_list():
+def test_delegating_list() -> None:
     """Test DelegatingList functionality."""
 
     class Item:
-        def __init__(self, val):
+        def __init__(self, val) -> None:
             self.val = val
 
         def double(self):
@@ -201,7 +201,7 @@ def test_delegating_list():
     assert items[0].val == 0
 
 
-def test_comp_next_pwr_10():
+def test_comp_next_pwr_10() -> None:
     """Test comp_next_pwr_10 logic."""
 
     # Re-implement locally as it's not in the package
@@ -223,7 +223,7 @@ def test_comp_next_pwr_10():
     np.testing.assert_array_equal(custom_orders, expected)
 
 
-def test_pickle_save_load(temp_dir):
+def test_pickle_save_load(temp_dir) -> None:
     """Test pickle save and load functionality."""
     data = {"array": np.array([1, 2, 3]), "value": 42, "nested": {"a": 1}}
     pkl_path = os.path.join(temp_dir, "test.pkl")
@@ -236,7 +236,7 @@ def test_pickle_save_load(temp_dir):
     assert loaded["nested"]["a"] == 1
 
 
-def test_zip_unzip(temp_dir):
+def test_zip_unzip(temp_dir) -> None:
     """Test zip and unzip functionality."""
     # Create test files
     test_folder = temp_dir / "test_folder"
@@ -251,14 +251,14 @@ def test_zip_unzip(temp_dir):
     assert zip_path == str(test_folder) + ".zip"
 
     # Unzip folder - returns path to parent directory of extracted content
-    unzip_path = general_utils.unzip(zip_path)
+    general_utils.unzip(zip_path)
 
     # Verify contents
     assert (test_folder / "file1.txt").exists()
     assert (test_folder / "file2.txt").exists()
 
 
-def test_printing_utilities():
+def test_printing_utilities() -> None:
     """Test printing utilities like PrintIfVerbose."""
     # PrintIfVerbose is a class, not a function
     printer = general_utils.PrintIfVerbose(verbose=True)
@@ -268,7 +268,7 @@ def test_printing_utilities():
     printer_quiet("Hidden message")  # Should not print
 
 
-def test_available_scenarios(temp_dir):
+def test_available_scenarios(temp_dir) -> None:
     """Test get_available_scenarios function."""
     # Mock scenarios directory
     with patch("deepmimo.general_utils.get_scenarios_dir", return_value=str(temp_dir)):
@@ -283,7 +283,7 @@ def test_available_scenarios(temp_dir):
         assert len(scenarios) == 2
 
 
-def test_compare_two_dicts():
+def test_compare_two_dicts() -> None:
     """Test compare_two_dicts function - returns additional keys in dict1."""
     d1 = {"a": 1, "b": {"c": 2}}
     d2 = {"a": 1, "b": {"c": 2}}
@@ -299,7 +299,7 @@ def test_compare_two_dicts():
     assert general_utils.compare_two_dicts(d3, d1) == {"d"}
 
 
-def test_get_params_path(temp_dir):
+def test_get_params_path(temp_dir) -> None:
     """Test get_params_path function."""
     # Create a params.json file
     (temp_dir / "params.json").write_text("{}")
@@ -309,7 +309,7 @@ def test_get_params_path(temp_dir):
         assert "params.json" in params_path
 
 
-def test_get_params_path_subdirectory(temp_dir):
+def test_get_params_path_subdirectory(temp_dir) -> None:
     """Test params file in subdirectory."""
     scenario_dir = temp_dir / "scenario"
     scenario_dir.mkdir()
@@ -323,14 +323,14 @@ def test_get_params_path_subdirectory(temp_dir):
         assert "params.json" in path
 
 
-def test_get_params_path_not_found(temp_dir):
+def test_get_params_path_not_found(temp_dir) -> None:
     """Test params file not found raises error."""
     with patch("deepmimo.general_utils.get_scenario_folder", return_value=str(temp_dir)):
         with pytest.raises(FileNotFoundError, match="Params file not found"):
             general_utils.get_params_path("my_scenario")
 
 
-def test_save_mat_error_cases(temp_dir):
+def test_save_mat_error_cases(temp_dir) -> None:
     """Test save_mat error handling."""
     data = np.array([1, 2, 3])
 
@@ -347,15 +347,15 @@ def test_save_mat_error_cases(temp_dir):
         pass  # Expected
 
 
-def test_load_mat_file_not_found():
+def test_load_mat_file_not_found() -> None:
     """Test load_mat with nonexistent file."""
     # load_mat prints a message but doesn't raise FileNotFoundError
     # It tries different extensions and returns None if not found
-    result = general_utils.load_mat("nonexistent_file", "key")
+    general_utils.load_mat("nonexistent_file", "key")
     # Function should handle gracefully (may print warning)
 
 
-def test_dot_dict_contains():
+def test_dot_dict_contains() -> None:
     """Test DotDict __contains__ method."""
     d = general_utils.DotDict({"a": 1, "b": 2})
     assert "a" in d
@@ -363,7 +363,7 @@ def test_dot_dict_contains():
     assert "c" not in d
 
 
-def test_dot_dict_delitem():
+def test_dot_dict_delitem() -> None:
     """Test DotDict __delitem__ method."""
     d = general_utils.DotDict({"a": 1, "b": 2})
     del d["a"]
@@ -371,7 +371,7 @@ def test_dot_dict_delitem():
     assert "b" in d
 
 
-def test_dot_dict_edge_cases():
+def test_dot_dict_edge_cases() -> None:
     """Test edge cases for DotDict."""
     # Empty DotDict
     d = general_utils.DotDict()
@@ -390,7 +390,7 @@ def test_dot_dict_edge_cases():
     assert d.get("nonexistent", "default") == "default"
 
 
-def test_coordinate_conversion_edge_cases():
+def test_coordinate_conversion_edge_cases() -> None:
     """Test edge cases for coordinate conversion."""
     # Zero vector
     cart_zero = np.array([[0, 0, 0]])
@@ -408,7 +408,7 @@ def test_coordinate_conversion_edge_cases():
     assert sph_batch.shape == (100, 3)
 
 
-def test_deep_dict_merge_complex():
+def test_deep_dict_merge_complex() -> None:
     """Test deep_dict_merge with complex nested structures."""
     d1 = {"a": {"b": {"c": 1}}, "list": [1, 2, 3], "value": 10}
     d2 = {"a": {"b": {"d": 2}, "e": 3}, "list": [4, 5], "value": 20, "new": 30}
@@ -424,11 +424,11 @@ def test_deep_dict_merge_complex():
     assert merged["list"] == [4, 5]  # Replaced (lists don't merge)
 
 
-def test_delegating_list_edge_cases():
+def test_delegating_list_edge_cases() -> None:
     """Test edge cases for DelegatingList."""
 
     class Item:
-        def __init__(self, val):
+        def __init__(self, val) -> None:
             self.val = val
 
     # Empty list raises AttributeError when accessing attributes

@@ -52,7 +52,7 @@ def sample_pl_file(tmp_path):
     return str(file_path)
 
 
-def test_paths_parser(sample_paths_file):
+def test_paths_parser(sample_paths_file) -> None:
     """Test parsing of paths file."""
     data = p2m_parser.paths_parser(sample_paths_file)
 
@@ -70,13 +70,13 @@ def test_paths_parser(sample_paths_file):
     assert np.allclose(data[c.INTERACTIONS_POS_PARAM_NAME][0, 0, 0], [50, 50, 5])
 
 
-def test_extract_tx_pos(sample_paths_file):
+def test_extract_tx_pos(sample_paths_file) -> None:
     """Test extracting TX position."""
     tx_pos = p2m_parser.extract_tx_pos(sample_paths_file)
     assert np.allclose(tx_pos, [0, 0, 10])
 
 
-def test_read_pl_p2m_file(sample_pl_file):
+def test_read_pl_p2m_file(sample_pl_file) -> None:
     """Test reading PL file."""
     xyz, dist, pl = p2m_parser.read_pl_p2m_file(sample_pl_file)
 

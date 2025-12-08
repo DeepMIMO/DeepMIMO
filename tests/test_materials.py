@@ -5,7 +5,7 @@ from dataclasses import asdict
 from deepmimo.materials import Material, MaterialList
 
 
-def test_material_initialization():
+def test_material_initialization() -> None:
     """Test Material class initialization."""
     mat = Material(
         id=0, name="Concrete", permittivity=5.0, conductivity=0.1, scattering_model="none"
@@ -24,7 +24,7 @@ def test_material_initialization():
     assert mat_dict["permittivity"] == 5.0
 
 
-def test_material_from_dict():
+def test_material_from_dict() -> None:
     """Test creating Material from dictionary."""
     data = {
         "id": 1,
@@ -43,7 +43,7 @@ def test_material_from_dict():
     assert mat.scattering_coefficient == 0.2
 
 
-def test_material_list():
+def test_material_list() -> None:
     """Test MaterialList class."""
     ml = MaterialList()
     assert len(ml) == 0
@@ -69,7 +69,7 @@ def test_material_list():
     assert d["material_0"]["permittivity"] == 2.0
 
 
-def test_material_list_load():
+def test_material_list_load() -> None:
     """Test loading MaterialList from dictionary."""
     data = {
         "material_0": {"id": 0, "name": "M1", "permittivity": 2.0, "conductivity": 0.0},
@@ -83,7 +83,7 @@ def test_material_list_load():
     assert ml[1].conductivity == 0.1
 
 
-def test_material_realistic_concrete():
+def test_material_realistic_concrete() -> None:
     """Test Material with realistic concrete properties."""
     concrete = Material(
         id=0,
@@ -100,7 +100,7 @@ def test_material_realistic_concrete():
     assert concrete.thickness == 0.2
 
 
-def test_material_realistic_glass():
+def test_material_realistic_glass() -> None:
     """Test Material with realistic glass properties."""
     glass = Material(
         id=1,
@@ -114,7 +114,7 @@ def test_material_realistic_glass():
     assert glass.thickness == 0.006
 
 
-def test_material_foliage():
+def test_material_foliage() -> None:
     """Test Material with foliage/vegetation properties."""
     foliage = Material(
         id=2,
@@ -129,7 +129,7 @@ def test_material_foliage():
     assert foliage.horizontal_attenuation == 1.0
 
 
-def test_material_list_indexing():
+def test_material_list_indexing() -> None:
     """Test MaterialList advanced indexing."""
     ml = MaterialList()
     mats = [Material(i, f"M{i}", float(i + 1), 0.0) for i in range(5)]
@@ -146,7 +146,7 @@ def test_material_list_indexing():
     assert sub_ml[2].permittivity == 5.0
 
 
-def test_material_list_iteration():
+def test_material_list_iteration() -> None:
     """Test MaterialList iteration."""
     ml = MaterialList()
     mats = [Material(i, f"M{i}", float(i), 0.0) for i in range(3)]
@@ -157,7 +157,7 @@ def test_material_list_iteration():
     assert names == ["M0", "M1", "M2"]
 
 
-def test_material_with_itu_params():
+def test_material_with_itu_params() -> None:
     """Test Material with ITU-R P.2040 parameters."""
     mat = Material(
         id=0,
@@ -175,7 +175,7 @@ def test_material_with_itu_params():
     assert mat.itu_d == 0.05
 
 
-def test_material_directive_scattering():
+def test_material_directive_scattering() -> None:
     """Test Material with directive scattering model."""
     mat = Material(
         id=0,
@@ -194,7 +194,7 @@ def test_material_directive_scattering():
     assert mat.lambda_param == 0.7
 
 
-def test_material_list_empty_operations():
+def test_material_list_empty_operations() -> None:
     """Test MaterialList operations on empty list."""
     ml = MaterialList()
     assert len(ml) == 0
@@ -204,11 +204,12 @@ def test_material_list_empty_operations():
     assert d == {}
 
     # Iteration
-    for m in ml:
-        assert False, "Should not iterate over empty list"
+    for _m in ml:
+        msg = "Should not iterate over empty list"
+        raise AssertionError(msg)
 
 
-def test_material_list_repr():
+def test_material_list_repr() -> None:
     """Test MaterialList __repr__ method."""
     ml = MaterialList()
     ml.add_materials([Material(0, "Concrete", 5.0, 0.1)])
@@ -218,7 +219,7 @@ def test_material_list_repr():
     assert "1" in repr_str  # Should show count
 
 
-def test_material_list_str():
+def test_material_list_str() -> None:
     """Test MaterialList __str__ method."""
     ml = MaterialList()
     ml.add_materials([Material(0, "Concrete", 5.0, 0.1), Material(1, "Glass", 6.0, 0.01)])

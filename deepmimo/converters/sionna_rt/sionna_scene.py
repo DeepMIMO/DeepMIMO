@@ -5,8 +5,15 @@ This module handles loading and converting scene data from Sionna's format to De
 
 import os
 
-from ...general_utils import load_pickle
-from ...scene import CAT_BUILDINGS, CAT_TERRAIN, Face, PhysicalElement, Scene, get_object_faces
+from deepmimo.general_utils import load_pickle
+from deepmimo.scene import (
+    CAT_BUILDINGS,
+    CAT_TERRAIN,
+    Face,
+    PhysicalElement,
+    Scene,
+    get_object_faces,
+)
 
 
 def read_scene(load_folder: str, material_indices: list[int]) -> Scene:

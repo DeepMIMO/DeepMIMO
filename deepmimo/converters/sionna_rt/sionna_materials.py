@@ -5,8 +5,8 @@ This module handles loading and converting material data from Sionna's format to
 
 import os
 
-from ...general_utils import load_pickle
-from ...materials import Material, MaterialList
+from deepmimo.general_utils import load_pickle
+from deepmimo.materials import Material, MaterialList
 
 
 def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:

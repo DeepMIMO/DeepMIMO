@@ -14,7 +14,7 @@ from deepmimo.summary import plot_summary, summary
 class TestSummary(unittest.TestCase):
     @patch("deepmimo.summary.load_dict_from_json")
     @patch("deepmimo.summary.get_params_path")
-    def test_summary(self, mock_get_path, mock_load_json):
+    def test_summary(self, mock_get_path, mock_load_json) -> None:
         mock_get_path.return_value = "params.json"
 
         # Mock params dictionary
@@ -90,7 +90,7 @@ class TestSummary(unittest.TestCase):
 
     @patch("deepmimo.summary.plt")
     @patch("deepmimo.summary.os.makedirs")
-    def test_plot_summary(self, mock_makedirs, mock_plt):
+    def test_plot_summary(self, mock_makedirs, mock_plt) -> None:
         # Mock dataset
         mock_ds = MagicMock()
         mock_ds.scene.plot = MagicMock()

@@ -219,7 +219,8 @@ def raytrace_insite(
     if bldgs_city:
         scenario.add_feature(bldgs_city, "city")
     else:
-        raise Exception("No buildings found. Check Blender Export to ply.")
+        msg = "No buildings found. Check Blender Export to ply."
+        raise Exception(msg)
     if roads_city:
         scenario.add_feature(roads_city, "road")
     scenario.save("insite")  # insite.setup
@@ -234,15 +235,7 @@ def raytrace_insite(
     license_info = ["-set_licenses", rt_params["wi_lic"]] if wi_major_version >= 4 else []
 
     # Run Wireless InSite using the XML file
-    command = [
-        rt_params["wi_exe"],
-        "-f",
-        xml_path,
-        "-out",
-        study_area_path,
-        "-p",
-        "insite",
-    ] + license_info
+    command = [rt_params["wi_exe"], "-f", xml_path, "-out", study_area_path, "-p", "insite", *license_info]
     run_command(command, "RAY TRACING: Wireless InSite")
 
     return insite_path

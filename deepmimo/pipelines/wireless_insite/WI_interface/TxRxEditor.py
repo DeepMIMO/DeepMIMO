@@ -51,9 +51,11 @@ class TxRx:
         elif self.txrx_pos.ndim == 2:
             # Multiple points case - ensure shape (N, 3)
             if self.txrx_pos.shape[1] != 3:
-                raise ValueError("Position array must have shape (N, 3) for multiple points")
+                msg = "Position array must have shape (N, 3) for multiple points"
+                raise ValueError(msg)
         else:
-            raise ValueError("Position must be a 1D or 2D array")
+            msg = "Position must be a 1D or 2D array"
+            raise ValueError(msg)
 
         self.grid_side = np.asarray(self.grid_side) if self.grid_side is not None else None
 
@@ -65,7 +67,7 @@ class TxRxEditor:
     configurations, supporting both single points and arrays of points.
     """
 
-    def __init__(self, infile_path: str | None = None, template_path: str | None = None):
+    def __init__(self, infile_path: str | None = None, template_path: str | None = None) -> None:
         self.infile_path = infile_path
         self.txrx: list[TxRx] = []
         self.txrx_file = None
@@ -133,7 +135,7 @@ class TxRxEditor:
                 template = f.readlines()
             for i, line in enumerate(template):
                 if ("begin_<points>" in line) or ("begin_<grid>" in line):
-                    template[i] = "begin_<%s> %s\n" % (x.txrx_type, x.txrx_name)
+                    template[i] = f"begin_<{x.txrx_type}> {x.txrx_name}\n"
                     template[i + 1] = "project_id %d\n" % x.txrx_id
 
                 if "nVertices" in line:
@@ -150,18 +152,18 @@ class TxRxEditor:
 
                 if "is_transmitter" in line:
                     tmp = "yes" if x.is_transmitter else "no"
-                    template[i] = "is_transmitter %s\n" % tmp
+                    template[i] = f"is_transmitter {tmp}\n"
 
                 if "is_receiver" in line:
                     tmp = "yes" if x.is_receiver else "no"
-                    template[i] = "is_receiver %s\n" % tmp
+                    template[i] = f"is_receiver {tmp}\n"
 
                 if "side1" in line and x.grid_side is not None:
-                    template[i] = "side1 %.5f\n" % np.float32(x.grid_side[0])
-                    template[i + 1] = "side2 %.5f\n" % np.float32(x.grid_side[1])
-                    template[i + 2] = "spacing %.5f\n" % np.float32(x.grid_spacing)
+                    template[i] = f"side1 {np.float32(x.grid_side[0]):.5f}\n"
+                    template[i + 1] = f"side2 {np.float32(x.grid_side[1]):.5f}\n"
+                    template[i + 2] = f"spacing {np.float32(x.grid_spacing):.5f}\n"
                 if line.split(" ")[0] == "power":
-                    template[i] = "power %.5f\n" % self.txpower
+                    template[i] = f"power {self.txpower:.5f}\n"
             with open(outfile_path, "a") as out:
                 out.writelines(template)
 

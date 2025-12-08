@@ -6,7 +6,7 @@ from deepmimo.converters.aodt import aodt_scene
 
 
 @patch("deepmimo.converters.aodt.aodt_scene.pd")
-def test_read_scene(mock_pd):
+def test_read_scene(mock_pd) -> None:
     # Mock panels dataframe
     df = MagicMock()
     df.__len__.return_value = 1  # Fix empty check

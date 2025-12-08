@@ -109,9 +109,8 @@ def get_uniform_idxs(n_ue: int, grid_size: np.ndarray, steps: list[int]) -> np.n
 
     cols = np.arange(_grid_size[0], step=steps[0])
     rows = np.arange(_grid_size[1], step=steps[1])
-    idxs = np.array([j + i * _grid_size[0] for i in rows for j in cols])
+    return np.array([j + i * _grid_size[0] for i in rows for j in cols])
 
-    return idxs
 
 
 def get_grid_idxs(
@@ -134,7 +133,8 @@ def get_grid_idxs(
 
     """
     if axis not in ["row", "col"]:
-        raise ValueError("axis must be either 'row' or 'col'")
+        msg = "axis must be either 'row' or 'col'"
+        raise ValueError(msg)
 
     if isinstance(idxs, int):
         idxs = [idxs]
@@ -171,7 +171,8 @@ def get_idxs_with_limits(data_pos: np.ndarray, **limits: float) -> np.ndarray:
     """
     valid_limits = {"x_min", "x_max", "y_min", "y_max", "z_min", "z_max"}
     if not all(key in valid_limits for key in limits):
-        raise ValueError(f"Invalid limit key. Supported limits are: {valid_limits}")
+        msg = f"Invalid limit key. Supported limits are: {valid_limits}"
+        raise ValueError(msg)
 
     # Start with all indices as valid
     valid_idxs = np.arange(len(data_pos))
@@ -183,7 +184,8 @@ def get_idxs_with_limits(data_pos: np.ndarray, **limits: float) -> np.ndarray:
         is_min = limit_name.endswith("min")
 
         if coord_map[coord] >= data_pos.shape[1]:
-            raise ValueError(f"Cannot apply {coord} limit to {data_pos.shape[1]}D positions")
+            msg = f"Cannot apply {coord} limit to {data_pos.shape[1]}D positions"
+            raise ValueError(msg)
 
         if is_min:
             mask = data_pos[valid_idxs, coord_map[coord]] >= limit_value

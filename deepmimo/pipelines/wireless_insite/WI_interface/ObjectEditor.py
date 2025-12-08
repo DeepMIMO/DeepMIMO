@@ -35,7 +35,7 @@ class ObjectEditor:
             self.file = f.readlines()
         print()
 
-    def transform(self, translate: list[float] = [0, 0, 0], rotate_angle: float = 0) -> None:
+    def transform(self, translate: list[float] | None = None, rotate_angle: float = 0) -> None:
         """Transform the object by translation and rotation.
 
         Applies translation and rotation to all vertices in the object file.
@@ -46,6 +46,8 @@ class ObjectEditor:
             rotate_angle (float, optional): Rotation angle in degrees. Defaults to 0.
 
         """
+        if translate is None:
+            translate = [0, 0, 0]
         for i in range(len(self.file)):
             if "nVertices" in self.file[i]:
                 num_vertex = int(self.file[i].split()[1])

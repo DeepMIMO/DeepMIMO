@@ -19,10 +19,10 @@ Main Entry Point:
 
 import os
 import shutil
-from pprint import pprint
 
-from ... import consts as c
-from .. import converter_utils as cu
+from deepmimo import consts as c
+from deepmimo.converters import converter_utils as cu
+
 from .aodt_materials import read_materials
 from .aodt_paths import read_paths
 from .aodt_rt_params import read_rt_params
@@ -115,7 +115,7 @@ def aodt_rt_converter(
     }
     cu.save_params(params, temp_folder)
     if print_params:
-        pprint(params)
+        pass
 
     # Save scenario to deepmimo scenarios folder
     cu.save_scenario(temp_folder, scenarios_folder)

@@ -6,7 +6,7 @@ from deepmimo.converters.wireless_insite import insite_scene
 from deepmimo.scene import CAT_BUILDINGS
 
 
-def test_extract_objects():
+def test_extract_objects() -> None:
     content = """
     begin_<face>
       0.0 0.0 0.0
@@ -26,7 +26,7 @@ def test_extract_objects():
 
 @patch("builtins.open")
 @patch("deepmimo.converters.wireless_insite.insite_scene.get_object_faces")
-def test_physical_object_parser(mock_get_faces, mock_open):
+def test_physical_object_parser(mock_get_faces, mock_open) -> None:
     mock_file = MagicMock()
     mock_file.read.return_value = "dummy content"
     mock_open.return_value.__enter__.return_value = mock_file
@@ -46,7 +46,7 @@ def test_physical_object_parser(mock_get_faces, mock_open):
 
 
 @patch("deepmimo.converters.wireless_insite.insite_scene.PhysicalObjectParser")
-def test_read_scene(mock_parser_cls, tmp_path):
+def test_read_scene(mock_parser_cls, tmp_path) -> None:
     # Create dummy files
     (tmp_path / "test.city").touch()
 

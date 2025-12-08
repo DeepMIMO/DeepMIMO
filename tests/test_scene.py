@@ -19,7 +19,7 @@ from deepmimo.scene import (
 
 
 # --- BoundingBox Tests ---
-def test_bounding_box():
+def test_bounding_box() -> None:
     bb = BoundingBox(0, 10, 0, 20, 0, 5)
     assert bb.x_min == 0
     assert bb.x_max == 10
@@ -30,7 +30,7 @@ def test_bounding_box():
 
 
 # --- Face Tests ---
-def test_face_properties():
+def test_face_properties() -> None:
     # Defined counter-clockwise in xy plane
     vertices = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]])
     face = Face(vertices)
@@ -52,7 +52,7 @@ def test_face_properties():
 
 
 # --- PhysicalElement Tests ---
-def test_physical_element():
+def test_physical_element() -> None:
     # Create a simple cube
     # Bottom face
     f1 = Face([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]])
@@ -81,7 +81,7 @@ def test_physical_element():
 
 
 # --- PhysicalElementGroup Tests ---
-def test_physical_element_group():
+def test_physical_element_group() -> None:
     obj1 = PhysicalElement([Face([[0, 0, 0], [1, 0, 0], [0, 1, 0]])], label=CAT_BUILDINGS)
     obj2 = PhysicalElement([Face([[2, 0, 0], [3, 0, 0], [2, 1, 0]])], label=CAT_TERRAIN)
 
@@ -101,7 +101,7 @@ def test_physical_element_group():
 
 
 # --- Scene Tests ---
-def test_scene_management():
+def test_scene_management() -> None:
     scene = Scene()
     obj = PhysicalElement([Face([[0, 0, 0], [1, 0, 0], [0, 1, 0]])], label=CAT_OBJECTS)
 
@@ -117,7 +117,7 @@ def test_scene_management():
     assert scene.bounding_box is not None
 
 
-def test_scene_export_import(tmp_path):
+def test_scene_export_import(tmp_path) -> None:
     scene = Scene()
     # Add a simple object
     obj = PhysicalElement([Face([[0, 0, 0], [1, 0, 0], [0, 1, 0]])], name="Tri", label=CAT_OBJECTS)
@@ -138,7 +138,7 @@ def test_scene_export_import(tmp_path):
 
 
 @patch("matplotlib.pyplot.subplots")
-def test_scene_plot(mock_subplots):
+def test_scene_plot(mock_subplots) -> None:
     """Test plotting calls."""
     mock_fig = MagicMock()
     mock_ax = MagicMock()
@@ -159,7 +159,7 @@ def test_scene_plot(mock_subplots):
     assert mock_ax.fill.called
 
 
-def test_get_object_faces():
+def test_get_object_faces() -> None:
     # Test fast mode (convex hull)
     # Cube vertices
     vertices = [

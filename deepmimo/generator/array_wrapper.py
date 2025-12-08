@@ -107,17 +107,19 @@ class DeepMIMOArray(np.ndarray):
             # 3D array [num_rx, num_paths, max_interactions] - plot specified path and interaction
             data = self[:, path_idx, interaction_idx]
         else:
-            raise ValueError(
+            msg = (
                 f"Cannot plot array with shape {self.shape}. "
                 "Only the following shapes are supported:\n"
                 "- 1D arrays [num_rx]\n"
                 "- 2D arrays [num_rx, num_paths]\n"
-                "- 3D arrays [num_rx, num_paths, max_interactions]",
+                "- 3D arrays [num_rx, num_paths, max_interactions]"
+            )
+            raise ValueError(
+                msg,
             )
 
-        if "cbar_title" not in kwargs:
-            if self.name in COLORBAR_TITLES:
-                kwargs["cbar_title"] = COLORBAR_TITLES[self.name]
+        if "cbar_title" not in kwargs and self.name in COLORBAR_TITLES:
+            kwargs["cbar_title"] = COLORBAR_TITLES[self.name]
 
         # Use dataset's plot_coverage method directly
         return self.dataset.plot_coverage(data, **kwargs)

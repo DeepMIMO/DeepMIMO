@@ -26,36 +26,38 @@ from typing import Any
 
 import numpy as np
 
-from ..consts import SUPPORTED_SIONNA_VERSIONS
-from ..general_utils import save_pickle
+from deepmimo.consts import SUPPORTED_SIONNA_VERSIONS
+from deepmimo.general_utils import save_pickle
 
 try:
     import sionna.rt
 
-    from ..pipelines.sionna_rt.sionna_utils import get_sionna_version, is_sionna_v1
+    from deepmimo.pipelines.sionna_rt.sionna_utils import get_sionna_version, is_sionna_v1
 
     Paths = sionna.rt.Paths
     Scene = sionna.rt.Scene
 except ImportError:
-    raise ImportError(
+    msg = (
         "Sionna ray tracing functionality requires additional dependencies. "
-        "Please install them using: pip install 'deepmimo[sionna1]' or 'deepmimo[sionna019]'",
+        "Please install them using: pip install 'deepmimo[sionna1]' or 'deepmimo[sionna019]'"
+    )
+    raise ImportError(
+        msg,
     )
 
 
 def _paths_to_dict(paths: Paths) -> list[dict]:
-    """Exports paths to a filtered dictionary with only selected keys"""
+    """Exports paths to a filtered dictionary with only selected keys."""
     members_names = dir(paths)
     members_objects = [getattr(paths, attr) for attr in members_names]
-    data = {
+    return {
         attr_name: attr_obj
-        for (attr_obj, attr_name) in zip(members_objects, members_names)
+        for (attr_obj, attr_name) in zip(members_objects, members_names, strict=False)
         if not callable(attr_obj)
         and not isinstance(attr_obj, Scene)
         and not attr_name.startswith("__")
         and not attr_name.startswith("_")
     }
-    return data
 
 
 def export_paths(path_list: Paths | list[Paths]) -> list[dict[str, Any]]:
@@ -123,7 +125,7 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
 
     """
     obj_materials = []
-    for _, obj in scene._scene_objects.items():
+    for obj in scene._scene_objects.values():
         obj_materials += [obj.radio_material]
     unique_materials = set(obj_materials)
     unique_mat_names = [mat.name for mat in unique_materials]
@@ -168,18 +170,17 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
 
 
 def _scene_to_dict(scene: Scene) -> dict[str, Any]:
-    """Export a Sionna Scene to a dictionary, like to Paths.to_dict()"""
+    """Export a Sionna Scene to a dictionary, like to Paths.to_dict()."""
     members_names = dir(scene)
     bug_attrs = ["paths_solver"]
     members_objects = [getattr(scene, attr) for attr in members_names if attr not in bug_attrs]
-    data = {
+    return {
         attr_name[1:]: attr_obj
-        for (attr_obj, attr_name) in zip(members_objects, members_names)
+        for (attr_obj, attr_name) in zip(members_objects, members_names, strict=False)
         if not callable(attr_obj)
         and not isinstance(attr_obj, sionna.rt.Scene)
         and not attr_name.startswith("__")
     }
-    return data
 
 
 def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[str, Any]:
@@ -213,45 +214,45 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[st
         compute_paths_kwargs.get("synthetic_array", False),
     )
 
-    rt_params_dict = dict(
-        bandwidth=scene_dict["bandwidth"].numpy(),
-        frequency=scene_dict["frequency"].numpy(),
-        rx_array_size=rx_array.array_size,  # dual-pol if diff than num_ant
-        rx_array_num_ant=rx_array.num_ant,
-        rx_array_ant_pos=rx_array_ant_pos,  # relative to ref.
-        tx_array_size=tx_array.array_size,
-        tx_array_num_ant=tx_array.num_ant,
-        tx_array_ant_pos=tx_array_ant_pos,
-        synthetic_array=synthetic_array,  # record the option used
+    rt_params_dict = {
+        "bandwidth": scene_dict["bandwidth"].numpy(),
+        "frequency": scene_dict["frequency"].numpy(),
+        "rx_array_size": rx_array.array_size,  # dual-pol if diff than num_ant
+        "rx_array_num_ant": rx_array.num_ant,
+        "rx_array_ant_pos": rx_array_ant_pos,  # relative to ref.
+        "tx_array_size": tx_array.array_size,
+        "tx_array_num_ant": tx_array.num_ant,
+        "tx_array_ant_pos": tx_array_ant_pos,
+        "synthetic_array": synthetic_array,  # record the option used
         # custom
-        raytracer_version=get_sionna_version(),
-    )
+        "raytracer_version": get_sionna_version(),
+    }
 
     if sionna_v1:
-        default_compute_paths_params = dict(  # Sionna 1.x default values
-            max_depth=3,
-            max_num_paths_per_src=1000000,
-            samples_per_src=1000000,
-            synthetic_array=True,
-            los=True,
-            specular_reflection=True,
-            diffuse_reflection=False,
-            refraction=True,
-            seed=42,
-        )
+        default_compute_paths_params = {  # Sionna 1.x default values
+            "max_depth": 3,
+            "max_num_paths_per_src": 1000000,
+            "samples_per_src": 1000000,
+            "synthetic_array": True,
+            "los": True,
+            "specular_reflection": True,
+            "diffuse_reflection": False,
+            "refraction": True,
+            "seed": 42,
+        }
     else:
-        default_compute_paths_params = dict(  # Sionna 0.x default values
-            max_depth=3,
-            method="fibonacci",
-            num_samples=1000000,
-            los=True,
-            reflection=True,
-            diffraction=False,
-            scattering=False,
-            scat_keep_prob=0.001,
-            edge_diffraction=False,
-            scat_random_phases=True,
-        )
+        default_compute_paths_params = {  # Sionna 0.x default values
+            "max_depth": 3,
+            "method": "fibonacci",
+            "num_samples": 1000000,
+            "los": True,
+            "reflection": True,
+            "diffraction": False,
+            "scattering": False,
+            "scat_keep_prob": 0.001,
+            "edge_diffraction": False,
+            "scat_random_phases": True,
+        }
 
     default_compute_paths_params.update(compute_paths_kwargs)
     raw_params = {**rt_params_dict, **default_compute_paths_params}
@@ -320,10 +321,7 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
         vertex_offset += obj_vertices.shape[0]
 
     # Convert lists to numpy arrays
-    if len(all_vertices) == 0:
-        vertice_matrix = np.zeros((0, 3))
-    else:
-        vertice_matrix = np.vstack(all_vertices)
+    vertice_matrix = np.zeros((0, 3)) if len(all_vertices) == 0 else np.vstack(all_vertices)
 
     return vertice_matrix, obj_index_map
 
@@ -333,7 +331,7 @@ def sionna_exporter(
     path_list: list[Paths] | Paths,
     my_compute_path_params: dict,
     save_folder: str,
-):
+) -> None:
     """Export a complete Sionna simulation to a format that can be converted by DeepMIMO.
 
     This function exports all necessary data from a Sionna ray tracing simulation to files
@@ -356,9 +354,12 @@ def sionna_exporter(
 
     """
     if get_sionna_version() not in SUPPORTED_SIONNA_VERSIONS:
-        raise ValueError(
+        msg = (
             f"Sionna version {get_sionna_version()} not supported. "
-            f"Supported versions: {SUPPORTED_SIONNA_VERSIONS}",
+            f"Supported versions: {SUPPORTED_SIONNA_VERSIONS}"
+        )
+        raise ValueError(
+            msg,
         )
     paths_dict_list = path_list if type(path_list[0]) == dict else export_paths(path_list)
     materials_dict_list, material_indices = export_scene_materials(scene)

@@ -7,7 +7,7 @@ import pytest
 from deepmimo.converters.wireless_insite import setup_parser
 
 
-def test_tokenize_file():
+def test_tokenize_file() -> None:
     file_content = "begin_<test>\nparam 1.0\nend_<test>\n"
     with patch("builtins.open", mock_open(read_data=file_content)):
         tokens = list(setup_parser.tokenize_file("dummy"))
@@ -20,7 +20,7 @@ def test_tokenize_file():
         assert tokens == ["begin_<test>", "\n", "end_<test>", "\n"]
 
 
-def test_node_class():
+def test_node_class() -> None:
     node = setup_parser.Node(name="test", kind="type")
     node["key"] = "value"
     assert node["key"] == "value"
@@ -29,7 +29,7 @@ def test_node_class():
         _ = node["key"]
 
 
-def test_parse_line_value():
+def test_parse_line_value() -> None:
     # Helper to create iterator
     def make_iter(lst):
         return iter(lst)
@@ -55,7 +55,7 @@ def test_parse_line_value():
     assert val == ("hello",)
 
 
-def test_parse_node():
+def test_parse_node() -> None:
     # Node with name and params
     tokens = setup_parser.peekable(
         iter(["begin_<node>", "my_node", "\n", "param", "10", "\n", "end_<node>", "\n"])
@@ -105,7 +105,7 @@ def test_parse_node():
     assert child_node["param"] == 1
 
 
-def test_parse_document():
+def test_parse_document() -> None:
     tokens = setup_parser.peekable(
         iter(
             [

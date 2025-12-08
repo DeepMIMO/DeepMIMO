@@ -55,9 +55,12 @@ def _create_colorbar(
     n_cats = len(unique_vals)
 
     if cat_labels is not None and len(cat_labels) != n_cats:
-        raise ValueError(
+        msg = (
             f"Number of category labels ({len(cat_labels)}) "
-            f"must match number of unique values ({n_cats})",
+            f"must match number of unique values ({n_cats})"
+        )
+        raise ValueError(
+            msg,
         )
 
     if n_cats < 30 or cat_labels:  # Use discrete colorbar for small number of unique values
@@ -164,7 +167,7 @@ def plot_coverage(
     n = 3 if proj_3D else 2  # n = coordinates to consider
 
     xyz_arg_names = ["x" if n == 2 else "xs", "y" if n == 2 else "ys", "zs"]
-    xyz = {s: rxs[:, i] for s, i in zip(xyz_arg_names, range(n))}
+    xyz = {s: rxs[:, i] for s, i in zip(xyz_arg_names, range(n), strict=False)}
 
     if not ax:
         _, ax = plt.subplots(
@@ -243,7 +246,7 @@ def transform_coordinates(coords, lon_max, lon_min, lat_min, lat_max):
     lons = []
     x_min, y_min = np.min(coords, axis=0)[:2]
     x_max, y_max = np.max(coords, axis=0)[:2]
-    for x, y in zip(coords[:, 0], coords[:, 1]):
+    for x, y in zip(coords[:, 0], coords[:, 1], strict=False):
         lons += [lon_min + ((x - x_min) / (x_max - x_min)) * (lon_max - lon_min)]
         lats += [lat_min + ((y - y_min) / (y_max - y_min)) * (lat_max - lat_min)]
     return lats, lons
@@ -312,7 +315,7 @@ def export_xyz_csv(
         # Write the header
         writer.writerow(data_dict.keys())
         # Write the data rows
-        writer.writerows(zip(*data_dict.values()))
+        writer.writerows(zip(*data_dict.values(), strict=False))
 
 
 def plot_rays(
@@ -385,11 +388,11 @@ def plot_rays(
     n_valid_paths = np.sum(~np.isnan(inter))
 
     # Define dimension-specific plotting functions
-    def plot_line(start_point, end_point, **kwargs):
+    def plot_line(start_point, end_point, **kwargs) -> None:
         coords = [(start_point[i], end_point[i]) for i in range(3 if proj_3D else 2)]
         ax.plot(*coords, **kwargs)
 
-    def plot_point(point, **kwargs):
+    def plot_point(point, **kwargs) -> None:
         coords = point[:3] if proj_3D else point[:2]
         ax.scatter(*coords, **kwargs)
 
@@ -421,7 +424,8 @@ def plot_rays(
     # Setup power-based coloring if enabled
     if color_rays_by_pwr:
         if powers is None:
-            raise ValueError("Powers must be provided when color_rays_by_pwr is True")
+            msg = "Powers must be provided when color_rays_by_pwr is True"
+            raise ValueError(msg)
 
         # Create colormap for power-based coloring
         cmap = plt.get_cmap("jet")
@@ -464,16 +468,13 @@ def plot_rays(
         is_los = len(path_interactions) == 0
 
         # Determine ray color and style
-        if color_rays_by_pwr:
-            ray_color = cmap(norm(powers[path_idx]))
-        else:
-            ray_color = "g" if is_los else "r"
-        ray_plt_args = dict(
-            color=ray_color,
-            alpha=1 if is_los else 0.5,
-            zorder=2 if is_los else 1,
-            linewidth=2 if is_los else 1,
-        )
+        ray_color = cmap(norm(powers[path_idx])) if color_rays_by_pwr else "g" if is_los else "r"
+        ray_plt_args = {
+            "color": ray_color,
+            "alpha": 1 if is_los else 0.5,
+            "zorder": 2 if is_los else 1,
+            "linewidth": 2 if is_los else 1,
+        }
 
         if is_los:
             plot_line(
@@ -519,7 +520,7 @@ def plot_rays(
     if color_by_type or inter_objects is not None:
         # Remove duplicate labels
         handles, labels = ax.get_legend_handles_labels()
-        by_label = dict(zip(labels, handles))
+        by_label = dict(zip(labels, handles, strict=False))
         legend = ax.legend(by_label.values(), by_label.keys())
     else:
         legend = ax.legend()
@@ -558,8 +559,9 @@ def plot_power_discarding(dataset, trim_delay: float | None = None) -> tuple[Fig
     # Get the trim delay - either provided or from OFDM parameters
     if trim_delay is None:
         if not hasattr(dataset, "channel_params"):
+            msg = "Dataset has no channel parameters. Please provide trim_delay explicitly."
             raise ValueError(
-                "Dataset has no channel parameters. Please provide trim_delay explicitly.",
+                msg,
             )
         trim_delay = dataset.channel_params.ofdm.subcarriers / dataset.channel_params.ofdm.bandwidth
 

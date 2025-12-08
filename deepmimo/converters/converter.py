@@ -11,7 +11,8 @@ from collections.abc import Callable
 from typing import Any
 
 # Local imports
-from .. import consts as c
+from deepmimo import consts as c
+
 from . import converter_utils as cu
 from .aodt.aodt_converter import aodt_rt_converter
 from .sionna_rt.sionna_converter import sionna_rt_converter

@@ -16,9 +16,10 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from ...config import config
-from ...consts import RAYTRACER_NAME_AODT
-from ...rt_params import RayTracingParameters
+from deepmimo.config import config
+from deepmimo.consts import RAYTRACER_NAME_AODT
+from deepmimo.rt_params import RayTracingParameters
+
 from .safe_import import pd
 
 
@@ -83,11 +84,13 @@ class AODTRayTracingParameters(RayTracingParameters):
         # Load scenario parameters
         scenario_file = os.path.join(rt_folder, "scenario.parquet")
         if not os.path.exists(scenario_file):
-            raise FileNotFoundError(f"scenario.parquet not found in {rt_folder}")
+            msg = f"scenario.parquet not found in {rt_folder}"
+            raise FileNotFoundError(msg)
 
         df = pd.read_parquet(scenario_file)
         if len(df) == 0:
-            raise ValueError("scenario.parquet is empty")
+            msg = "scenario.parquet is empty"
+            raise ValueError(msg)
 
         # Get first row since parameters are the same for all rows
         params = df.iloc[0]

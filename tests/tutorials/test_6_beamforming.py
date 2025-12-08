@@ -6,6 +6,6 @@ from .conftest import run_tutorial
 
 
 @pytest.mark.tutorial
-def test_beamforming():
+def test_beamforming() -> None:
     """Test that the beamforming tutorial runs without errors."""
     run_tutorial("6_beamforming.py")

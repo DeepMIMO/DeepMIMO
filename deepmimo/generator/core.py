@@ -18,11 +18,11 @@ from typing import Any
 import numpy as np
 
 # Local imports
-from .. import consts as c
+from deepmimo import consts as c
 
 # Scenario management
-from ..api import download
-from ..general_utils import (
+from deepmimo.api import download
+from deepmimo.general_utils import (
     DotDict,
     get_mat_filename,
     get_params_path,
@@ -30,8 +30,8 @@ from ..general_utils import (
     load_dict_from_json,
     load_mat,
 )
-from ..materials import MaterialList
-from ..scene import Scene
+from deepmimo.materials import MaterialList
+from deepmimo.scene import Scene
 
 # Channel generation
 from .channel import ChannelParameters
@@ -41,9 +41,9 @@ from .dataset import Dataset, DynamicDataset, MacroDataset
 def generate(
     scen_name: str,
     *,
-    load_params: dict[str, Any] = {},
-    trim_params: dict[str, Any] = {},
-    ch_params: dict[str, Any] = {},
+    load_params: dict[str, Any] | None = None,
+    trim_params: dict[str, Any] | None = None,
+    ch_params: dict[str, Any] | None = None,
 ) -> Dataset | MacroDataset | DynamicDataset:
     """Generate a DeepMIMO dataset for a given scenario.
 
@@ -69,6 +69,12 @@ def generate(
         ValueError: If scenario name is invalid or required files are missing
 
     """
+    if ch_params is None:
+        ch_params = {}
+    if trim_params is None:
+        trim_params = {}
+    if load_params is None:
+        load_params = {}
     dataset = load(scen_name, **load_params)
 
     if trim_params:
@@ -135,7 +141,8 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
         if response in ["", "y", "yes"]:
             download(scen_name)
         else:
-            raise ValueError(f"Scenario {scen_name} not found")
+            msg = f"Scenario {scen_name} not found"
+            raise ValueError(msg)
 
     # Load parameters file
     params_file = get_params_path(scen_name)
@@ -302,7 +309,8 @@ def _load_tx_rx_raydata(
         valid_matrices = set(tx_dict.keys())
         invalid = set(matrices_to_load) - valid_matrices
         if invalid:
-            raise ValueError(f"Invalid matrix names: {invalid}. Valid names are: {valid_matrices}")
+            msg = f"Invalid matrix names: {invalid}. Valid names are: {valid_matrices}"
+            raise ValueError(msg)
 
     for key in tx_dict:
         if key not in matrices_to_load:
@@ -387,9 +395,11 @@ def _validate_txrx_sets(
                 if idxs == "all":
                     sets[set_id] = all_idxs_available
                 else:
-                    raise Exception(f"String '{idxs}' not recognized for tx/rx indices ")
+                    msg = f"String '{idxs}' not recognized for tx/rx indices "
+                    raise Exception(msg)
             else:
-                raise Exception("Only <list> of <np.ndarray> allowed as tx/rx indices")
+                msg = "Only <list> of <np.ndarray> allowed as tx/rx indices"
+                raise Exception(msg)
 
             # check that the specific tx/rx indices inside the sets are valid
             if not set(sets[set_id]).issubset(set(all_idxs_available.tolist())):
@@ -410,10 +420,13 @@ def _validate_txrx_sets(
             sets_dict[set_id] = np.arange(txrx_dict[f"txrx_set_{set_id}"]["num_points"])
     elif type(sets) is str:
         if sets not in ["all", "rx_only"]:
-            raise Exception(
+            msg = (
                 f"String '{sets}' not understood. Only strings allowed "
                 "are 'all' to generate all available sets and indices, "
-                "or 'rx_only' to generate all available rx sets and indices",
+                "or 'rx_only' to generate all available rx sets and indices"
+            )
+            raise Exception(
+                msg,
             )
 
         # Generate dict with all sets and indices available

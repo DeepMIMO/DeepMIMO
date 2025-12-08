@@ -64,7 +64,7 @@ def mock_paths():
 
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
 @patch("deepmimo.exporters.sionna_exporter._paths_to_dict")
-def test_export_paths(mock_p2d, mock_v1, mock_paths):
+def test_export_paths(mock_p2d, mock_v1, mock_paths) -> None:
     mock_v1.return_value = False
     # Setup _paths_to_dict return
     mock_p2d.return_value = {
@@ -87,7 +87,7 @@ def test_export_paths(mock_p2d, mock_v1, mock_paths):
 
 
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
-def test_export_scene_materials(mock_v1, mock_scene):
+def test_export_scene_materials(mock_v1, mock_scene) -> None:
     mock_v1.return_value = False
     # Create mock material
     mat = MagicMock()
@@ -110,7 +110,7 @@ def test_export_scene_materials(mock_v1, mock_scene):
 
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
 @patch("deepmimo.exporters.sionna_exporter.get_sionna_version")
-def test_export_scene_rt_params(mock_ver, mock_v1, mock_scene):
+def test_export_scene_rt_params(mock_ver, mock_v1, mock_scene) -> None:
     mock_v1.return_value = False
     mock_ver.return_value = "0.19.1"
     # Mock _scene_to_dict via patch or setting attributes on mock_scene
@@ -132,7 +132,7 @@ def test_export_scene_rt_params(mock_ver, mock_v1, mock_scene):
 @patch("deepmimo.exporters.sionna_exporter.save_pickle")
 @patch("os.makedirs")
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
-def test_sionna_exporter_flow(mock_v1, mock_makedirs, mock_save, mock_ver, mock_scene, mock_paths):
+def test_sionna_exporter_flow(mock_v1, mock_makedirs, mock_save, mock_ver, mock_scene, mock_paths) -> None:
     mock_v1.return_value = False
     mock_ver.return_value = "0.19.1"
     with (

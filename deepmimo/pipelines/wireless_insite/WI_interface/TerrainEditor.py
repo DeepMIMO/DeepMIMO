@@ -63,14 +63,14 @@ class TerrainEditor:
         v4 = np.asarray([xmin, ymax, z])
 
         # First triangle (v1, v2, v3)
-        self.file[40] = "%.10f %.10f %.10f\n" % (v1[0], v1[1], v1[2])
-        self.file[41] = "%.10f %.10f %.10f\n" % (v2[0], v2[1], v2[2])
-        self.file[42] = "%.10f %.10f %.10f\n" % (v3[0], v3[1], v3[2])
+        self.file[40] = f"{v1[0]:.10f} {v1[1]:.10f} {v1[2]:.10f}\n"
+        self.file[41] = f"{v2[0]:.10f} {v2[1]:.10f} {v2[2]:.10f}\n"
+        self.file[42] = f"{v3[0]:.10f} {v3[1]:.10f} {v3[2]:.10f}\n"
 
         # Second triangle (v4, v1, v3)
-        self.file[47] = "%.10f %.10f %.10f\n" % (v4[0], v4[1], v4[2])
-        self.file[48] = "%.10f %.10f %.10f\n" % (v1[0], v1[1], v1[2])
-        self.file[49] = "%.10f %.10f %.10f\n" % (v3[0], v3[1], v3[2])
+        self.file[47] = f"{v4[0]:.10f} {v4[1]:.10f} {v4[2]:.10f}\n"
+        self.file[48] = f"{v1[0]:.10f} {v1[1]:.10f} {v1[2]:.10f}\n"
+        self.file[49] = f"{v3[0]:.10f} {v3[1]:.10f} {v3[2]:.10f}\n"
 
     def set_material(self, material_path: str) -> None:
         """Set the material properties for the terrain.
@@ -95,11 +95,11 @@ class TerrainEditor:
         self.file = self.file[:start] + self.material_file + self.file[end + 1 :]
 
         # Replace 'none' by 'directive_with_backscatter' in 'diffuse_scattering_model'
-        idx_to_replace = [
+        idx_to_replace = next(
             line_idx
             for line_idx, line in enumerate(self.file)
             if line == "diffuse_scattering_model none\n"
-        ][0]
+        )
         self.file[idx_to_replace] = "diffuse_scattering_model directive_with_backscatter\n"
 
     def save(self, outfile_path: str) -> None:

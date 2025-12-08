@@ -20,7 +20,7 @@ def test_aodt_rt_converter(
     mock_read_paths,
     mock_read_txrx,
     mock_read_params,
-):
+) -> None:
     mock_cu.check_scenario_exists.return_value = True
     mock_read_params.return_value = {}
     mock_read_txrx.return_value = {}

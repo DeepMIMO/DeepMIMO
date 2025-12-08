@@ -8,7 +8,7 @@ import pytest
 from deepmimo.generator.array_wrapper import DeepMIMOArray
 
 
-def test_array_creation():
+def test_array_creation() -> None:
     """Test creation of DeepMIMOArray."""
     mock_dataset = MagicMock()
     data = np.array([1, 2, 3])
@@ -22,7 +22,7 @@ def test_array_creation():
     assert dm_array.name == "test_array"
 
 
-def test_array_slicing():
+def test_array_slicing() -> None:
     """Test that slicing preserves metadata."""
     mock_dataset = MagicMock()
     data = np.array([1, 2, 3, 4])
@@ -36,7 +36,7 @@ def test_array_slicing():
     assert sliced.name == "test_array"
 
 
-def test_plot_1d():
+def test_plot_1d() -> None:
     """Test plotting 1D array."""
     mock_dataset = MagicMock()
     data = np.array([1, 2, 3])
@@ -50,7 +50,7 @@ def test_plot_1d():
     assert kwargs["cbar_title"] == "Power (dBW)"
 
 
-def test_plot_2d():
+def test_plot_2d() -> None:
     """Test plotting 2D array."""
     mock_dataset = MagicMock()
     data = np.array([[1, 2], [3, 4]])  # [2, 2]
@@ -65,7 +65,7 @@ def test_plot_2d():
     assert kwargs["cbar_title"] == "Phase (deg)"
 
 
-def test_plot_3d():
+def test_plot_3d() -> None:
     """Test plotting 3D array."""
     mock_dataset = MagicMock()
     data = np.zeros((2, 2, 2))
@@ -80,7 +80,7 @@ def test_plot_3d():
     assert "cbar_title" not in kwargs  # Custom name has no default title
 
 
-def test_plot_invalid_dim():
+def test_plot_invalid_dim() -> None:
     """Test plotting with invalid dimensions."""
     mock_dataset = MagicMock()
     data = np.zeros((2, 2, 2, 2))

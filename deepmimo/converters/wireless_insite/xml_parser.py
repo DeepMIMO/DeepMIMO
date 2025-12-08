@@ -1,6 +1,5 @@
 # %%
 import xml.etree.ElementTree as ET
-from pprint import pprint
 from typing import Any
 
 # InSite XML type constants
@@ -12,7 +11,7 @@ I_POLARIZATION = "remcom_rxapi_PolarizationEnum"
 
 
 def xml_to_dict(element: ET.Element) -> dict[str, Any] | str | None:
-    """Convert XML to a dictionary structure"""
+    """Convert XML to a dictionary structure."""
     result: dict[str, Any] = {}
 
     # Add attributes if any
@@ -56,7 +55,7 @@ def xml_to_dict(element: ET.Element) -> dict[str, Any] | str | None:
 
 
 def parse_insite_xml(xml_file: str) -> dict[str, Any]:
-    """Parse InSite XML file into a dictionary"""
+    """Parse InSite XML file into a dictionary."""
     # Read and clean the XML content
     with open(xml_file, encoding="utf-8") as f:
         content = f.read()
@@ -81,7 +80,8 @@ def _get_ray_tracing_params(xml_file: str) -> dict[str, Any]:
         Dictionary of ray tracing parameters
 
     """
-    raise NotImplementedError("Not implemented yet")
+    msg = "Not implemented yet"
+    raise NotImplementedError(msg)
     # The .setup seems to work better, but the .xml is more complete.
     # So we should use the .setup file to get the parameters, and the .xml
     # file to get the txrx data. For now, we'll keep it like that (changes in beta.)
@@ -151,7 +151,6 @@ if __name__ == "__main__":
 
     # Parse XML and get TxRxSets
     data = parse_insite_xml(xml_file)
-    pprint(data)
 
     # Get ray tracing parameters
     # rt_params = _get_ray_tracing_params(xml_file)

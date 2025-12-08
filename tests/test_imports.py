@@ -54,7 +54,7 @@ MODULES = [
 
 
 @pytest.mark.parametrize("module_name", MODULES)
-def test_import_module(module_name: str):
+def test_import_module(module_name: str) -> None:
     try:
         importlib.import_module(module_name)
     except ImportError as e:

@@ -10,9 +10,10 @@ from typing import Any
 
 import numpy as np
 
-from ... import consts as c
-from ... import general_utils as gu
-from .. import converter_utils as cu
+from deepmimo import consts as c
+from deepmimo import general_utils as gu
+from deepmimo.converters import converter_utils as cu
+
 from . import aodt_utils as au
 from .safe_import import pd
 
@@ -92,7 +93,7 @@ def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> dict:
         data: Dictionary containing pre-allocated data
 
     """
-    data = {
+    return {
         c.RX_POS_PARAM_NAME: np.zeros((n_rx, 3), dtype=c.FP_TYPE),
         c.TX_POS_PARAM_NAME: np.zeros((1, 3), dtype=c.FP_TYPE),
         c.AOA_AZ_PARAM_NAME: np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
@@ -110,7 +111,6 @@ def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> dict:
         * np.nan,
     }
 
-    return data
 
 
 def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) -> None:
@@ -131,13 +131,15 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
     cirs_file = os.path.join(rt_folder, "cirs.parquet")
 
     if not os.path.exists(paths_file) or not os.path.exists(cirs_file):
-        raise FileNotFoundError("Both raypaths.parquet and cirs.parquet are required")
+        msg = "Both raypaths.parquet and cirs.parquet are required"
+        raise FileNotFoundError(msg)
 
     paths_df = pd.read_parquet(paths_file)
     cirs_df = pd.read_parquet(cirs_file)
 
     if len(paths_df) == 0 or len(cirs_df) == 0:
-        raise ValueError("Empty parquet files")
+        msg = "Empty parquet files"
+        raise ValueError(msg)
 
     # Create output folder
     os.makedirs(output_folder, exist_ok=True)
@@ -260,6 +262,6 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
         data = cu.compress_path_data(data)
 
         # Save data for all UEs of this RU
-        for key in data.keys():
+        for key in data:
             mat_filename = gu.get_mat_filename(key, tx_set_id, tx_idx, rx_set_id)
             gu.save_mat(data[key], key, os.path.join(output_folder, mat_filename))

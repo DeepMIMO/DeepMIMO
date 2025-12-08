@@ -121,7 +121,7 @@ def summary(scen_name: str, print_summary: bool = True) -> str | None:
     # Materials
     summary_str += "\n[Materials]\n"
     summary_str += f"Total materials: {len(material_params)}\n"
-    for _, mat_props in material_params.items():
+    for mat_props in material_params.values():
         summary_str += f"\n{mat_props[c.MATERIALS_PARAM_NAME_FIELD]}:\n"
         summary_str += f"- Permittivity: {mat_props[c.MATERIALS_PARAM_PERMITTIVITY]:.2f}\n"
         summary_str += f"- Conductivity: {mat_props[c.MATERIALS_PARAM_CONDUCTIVITY]:.2f} S/m\n"
@@ -208,7 +208,8 @@ def plot_summary(
     # Load the dataset
     if dataset is None:
         if scenario_name is None:
-            raise ValueError("Scenario name is required when dataset is not provided")
+            msg = "Scenario name is required when dataset is not provided"
+            raise ValueError(msg)
         dataset = load(scenario_name)
 
     # Image paths
@@ -241,7 +242,7 @@ def plot_summary(
             img2_path = os.path.join(temp_dir, f"scenario_summary_{timestamp:016d}.png")
             txrx_sets = dataset.txrx_sets
 
-            tx_set = [s for s in txrx_sets if s.is_tx][0]
+            tx_set = next(s for s in txrx_sets if s.is_tx)
             n_bs = tx_set.num_points
             ax = dataset.scene.plot(title=False, proj_3D=False)
             bs_colors = ["red", "blue", "green", "yellow", "purple", "orange"]
@@ -267,7 +268,7 @@ def plot_summary(
 
             # Get txrx pair index from the first receiver-only txrx (which is like a rx grid)
             if isinstance(dataset.txrx, list):
-                rx_set_id = [s for s in txrx_sets if s.is_rx and not s.is_tx][0].id
+                rx_set_id = next(s for s in txrx_sets if s.is_rx and not s.is_tx).id
                 first_pair_with_rx_grid = next(
                     txrx_pair_idx
                     for txrx_pair_idx, txrx_dict in enumerate(dataset.txrx)
@@ -315,7 +316,7 @@ def plot_summary(
                 **legend_args,
             )
             l2.set_zorder(1e9)
-            for handle, text in zip(l2.legend_handles, l2.get_texts()):
+            for handle, text in zip(l2.legend_handles, l2.get_texts(), strict=False):
                 if text.get_text() == "users":  # Match by label
                     handle.set_sizes([100])  # marker area (not radius)
 

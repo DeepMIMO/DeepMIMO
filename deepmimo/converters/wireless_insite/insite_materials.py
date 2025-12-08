@@ -16,9 +16,8 @@ and DeepMIMO's standardized material representation.
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from pprint import pprint
 
-from ...materials import Material, MaterialList  # Base material classes
+from deepmimo.materials import Material, MaterialList  # Base material classes
 
 # Local imports
 from .setup_parser import parse_file  # For parsing Wireless InSite setup-like files
@@ -174,7 +173,7 @@ def parse_materials_from_file(file: Path) -> list[Material]:
     document = parse_file(file)
     materials = []
 
-    for prim in document.keys():
+    for prim in document:
         mat_entries = document[prim].values["Material"]
         mat_entries = [mat_entries] if not isinstance(mat_entries, list) else mat_entries
 
@@ -227,7 +226,8 @@ def read_materials(sim_folder: str, verbose: bool = False) -> dict:
     """
     sim_folder = Path(sim_folder)
     if not sim_folder.exists():
-        raise ValueError(f"Simulation folder does not exist: {sim_folder}")
+        msg = f"Simulation folder does not exist: {sim_folder}"
+        raise ValueError(msg)
 
     # Initialize material list
     material_list = MaterialList()
@@ -238,7 +238,8 @@ def read_materials(sim_folder: str, verbose: bool = False) -> dict:
         material_files.extend(sim_folder.glob(f"*{ext}"))
 
     if not material_files:
-        raise ValueError(f"No material files found in {sim_folder}")
+        msg = f"No material files found in {sim_folder}"
+        raise ValueError(msg)
 
     # Parse materials from each file
     for file in material_files:
@@ -248,7 +249,6 @@ def read_materials(sim_folder: str, verbose: bool = False) -> dict:
 
     if verbose:
         print("\nMaterial list:")
-        pprint(material_list.to_dict())
 
     return material_list.to_dict()
 

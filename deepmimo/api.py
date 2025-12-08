@@ -78,7 +78,7 @@ IMAGE_SIZE_LIMIT = 10 * 1024**2  # Image size limit: 10MB
 class _ProgressFileReader:
     """Progress file reader for uploading files to the DeepMIMO API."""
 
-    def __init__(self, file_path, progress_bar):
+    def __init__(self, file_path, progress_bar) -> None:
         self.file_path = file_path
         self.progress_bar = progress_bar
         self.file_object = open(file_path, "rb")
@@ -92,7 +92,7 @@ class _ProgressFileReader:
         self.progress_bar.refresh()
         return data
 
-    def close(self):
+    def close(self) -> None:
         self.file_object.close()
 
 
@@ -516,11 +516,11 @@ def _upload_to_db(scen_folder: str, key: str, skip_zip: bool = False) -> str:
 
     if not upload_result:
         print("Error: Failed to upload to the database")
-        raise RuntimeError("Failed to upload to the database")
+        msg = "Failed to upload to the database"
+        raise RuntimeError(msg)
     print("✓ Upload successful")
 
-    submission_scenario_name = upload_result.split(".")[0].split("/")[-1].split("\\")[-1]
-    return submission_scenario_name
+    return upload_result.split(".")[0].split("/")[-1].split("\\")[-1]
 
 
 def _make_submission_on_server(
@@ -540,7 +540,8 @@ def _make_submission_on_server(
         )
     except Exception as e:
         print("Error: Failed to process parameters and generate key components")
-        raise RuntimeError(f"Failed to process parameters and generate key components - {e!s}")
+        msg = f"Failed to process parameters and generate key components - {e!s}"
+        raise RuntimeError(msg)
 
     submission_data = {
         "title": submission_scenario_name,
@@ -572,7 +573,8 @@ def _make_submission_on_server(
     except Exception as e:
         print(f"Error: Failed to create submission for {submission_scenario_name}")
         print(json.loads(response.text)["error"])
-        raise RuntimeError(f"Failed to create submission - {e!s}")
+        msg = f"Failed to create submission - {e!s}"
+        raise RuntimeError(msg)
 
     # Generate and upload images if requested
     if include_images:
@@ -657,7 +659,8 @@ def upload(
         print("✓ Parameters parsed successfully")
     except Exception as e:
         print("Error: Failed to parse parameters")
-        raise RuntimeError(f"Failed to parse parameters - {e!s}")
+        msg = f"Failed to parse parameters - {e!s}"
+        raise RuntimeError(msg)
 
     if not submission_only:
         submission_scenario_name = _upload_to_db(scen_folder, key, skip_zip)

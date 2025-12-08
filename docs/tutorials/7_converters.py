@@ -1,4 +1,4 @@
-"""# Convert & Upload Ray-tracing Dataset
+"""# Convert & Upload Ray-tracing Dataset.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/7_converters.py)
 &nbsp;

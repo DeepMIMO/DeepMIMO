@@ -14,7 +14,7 @@ calculations in MIMO channel generation.
 import numpy as np
 
 # Local imports
-from .. import consts as c
+from deepmimo import consts as c
 
 
 def _pattern_isotropic(theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
@@ -121,12 +121,14 @@ class AntennaPattern:
 
         """
         if pattern not in c.PARAMSET_ANT_RAD_PAT_VALS:
+            msg = f"The given '{pattern}' antenna radiation pattern is not applicable for {pattern_type}."
             raise NotImplementedError(
-                f"The given '{pattern}' antenna radiation pattern is not applicable for {pattern_type}.",
+                msg,
             )
         if pattern not in PATTERN_REGISTRY:
+            msg = f"The pattern '{pattern}' is defined but not implemented for {pattern_type}."
             raise NotImplementedError(
-                f"The pattern '{pattern}' is defined but not implemented for {pattern_type}.",
+                msg,
             )
         return PATTERN_REGISTRY[pattern]
 

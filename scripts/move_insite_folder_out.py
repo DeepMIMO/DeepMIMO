@@ -3,7 +3,7 @@ import os
 import shutil
 
 
-def move_insite_folder_out(folder, safe_mode=True):
+def move_insite_folder_out(folder, safe_mode=True) -> None:
     insite_path = os.path.join(folder, "insite")
 
     if os.path.isdir(insite_path):

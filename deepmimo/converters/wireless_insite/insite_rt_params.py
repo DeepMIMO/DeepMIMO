@@ -13,15 +13,16 @@ and DeepMIMO's standardized ray tracing parameters.
 """
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-from pprint import pprint
 
 import numpy as np
 
-from ...config import config
-from ...consts import BBOX_PAD, RAYTRACER_NAME_WIRELESS_INSITE
-from ...rt_params import RayTracingParameters
+from deepmimo.config import config
+from deepmimo.consts import BBOX_PAD, RAYTRACER_NAME_WIRELESS_INSITE
+from deepmimo.rt_params import RayTracingParameters
+
 from .setup_parser import parse_file
 
 
@@ -136,21 +137,24 @@ class InsiteRayTracingParameters(RayTracingParameters):
         """
         sim_folder = Path(sim_folder)
         if not sim_folder.exists():
-            raise ValueError(f"Simulation folder does not exist: {sim_folder}")
+            msg = f"Simulation folder does not exist: {sim_folder}"
+            raise ValueError(msg)
 
         # Find .setup file
         setup_files = list(sim_folder.glob("*.setup"))
         if not setup_files:
-            raise ValueError(f"No .setup file found in {sim_folder}")
+            msg = f"No .setup file found in {sim_folder}"
+            raise ValueError(msg)
         if len(setup_files) > 1:
-            raise ValueError(f"Multiple .setup files found in {sim_folder}")
+            msg = f"Multiple .setup files found in {sim_folder}"
+            raise ValueError(msg)
 
         # Parse setup file
         setup_file = str(setup_files[0])
         document = parse_file(setup_file)
 
         # Select study area
-        prim = list(document.keys())[0]
+        prim = next(iter(document.keys()))
 
         prim_vals = document[prim].values
         antenna_vals = prim_vals["antenna"].values
@@ -165,7 +169,7 @@ class InsiteRayTracingParameters(RayTracingParameters):
         model_vals["terrain_diffractions"] = model_vals.get("terrain_diffractions", "No")
 
         # Diffractions
-        if "max_wedge_diffractions" in model_vals.keys():
+        if "max_wedge_diffractions" in model_vals:
             pass  # all good, information present
         else:
             default_diffractions = diffuse_scat_vals.get("diffuse_diffractions", 0)
@@ -278,7 +282,7 @@ if __name__ == "__main__":
 
     if not setup_file:
         print(f"No .setup file found in {test_dir}")
-        exit(1)
+        sys.exit(1)
 
     print(f"\nTesting setup extraction from: {setup_file}")
     print("-" * 50)
@@ -287,4 +291,3 @@ if __name__ == "__main__":
     setup_dict = InsiteRayTracingParameters.read_rt_params(setup_file)
 
     # Filter out raw_params to keep output cleaner
-    pprint(setup_dict, sort_dicts=True, width=80)

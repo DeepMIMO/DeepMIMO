@@ -4,7 +4,7 @@ from deepmimo.converters.aodt import aodt_materials
 from deepmimo.materials import Material
 
 
-def test_aodt_material_conversion():
+def test_aodt_material_conversion() -> None:
     aodt_mat = aodt_materials.AODTMaterial(
         id=0,
         label="Brick",
@@ -30,7 +30,7 @@ def test_aodt_material_conversion():
 
 @patch("deepmimo.converters.aodt.aodt_materials.pd")
 @patch("os.path.exists")
-def test_read_materials(mock_exists, mock_pd):
+def test_read_materials(mock_exists, mock_pd) -> None:
     mock_exists.return_value = True
 
     # Mock DataFrame

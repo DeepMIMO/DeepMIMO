@@ -28,12 +28,12 @@ Main Entry Point:
 # Standard library imports
 import os
 import shutil
-from pprint import pprint
 
-from ... import consts as c
+from deepmimo import consts as c
 
 # Local imports
-from .. import converter_utils as cu
+from deepmimo.converters import converter_utils as cu
+
 from .insite_materials import read_materials
 from .insite_paths import read_paths
 from .insite_rt_params import read_rt_params
@@ -42,7 +42,7 @@ from .insite_txrx import read_txrx
 
 # Constants
 MATERIAL_FILES = [".city", ".ter", ".veg"]
-SETUP_FILES = [".setup", ".txrx"] + MATERIAL_FILES
+SETUP_FILES = [".setup", ".txrx", *MATERIAL_FILES]
 SOURCE_EXTS = SETUP_FILES + [".kmz"]  # Files to copy to ray tracing source zip
 
 
@@ -132,7 +132,7 @@ def insite_rt_converter(
     cu.save_params(params, temp_folder)
 
     if print_params:
-        pprint(params)
+        pass
 
     # Save (move) scenario to deepmimo scenarios folder
     cu.save_scenario(temp_folder, scenarios_folder)

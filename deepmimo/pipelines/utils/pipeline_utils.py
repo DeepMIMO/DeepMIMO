@@ -78,9 +78,12 @@ def get_origin_coords(osm_folder: str) -> tuple[float, float]:
     origin_file = os.path.join(osm_folder, "osm_gps_origin.txt")
     # Check if the file exists
     if not os.path.exists(origin_file):
-        raise FileNotFoundError(
+        msg = (
             f"❌ Origin coordinates file not found at {origin_file}\n"
-            "Ensure that Blender has been run successfully.",
+            "Ensure that Blender has been run successfully."
+        )
+        raise FileNotFoundError(
+            msg,
         )
 
     with open(origin_file) as f:
@@ -93,7 +96,7 @@ def _split_coords(x: str) -> np.ndarray:
     return np.array(x.split(",") if type(x) == str else [x]).astype(np.float32)
 
 
-def load_params_from_row(row, params_dict):
+def load_params_from_row(row, params_dict) -> None:
     """Load parameters from a DataFrame row into a parameters dictionary.
 
     Args:
@@ -102,7 +105,7 @@ def load_params_from_row(row, params_dict):
 
     """
     # Update parameters that exist in both the row and params dict
-    for key in params_dict.keys():
+    for key in params_dict:
         if key in row.index:
             params_dict[key] = row[key]
 
@@ -225,7 +228,8 @@ def validate_and_adjust_point(
 
         return lat, lon, default_height, False
 
-    raise ValueError(f"Unknown placement strategy: {placement}")
+    msg = f"Unknown placement strategy: {placement}"
+    raise ValueError(msg)
 
 
 def generate_uniform_positions(
@@ -298,8 +302,9 @@ def generate_uniform_positions(
         )
 
     else:
+        msg = f"Number of BSs {num_bs} not supported. Maximum number of BSs is 4."
         raise NotImplementedError(
-            f"Number of BSs {num_bs} not supported. Maximum number of BSs is 4.",
+            msg,
         )
 
     return positions
@@ -382,7 +387,7 @@ def generate_bs_positions(
 ###############################################################################
 
 
-def plot_scenario(bbox_info: dict[str, str]):
+def plot_scenario(bbox_info: dict[str, str]) -> None:
     """Plot the bounding box and BS positions for a CSV scenario.
 
     Args:

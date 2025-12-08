@@ -6,7 +6,7 @@ from deepmimo.converters.aodt import aodt_rt_params
 
 
 @patch("deepmimo.converters.aodt.aodt_rt_params.pd")
-def test_read_rt_params(mock_pd):
+def test_read_rt_params(mock_pd) -> None:
     # Mock db_info DataFrame
     mock_df = MagicMock()
     mock_df.__len__.return_value = 1  # Fix empty check

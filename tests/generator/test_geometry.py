@@ -27,7 +27,7 @@ from deepmimo.generator.geometry import (
 )
 
 
-def test_array_response_batch_matches_single():
+def test_array_response_batch_matches_single() -> None:
     # Parameters
     panel_size = (4, 2)  # 8 antennas
     kd = 2 * np.pi * 0.5
@@ -66,7 +66,7 @@ def test_array_response_batch_matches_single():
     np.testing.assert_allclose(batch_responses, single_responses, rtol=1e-10, atol=1e-12)
 
 
-def test_array_response_batch_edge_cases():
+def test_array_response_batch_edge_cases() -> None:
     panel_size = (2, 2)
     kd = 2 * np.pi * 0.5
     ant_ind = ant_indices(panel_size)
@@ -101,14 +101,14 @@ def test_array_response_batch_edge_cases():
 
 
 @pytest.mark.parametrize(
-    "fov_deg,theta_rad,phi_rad,expected",
+    ("fov_deg", "theta_rad", "phi_rad", "expected"),
     [
         ((360.0, 180.0), np.pi / 4, np.pi / 2, True),
         ((180.0, 90.0), np.pi / 2, 0.0, True),
         ((60.0, 30.0), np.pi / 2, np.pi, False),
     ],
 )
-def test_apply_fov_single_vs_batch(fov_deg, theta_rad, phi_rad, expected):
+def test_apply_fov_single_vs_batch(fov_deg, theta_rad, phi_rad, expected) -> None:
     mask_single = apply_FoV(fov=fov_deg, theta=theta_rad, phi=phi_rad)
     mask_batch = apply_FoV_batch(
         fov=fov_deg, theta=np.array([[theta_rad]]), phi=np.array([[phi_rad]])
@@ -116,7 +116,7 @@ def test_apply_fov_single_vs_batch(fov_deg, theta_rad, phi_rad, expected):
     assert bool(mask_single) == bool(mask_batch[0, 0]) == expected
 
 
-def test_apply_fov_batch_equivalence_random():
+def test_apply_fov_batch_equivalence_random() -> None:
     rng = np.random.default_rng(0)
     n_users, n_paths = 50, 7
     theta = rng.uniform(0, np.pi, (n_users, n_paths))
@@ -133,7 +133,7 @@ def test_apply_fov_batch_equivalence_random():
     np.testing.assert_array_equal(mask_single, mask_batch)
 
 
-def test_rotate_angles_zero_rotation():
+def test_rotate_angles_zero_rotation() -> None:
     theta_single = np.array([45.0])  # degrees
     phi_single = np.array([90.0])  # degrees
     rotation_zero = np.array([0.0, 0.0, 0.0])  # degrees
@@ -150,7 +150,7 @@ def test_rotate_angles_zero_rotation():
     assert np.isclose(phi_orig, phi_batch[0])
 
 
-def test_rotate_angles_batch_equivalence():
+def test_rotate_angles_batch_equivalence() -> None:
     rng = np.random.default_rng(1)
     n_users, n_paths = 20, 4
     theta = rng.uniform(0, 180, (n_users, n_paths))  # degrees
@@ -181,17 +181,17 @@ def test_rotate_angles_batch_equivalence():
     np.testing.assert_allclose(phi_rot_3, phi_rot_4, rtol=1e-12, atol=1e-12)
 
 
-def test_steering_vec_properties():
+def test_steering_vec_properties() -> None:
     panel_size = (4, 2)
     N = panel_size[0] * panel_size[1]
     vec = steering_vec(panel_size, phi=30.0, theta=20.0, spacing=0.5)
-    assert vec.shape == (N, 1) or vec.shape == (N,)
+    assert vec.shape in ((N, 1), (N,))
     if vec.ndim == 2:
         vec = vec.ravel()
     np.testing.assert_allclose(np.linalg.norm(vec), 1.0, rtol=1e-12, atol=1e-12)
 
 
-def test_ant_indices():
+def test_ant_indices() -> None:
     """Test antenna indices generation."""
     panel_size = [6, 4]
     ants = ant_indices(panel_size)
@@ -204,7 +204,7 @@ def test_ant_indices():
     assert len(np.unique(zs)) == 4  # z dims
 
 
-def test_rotate_angles_batch_single_rotation():
+def test_rotate_angles_batch_single_rotation() -> None:
     """Test rotate_angles_batch with single rotation for multiple angles."""
     # Multiple angles, single rotation
     theta = np.array([[30.0, 45.0], [60.0, 90.0]])  # [2, 2]

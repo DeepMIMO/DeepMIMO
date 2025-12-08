@@ -12,7 +12,7 @@ from deepmimo.txrx import (
 )
 
 
-def test_txrx_set_initialization():
+def test_txrx_set_initialization() -> None:
     """Test TxRxSet initialization."""
     ts = TxRxSet(name="BS1", id=1, is_tx=True, num_points=10)
     assert ts.name == "BS1"
@@ -25,7 +25,7 @@ def test_txrx_set_initialization():
     assert d["id"] == 1
 
 
-def test_txrx_pair():
+def test_txrx_pair() -> None:
     """Test TxRxPair."""
     tx = TxRxSet(name="TX", id=0, is_tx=True)
     rx = TxRxSet(name="RX", id=1, is_rx=True)
@@ -35,12 +35,13 @@ def test_txrx_pair():
     assert pair.rx == rx
     assert pair.tx_idx == 5
     assert pair.get_ids() == (0, 1)
-    assert "TX" in str(pair) and "RX" in str(pair)
+    assert "TX" in str(pair)
+    assert "RX" in str(pair)
 
 
 @patch("deepmimo.txrx.load_dict_from_json")
 @patch("deepmimo.txrx.get_params_path")
-def test_get_txrx_sets(mock_get_path, mock_load_json):
+def test_get_txrx_sets(mock_get_path, mock_load_json) -> None:
     """Test getting TXRX sets from params."""
     mock_params = {
         c.TXRX_PARAM_NAME: {
@@ -57,7 +58,7 @@ def test_get_txrx_sets(mock_get_path, mock_load_json):
     assert sets[1].name == "UE"
 
 
-def test_get_txrx_pairs():
+def test_get_txrx_pairs() -> None:
     """Test pairing logic."""
     tx1 = TxRxSet(name="TX1", id=0, is_tx=True, num_points=2)
     tx2 = TxRxSet(name="TX2", id=1, is_tx=True, num_points=1)
@@ -72,15 +73,21 @@ def test_get_txrx_pairs():
 
     # Check pairs content
     # Pair 0: TX1[0] -> RX1
-    assert pairs[0].tx == tx1 and pairs[0].tx_idx == 0 and pairs[0].rx == rx1
+    assert pairs[0].tx == tx1
+    assert pairs[0].tx_idx == 0
+    assert pairs[0].rx == rx1
     # Pair 1: TX1[1] -> RX1
-    assert pairs[1].tx == tx1 and pairs[1].tx_idx == 1 and pairs[1].rx == rx1
+    assert pairs[1].tx == tx1
+    assert pairs[1].tx_idx == 1
+    assert pairs[1].rx == rx1
     # Pair 2: TX2[0] -> RX1
-    assert pairs[2].tx == tx2 and pairs[2].tx_idx == 0 and pairs[2].rx == rx1
+    assert pairs[2].tx == tx2
+    assert pairs[2].tx_idx == 0
+    assert pairs[2].rx == rx1
 
 
 @patch("deepmimo.txrx.get_txrx_sets")
-def test_print_pairs(mock_get_sets, capsys):
+def test_print_pairs(mock_get_sets, capsys) -> None:
     """Test printing pairs."""
     tx = TxRxSet(name="TX", id=0, is_tx=True, num_points=1)
     rx = TxRxSet(name="RX", id=1, is_rx=True)
@@ -94,7 +101,7 @@ def test_print_pairs(mock_get_sets, capsys):
     assert "1" in captured.out  # rx id
 
 
-def test_txrx_set_repr_tx_only():
+def test_txrx_set_repr_tx_only() -> None:
     """Test __repr__ for TX-only set."""
     ts = TxRxSet(name="BS1", id=1, is_tx=True, is_rx=False, num_points=10)
     repr_str = repr(ts)
@@ -103,7 +110,7 @@ def test_txrx_set_repr_tx_only():
     assert "points=10" in repr_str
 
 
-def test_txrx_set_repr_rx_only():
+def test_txrx_set_repr_rx_only() -> None:
     """Test __repr__ for RX-only set."""
     ts = TxRxSet(name="UE1", id=2, is_tx=False, is_rx=True, num_points=5)
     repr_str = repr(ts)
@@ -112,7 +119,7 @@ def test_txrx_set_repr_rx_only():
     assert "points=5" in repr_str
 
 
-def test_txrx_set_repr_both():
+def test_txrx_set_repr_both() -> None:
     """Test __repr__ for set that is both TX and RX."""
     ts = TxRxSet(name="Relay", id=3, is_tx=True, is_rx=True, num_points=1)
     repr_str = repr(ts)
@@ -120,7 +127,7 @@ def test_txrx_set_repr_both():
     assert "Relay" in repr_str
 
 
-def test_txrx_set_repr_neither():
+def test_txrx_set_repr_neither() -> None:
     """Test __repr__ for set that is neither TX nor RX (edge case)."""
     ts = TxRxSet(name="Unknown", id=4, is_tx=False, is_rx=False, num_points=0)
     repr_str = repr(ts)

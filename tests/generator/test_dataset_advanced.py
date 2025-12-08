@@ -52,7 +52,7 @@ def dataset_full():
     return ds
 
 
-def test_trim_by_path_type(dataset_full):
+def test_trim_by_path_type(dataset_full) -> None:
     """Test trimming by path type."""
     ds = dataset_full
 
@@ -69,7 +69,7 @@ def test_trim_by_path_type(dataset_full):
     assert not np.isnan(ds_ref.inter[0, 0])  # The Ref path moved to index 0
 
 
-def test_trim_by_path_depth(dataset_full):
+def test_trim_by_path_depth(dataset_full) -> None:
     """Test trimming by path depth (number of interactions)."""
     ds = dataset_full
 
@@ -90,7 +90,7 @@ def test_trim_by_path_depth(dataset_full):
     assert np.isnan(ds_d1.inter[1, 1])
 
 
-def test_trim_by_fov(dataset_full):
+def test_trim_by_fov(dataset_full) -> None:
     """Test trimming by Field of View."""
     ds = dataset_full
 
@@ -120,7 +120,7 @@ def test_trim_by_fov(dataset_full):
     assert np.isnan(ds_fov.aoa_az[0, 1])  # User 0 Path 1 dropped (NaN)
 
 
-def test_grid_functions(dataset_full):
+def test_grid_functions(dataset_full) -> None:
     """Test grid detection and indexing."""
     ds = dataset_full
     # Grid is 2x2: (0,0), (100,0), (0,100), (100,100)

@@ -78,7 +78,7 @@ def set_materials(scene: Scene) -> Scene:
     )
     scene.add(asphalt_material)
 
-    for obj in scene.objects.keys():
+    for obj in scene.objects:
         if "road" in obj or "path" in obj:
             scene.objects[obj].radio_material = asphalt_material
             print(f"Set asphalt material for {obj}")

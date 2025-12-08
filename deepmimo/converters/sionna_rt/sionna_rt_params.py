@@ -15,10 +15,10 @@ and DeepMIMO's standardized ray tracing parameters.
 import os
 from dataclasses import dataclass
 
-from ...config import config
-from ...consts import RAYTRACER_NAME_SIONNA
-from ...general_utils import load_pickle
-from ...rt_params import RayTracingParameters
+from deepmimo.config import config
+from deepmimo.consts import RAYTRACER_NAME_SIONNA
+from deepmimo.general_utils import load_pickle
+from deepmimo.rt_params import RayTracingParameters
 
 
 def read_rt_params(load_folder: str) -> dict:
@@ -84,7 +84,8 @@ class SionnaRayTracingParameters(RayTracingParameters):
 
         # Raise error if los is not present
         if "los" not in raw_params or not raw_params["los"]:
-            raise ValueError("los not found in Sionna RT parameters")
+            msg = "los not found in Sionna RT parameters"
+            raise ValueError(msg)
 
         # NOTE: Sionna distributes these samples across antennas AND TXs
         n_tx, n_tx_ant = raw_params["tx_array_size"], raw_params["tx_array_num_ant"]

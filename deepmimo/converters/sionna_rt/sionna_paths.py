@@ -8,9 +8,9 @@ import os
 import numpy as np
 from tqdm import tqdm
 
-from ... import consts as c
-from ...general_utils import get_mat_filename, load_pickle, save_mat
-from ..converter_utils import compress_path_data
+from deepmimo import consts as c
+from deepmimo.converters.converter_utils import compress_path_data
+from deepmimo.general_utils import get_mat_filename, load_pickle, save_mat
 
 # Interaction Type Map for Sionna
 INTERACTIONS_MAP = {
@@ -37,7 +37,7 @@ def _preallocate_data(n_rx: int) -> dict:
         data: Dictionary containing pre-allocated data
 
     """
-    data = {
+    return {
         c.RX_POS_PARAM_NAME: np.zeros((n_rx, 3), dtype=c.FP_TYPE),
         c.TX_POS_PARAM_NAME: np.zeros((1, 3), dtype=c.FP_TYPE),
         c.AOA_AZ_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
@@ -55,7 +55,6 @@ def _preallocate_data(n_rx: int) -> dict:
         * np.nan,
     }
 
-    return data
 
 
 def _process_paths_batch(
@@ -211,7 +210,8 @@ def _get_path_key(paths_dict, key, fallback_key=None, default=None):
         return paths_dict[fallback_key]
     if default is not None:
         return default
-    raise KeyError(f"Neither '{key}' nor '{fallback_key}' found in paths_dict.")
+    msg = f"Neither '{key}' nor '{fallback_key}' found in paths_dict."
+    raise KeyError(msg)
 
 
 def _transform_interaction_types(types: np.ndarray) -> np.ndarray:
@@ -336,16 +336,15 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
 
         elif sionna_type == 3:  # Scattering path with possible reflections
             # Create string of '1's for reflections + '3' at the end for scattering
-            if n_interactions > 1:
-                code = "1" * (n_interactions - 1) + "3"
-            else:
-                code = "3"
+            code = "1" * (n_interactions - 1) + "3" if n_interactions > 1 else "3"
             result[path_idx] = np.float32(code)
 
         elif sionna_type == 4:
-            raise NotImplementedError("RIS code not supported yet")
+            msg = "RIS code not supported yet"
+            raise NotImplementedError(msg)
         else:
-            raise ValueError(f"Unknown Sionna interaction type: {sionna_type}")
+            msg = f"Unknown Sionna interaction type: {sionna_type}"
+            raise ValueError(msg)
 
     return result.reshape(original_shape)
 
@@ -496,14 +495,15 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
         data = compress_path_data(data)
 
         # Save each data key with antenna index in filename
-        for key in data.keys():
+        for key in data:
             idx = tx_ant_idx if multi_tx_ant else tx_idx
             mat_file = get_mat_filename(key, 0, idx, 1)  # tx_set=0, tx_idx=tx_ant_idx, rx_set=1
             save_mat(data[key], key, os.path.join(save_folder, mat_file))
 
         if bs_bs_paths:
             if multi_tx_ant:
-                raise NotImplementedError("Multi-antenna BS-BS paths not supported yet")
+                msg = "Multi-antenna BS-BS paths not supported yet"
+                raise NotImplementedError(msg)
                 # It would just be necessary to loop over the sources like above
 
             print(f"BS-BS paths found for TX {tx_idx}, Ant {tx_ant_idx}")
@@ -532,7 +532,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
             data_bs_bs = compress_path_data(data_bs_bs)
 
             # Save each data key
-            for key in data_bs_bs.keys():
+            for key in data_bs_bs:
                 mat_file = get_mat_filename(
                     key,
                     0,

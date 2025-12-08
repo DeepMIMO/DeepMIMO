@@ -9,8 +9,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from ...materials import Material, MaterialList
-from .. import converter_utils as cu
+from deepmimo.converters import converter_utils as cu
+from deepmimo.materials import Material, MaterialList
+
 from .safe_import import pd
 
 
@@ -128,7 +129,7 @@ class AODTMaterial:
         )
 
 
-def read_materials(rt_folder: str, save_folder: str = None) -> tuple[dict, dict[str, int]]:
+def read_materials(rt_folder: str, save_folder: str | None = None) -> tuple[dict, dict[str, int]]:
     """Read material properties from materials.parquet.
 
     Args:
@@ -147,12 +148,14 @@ def read_materials(rt_folder: str, save_folder: str = None) -> tuple[dict, dict[
     """
     materials_file = os.path.join(rt_folder, "materials.parquet")
     if not os.path.exists(materials_file):
-        raise FileNotFoundError(f"materials.parquet not found in {rt_folder}")
+        msg = f"materials.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     # Read materials data
     df = pd.read_parquet(materials_file)
     if len(df) == 0:
-        raise ValueError("materials.parquet is empty")
+        msg = "materials.parquet is empty"
+        raise ValueError(msg)
 
     # Initialize material list and indices mapping
     material_list = MaterialList()

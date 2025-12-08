@@ -5,7 +5,7 @@ This module provides utility functions used across the AODT converter modules.
 
 import numpy as np
 
-from ... import consts as c
+from deepmimo import consts as c
 
 
 def dict_to_array(point_dict: dict[str, float]) -> np.ndarray:

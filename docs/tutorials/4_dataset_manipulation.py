@@ -1,4 +1,4 @@
-"""# User Selection and Dataset Manipulation
+"""# User Selection and Dataset Manipulation.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/4_dataset_manipulation.py)
 &nbsp;

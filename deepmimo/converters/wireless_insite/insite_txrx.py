@@ -21,8 +21,9 @@ from typing import Any
 
 import numpy as np
 
-from ...config import config
-from ...txrx import TxRxSet
+from deepmimo.config import config
+from deepmimo.txrx import TxRxSet
+
 from .xml_parser import parse_insite_xml
 
 
@@ -318,7 +319,7 @@ def get_txrx_insite_sets_from_xml(xml_file: str) -> list[InSiteTxRxSet]:
 
     insite_sets = []
     for txrx_set in txrx_list:
-        txrx_type = list(txrx_set.keys())[0]
+        txrx_type = next(iter(txrx_set.keys()))
         set_data = txrx_set[txrx_type]
 
         # Convert to InSiteTxRxSet with appropriate type
@@ -385,9 +386,11 @@ def read_txrx(folder: str, plot: bool = False) -> dict[str, Any]:
     # Find .txrx file
     xml_files = list(sim_folder.glob("*.xml"))
     if not xml_files:
-        raise ValueError(f"No .xml file found in {sim_folder}")
+        msg = f"No .xml file found in {sim_folder}"
+        raise ValueError(msg)
     if len(xml_files) > 1:
-        raise ValueError(f"Multiple .xml files found in {sim_folder}")
+        msg = f"Multiple .xml files found in {sim_folder}"
+        raise ValueError(msg)
 
     # Parse TX/RX sets
     xml_file = str(xml_files[0])

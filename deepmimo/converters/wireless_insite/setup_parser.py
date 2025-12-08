@@ -22,6 +22,7 @@ values := (node | line_value)*
 line_value := (STR | "yes" | "no" | INT | FLOAT)+ NL
 """
 
+import contextlib
 import re
 from dataclasses import dataclass, field
 from typing import Any
@@ -66,7 +67,7 @@ def tokenize_file(path: str) -> str:
 class peekable:
     """Makes it possible to peek at the next value of an iterator."""
 
-    def __init__(self, iterator):
+    def __init__(self, iterator) -> None:
         self._iterator = iterator
         # Unique sentinel used as flag.
         self._sentinel = object()
@@ -81,10 +82,8 @@ class peekable:
     def has_values(self):
         """Check if the iterator has any values left."""
         if self._next is self._sentinel:
-            try:
+            with contextlib.suppress(StopIteration):
                 self._next = next(self._iterator)
-            except StopIteration:
-                pass
         return self._next is not self._sentinel
 
     def __iter__(self):
@@ -167,10 +166,11 @@ class Node:
         return self.values.__delitem__(key)
 
 
-def eat(tokens, expected):
+def eat(tokens, expected) -> None:
     """Ensures the next token is what's expected."""
     if (tok := next(tokens)) != expected:
-        raise RuntimeError(f"Expected token {expected!r}, got {tok!r}.")
+        msg = f"Expected token {expected!r}, got {tok!r}."
+        raise RuntimeError(msg)
 
 
 def parse_document(tokens) -> dict[str, Node]:
@@ -193,14 +193,16 @@ def parse_document(tokens) -> dict[str, Node]:
     while tokens.has_values():
         tok = tokens.peek()
         if not RE_BEGIN_NODE.match(tok):
-            raise RuntimeError(f"Non node {tok!r} at the top-level of the document.")
+            msg = f"Non node {tok!r} at the top-level of the document."
+            raise RuntimeError(msg)
 
         node_name, node = parse_node(tokens)
         node.kind = node_name
         potential_name = "_".join(tok.split(" ")[1:])[:-1]
         node_name = potential_name if potential_name else node.name
         if node_name in document:
-            raise RuntimeError(f"Node with duplicate name {node_name} found.")
+            msg = f"Node with duplicate name {node_name} found."
+            raise RuntimeError(msg)
         document[node_name] = node
     return document
 

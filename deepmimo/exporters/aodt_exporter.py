@@ -15,11 +15,14 @@ EXCEPT_TABLES = ["cfrs", "training_result", "world", "csi_report", "telemetry", 
 # Import optional dependencies - this only runs once when the module is imported
 try:
     import pandas as pd
-    import pyarrow  # Required for parquet support
+    import pyarrow as pa  # Required for parquet support
 except ImportError:
-    raise ImportError(
+    msg = (
         "AODT export functionality requires additional dependencies. "
-        "Please install them using: pip install 'deepmimo[aodt]'",
+        "Please install them using: pip install 'deepmimo[aodt]'"
+    )
+    raise ImportError(
+        msg,
     )
 
 
@@ -34,7 +37,8 @@ def get_all_tables(client: Client, database: str) -> list[str]:
     try:
         tables = client.execute(query)
     except Exception as e:
-        raise Exception(f"Failed to get table list: {e!s}")
+        msg = f"Failed to get table list: {e!s}"
+        raise Exception(msg)
 
     return [table[0] for table in tables]
 
@@ -93,7 +97,8 @@ def aodt_exporter(
     target_dirs = []
     export_dir = os.path.join(output_dir, database)
     if n_times < 1:
-        raise Exception("Empty simulation")
+        msg = "Empty simulation"
+        raise Exception(msg)
     if n_times == 1:  # Static
         target_dirs += [export_dir]
     elif n_times > 1:  # Dynamic

@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from ...scene import (
+from deepmimo.scene import (
     CAT_BUILDINGS,
     CAT_FLOORPLANS,
     CAT_OBJECTS,
@@ -52,7 +52,8 @@ def read_scene(folder_path: str | Path) -> Scene:
     """
     folder = Path(folder_path)
     if not folder.exists():
-        raise ValueError(f"Folder does not exist: {folder}")
+        msg = f"Folder does not exist: {folder}"
+        raise ValueError(msg)
 
     scene = Scene()
     next_object_id = 0  # Track the next available object ID
@@ -66,7 +67,8 @@ def read_scene(folder_path: str | Path) -> Scene:
 
     # Check if any valid files were found
     if not any(files for files in found_files.values()):
-        raise ValueError(f"No valid files (.city, .ter, .veg) found in {folder}")
+        msg = f"No valid files (.city, .ter, .veg) found in {folder}"
+        raise ValueError(msg)
 
     # Parse each type of file and add to scene
     for suffix, type_files in found_files.items():
@@ -87,7 +89,7 @@ def visualize_road_object(
     name: str,
     vertices: np.ndarray,
     faces: list[list[tuple[float, float, float]]],
-):
+) -> None:
     """Visualize a road object and its generated faces."""
     # Save vertices for testing
     save_path = f"road_vertices_{name.replace(' ', '_')}.npy"
@@ -151,7 +153,7 @@ def visualize_road_object(
 class PhysicalObjectParser:
     """Parser for Wireless InSite physical object files (.city, .ter, .veg)."""
 
-    def __init__(self, file_path: str, starting_id: int = 0):
+    def __init__(self, file_path: str, starting_id: int = 0) -> None:
         """Initialize parser with file path.
 
         Args:
@@ -161,7 +163,8 @@ class PhysicalObjectParser:
         """
         self.file_path = Path(file_path)
         if self.file_path.suffix not in OBJECT_LABELS:
-            raise ValueError(f"Unsupported file type: {self.file_path.suffix}")
+            msg = f"Unsupported file type: {self.file_path.suffix}"
+            raise ValueError(msg)
 
         self.label = OBJECT_LABELS[self.file_path.suffix]
         self.name = self.file_path.stem  # Get filename without extension

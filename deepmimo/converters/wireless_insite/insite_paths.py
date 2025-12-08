@@ -22,8 +22,9 @@ from pathlib import Path
 
 import numpy as np
 
-from ... import consts as c
-from ...general_utils import get_mat_filename, save_mat
+from deepmimo import consts as c
+from deepmimo.general_utils import get_mat_filename, save_mat
+
 from .p2m_parser import extract_tx_pos, paths_parser, read_pl_p2m_file
 
 
@@ -77,14 +78,15 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
     """
     p2m_folder = next(p for p in Path(rt_folder).iterdir() if p.is_dir())
     if not p2m_folder.exists():
-        raise ValueError(f"Folder does not exist: {p2m_folder}")
+        msg = f"Folder does not exist: {p2m_folder}"
+        raise ValueError(msg)
 
     # Get TX/RX sets from dictionary in a deterministic order
     tx_sets = [txrx_dict[key] for key in sorted(txrx_dict.keys()) if txrx_dict[key]["is_tx"]]
     rx_sets = [txrx_dict[key] for key in sorted(txrx_dict.keys()) if txrx_dict[key]["is_rx"]]
 
     # Find any p2m file to extract project name (e.g. project_name.paths.t001_01.r001.p2m)
-    proj_name = list(p2m_folder.glob("*.p2m"))[0].name.split(".")[0]
+    proj_name = next(iter(p2m_folder.glob("*.p2m"))).name.split(".")[0]
 
     # Calculate total number of TX/RX pairs (for progress tracking)
     n_tot_txs = sum(tx_set["num_points"] for tx_set in tx_sets)
@@ -115,7 +117,8 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
                 paths_p2m_file = p2m_folder / base_filename
 
                 if not paths_p2m_file.exists():
-                    raise FileNotFoundError(f"\n P2M path file not found: {paths_p2m_file}")
+                    msg = f"\n P2M path file not found: {paths_p2m_file}"
+                    raise FileNotFoundError(msg)
 
                 # Parse path data
                 data = paths_parser(str(paths_p2m_file))
@@ -143,7 +146,7 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
                 update_txrx_points(txrx_dict, rx_set["id"], data[c.RX_POS_PARAM_NAME], path_loss)
 
                 # Save each data key using the set's id
-                for key in data.keys():
+                for key in data:
                     mat_file = get_mat_filename(key, tx_set["id"], tx_idx, rx_set["id"])
                     save_mat(data[key], key, os.path.join(output_folder, mat_file))
 

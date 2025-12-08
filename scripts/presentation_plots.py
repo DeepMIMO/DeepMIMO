@@ -92,7 +92,7 @@ plt.savefig("dm_scene_doppler_static.png")
 # %% Doppler Sequence (Dynamic - with moving terrain)
 
 
-def modify_terrain(terrain, center_xy=None, size_xy=None):
+def modify_terrain(terrain, center_xy=None, size_xy=None) -> None:
     """Modify a terrain object's position and/or size.
 
     Args:
@@ -156,9 +156,10 @@ for i, usr_idx in enumerate(seq_idxs[::4]):
     max_y = usr_pos[1] + s / 2
 
     s2 = 20
-    is_in_range = lambda b: (min_x - s2 < b.position[0] < max_x + s2) and (
-        min_y - s2 < b.position[1] < max_y + s2
-    )
+    def is_in_range(b):
+        return (min_x - s2 < b.position[0] < max_x + s2) and (
+            min_y - s2 < b.position[1] < max_y + s2
+        )
     bldgs_in_range = [b for b in orig_bldgs if is_in_range(b)]
 
     # Select interaction buildings (if outside of range)
@@ -234,7 +235,8 @@ min_y = -250
 max_y = 250
 
 s2 = 20
-is_in_range = lambda b: (min_x - s2 < b.position[0] < max_x + s2) and (
+def is_in_range(b):
+    return (min_x - s2 < b.position[0] < max_x + s2) and (
     min_y - s2 < b.position[1] < max_y + s2
 )
 bldgs_in_range = [b for b in orig_bldgs if is_in_range(b)]
@@ -247,7 +249,7 @@ modify_terrain(
 )
 
 # Update the scene objects
-dataset.scene.objects = bldgs_in_range + [terrain]
+dataset.scene.objects = [*bldgs_in_range, terrain]
 
 for i, usr_idx in enumerate(seq_idxs[::4]):
     usr_pos = dataset.rx_pos[usr_idx]
@@ -341,7 +343,7 @@ os.makedirs(folder, exist_ok=True)
 
 n_scenes = len(dataset_dyn)
 for i in range(n_scenes):
-    plot_args = dict(scat_sz=2.2, dpi=300, figsize=(10, 8), lims=pwr_lims, cbar_title="Power (dBm)")
+    plot_args = {"scat_sz": 2.2, "dpi": 300, "figsize": (10, 8), "lims": pwr_lims, "cbar_title": "Power (dBm)"}
     ax, _ = dm.plot_coverage(
         dataset_dyn[i].rx_pos,
         dataset_dyn[i].power[:, 0],

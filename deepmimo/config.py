@@ -1,4 +1,4 @@
-"""DeepMIMO Configuration Module
+"""DeepMIMO Configuration Module.
 
 This module provides a singleton configuration class for DeepMIMO that allows
 setting and retrieving global configuration values. It can be used to configure
@@ -48,11 +48,11 @@ class DeepMIMOConfig:
 
     def __new__(cls):
         if cls._instance is None:
-            cls._instance = super(DeepMIMOConfig, cls).__new__(cls)
+            cls._instance = super().__new__(cls)
             cls._instance._initialize()
         return cls._instance
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize the configuration with default values."""
         self._config = {
             # Ray tracer versions
@@ -96,7 +96,7 @@ class DeepMIMOConfig:
         """
         return self._config.get(key, default)
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset all configuration values to their defaults."""
         self._initialize()
 
@@ -163,9 +163,11 @@ class DeepMIMOConfig:
 
         # If both positional arguments and keyword arguments are provided, raise an error
         if args and kwargs:
-            raise ValueError("Cannot mix positional arguments and keyword arguments")
+            msg = "Cannot mix positional arguments and keyword arguments"
+            raise ValueError(msg)
+        return None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return a string representation of the configuration."""
         return self.get_config_str()
 

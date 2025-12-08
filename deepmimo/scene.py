@@ -38,7 +38,7 @@ with functionalities for plotting and material management integrated into the sc
 import itertools
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -53,7 +53,9 @@ from .general_utils import (
     save_dict_as_json,
     save_mat,
 )
-from .materials import MaterialList
+
+if TYPE_CHECKING:
+    from .materials import MaterialList
 
 # ------------------------------------------------------------------------------
 # Constants
@@ -95,7 +97,7 @@ class BoundingBox:
         y_max: float,
         z_min: float,
         z_max: float,
-    ):
+    ) -> None:
         """Initialize bounding box with min/max coordinates."""
         self.bounds = np.array(
             [
@@ -184,7 +186,7 @@ class Face:
         self,
         vertices: list[tuple[float, float, float]] | np.ndarray,
         material_idx: int | np.integer = 0,
-    ):
+    ) -> None:
         """Initialize a face from its vertices.
 
         Args:
@@ -285,7 +287,7 @@ class PhysicalElement:
         label: str = CAT_OBJECTS,
         color: str = "",
         name: str = "",
-    ):
+    ) -> None:
         """Initialize a physical object from its faces.
 
         Args:
@@ -429,7 +431,7 @@ class PhysicalElement:
             Face(vertices=vertices[vertex_idxs], material_idx=material_idx)
             for vertex_idxs, material_idx in zip(
                 data["face_vertex_idxs"],
-                data["face_material_idxs"],
+                data["face_material_idxs"], strict=False,
             )
         ]
         return cls(faces=faces, name=data["name"], object_id=data["id"], label=data["label"])
@@ -507,7 +509,8 @@ class PhysicalElement:
         if type(value) == list or type(value) == tuple:
             value = np.array(value)
         if value.shape != (3,):
-            raise ValueError("Velocity must be a 3D vector (x, y, z) in meters per second")
+            msg = "Velocity must be a 3D vector (x, y, z) in meters per second"
+            raise ValueError(msg)
         self._vel = value
 
     def __repr__(self) -> str:
@@ -528,7 +531,7 @@ class PhysicalElement:
 class PhysicalElementGroup:
     """Represents a group of physical objects that can be queried and manipulated together."""
 
-    def __init__(self, objects: list[PhysicalElement]):
+    def __init__(self, objects: list[PhysicalElement]) -> None:
         """Initialize a group of physical objects."""
         self._objects = objects
         self._bounding_box: BoundingBox | None = None
@@ -584,7 +587,8 @@ class PhysicalElementGroup:
         """Get the bounding box containing all objects."""
         if self._bounding_box is None:
             if not self._objects:
-                raise ValueError("Group is empty")
+                msg = "Group is empty"
+                raise ValueError(msg)
 
             # Collect all object bounding boxes
             boxes = [obj.bounding_box.bounds for obj in self._objects]
@@ -617,7 +621,7 @@ class Scene:
         CAT_OBJECTS: {"z_order": 5, "alpha": 0.8, "color": "red"},
     }
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize an empty scene."""
         self.objects = DelegatingList()
         self.visualization_settings = self.DEFAULT_VISUALIZATION_SETTINGS.copy()
@@ -790,7 +794,8 @@ class Scene:
             vertices = np.array([])
             objects_metadata = []
         except Exception as e:
-            raise Exception(f"Error loading scene from {base_folder}: {e}")
+            msg = f"Error loading scene from {base_folder}: {e}"
+            raise Exception(msg)
 
         # Create objects using metadata
         for object_data in objects_metadata:
@@ -925,7 +930,7 @@ class Scene:
 
         return ax
 
-    def _set_axes_lims_to_scale(self, ax, zoom: float = 1.3):
+    def _set_axes_lims_to_scale(self, ax, zoom: float = 1.3) -> None:
         """Set axis limits based on scene bounding box with equal scaling.
 
         Args:
@@ -1034,11 +1039,11 @@ def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float
     try:
         hull = ConvexHull(points_2d)
         base_shape = points_2d[hull.vertices]
-    except Exception as e:
+    except Exception:
         if np.linalg.matrix_rank(points_2d - points_2d[0]) < 2:
             print("Convex hull failed - collinear vertices")
             return None
-        raise e
+        raise
 
     # Create top and bottom faces
     bottom_face = [(x, y, base_height) for x, y in base_shape]
@@ -1056,14 +1061,14 @@ def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float
         ]
         side_faces.append(side)
 
-    return [bottom_face, top_face] + side_faces
+    return [bottom_face, top_face, *side_faces]
 
 
 def _calculate_angle_deviation(p1, p2, p3):
     """Calculate the deviation from a straight line at point p2.
     Returns angle in degrees, where:
     - 0° means the path p1->p2->p3 forms a straight line
-    - 180° means the path doubles back on itself
+    - 180° means the path doubles back on itself.
     """
     if np.allclose(p1, p2) or np.allclose(p2, p3):
         return 180.0
@@ -1128,7 +1133,7 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
                         else 0
                     )
                     cost = prev_cost + np.linalg.norm(points[m] - points[k]) + angle_cost
-                    res.append((cost, prev_path + [k]))
+                    res.append((cost, [*prev_path, k]))
                 if res:
                     C[(bits, k)] = min(res)
 
@@ -1149,7 +1154,7 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
             continue
         angle_cost = _calculate_angle_deviation(points[path[-2]], points[k], points[0])
         final_cost = cost + np.linalg.norm(points[k] - points[0]) + angle_cost
-        res.append((final_cost, path + [0]))
+        res.append((final_cost, [*path, 0]))
 
     return min(res) if res else (float("inf"), [])
 
@@ -1206,10 +1211,9 @@ def _detect_endpoints(
     i2, j2 = np.unravel_index(np.argmax(distances_masked), distances_masked.shape)
 
     # Map back to original indices
-    original_indices = [kept_indices[i] for i in [i1, i2, j1, j2]]
+    return [kept_indices[i] for i in [i1, i2, j1, j2]]
 
     # Return indices in alternating order
-    return original_indices
 
 
 def _signed_distance_to_curve(
@@ -1332,7 +1336,7 @@ def _trim_points_protected(
                 kept_indices.add(idx)
                 break
 
-    return sorted(list(kept_indices))
+    return sorted(kept_indices)
 
 
 def _compress_path(points: np.ndarray, path: list[int], angle_threshold: float = 1.0) -> list[int]:
@@ -1398,7 +1402,8 @@ def _get_2d_face(
     """
     # Ensure vertices are 2D (simple test - if z-coordinates are within tolerance)
     if not np.allclose(vertices[:, 2], vertices[0, 2], atol=z_tolerance):
-        raise ValueError("Vertices are not 2D")
+        msg = "Vertices are not 2D"
+        raise ValueError(msg)
 
     # Detect endpoints
     endpoints = _detect_endpoints(vertices[:, :2])
@@ -1455,12 +1460,8 @@ def get_object_faces(
     if len(vertices) < 3:
         return None
 
-    if fast:
-        faces = _get_faces_convex_hull(vertices)
-    else:
-        faces = _get_2d_face(vertices)
+    return _get_faces_convex_hull(vertices) if fast else _get_2d_face(vertices)
 
-    return faces
 
 
 if __name__ == "__main__":
@@ -1471,7 +1472,7 @@ if __name__ == "__main__":
     print(compressed)
 
     # Plot helper
-    def plot_points(points, path=None, title=""):
+    def plot_points(points, path=None, title="") -> None:
         plt.figure(figsize=(8, 6))
         plt.scatter(points[:, 0], points[:, 1], color="blue")
         for i, (x, y) in enumerate(points):

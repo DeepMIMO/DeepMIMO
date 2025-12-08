@@ -193,7 +193,8 @@ class SetupEditor:
                 first_available_txrx = np.int64(line.split(" ")[-1][:-1]) + 1
 
         if num_txrx <= 0:
-            raise ValueError("Zero TxRx is defined!")
+            msg = "Zero TxRx is defined!"
+            raise ValueError(msg)
 
         self.txrx_sec[1] = self.txrx_sec[1].replace("[path]", "./" + txrx_file_path)
         self.txrx_sec[2] = self.txrx_sec[2].replace("[index]", str(first_available_txrx))
@@ -228,35 +229,31 @@ class SetupEditor:
         """Update the carrier frequency and bandwidth in the setup file."""
         for i, line in enumerate(self.setup_file):
             if line.startswith("CarrierFrequency "):
-                self.setup_file[i] = "CarrierFrequency %.6f\n" % self.carrier_frequency
+                self.setup_file[i] = f"CarrierFrequency {self.carrier_frequency:.6f}\n"
                 continue
             if line.startswith("bandwidth "):
-                self.setup_file[i] = "bandwidth %.6f\n" % self.bandwidth
+                self.setup_file[i] = f"bandwidth {self.bandwidth:.6f}\n"
                 continue
 
     def update_study_area(self) -> None:
         """Update the study area parameters in the setup file."""
         for i, line in enumerate(self.setup_file):
             if line.startswith("begin_<boundary>"):  # study area boundary
-                self.setup_file[i + 8] = "zmin %.6f\n" % self.study_area.zmin
-                self.setup_file[i + 9] = "zmax %.6f\n" % self.study_area.zmax
+                self.setup_file[i + 8] = f"zmin {self.study_area.zmin:.6f}\n"
+                self.setup_file[i + 9] = f"zmax {self.study_area.zmax:.6f}\n"
                 self.setup_file[i + 10] = "nVertices %d\n" % self.study_area.num_vertex
                 for j in range(self.study_area.num_vertex):
-                    self.setup_file[i + j + 11] = "%.6f %.6f %.6f\n" % (
-                        self.study_area.all_vertex[j, 0],
-                        self.study_area.all_vertex[j, 1],
-                        self.study_area.all_vertex[j, 2],
-                    )
+                    self.setup_file[i + j + 11] = f"{self.study_area.all_vertex[j, 0]:.6f} {self.study_area.all_vertex[j, 1]:.6f} {self.study_area.all_vertex[j, 2]:.6f}\n"
                 return
 
     def update_origin(self) -> None:
         """Update the origin parameters in the setup file."""
         for i, line in enumerate(self.setup_file):
             if line.startswith("latitude"):
-                self.setup_file[i] = "latitude %.8f\n" % self.origin_lat
+                self.setup_file[i] = f"latitude {self.origin_lat:.8f}\n"
                 continue
             if line.startswith("longitude"):
-                self.setup_file[i] = "longitude %.8f\n" % self.origin_lon
+                self.setup_file[i] = f"longitude {self.origin_lon:.8f}\n"
                 continue
 
     def update_ray_tracing_param(self) -> None:
@@ -266,7 +263,7 @@ class SetupEditor:
                 self.setup_file[i] = "MaxRenderedPaths %d\n" % self.ray_tracing_param.max_paths
                 continue
             if line.startswith("ray_spacing"):
-                self.setup_file[i] = "ray_spacing %.6f\n" % self.ray_tracing_param.ray_spacing
+                self.setup_file[i] = f"ray_spacing {self.ray_tracing_param.ray_spacing:.6f}\n"
                 continue
 
             if line.startswith("max_reflections"):

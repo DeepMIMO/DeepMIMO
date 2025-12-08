@@ -47,9 +47,12 @@ def check_scen_name(scen_name: str) -> None:
 
     """
     if np.any([char in scen_name for char in c.SCENARIO_NAME_INVALID_CHARS]):
-        raise ValueError(
+        msg = (
             f"Invalid scenario name: {scen_name}.\n"
-            f"Contains one of the following invalid characters: {c.SCENARIO_NAME_INVALID_CHARS}",
+            f"Contains one of the following invalid characters: {c.SCENARIO_NAME_INVALID_CHARS}"
+        )
+        raise ValueError(
+            msg,
         )
 
 
@@ -121,7 +124,8 @@ def get_params_path(scenario_name: str) -> str:
     check_scen_name(scenario_name)
     scenario_folder = get_scenario_folder(scenario_name)
     if not os.path.exists(scenario_folder):
-        raise FileNotFoundError(f"Scenario folder not found: {scenario_name}")
+        msg = f"Scenario folder not found: {scenario_name}"
+        raise FileNotFoundError(msg)
 
     # Check if there is a params file in the scenario folder
     path = os.path.join(scenario_folder, f"{c.PARAMS_FILENAME}.json")
@@ -137,7 +141,8 @@ def get_params_path(scenario_name: str) -> str:
             path = os.path.join(scenario_folder, subdirs[0], f"{c.PARAMS_FILENAME}.json")
 
     if not os.path.exists(path):
-        raise FileNotFoundError(f"Params file not found for scenario: {scenario_name}")
+        msg = f"Params file not found for scenario: {scenario_name}"
+        raise FileNotFoundError(msg)
 
     return path
 
@@ -212,7 +217,8 @@ def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_F
     elif fmt == "npy":
         np.save(file_path.replace(".mat", ".npz"), data)
     else:
-        raise Exception('Format {fmt} not recognized. Choose "mat" (default), "npz" or "npy".')
+        msg = 'Format {fmt} not recognized. Choose "mat" (default), "npz" or "npy".'
+        raise Exception(msg)
 
 
 def load_mat(mat_path: str, key: str | None = None):
@@ -260,7 +266,8 @@ def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
     if not output_path.endswith(".json"):
         output_path += ".json"
 
-    numpy_handler = lambda x: x.tolist() if isinstance(x, np.ndarray) else str(x)
+    def numpy_handler(x):
+        return x.tolist() if isinstance(x, np.ndarray) else str(x)
     with open(output_path, "w") as f:
         json.dump(data_dict, f, indent=2, default=numpy_handler)
 
@@ -332,9 +339,8 @@ def compare_two_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> bool:
     """
     additional_keys = dict1.keys() - dict2.keys()
     for key, item in dict1.items():
-        if isinstance(item, dict):
-            if key in dict2:
-                additional_keys = additional_keys | compare_two_dicts(item, dict2[key])
+        if isinstance(item, dict) and key in dict2:
+            additional_keys = additional_keys | compare_two_dicts(item, dict2[key])
     return additional_keys
 
 
@@ -358,7 +364,7 @@ class DotDict(Mapping[K, V]):
 
     """
 
-    def __init__(self, data: dict[str, Any] | None = None):
+    def __init__(self, data: dict[str, Any] | None = None) -> None:
         """Initialize DotDict with a dictionary.
 
         Args:
@@ -693,7 +699,8 @@ class DelegatingList(list):
         If the attribute is a list-like object, it will be wrapped in a DelegatingList.
         """
         if not self:
-            raise AttributeError(f"Empty list has no attribute '{name}'")
+            msg = f"Empty list has no attribute '{name}'"
+            raise AttributeError(msg)
 
         # Get the attribute from the first item to check if it's a method
         first_attr = getattr(self[0], name)
@@ -709,7 +716,7 @@ class DelegatingList(list):
         results = [getattr(item, name) for item in self]
         return DelegatingList(results)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name, value) -> None:
         """Delegate attribute assignment to each item in the list.
 
         If value is a list/iterable, each item in the list gets the corresponding value.
@@ -721,7 +728,8 @@ class DelegatingList(list):
             return
 
         if not self:
-            raise AttributeError(f"Empty list has no attribute '{name}'")
+            msg = f"Empty list has no attribute '{name}'"
+            raise AttributeError(msg)
 
         # If value is iterable and has the same length as self, assign each value
         if (

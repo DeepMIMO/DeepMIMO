@@ -20,7 +20,8 @@ def __getattr__(name):
 
         globals()[name] = _func  # Cache the function in the module's namespace
         return _func
-    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+    msg = f"module '{__name__}' has no attribute '{name}'"
+    raise AttributeError(msg)
 
 
 __all__ = ["aodt_exporter", "sionna_exporter"]

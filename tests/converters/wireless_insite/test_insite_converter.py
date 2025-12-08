@@ -24,7 +24,7 @@ def test_insite_rt_converter(
     mock_read_txrx,
     mock_read_params,
     tmp_path,
-):
+) -> None:
     # Setup mocks
     mock_cu.check_scenario_exists.return_value = True
     mock_read_params.return_value = {"freq": 28e9}

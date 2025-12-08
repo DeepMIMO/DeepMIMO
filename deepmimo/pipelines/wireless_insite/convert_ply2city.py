@@ -68,11 +68,11 @@ def write_material_sec(f, material_sec: list[str]) -> None:
 
     """
     # Replace 'none' by 'directive_with_backscatter' in 'diffuse_scattering_model'
-    idx_to_replace = [
+    idx_to_replace = next(
         line_idx
         for line_idx, line in enumerate(material_sec)
         if line == "diffuse_scattering_model none\n"
-    ][0]
+    )
     material_sec[idx_to_replace] = "diffuse_scattering_model directive_with_backscatter\n"
 
     return f.writelines(material_sec)
@@ -100,9 +100,9 @@ def write_face_sec(f, ply_data: PlyData) -> None:
             x = ply_data["vertex"][v][0]
             y = ply_data["vertex"][v][1]
             z = ply_data["vertex"][v][2]
-            f.write("%.10f " % x)
-            f.write("%.10f " % y)
-            f.write("%.10f\n" % z)
+            f.write(f"{x:.10f} ")
+            f.write(f"{y:.10f} ")
+            f.write(f"{z:.10f}\n")
         f.write("end_<face>\n")
 
     f.write("end_<sub_structure>\n")

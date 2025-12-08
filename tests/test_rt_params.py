@@ -6,7 +6,7 @@ import pytest
 from deepmimo.rt_params import RayTracingParameters
 
 
-def test_rt_params_initialization():
+def test_rt_params_initialization() -> None:
     """Test RayTracingParameters initialization with required fields."""
     params = RayTracingParameters(
         raytracer_name="TestRT",
@@ -25,7 +25,7 @@ def test_rt_params_initialization():
     assert params.synthetic_array is True  # Default value
 
 
-def test_rt_params_to_dict():
+def test_rt_params_to_dict() -> None:
     """Test converting params to dictionary."""
     params = RayTracingParameters(
         raytracer_name="TestRT",
@@ -45,7 +45,7 @@ def test_rt_params_to_dict():
     assert d["num_rays"] == 1000000
 
 
-def test_rt_params_from_dict():
+def test_rt_params_from_dict() -> None:
     """Test creating params from dictionary."""
     data = {
         "raytracer_name": "TestRT",
@@ -65,7 +65,7 @@ def test_rt_params_from_dict():
     assert params.raw_params == {}
 
 
-def test_rt_params_from_dict_with_raw():
+def test_rt_params_from_dict_with_raw() -> None:
     """Test creating params from dictionary with raw params."""
     data = {
         "raytracer_name": "TestRT",
@@ -83,7 +83,7 @@ def test_rt_params_from_dict_with_raw():
     assert params.raw_params == raw
 
 
-def test_rt_params_read_parameters_abstract():
+def test_rt_params_read_parameters_abstract() -> None:
     """Test that read_parameters raises NotImplementedError."""
     with pytest.raises(NotImplementedError):
         RayTracingParameters.read_parameters("dummy/path")

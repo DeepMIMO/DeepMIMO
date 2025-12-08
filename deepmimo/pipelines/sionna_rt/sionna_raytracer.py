@@ -31,7 +31,8 @@ IS_LEGACY_VERSION = not is_sionna_v1()
 # Conditional TensorFlow import based on Sionna version
 if IS_LEGACY_VERSION:
     if not get_sionna_version().startswith("0.19"):
-        raise Warning("Pipeline untested for versions <0.19 and >1.0.2")
+        msg = "Pipeline untested for versions <0.19 and >1.0.2"
+        raise Warning(msg)
     try:
         import tensorflow as tf  # type: ignore
 
@@ -45,7 +46,8 @@ if IS_LEGACY_VERSION:
 try:
     import sionna.rt
 except ImportError:
-    raise ImportError("Sionna not found. Install Sionna to use ray tracing functionality.")
+    msg = "Sionna not found. Install Sionna to use ray tracing functionality."
+    raise ImportError(msg)
 
 from sionna.rt import Receiver, Transmitter
 
@@ -58,13 +60,13 @@ else:
 class _DataLoader:
     """DataLoader class for Sionna RT that returns user indices for raytracing."""
 
-    def __init__(self, data, batch_size):
+    def __init__(self, data, batch_size) -> None:
         self.data = np.array(data)
         self.batch_size = batch_size
         self.num_samples = len(data)
         self.indices = np.arange(self.num_samples)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return int(np.ceil(self.num_samples / self.batch_size))
 
     def __iter__(self):
@@ -188,7 +190,8 @@ def raytrace_sionna(
         }
 
     # Helper function to get None or index of array if not None
-    none_or_index = lambda x, i: None if x is None else x[i]
+    def none_or_index(x, i):
+        return None if x is None else x[i]
 
     # Add BSs
     num_bs = len(tx_pos)

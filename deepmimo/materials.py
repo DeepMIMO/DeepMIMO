@@ -91,7 +91,7 @@ class Material:
 class MaterialList:
     """Container for managing a collection of materials."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize an empty material list."""
         self._materials: list[Material] = []
 
@@ -148,11 +148,13 @@ class MaterialList:
         """
         # Check if any materials exist
         if not self._materials:
-            raise AttributeError(f"Empty MaterialList has no attribute '{name}'")
+            msg = f"Empty MaterialList has no attribute '{name}'"
+            raise AttributeError(msg)
 
         # Check if the first material has this attribute
         if not hasattr(self._materials[0], name):
-            raise AttributeError(f"Material objects have no attribute '{name}'")
+            msg = f"Material objects have no attribute '{name}'"
+            raise AttributeError(msg)
 
         # Return list of attribute values from all materials
         return [getattr(mat, name) for mat in self._materials]
@@ -211,7 +213,7 @@ class MaterialList:
         materials_list = cls()
         materials = []
 
-        for _, mat_data in materials_dict.items():
+        for mat_data in materials_dict.values():
             # Convert string numeric values to float
             for key, value in mat_data.items():
                 if isinstance(value, str) and any(c in value for c in "e+-0123456789."):

@@ -8,7 +8,7 @@ from deepmimo.consts import RAYTRACER_NAME_WIRELESS_INSITE
 from deepmimo.converters.wireless_insite import insite_rt_params
 
 
-def test_get_gps_bbox():
+def test_get_gps_bbox() -> None:
     # Test simple case
     origin_lat = 40.0
     origin_lon = -74.0
@@ -27,7 +27,7 @@ def test_get_gps_bbox():
 
 
 @patch("deepmimo.converters.wireless_insite.insite_rt_params.parse_file")
-def test_read_rt_params(mock_parse, tmp_path):
+def test_read_rt_params(mock_parse, tmp_path) -> None:
     # Mock .setup file parsing
     mock_setup_folder = tmp_path / "sim_folder"
     mock_setup_folder.mkdir()

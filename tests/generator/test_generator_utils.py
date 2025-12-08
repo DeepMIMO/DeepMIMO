@@ -5,7 +5,7 @@ import numpy as np
 from deepmimo.generator import generator_utils as gu
 
 
-def test_get_linear_idxs():
+def test_get_linear_idxs() -> None:
     # 2D case
     rx_pos = np.array([[0, 0], [1, 1], [2, 2], [3, 3]], dtype=float)
     start = [0, 0]
@@ -18,13 +18,13 @@ def test_get_linear_idxs():
     np.testing.assert_array_equal(idxs, [0, 1, 2, 3])
 
 
-def test_dbw2watt():
+def test_dbw2watt() -> None:
     assert gu.dbw2watt(0) == 1.0
     assert gu.dbw2watt(10) == 10.0
     assert gu.dbw2watt(20) == 100.0
 
 
-def test_get_uniform_idxs():
+def test_get_uniform_idxs() -> None:
     # Grid 10x10 = 100 users.
     n_ue = 100
     grid_size = np.array([10, 10])
@@ -49,7 +49,7 @@ def test_get_uniform_idxs():
     assert len(idxs_pseudo) == 25
 
 
-def test_get_grid_idxs():
+def test_get_grid_idxs() -> None:
     grid_size = np.array([10, 5])  # 10 cols, 5 rows
     # Row 0: 0..9
     idxs = gu.get_grid_idxs(grid_size, "row", 0)
@@ -60,7 +60,7 @@ def test_get_grid_idxs():
     np.testing.assert_array_equal(idxs, np.arange(0, 50, 10))
 
 
-def test_get_idxs_with_limits():
+def test_get_idxs_with_limits() -> None:
     pos = np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]])
     # x < 1.5 -> indices 0, 1
     idxs = gu.get_idxs_with_limits(pos, x_max=1.5)

@@ -29,8 +29,8 @@ import re
 import numpy as np
 from tqdm import tqdm
 
-from ... import consts as c
-from .. import converter_utils as cu
+from deepmimo import consts as c
+from deepmimo.converters import converter_utils as cu
 
 # Configuration constants for parsing p2m files
 LINE_START = 22  # Skip info lines and n_rxs line.
@@ -116,7 +116,7 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
         for path_idx in range(n_paths_to_read):
             # Line 1 (Example: '1 2 -133.1 31.9 1.7e-06 84.0 40.3 90.9 -13.4\n')
             line = lines[line_idx]
-            i1, i2, i3, i4, i5, i6, i7, i8, i9 = tuple(line.split())
+            _i1, i2, i3, i4, i5, i6, i7, i8, i9 = tuple(line.split())
             # (no need) i1 = <path number>
             # (no need) i2 = <total interactions for path> (not including Tx and Rx)
             data[c.POWER_PARAM_NAME][rx_i, path_idx] = np.float32(i3)  # i3 = <received power(dBm)>
@@ -148,9 +148,8 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
             line_idx += 4 + n_iteractions  # add number of description lines each path has
 
     # Remove extra paths and bounces
-    data_compressed = cu.compress_path_data(data)
+    return cu.compress_path_data(data)
 
-    return data_compressed
 
 
 def extract_tx_pos(filename: str) -> np.ndarray:
@@ -197,7 +196,7 @@ def extract_tx_pos(filename: str) -> np.ndarray:
             break
 
     try:
-        a = tx_pos
+        pass
     except:
         print(
             "Not found tx_pos. This is likely because there are no paths. \n"

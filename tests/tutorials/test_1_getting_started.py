@@ -6,6 +6,6 @@ from .conftest import run_tutorial
 
 
 @pytest.mark.tutorial
-def test_getting_started():
+def test_getting_started() -> None:
     """Test that the getting started tutorial runs without errors."""
     run_tutorial("1_getting_started.py")

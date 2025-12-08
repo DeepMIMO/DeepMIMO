@@ -8,7 +8,7 @@ from deepmimo.generator.dataset import Dataset, DynamicDataset, MacroDataset
 
 @pytest.fixture
 def sample_dataset():
-    """Create a sample dataset for testing"""
+    """Create a sample dataset for testing."""
     # Initialize with minimal required data to avoid KeyErrors
     data = {
         "n_ue": 5,
@@ -27,7 +27,7 @@ def sample_dataset():
 
     # Mock channel params
     class MockChannelParams:
-        def __init__(self):
+        def __init__(self) -> None:
             self.bs_antenna = {c.PARAMSET_ANT_ROTATION: np.zeros(3)}
             self.ue_antenna = {c.PARAMSET_ANT_ROTATION: np.zeros((5, 3))}
             self.freq_domain = False
@@ -44,8 +44,8 @@ def sample_dataset():
     return ds
 
 
-def test_dataset_initialization():
-    """Test dataset initialization defaults"""
+def test_dataset_initialization() -> None:
+    """Test dataset initialization defaults."""
     ds = Dataset()
     # Accessing properties on empty dataset should raise KeyError because they depend on missing data
     with pytest.raises(KeyError):
@@ -54,8 +54,8 @@ def test_dataset_initialization():
         _ = ds.rx_pos
 
 
-def test_bs_look_at(sample_dataset):
-    """Test BS look_at functionality"""
+def test_bs_look_at(sample_dataset) -> None:
+    """Test BS look_at functionality."""
     ds = sample_dataset
     target = np.array([100, 0, 1.5])
 
@@ -68,8 +68,8 @@ def test_bs_look_at(sample_dataset):
     assert rot[2] == 0.0  # No tilt by default
 
 
-def test_ue_look_at(sample_dataset):
-    """Test UE look_at functionality"""
+def test_ue_look_at(sample_dataset) -> None:
+    """Test UE look_at functionality."""
     ds = sample_dataset
     ds.ue_look_at(ds.tx_pos)
 
@@ -80,8 +80,8 @@ def test_ue_look_at(sample_dataset):
     assert np.isclose(abs(ue1_rot[0]), 180.0, atol=1e-2)
 
 
-def test_trim_dataset(sample_dataset):
-    """Test trimming dataset by indices"""
+def test_trim_dataset(sample_dataset) -> None:
+    """Test trimming dataset by indices."""
     ds = sample_dataset
     idxs = [0, 2]  # Select 1st and 3rd UE
 
@@ -97,8 +97,8 @@ def test_trim_dataset(sample_dataset):
     assert ds.n_ue == 5
 
 
-def test_trim_dataset_edge_cases(sample_dataset):
-    """Test trimming with edge cases"""
+def test_trim_dataset_edge_cases(sample_dataset) -> None:
+    """Test trimming with edge cases."""
     ds = sample_dataset
 
     # Empty indices - must be integer type
@@ -111,8 +111,8 @@ def test_trim_dataset_edge_cases(sample_dataset):
         ds.trim(idxs=[10])
 
 
-def test_macro_dataset():
-    """Test MacroDataset container"""
+def test_macro_dataset() -> None:
+    """Test MacroDataset container."""
     ds1 = Dataset({"n_ue": 5, "rx_pos": np.zeros((5, 3))})
     ds2 = Dataset({"n_ue": 3, "rx_pos": np.zeros((3, 3))})
 
@@ -135,23 +135,23 @@ def test_macro_dataset():
     assert ds2.new_attr == 10
 
 
-def test_dynamic_dataset():
-    """Test DynamicDataset"""
+def test_dynamic_dataset() -> None:
+    """Test DynamicDataset."""
     ds1 = Dataset({"n_ue": 2, "rx_pos": np.zeros((2, 3)), "tx_pos": np.zeros((1, 3)), "name": "s1"})
     ds2 = Dataset({"n_ue": 2, "rx_pos": np.ones((2, 3)), "tx_pos": np.ones((1, 3)), "name": "s2"})
 
     # Add scene with objects for _compute_speeds
     class MockObject:
-        def __init__(self):
+        def __init__(self) -> None:
             self.position = np.zeros(3)
             self.vel = np.zeros(3)
 
     class MockScene:
-        def __init__(self):
+        def __init__(self) -> None:
             self.objects = [MockObject()]  # Needs at least one object
 
     class MockObjectList:
-        def __init__(self):
+        def __init__(self) -> None:
             self.objs = [MockObject()]
 
         @property
@@ -163,7 +163,7 @@ def test_dynamic_dataset():
             return [o.vel for o in self.objs]
 
         @vel.setter
-        def vel(self, v):
+        def vel(self, v) -> None:
             for i, o in enumerate(self.objs):
                 o.vel = v[i]
 
@@ -190,8 +190,8 @@ def test_dynamic_dataset():
     assert np.allclose(ds1.rx_vel, 1.0)
 
 
-def test_compute_num_interactions():
-    """Test interactions computation logic"""
+def test_compute_num_interactions() -> None:
+    """Test interactions computation logic."""
     ds = Dataset({"n_ue": 2})  # Need n_ue for Dataset
     ds.inter = np.array(
         [[0, 1, 9, 10, 99, 100, 999, 1000], [np.nan, 0, 0, 0, 0, 0, 0, 0]], dtype=float
@@ -203,8 +203,8 @@ def test_compute_num_interactions():
     assert np.isnan(n_inter[1, 0])
 
 
-def test_get_idxs(sample_dataset):
-    """Test index selection dispatcher"""
+def test_get_idxs(sample_dataset) -> None:
+    """Test index selection dispatcher."""
     ds = sample_dataset
     # sample_dataset has 5 users
     # Mock num_paths to be [1, 0, 1, 0, 1] for active check
@@ -223,7 +223,8 @@ def test_get_idxs(sample_dataset):
     # Select x > 50
     idxs = ds.get_idxs("limits", x_min=50)
     # Users 0 (100,0) and 4 (100,100) match
-    assert 0 in idxs and 4 in idxs
+    assert 0 in idxs
+    assert 4 in idxs
     assert len(idxs) == 2
 
     # Invalid mode

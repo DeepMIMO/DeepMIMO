@@ -17,7 +17,7 @@ from deepmimo.converters.sionna_rt.sionna_paths import (
 )
 
 
-def test_get_sionna_interaction_types():
+def test_get_sionna_interaction_types() -> None:
     """Test conversion of Sionna interaction types to DeepMIMO codes."""
     print("\n=== Testing Sionna to DeepMIMO Interaction Type Mapping ===")
 
@@ -90,7 +90,7 @@ def test_get_sionna_interaction_types():
         get_sionna_interaction_types(types, inter_pos)
 
 
-def test_edge_cases():
+def test_edge_cases() -> None:
     """Test edge cases for interaction type conversion."""
     # Test empty arrays
     types = np.zeros((0, 5), dtype=np.float32)
@@ -128,7 +128,7 @@ def test_sionna_rt_converter_flow(
     mock_read_paths,
     mock_read_txrx,
     mock_read_rt_params,
-):
+) -> None:
     """Test the full flow of sionna_rt_converter orchestrator."""
     # Setup mocks
     mock_cu.check_scenario_exists.return_value = True

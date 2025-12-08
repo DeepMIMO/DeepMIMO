@@ -8,7 +8,7 @@ import pytest
 from deepmimo.generator.ant_patterns import AntennaPattern
 
 
-def test_single_isotropic():
+def test_single_isotropic() -> None:
     """Test single application with isotropic pattern."""
     pattern = AntennaPattern(tx_pattern="isotropic", rx_pattern="isotropic")
     power = np.array([1.0, 2.0, 3.0])
@@ -21,7 +21,7 @@ def test_single_isotropic():
     np.testing.assert_array_almost_equal(result, power, decimal=7)
 
 
-def test_batch_isotropic():
+def test_batch_isotropic() -> None:
     """Test batch application with isotropic pattern."""
     pattern = AntennaPattern(tx_pattern="isotropic", rx_pattern="isotropic")
     power = np.array([[1.0, 2.0], [3.0, 4.0]])
@@ -34,7 +34,7 @@ def test_batch_isotropic():
     np.testing.assert_array_almost_equal(result, power, decimal=7)
 
 
-def test_single_dipole():
+def test_single_dipole() -> None:
     """Test single application with half-wave dipole pattern.
 
     Tests the half-wave dipole pattern characteristics:
@@ -80,7 +80,7 @@ def test_single_dipole():
             )
 
 
-def test_batch_dipole():
+def test_batch_dipole() -> None:
     """Test batch application with half-wave dipole pattern."""
     pattern = AntennaPattern(tx_pattern="halfwave-dipole", rx_pattern="halfwave-dipole")
 
@@ -104,7 +104,7 @@ def test_batch_dipole():
     assert abs(normalized[3, 0] - 0.08) < 0.01, "Unexpected gain at 45 degrees"
 
 
-def test_1d_to_2d_conversion():
+def test_1d_to_2d_conversion() -> None:
     """Test that 1D inputs are correctly handled in batch processing."""
     pattern = AntennaPattern(tx_pattern="isotropic", rx_pattern="isotropic")
     power = np.array([1.0, 2.0])
@@ -118,7 +118,7 @@ def test_1d_to_2d_conversion():
     np.testing.assert_array_almost_equal(result[0], power, decimal=7)
 
 
-def test_performance():
+def test_performance() -> None:
     """Test performance of batch vs single processing."""
     pattern = AntennaPattern(tx_pattern="halfwave-dipole", rx_pattern="halfwave-dipole")
     n_samples = 1000
@@ -132,7 +132,7 @@ def test_performance():
     _ = pattern.apply(
         power=power, aoa_theta=angles, aoa_phi=angles, aod_theta=angles, aod_phi=angles
     )
-    single_time = time.time() - start_time
+    time.time() - start_time
 
     # Time batch processing
     start_time = time.time()
@@ -148,13 +148,13 @@ def test_performance():
     assert batch_time is not None
 
 
-def test_invalid_pattern_name():
+def test_invalid_pattern_name() -> None:
     """Test error handling for invalid antenna pattern name."""
     with pytest.raises(NotImplementedError, match="not applicable"):
         AntennaPattern(tx_pattern="invalid-pattern", rx_pattern="isotropic")
 
 
-def test_unimplemented_pattern():
+def test_unimplemented_pattern() -> None:
     """Test error handling for defined but unimplemented pattern."""
     # This tests the case where a pattern is in PARAMSET_ANT_RAD_PAT_VALS
     # but not in PATTERN_REGISTRY

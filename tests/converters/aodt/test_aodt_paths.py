@@ -8,7 +8,7 @@ from deepmimo import consts as c
 from deepmimo.converters.aodt import aodt_paths
 
 
-def test_transform_interaction_types():
+def test_transform_interaction_types() -> None:
     # LoS: only emission and reception
     types_los = np.array(["emission", "reception"], dtype=object)
     assert aodt_paths._transform_interaction_types(types_los) == c.INTERACTION_LOS
@@ -26,7 +26,7 @@ def test_transform_interaction_types():
 @patch("deepmimo.converters.aodt.aodt_paths.os.path.exists")
 @patch("deepmimo.converters.aodt.aodt_paths.os.makedirs")
 @patch("deepmimo.converters.aodt.aodt_paths.gu.save_mat")
-def test_read_paths(mock_save_mat, mock_makedirs, mock_exists, mock_pd):
+def test_read_paths(mock_save_mat, mock_makedirs, mock_exists, mock_pd) -> None:
     """Test read_paths with mocked parquet data."""
     mock_exists.return_value = True
 
@@ -36,7 +36,7 @@ def test_read_paths(mock_save_mat, mock_makedirs, mock_exists, mock_pd):
 
     # Mock row class for paths
     class MockPathRow:
-        def __init__(self):
+        def __init__(self) -> None:
             self.points = np.array([[0, 0, 0], [100, 100, 100], [200, 200, 200]])  # cm
             self.interaction_types = np.array(["emission", "reflection", "reception"], dtype=object)
 

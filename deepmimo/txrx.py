@@ -56,7 +56,7 @@ class TxRxSet:
         """String representation of TxRxSet."""
         role = "TX" if self.is_tx else ""
         role += "RX" if self.is_rx else ""
-        role = "Unknown" if not role else role
+        role = role if role else "Unknown"
         return f"{role}Set(name='{self.name}', id={self.id}, points={self.num_points})"
 
 

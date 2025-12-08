@@ -1,4 +1,4 @@
-"""# Migration Guide: DeepMIMO v3 to v4
+"""# Migration Guide: DeepMIMO v3 to v4.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/8_migration_guide.py)
 &nbsp;

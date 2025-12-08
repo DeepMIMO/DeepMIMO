@@ -9,7 +9,7 @@ def find_files_to_delete(
     delete_extra_deepmimo=True,
     delete_extra_p2m=True,
     delete_extra_objs=True,
-):
+) -> None:
     """Loop through subfolders and find files/folders to potentially delete.
 
     Args:
@@ -41,11 +41,11 @@ def find_files_to_delete(
         if len(sub_subfolders) > 1:
             print(f"Warning: Multiple subfolders found in {subfolder}, using first one")
             if delete_extra_deepmimo:
-                dm_folder = [
+                dm_folder = next(
                     sub_subfolder
                     for sub_subfolder in sub_subfolders
                     if sub_subfolder.endswith(c.DEEPMIMO_CONVERSION_SUFFIX)
-                ][0]
+                )
                 if safe_mode:
                     print(f"Would delete folder: {dm_folder}")
                 else:
