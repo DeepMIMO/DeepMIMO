@@ -8,18 +8,20 @@ Each exporter has its own dependencies which can be installed separately:
 """
 
 
-# Import the functions but don't execute the imports until needed
+# Import the modules but don't execute the imports until needed
 def __getattr__(name):
     if name == "aodt_exporter":
-        from .aodt_exporter import aodt_exporter as _func
+        import importlib
 
-        globals()[name] = _func  # Cache the function in the module's namespace
-        return _func
+        _module = importlib.import_module(".aodt_exporter", package=__name__)
+        globals()[name] = _module  # Cache the module in the namespace
+        return _module
     if name == "sionna_exporter":
-        from .sionna_exporter import sionna_exporter as _func
+        import importlib
 
-        globals()[name] = _func  # Cache the function in the module's namespace
-        return _func
+        _module = importlib.import_module(".sionna_exporter", package=__name__)
+        globals()[name] = _module  # Cache the module in the namespace
+        return _module
     msg = f"module '{__name__}' has no attribute '{name}'"
     raise AttributeError(msg)
 

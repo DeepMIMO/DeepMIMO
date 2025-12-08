@@ -271,11 +271,11 @@ class Dataset(DotDict):
         params.validate(self.n_ue)
 
         # Create a deep copy of the parameters to ensure isolation
-        old_params = (
-            super().__getitem__(c.CH_PARAMS_PARAM_NAME)
-            if c.CH_PARAMS_PARAM_NAME in super()
-            else None
-        )
+        old_params = None
+        try:
+            old_params = super().__getitem__(c.CH_PARAMS_PARAM_NAME)
+        except KeyError:
+            pass
         self.ch_params = params.deepcopy()
 
         # If rotation has changed, clear rotated angles cache
