@@ -176,6 +176,7 @@ ignore = [
     "D203",    # 1 blank line required before class docstring (incompatible with D211)
     "D213",    # Multi-line docstring summary should start at the second line (incompatible with D212)
     "COM812",  # Trailing comma missing (conflicts with formatter)
+    "Q000",    # Quote style (allow single quotes emitted by formatter/unparse)
 
     # Life quality  
     "T201",    # Allow "print" in production code
@@ -192,6 +193,8 @@ ignore = [
 "tests/**/*.py" = [
     "S101",    # Use of assert detected (standard in pytest)
     "PLR2004", # Magic value used in comparison (acceptable in tests)
+    # Harmless in tests: allow missing annotations
+    "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204",
 ]
 
 [tool.pytest.ini_options]

@@ -45,6 +45,7 @@ import json
 import shutil
 import time
 from pathlib import Path
+from typing import Any
 
 import requests
 from tqdm import tqdm
@@ -78,14 +79,14 @@ IMAGE_SIZE_LIMIT = 10 * 1024**2  # Image size limit: 10MB
 class _ProgressFileReader:
     """Progress file reader for uploading files to the DeepMIMO API."""
 
-    def __init__(self, file_path, progress_bar) -> None:
+    def __init__(self, file_path: str | Path, progress_bar: Any) -> None:
         self.file_path = file_path
         self.progress_bar = progress_bar
         self.file_object = Path(file_path).open("rb")
         self.len = Path(file_path).stat().st_size
         self.bytes_read = 0
 
-    def read(self, size=-1):
+    def read(self, size: int = -1) -> bytes:
         data = self.file_object.read(size)
         self.bytes_read += len(data)
         self.progress_bar.n = self.bytes_read

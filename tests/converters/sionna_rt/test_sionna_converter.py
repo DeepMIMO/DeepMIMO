@@ -5,7 +5,6 @@ the interaction type conversion between Sionna and DeepMIMO formats.
 """
 
 # %%
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -119,7 +118,7 @@ def test_edge_cases() -> None:
 @patch("deepmimo.converters.sionna_rt.sionna_converter.read_scene")
 @patch("deepmimo.converters.sionna_rt.sionna_converter.cu")
 @patch("shutil.rmtree")
-@patch.object(Path, "mkdir")
+@patch("pathlib.Path.mkdir")
 def test_sionna_rt_converter_flow(
     mock_mkdir,
     mock_rmtree,

@@ -4,32 +4,21 @@ This module provides functionality for exporting AODT data to parquet format.
 Note: This functionality requires additional dependencies.
 Install them using: pip install 'deepmimo[aodt]'
 """
-
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-Client = "Client" if TYPE_CHECKING else Any  # from clickhouse_driver import Client
-
-EXCEPT_TABLES = ["cfrs", "training_result", "world", "csi_report", "telemetry", "dus", "ran_config"]
-
-# Import optional dependencies - this only runs once when the module is imported
+Client = 'Client' if TYPE_CHECKING else Any
+EXCEPT_TABLES = ['cfrs', 'training_result', 'world', 'csi_report', 'telemetry', 'dus', 'ran_config']
 try:
     import pandas as pd
-    import pyarrow as pa  # Required for parquet support
+    import pyarrow as pa
 except ImportError:
-    msg = (
-        "AODT export functionality requires additional dependencies. "
-        "Please install them using: pip install 'deepmimo[aodt]'"
-    )
-    raise ImportError(
-        msg,
-    )
-
+    msg = "AODT export functionality requires additional dependencies. Please install them using: pip install 'deepmimo[aodt]'"
+    raise ImportError(msg)
 
 def get_all_databases(client: Client) -> list[str]:
-    query = "SHOW DATABASES"
+    query = 'SHOW DATABASES'
     return [db_name[0] for db_name in client.execute(query)]
-
 
 def get_all_tables(client: Client, database: str) -> list[str]:
     """Get list of all tables in the database."""
@@ -37,36 +26,25 @@ def get_all_tables(client: Client, database: str) -> list[str]:
     try:
         tables = client.execute(query)
     except Exception as e:
-        msg = f"Failed to get table list: {e!s}"
+        msg = f'Failed to get table list: {e!s}'
         raise Exception(msg)
-
     return [table[0] for table in tables]
 
-
-def get_table_cols(client, database, table):
-    query = f"DESCRIBE TABLE {database}.{table}"
+def get_table_cols(client: Any, database: Any, table: Any) -> Any:
+    query = f'DESCRIBE TABLE {database}.{table}'
     return [col[0] for col in client.execute(query)]
 
-
-def load_table_to_df(client, database, table):
-    query = f"SELECT * FROM {database}.{table}"
-
+def load_table_to_df(client: Any, database: Any, table: Any) -> Any:
+    query = f'SELECT * FROM {database}.{table}'
     try:
         columns = get_table_cols(client, database, table)
         df = pd.DataFrame(client.execute(query), columns=columns)
     except Exception as e:
-        print(f"Error exporting {table}: {e!s}")
+        print(f'Error exporting {table}: {e!s}')
         raise
-
     return df
 
-
-def aodt_exporter(
-    client: Client,
-    database: str = "",
-    output_dir: str = ".",
-    ignore_tables: list[str] = EXCEPT_TABLES,
-) -> str:
+def aodt_exporter(client: Client, database: str='', output_dir: str='.', ignore_tables: list[str]=EXCEPT_TABLES) -> str:
     """Export a database to parquet files.
 
     Args:
@@ -79,39 +57,29 @@ def aodt_exporter(
         str: Path to the directory containing the exported files.
 
     """
-    if database == "":  # select the first (non-built-in) database by default
+    if database == '':
         available_databases = get_all_databases(client)
         database = available_databases[1]
-        print(f"Default to database: {database}")
-
-    # Get all available tables in the database
+        print(f'Default to database: {database}')
     tables = get_all_tables(client, database)
-
-    # Filter tables to export
     tables_to_export = [table for table in tables if table not in ignore_tables]
-
-    # Decide if Static or Dynamic scenario (respectively, 1 or more time stamps)
-    time_table = load_table_to_df(client, database, "time_info")
-    n_times = len(time_table) - 1  # AODT always outputs one more time index than necessary
-
+    time_table = load_table_to_df(client, database, 'time_info')
+    n_times = len(time_table) - 1
     target_dirs = []
     export_dir = str(Path(output_dir) / database)
     if n_times < 1:
-        msg = "Empty simulation"
+        msg = 'Empty simulation'
         raise Exception(msg)
-    if n_times == 1:  # Static
+    if n_times == 1:
         target_dirs += [export_dir]
-    elif n_times > 1:  # Dynamic
-        target_dirs += [str(Path(export_dir) / f"scene_{t:04d}") for t in range(n_times)]
-
-    # Current information:
-    direct_tables = ["db_info", "materials", "panels", "patterns", "runs", "scenario"]
-    time_idx_tables = ["cirs", "raypaths"]
-    TIME_COL = "time_idx"
-    for time_idx, target_dir in enumerate(target_dirs):
+    elif n_times > 1:
+        target_dirs += [str(Path(export_dir) / f'scene_{t:04d}') for t in range(n_times)]
+    direct_tables = ['db_info', 'materials', 'panels', 'patterns', 'runs', 'scenario']
+    time_idx_tables = ['cirs', 'raypaths']
+    TIME_COL = 'time_idx'
+    for (time_idx, target_dir) in enumerate(target_dirs):
         Path(target_dir).mkdir(parents=True, exist_ok=True)
         for table in tables_to_export:
-            # Decide whether to export table with or without indexing time
             if table in direct_tables:
                 time_indexing_needed = False
             elif table in time_idx_tables:
@@ -119,17 +87,11 @@ def aodt_exporter(
             else:
                 table_cols = get_table_cols(client, database, table)
                 time_indexing_needed = TIME_COL in table_cols
-
             table_df = load_table_to_df(client, database, table)
             if time_indexing_needed:
                 table_df = table_df[table_df[TIME_COL] == time_idx]
-
-            output_file = str(Path(target_dir) / f"{table}.parquet")
+            output_file = str(Path(target_dir) / f'{table}.parquet')
             table_df.to_parquet(output_file, index=False)
-            print(f"Exported table {table} ({len(table_df)} rows) to {output_file}")
-
+            print(f'Exported table {table} ({len(table_df)} rows) to {output_file}')
     return export_dir
-
-
-# Make the function directly available when importing the module
-__all__ = ["aodt_exporter"]
+__all__ = ['aodt_exporter']

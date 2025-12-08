@@ -1,6 +1,5 @@
 """Tests for AODT Converter."""
 
-from pathlib import Path
 from unittest.mock import patch
 
 from deepmimo.converters.aodt import aodt_converter
@@ -11,7 +10,7 @@ from deepmimo.converters.aodt import aodt_converter
 @patch("deepmimo.converters.aodt.aodt_converter.read_paths")
 @patch("deepmimo.converters.aodt.aodt_converter.read_materials")
 @patch("deepmimo.converters.aodt.aodt_converter.cu")
-@patch.object(Path, "mkdir")
+@patch("pathlib.Path.mkdir")
 @patch("deepmimo.converters.aodt.aodt_converter.shutil.rmtree")
 def test_aodt_rt_converter(
     mock_rmtree,

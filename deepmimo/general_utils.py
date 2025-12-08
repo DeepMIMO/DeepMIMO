@@ -4,11 +4,6 @@ This module provides utility functions and classes for handling printing,
 file naming, string ID generation, and dictionary utilities used across
 the DeepMIMO toolkit.
 """
-
-# ============================================================================
-# Imports and Constants
-# ============================================================================
-
 import json
 import os
 import pickle
@@ -26,19 +21,9 @@ from tqdm import tqdm
 from . import consts as c
 from .config import config
 
-K = TypeVar("K", bound=str)
-V = TypeVar("V")
-
-# Headers for HTTP requests
-HEADERS = {
-    "User-Agent": "DeepMIMO-Python/1.0",
-    "Accept": "*/*",
-}
-
-# ============================================================================
-# File System and Path Utilities
-# ============================================================================
-
+K = TypeVar('K', bound=str)
+V = TypeVar('V')
+HEADERS = {'User-Agent': 'DeepMIMO-Python/1.0', 'Accept': '*/*'}
 
 def check_scen_name(scen_name: str) -> None:
     """Check if a scenario name is valid.
@@ -48,14 +33,8 @@ def check_scen_name(scen_name: str) -> None:
 
     """
     if np.any([char in scen_name for char in c.SCENARIO_NAME_INVALID_CHARS]):
-        msg = (
-            f"Invalid scenario name: {scen_name}.\n"
-            f"Contains one of the following invalid characters: {c.SCENARIO_NAME_INVALID_CHARS}"
-        )
-        raise ValueError(
-            msg,
-        )
-
+        msg = f'Invalid scenario name: {scen_name}.\nContains one of the following invalid characters: {c.SCENARIO_NAME_INVALID_CHARS}'
+        raise ValueError(msg)
 
 def get_scenarios_dir() -> str:
     """Get the absolute path to the scenarios directory.
@@ -66,8 +45,7 @@ def get_scenarios_dir() -> str:
         str: Absolute path to the scenarios directory
 
     """
-    return str(Path.cwd() / config.get("scenarios_folder"))
-
+    return str(Path.cwd() / config.get('scenarios_folder'))
 
 def get_scenario_folder(scenario_name: str) -> str:
     """Get the absolute path to a specific scenario folder.
@@ -82,7 +60,6 @@ def get_scenario_folder(scenario_name: str) -> str:
     check_scen_name(scenario_name)
     return str(Path(get_scenarios_dir()) / scenario_name)
 
-
 def get_rt_sources_dir() -> str:
     """Get the absolute path to the ray tracing sources directory.
 
@@ -92,8 +69,7 @@ def get_rt_sources_dir() -> str:
         str: Absolute path to the RT sources directory
 
     """
-    return str(Path.cwd() / config.get("rt_sources_folder"))
-
+    return str(Path.cwd() / config.get('rt_sources_folder'))
 
 def get_rt_source_folder(scenario_name: str) -> str:
     """Get the absolute path to a specific RT source folder.
@@ -107,7 +83,6 @@ def get_rt_source_folder(scenario_name: str) -> str:
     """
     check_scen_name(scenario_name)
     return str(Path(get_rt_sources_dir()) / scenario_name)
-
 
 def get_params_path(scenario_name: str) -> str:
     """Get the absolute path to a scenario's params file.
@@ -126,24 +101,17 @@ def get_params_path(scenario_name: str) -> str:
     scenario_folder = get_scenario_folder(scenario_name)
     scenario_folder_path = Path(scenario_folder)
     if not scenario_folder_path.exists():
-        msg = f"Scenario folder not found: {scenario_name}"
+        msg = f'Scenario folder not found: {scenario_name}'
         raise FileNotFoundError(msg)
-
-    # Check if there is a params file in the scenario folder
-    path = scenario_folder_path / f"{c.PARAMS_FILENAME}.json"
+    path = scenario_folder_path / f'{c.PARAMS_FILENAME}.json'
     if not path.exists():
-        # Check if there are multiple scene folders
         subdirs = [d for d in scenario_folder_path.iterdir() if d.is_dir()]
         if subdirs:
-            # Check if there is a params file in each subdirectory
-            path = subdirs[0] / f"{c.PARAMS_FILENAME}.json"
-
+            path = subdirs[0] / f'{c.PARAMS_FILENAME}.json'
     if not path.exists():
-        msg = f"Params file not found for scenario: {scenario_name}"
+        msg = f'Params file not found for scenario: {scenario_name}'
         raise FileNotFoundError(msg)
-
     return str(path)
-
 
 def get_available_scenarios() -> list:
     """Get a list of all available scenarios in the scenarios directory.
@@ -156,24 +124,10 @@ def get_available_scenarios() -> list:
     scenarios_dir_path = Path(scenarios_dir)
     if not scenarios_dir_path.exists():
         return []
-
-    # Get all subdirectories in the scenarios folder
     scenarios = [f.name for f in scenarios_dir_path.iterdir() if f.is_dir()]
     return sorted(scenarios)
 
-
-# ============================================================================
-# Matrix Load and Save
-# ============================================================================
-
-
-def get_mat_filename(
-    key: str,
-    tx_set_idx: int,
-    tx_idx: int,
-    rx_set_idx: int,
-    fmt: str = c.MAT_FMT,
-) -> str:
+def get_mat_filename(key: str, tx_set_idx: int, tx_idx: int, rx_set_idx: int, fmt: str=c.MAT_FMT) -> str:
     """Generate a .mat filename for storing DeepMIMO data.
 
     Args:
@@ -186,11 +140,10 @@ def get_mat_filename(
         str: Complete filename with .mat extension.
 
     """
-    str_id = f"t{tx_set_idx:03}_tx{tx_idx:03}_r{rx_set_idx:03}"
-    return f"{key}_{str_id}.{fmt}"
+    str_id = f't{tx_set_idx:03}_tx{tx_idx:03}_r{rx_set_idx:03}'
+    return f'{key}_{str_id}.{fmt}'
 
-
-def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_FMT) -> None:
+def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str=c.MAT_FMT) -> None:
     """Save data to a .mat file with standardized naming.
 
     This function saves data to a .mat file using standardized naming conventions.
@@ -207,18 +160,17 @@ def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_F
         file_path: Output path
 
     """
-    if fmt == "mat":
+    if fmt == 'mat':
         scipy.io.savemat(file_path, {data_key: data})
-    elif fmt == "npz":
-        np.savez_compressed(file_path.replace(".mat", ".npz"), **{data_key: data})
-    elif fmt == "npy":
-        np.save(file_path.replace(".mat", ".npz"), data)
+    elif fmt == 'npz':
+        np.savez_compressed(file_path.replace('.mat', '.npz'), **{data_key: data})
+    elif fmt == 'npy':
+        np.save(file_path.replace('.mat', '.npz'), data)
     else:
         msg = 'Format {fmt} not recognized. Choose "mat" (default), "npz" or "npy".'
         raise Exception(msg)
 
-
-def load_mat(mat_path: str, key: str | None = None) -> Any:
+def load_mat(mat_path: str, key: str | None=None) -> Any:
     """Load a .mat file with supported extensions (mat, npz, npy).
 
     This function tries to load a .mat file with supported extensions (mat, npz, npy).
@@ -228,29 +180,20 @@ def load_mat(mat_path: str, key: str | None = None) -> Any:
         mat_path: Path to the .mat file
 
     """
-    # Try each supported format by replacing extension (mat, npz, npy)
-    supported_formats = [".mat", ".npz", ".npy"]
+    supported_formats = ['.mat', '.npz', '.npy']
     mat_path_obj = Path(mat_path)
     base_path = mat_path_obj.parent / mat_path_obj.stem
-
     for fmt in supported_formats:
         try_path = base_path.with_suffix(fmt)
         if try_path.exists():
-            if fmt == ".mat":
+            if fmt == '.mat':
                 return scipy.io.loadmat(try_path)[key]
-            if fmt == ".npz":
+            if fmt == '.npz':
                 return np.load(try_path, allow_pickle=True)[key]
-            if fmt == ".npy":
+            if fmt == '.npy':
                 return np.load(try_path)
-
-    print(f"No supported format found for {mat_path}. Supported formats are: {supported_formats}")
+    print(f'No supported format found for {mat_path}. Supported formats are: {supported_formats}')
     return None
-
-
-# ============================================================================
-# Dictionary and Data Structure Utilities
-# ============================================================================
-
 
 def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
     """Save dictionary as JSON, handling NumPy arrays and other non-JSON types.
@@ -260,16 +203,13 @@ def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
         data_dict: Dictionary to save
 
     """
-    # Add extension if missing
-    if not output_path.endswith(".json"):
-        output_path += ".json"
+    if not output_path.endswith('.json'):
+        output_path += '.json'
 
     def numpy_handler(x: Any) -> list[Any] | str:
         return x.tolist() if isinstance(x, np.ndarray) else str(x)
-
-    with Path(output_path).open("w") as f:
+    with Path(output_path).open('w') as f:
         json.dump(data_dict, f, indent=2, default=numpy_handler)
-
 
 def load_dict_from_json(file_path: str) -> dict[str, Any]:
     """Load dictionary from JSON file.
@@ -283,7 +223,6 @@ def load_dict_from_json(file_path: str) -> dict[str, Any]:
     """
     with Path(file_path).open() as f:
         return json.load(f)
-
 
 def deep_dict_merge(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
     """Deep merge two dictionaries, preserving values from dict1 for keys not in dict2.
@@ -307,20 +246,17 @@ def deep_dict_merge(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, A
         {'a': 1, 'b': {'c': 4, 'd': 3}}
 
     """
-    # Convert DotDict instances to regular dictionaries
-    if hasattr(dict1, "to_dict"):
+    if hasattr(dict1, 'to_dict'):
         dict1 = dict1.to_dict()
-    if hasattr(dict2, "to_dict"):
+    if hasattr(dict2, 'to_dict'):
         dict2 = dict2.to_dict()
-
     result = deepcopy(dict1)
-    for key, value in dict2.items():
+    for (key, value) in dict2.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = deep_dict_merge(result[key], value)
         else:
             result[key] = value
     return result
-
 
 def compare_two_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> bool:
     """Compare two dictionaries for equality.
@@ -337,11 +273,10 @@ def compare_two_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> bool:
 
     """
     additional_keys = dict1.keys() - dict2.keys()
-    for key, item in dict1.items():
+    for (key, item) in dict1.items():
         if isinstance(item, dict) and key in dict2:
             additional_keys = additional_keys | compare_two_dicts(item, dict2[key])
     return additional_keys
-
 
 class DotDict(Mapping[K, V]):
     """A dictionary subclass that supports dot notation access to nested dictionaries.
@@ -363,104 +298,94 @@ class DotDict(Mapping[K, V]):
 
     """
 
-    def __init__(self, data: dict[str, Any] | None = None) -> None:
+    def __init__(self: Any, data: dict[str, Any] | None=None) -> None:
         """Initialize DotDict with a dictionary.
 
         Args:
             dictionary: Dictionary to convert to DotDict
 
         """
-        # Store protected attributes in a set
         self._data = {}
         if data:
-            for key, value in data.items():
+            for (key, value) in data.items():
                 if isinstance(value, dict):
                     self._data[key] = DotDict(value)
                 else:
                     self._data[key] = value
 
-    def __getattr__(self, key: str) -> Any:
+    def __getattr__(self: Any, key: str) -> Any:
         """Enable dot notation access to dictionary items."""
         try:
             return self._data[key]
         except KeyError:
             raise AttributeError(key)
 
-    def __setattr__(self, key: str, value: Any) -> None:
+    def __setattr__(self: Any, key: str, value: Any) -> None:
         """Enable dot notation assignment with property support.
 
         This method first checks if the attribute is a property with a setter.
         If it is, it uses the property setter. Otherwise, it falls back to
         storing the value in the internal dictionary.
         """
-        if key == "_data":
+        if key == '_data':
             super().__setattr__(key, value)
             return
-
-        # Get the class attribute
         attr = getattr(type(self), key, None)
-
-        # If it's a property with a setter, use it
         if isinstance(attr, property) and attr.fset is not None:
             attr.fset(self, value)
         else:
-            # Otherwise store in internal dictionary
-            if isinstance(value, dict) and not isinstance(value, DotDict):
+            if isinstance(value, dict) and (not isinstance(value, DotDict)):
                 value = DotDict(value)
             self._data[key] = value
 
-    def __getitem__(self, key: str) -> Any:
+    def __getitem__(self: Any, key: str) -> Any:
         """Enable dictionary-style access."""
         return self._data[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    def __setitem__(self: Any, key: str, value: Any) -> None:
         """Enable dictionary-style assignment."""
-        if isinstance(value, dict) and not isinstance(value, DotDict):
+        if isinstance(value, dict) and (not isinstance(value, DotDict)):
             value = DotDict(value)
         self._data[key] = value
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self: Any, key: str) -> None:
         """Enable dictionary-style deletion."""
         del self._data[key]
 
-    def update(self, other: dict[str, Any]) -> None:
+    def update(self: Any, other: dict[str, Any]) -> None:
         """Update the dictionary with elements from another dictionary."""
-        # Convert any nested dicts to DotDicts first
-        processed = {
-            k: DotDict(v) if isinstance(v, dict) and not isinstance(v, DotDict) else v
-            for k, v in other.items()
-        }
+        processed = {k: DotDict(v) if isinstance(v, dict) and (not isinstance(v, DotDict)) else v for (k, v) in other.items()}
         self._data.update(processed)
 
-    def __len__(self) -> int:
+    def __len__(self: Any) -> int:
         """Return the length of the underlying data dictionary."""
         return len(self._data)
 
-    def __iter__(self):
+    def __iter__(self: Any) -> Any:
         """Return an iterator over the data dictionary keys."""
         return iter(self._data)
 
-    def __dir__(self):
+    def __dir__(self: Any) -> Any:
         """Return list of valid attributes."""
         return list(set(list(super().__dir__()) + list(self._data.keys())))
 
-    def keys(self) -> Any:
+    def keys(self: Any) -> Any:
         """Return dictionary keys."""
         return self._data.keys()
 
-    def values(self) -> Any:
+    def values(self: Any) -> Any:
         """Return dictionary values."""
         return self._data.values()
 
-    def items(self) -> Any:
+    def items(self: Any) -> Any:
         """Return dictionary items as (key, value) pairs."""
         return self._data.items()
 
-    def get(self, key: str, default: Any = None) -> Any:
+    def get(self: Any, key: str, default: Any=None) -> Any:
         """Get value for key, returning default if key doesn't exist."""
         return self._data.get(key, default)
 
-    def hasattr(self, key: str) -> bool:
+    def hasattr(self: Any, key: str) -> bool:
         """Safely check if a key exists in the dictionary.
 
         This method provides a safe way to check for attribute existence
@@ -475,7 +400,7 @@ class DotDict(Mapping[K, V]):
         """
         return key in self._data
 
-    def to_dict(self) -> dict:
+    def to_dict(self: Any) -> dict:
         """Convert DotDict back to a regular dictionary.
 
         Returns:
@@ -483,14 +408,14 @@ class DotDict(Mapping[K, V]):
 
         """
         result = {}
-        for key, value in self._data.items():
+        for (key, value) in self._data.items():
             if isinstance(value, DotDict):
                 result[key] = value.to_dict()
             else:
                 result[key] = value
         return result
 
-    def deepcopy(self) -> "DotDict":
+    def deepcopy(self: Any) -> 'DotDict':
         """Create a deep copy of the DotDict instance.
 
         This method creates a completely independent copy of the DotDict,
@@ -502,7 +427,7 @@ class DotDict(Mapping[K, V]):
 
         """
         result = {}
-        for key, value in self._data.items():
+        for (key, value) in self._data.items():
             if isinstance(value, DotDict):
                 result[key] = value.deepcopy()
             elif isinstance(value, dict):
@@ -511,17 +436,11 @@ class DotDict(Mapping[K, V]):
                 result[key] = value.copy()
             else:
                 result[key] = value
-        return type(self)(result)  # Use the same class type as self
+        return type(self)(result)
 
-    def __repr__(self) -> str:
+    def __repr__(self: Any) -> str:
         """Return string representation of dictionary."""
         return pformat(self._data)
-
-
-# ============================================================================
-# Printing and Logging Utilities
-# ============================================================================
-
 
 class PrintIfVerbose:
     """A callable class that conditionally prints messages based on verbosity setting.
@@ -537,10 +456,10 @@ class PrintIfVerbose:
 
     """
 
-    def __init__(self, verbose: bool) -> None:
+    def __init__(self: Any, verbose: bool) -> None:
         self.verbose = verbose
 
-    def __call__(self, message: str) -> None:
+    def __call__(self: Any, message: str) -> None:
         """Print the message if verbose mode is enabled.
 
         Args:
@@ -549,12 +468,6 @@ class PrintIfVerbose:
         """
         if self.verbose:
             print(message)
-
-
-# ============================================================================
-# Compression Utilities
-# ============================================================================
-
 
 def zip(folder_path: str) -> str:
     """Create zip archive of folder contents.
@@ -570,25 +483,17 @@ def zip(folder_path: str) -> str:
         Path to the created zip file
 
     """
-    zip_path = folder_path + ".zip"
-
-    # Get all files and folders recursively
+    zip_path = folder_path + '.zip'
     all_files = []
-    for root, _, files in os.walk(folder_path):
+    for (root, _, files) in os.walk(folder_path):
         for file in files:
-            # Get full path of file
             file_path = Path(root) / file
-            # Get relative path from the base folder for preserving structure
             rel_path = file_path.relative_to(folder_path)
             all_files.append((str(file_path), str(rel_path)))
-
-    # Create a zip file
-    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
-        for file_path, rel_path in tqdm(all_files, desc="Compressing", unit="file"):
+    with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+        for (file_path, rel_path) in tqdm(all_files, desc='Compressing', unit='file'):
             zipf.write(file_path, rel_path)
-
     return zip_path
-
 
 def unzip(path_to_zip: str) -> str:
     """Extract a zip file to its parent directory.
@@ -607,19 +512,12 @@ def unzip(path_to_zip: str) -> str:
         Path to the extracted folder
 
     """
-    extracted_path = path_to_zip.replace(".zip", "")
-    with zipfile.ZipFile(path_to_zip, "r") as zip_ref:
+    extracted_path = path_to_zip.replace('.zip', '')
+    with zipfile.ZipFile(path_to_zip, 'r') as zip_ref:
         files = zip_ref.namelist()
-        for file in tqdm(files, desc="Extracting", unit="file"):
+        for file in tqdm(files, desc='Extracting', unit='file'):
             zip_ref.extract(file, extracted_path)
-
     return extracted_path
-
-
-# ============================================================================
-# Coordinate Utilities
-# ============================================================================
-
 
 def cartesian_to_spherical(cartesian_coords: np.ndarray) -> np.ndarray:
     """Convert Cartesian coordinates to spherical coordinates.
@@ -633,19 +531,11 @@ def cartesian_to_spherical(cartesian_coords: np.ndarray) -> np.ndarray:
 
     """
     spherical_coords = np.zeros((cartesian_coords.shape[0], 3))
-
-    # Calculate magnitude (r) - distance from origin
-    spherical_coords[:, 0] = np.sqrt(np.sum(cartesian_coords**2, axis=1))
-
-    # Calculate azimuth (φ) - angle in xy plane
+    spherical_coords[:, 0] = np.sqrt(np.sum(cartesian_coords ** 2, axis=1))
     spherical_coords[:, 1] = np.arctan2(cartesian_coords[:, 1], cartesian_coords[:, 0])
-
-    # Calculate elevation (θ) - angle from xy plane
     r_xy = np.sqrt(cartesian_coords[:, 0] ** 2 + cartesian_coords[:, 1] ** 2)
     spherical_coords[:, 2] = np.arctan2(cartesian_coords[:, 2], r_xy)
-
     return spherical_coords
-
 
 def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     """Convert spherical coordinates to Cartesian coordinates.
@@ -665,23 +555,14 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
         Array of same shape as input containing Cartesian coordinates (x, y, z)
 
     """
-    # Preserve input shape
     cartesian_coords = np.zeros_like(spherical_coords)
     r = spherical_coords[..., 0]
     elevation = spherical_coords[..., 1]
     azimuth = spherical_coords[..., 2]
-
-    cartesian_coords[..., 0] = r * np.sin(elevation) * np.cos(azimuth)  # x
-    cartesian_coords[..., 1] = r * np.sin(elevation) * np.sin(azimuth)  # y
-    cartesian_coords[..., 2] = r * np.cos(elevation)  # z
-
+    cartesian_coords[..., 0] = r * np.sin(elevation) * np.cos(azimuth)
+    cartesian_coords[..., 1] = r * np.sin(elevation) * np.sin(azimuth)
+    cartesian_coords[..., 2] = r * np.cos(elevation)
     return cartesian_coords
-
-
-# ============================================================================
-# Delegating List Utilities
-# ============================================================================
-
 
 class DelegatingList(list):
     """A list subclass that delegates method calls to each item in the list.
@@ -690,7 +571,7 @@ class DelegatingList(list):
     and the results will be returned as a list.
     """
 
-    def __getattr__(self, name):
+    def __getattr__(self: Any, name: Any) -> Any:
         """Delegate attribute access to each item in the list.
 
         If the attribute is a method, it will be called on each item and results returned as a list.
@@ -700,54 +581,34 @@ class DelegatingList(list):
         if not self:
             msg = f"Empty list has no attribute '{name}'"
             raise AttributeError(msg)
-
-        # Get the attribute from the first item to check if it's a method
         first_attr = getattr(self[0], name)
-
         if callable(first_attr):
-            # If it's a method, return a function that calls it on all items
+
             def method(*args: Any, **kwargs: Any) -> DelegatingList:
                 results = [getattr(item, name)(*args, **kwargs) for item in self]
                 return DelegatingList(results)
-
             return method
-        # If it's a property, get values from all items
         results = [getattr(item, name) for item in self]
         return DelegatingList(results)
 
-    def __setattr__(self, name, value) -> None:
+    def __setattr__(self: Any, name: Any, value: Any) -> None:
         """Delegate attribute assignment to each item in the list.
 
         If value is a list/iterable, each item in the list gets the corresponding value.
         Otherwise, all items get the same value.
         """
         if name in self.__dict__:
-            # Handle internal attributes
             super().__setattr__(name, value)
             return
-
         if not self:
             msg = f"Empty list has no attribute '{name}'"
             raise AttributeError(msg)
-
-        # If value is iterable and has the same length as self, assign each value
-        if (
-            hasattr(value, "__iter__")
-            and not isinstance(value, (str, bytes))
-            and len(value) == len(self)
-        ):
-            for item, val in __builtins__["zip"](self, value):
+        if hasattr(value, '__iter__') and (not isinstance(value, (str, bytes))) and (len(value) == len(self)):
+            for (item, val) in __builtins__['zip'](self, value):
                 setattr(item, name, val)
         else:
-            # Otherwise assign the same value to all items
             for item in self:
                 setattr(item, name, value)
-
-
-# ============================================================================
-# Pickle Utilities
-# ============================================================================
-
 
 def save_pickle(obj: Any, filename: str) -> None:
     """Save an object to a pickle file.
@@ -760,9 +621,8 @@ def save_pickle(obj: Any, filename: str) -> None:
         IOError: If file cannot be written
 
     """
-    with Path(filename).open("wb") as file:
+    with Path(filename).open('wb') as file:
         pickle.dump(obj, file)
-
 
 def load_pickle(filename: str) -> Any:
     """Load an object from a pickle file.
@@ -778,5 +638,5 @@ def load_pickle(filename: str) -> Any:
         pickle.UnpicklingError: If file cannot be unpickled
 
     """
-    with Path(filename).open("rb") as file:
+    with Path(filename).open('rb') as file:
         return pickle.load(file)
