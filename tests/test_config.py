@@ -6,7 +6,7 @@ from deepmimo import config
 
 
 @pytest.fixture
-def reset_config():
+def reset_config() -> None:
     """Reset configuration before and after each test."""
     config.reset()
     yield

@@ -821,7 +821,7 @@ class Dataset(DotDict):
         INTER_MAP = str.maketrans({"0": "", "1": "R", "2": "D", "3": "S", "4": "T"})
 
         # Vectorize the translation across all paths
-        def translate_code(s):
+        def translate_code(s: str) -> str:
             # 'nan', '221.0', '134.0', ... -> 'n', 'RRD', 'DST', ...
             return s[:-2].translate(INTER_MAP) if s != "nan" else "n"
 
@@ -1301,7 +1301,7 @@ class Dataset(DotDict):
     # 8. Visualization
     ###########################################
 
-    def plot_coverage(self, cov_map: Any, **kwargs: Any):
+    def plot_coverage(self, cov_map: Any, **kwargs: Any) -> Any:
         """Plot the coverage of the dataset.
 
         Args:
@@ -1317,7 +1317,7 @@ class Dataset(DotDict):
             **kwargs,
         )
 
-    def plot_rays(self, idx: int, color_strat: str = "none", **kwargs: Any):
+    def plot_rays(self, idx: int, color_strat: str = "none", **kwargs: Any) -> Any:
         """Plot the rays of the dataset.
 
         Args:
@@ -1364,7 +1364,7 @@ class Dataset(DotDict):
             **default_kwargs,
         )
 
-    def plot_summary(self, **kwargs):
+    def plot_summary(self, **kwargs: Any) -> Any:
         """Plot the summary of the dataset."""
         return plot_summary(dataset=self, **kwargs)
 
@@ -1898,7 +1898,7 @@ class MacroDataset:
         """
         self.datasets = datasets if datasets is not None else []
 
-    def _get_single(self, key):
+    def _get_single(self, key: str) -> Any:
         """Get a single value from the first dataset for shared parameters.
 
         Args:
@@ -1926,13 +1926,13 @@ class MacroDataset:
         if name in self.PROPAGATE_METHODS:
             if name in self.SINGLE_ACCESS_METHODS:
                 # For single access methods, only call on first dataset
-                def single_method(*args, **kwargs):
+                def single_method(*args: Any, **kwargs: Any) -> Any:
                     return getattr(self.datasets[0], name)(*args, **kwargs)
 
                 return single_method
 
             # For normal methods, propagate to all datasets
-            def propagated_method(*args, **kwargs):
+            def propagated_method(*args: Any, **kwargs: Any) -> Any:
                 results = [getattr(dataset, name)(*args, **kwargs) for dataset in self.datasets]
                 return results[0] if len(results) == 1 else results
 
@@ -2025,7 +2025,7 @@ class DynamicDataset(MacroDataset):
         for dataset in datasets:
             dataset.parent_name = name
 
-    def _get_single(self, key):
+    def _get_single(self, key: str) -> Any:
         """Override _get_single to handle scene differently from other shared parameters.
 
         For scene, return a DelegatingList of scenes from all datasets.

@@ -221,7 +221,7 @@ def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_F
         raise Exception(msg)
 
 
-def load_mat(mat_path: str, key: str | None = None):
+def load_mat(mat_path: str, key: str | None = None) -> Any:
     """Load a .mat file with supported extensions (mat, npz, npy).
 
     This function tries to load a .mat file with supported extensions (mat, npz, npy).
@@ -266,7 +266,7 @@ def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
     if not output_path.endswith(".json"):
         output_path += ".json"
 
-    def numpy_handler(x):
+    def numpy_handler(x: Any) -> list[Any] | str:
         return x.tolist() if isinstance(x, np.ndarray) else str(x)
 
     with open(output_path, "w") as f:
@@ -446,15 +446,15 @@ class DotDict(Mapping[K, V]):
         """Return list of valid attributes."""
         return list(set(list(super().__dir__()) + list(self._data.keys())))
 
-    def keys(self):
+    def keys(self) -> Any:
         """Return dictionary keys."""
         return self._data.keys()
 
-    def values(self):
+    def values(self) -> Any:
         """Return dictionary values."""
         return self._data.values()
 
-    def items(self):
+    def items(self) -> Any:
         """Return dictionary items as (key, value) pairs."""
         return self._data.items()
 
@@ -708,7 +708,7 @@ class DelegatingList(list):
 
         if callable(first_attr):
             # If it's a method, return a function that calls it on all items
-            def method(*args, **kwargs):
+            def method(*args: Any, **kwargs: Any) -> DelegatingList:
                 results = [getattr(item, name)(*args, **kwargs) for item in self]
                 return DelegatingList(results)
 

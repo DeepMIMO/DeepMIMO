@@ -10,7 +10,7 @@ from deepmimo import general_utils
 
 
 @pytest.fixture
-def temp_dir(tmp_path):
+def temp_dir(tmp_path) -> None:
     """Fixture to provide a temporary directory."""
     return tmp_path
 

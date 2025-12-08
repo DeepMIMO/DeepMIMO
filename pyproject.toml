@@ -180,6 +180,12 @@ ignore = [
     # Life quality  
     "T201",    # Allow "print" in production code
     "T203",    # Allow pprint in production code
+    
+    # Type annotations - Any is appropriate for dynamic structures  
+    "ANN401",  # Dynamically typed expressions (Any) are fine for dict-like structures
+    
+    # Code comments that look like code but are actually documentation
+    "ERA001",  # Commented-out code (often formulas, examples, or documentation)
 ]
 
 [tool.ruff.lint.per-file-ignores]
