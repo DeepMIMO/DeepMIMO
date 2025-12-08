@@ -140,8 +140,8 @@ Build documentation:
 | Step    | Command                                           | Description                       |
 |---------|---------------------------------------------------|-----------------------------------|
 | Install | `pip install .[doc]`                             | Install docs dependencies         |
-| Build   | `cd docs`<br>`sphinx-build -b html . _build/html` | Generate HTML documentation       |
-| Serve   | `cd docs/_build/html`<br>`python -m http.server`  | View docs at http://localhost:8000|
+| Build   | `mkdocs build`                                   | Generate HTML documentation       |
+| Serve   | `mkdocs serve`                                   | View docs at http://localhost:8000|
 
 
 ## Pull Request Process
