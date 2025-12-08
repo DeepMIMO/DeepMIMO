@@ -79,7 +79,8 @@ ch_params.ant_bs.shape = [8, 1]
 ch_params.ant_ue.shape = [1, 1]
 
 # Generate channels
-channels = dataset.get_time_domain_channel(ch_params=ch_params)
+dataset.compute_channels(ch_params)
+channels = dataset.channel
 
 print(f"v4 Dataset loaded successfully")
 print(f"Channel shape: {channels.shape}")
@@ -151,11 +152,12 @@ print(v3_channel_gen)
 # %%
 # v4: Channels generated on-demand
 ch_params = dm.ChannelParameters()
-ch_params.fd_channel = True  # Frequency domain
+ch_params.freq_domain = True  # Frequency domain
 ch_params.ofdm.subcarriers = 512
 ch_params.ofdm.bandwidth = 10e6
 
-channels = dataset.get_freq_domain_channel(ch_params=ch_params)
+dataset.compute_channels(ch_params)
+channels = dataset.channel
 print(f"v4 channel shape: {channels.shape}")
 
 # %% [markdown]
@@ -287,10 +289,11 @@ ch = dataset[0]["user"]["channel"]
 
 print("\nv4:")
 print('''
-dataset = dm.load("city_18_denver")
+dataset = dm.load("city_18_denver_3p5")
 ch_params = dm.ChannelParameters()
 ch_params.ant_bs.shape = [4, 4]
-ch = dataset.get_time_domain_channel(ch_params)
+dataset.compute_channels(ch_params)
+ch = dataset.channel
 ''')
 
 # %% [markdown]
@@ -307,10 +310,11 @@ dataset = DeepMIMOv3.generate_data(params)
 
 print("\nv4:")
 print('''
-ch_params.fd_channel = True
+ch_params.freq_domain = True
 ch_params.ofdm.subcarriers = 512
 ch_params.ofdm.bandwidth = 10e6
-ch = dataset.get_freq_domain_channel(ch_params)
+dataset.compute_channels(ch_params)
+ch = dataset.channel
 ''')
 
 # %% [markdown]

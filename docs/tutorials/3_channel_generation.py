@@ -46,12 +46,12 @@ print(ch_params)
 
 # %%
 # Customize antenna array configuration
-ch_params.ant_bs.shape = [4, 4]  # 4x4 BS antenna array
-ch_params.ant_bs.spacing = 0.5  # Half-wavelength spacing
-ch_params.ant_ue.shape = [2, 1]  # 2x1 UE antenna array
+ch_params.bs_antenna.shape = [4, 4]  # 4x4 BS antenna array
+ch_params.bs_antenna.spacing = 0.5  # Half-wavelength spacing
+ch_params.ue_antenna.shape = [2, 1]  # 2x1 UE antenna array
 
-print(f"BS antenna shape: {ch_params.ant_bs.shape}")
-print(f"UE antenna shape: {ch_params.ant_ue.shape}")
+print(f"BS antenna shape: {ch_params.bs_antenna.shape}")
+print(f"UE antenna shape: {ch_params.ue_antenna.shape}")
 
 # %%
 # Set the number of paths to use
@@ -65,10 +65,11 @@ print(f"Number of paths: {ch_params.num_paths}")
 
 # %%
 # Set to time domain
-ch_params.fd_channel = False
+ch_params.freq_domain = False
 
 # Generate time-domain channel
-time_channels = dataset.get_time_domain_channel(ch_params=ch_params)
+dataset.compute_channels(ch_params)
+time_channels = dataset.channel
 print(f"Time domain channel shape: {time_channels.shape}")
 print(f"Shape: [num_rx, num_rx_ant, num_tx_ant, num_paths]")
 
@@ -92,14 +93,15 @@ plt.show()
 
 # %%
 # Configure OFDM parameters
-ch_params.fd_channel = True
+ch_params.freq_domain = True
 ch_params.ofdm.bandwidth = 10e6  # 10 MHz
 ch_params.ofdm.subcarriers = 512
-ch_params.ofdm.subcarriers_sampled = None  # Use all subcarriers
-ch_params.ofdm.lpf = False  # No low-pass filter
+ch_params.ofdm.selected_subcarriers = np.arange(64)  # Select first 64 subcarriers
+ch_params.ofdm.rx_filter = False  # No low-pass filter
 
 # Generate frequency-domain channel
-freq_channels = dataset.get_freq_domain_channel(ch_params=ch_params)
+dataset.compute_channels(ch_params)
+freq_channels = dataset.channel
 print(f"Frequency domain channel shape: {freq_channels.shape}")
 print(f"Shape: [num_rx, num_rx_ant, num_tx_ant, num_subcarriers]")
 
@@ -123,9 +125,10 @@ plt.show()
 
 # %%
 # Sample every 4th subcarrier
-ch_params.ofdm.subcarriers_sampled = list(range(0, 512, 4))
+ch_params.ofdm.selected_subcarriers = list(range(0, 512, 4))
 
-freq_channels_sampled = dataset.get_freq_domain_channel(ch_params=ch_params)
+dataset.compute_channels(ch_params)
+freq_channels_sampled = dataset.channel
 print(f"Sampled frequency domain channel shape: {freq_channels_sampled.shape}")
 
 # %% [markdown]
@@ -138,18 +141,21 @@ print(f"Sampled frequency domain channel shape: {freq_channels_sampled.shape}")
 
 # %%
 # Rotate BS antennas in azimuth
-ch_params.ant_bs.rotation = [45, 0, 0]  # 45° azimuth rotation
+ch_params.bs_antenna.rotation = [45, 0, 0]  # 45° azimuth rotation
 
-rotated_channels = dataset.get_time_domain_channel(ch_params=ch_params)
+dataset.compute_channels(ch_params)
+rotated_channels = dataset.channel
 print(f"Channels with rotated BS antennas shape: {rotated_channels.shape}")
 
 # %%
 # Compare power before and after rotation
-ch_params.ant_bs.rotation = [0, 0, 0]
-channels_no_rot = dataset.get_time_domain_channel(ch_params=ch_params)
+ch_params.bs_antenna.rotation = [0, 0, 0]
+dataset.compute_channels(ch_params)
+channels_no_rot = dataset.channel
 
-ch_params.ant_bs.rotation = [90, 0, 0]
-channels_rot = dataset.get_time_domain_channel(ch_params=ch_params)
+ch_params.bs_antenna.rotation = [90, 0, 0]
+dataset.compute_channels(ch_params)
+channels_rot = dataset.channel
 
 power_no_rot = np.mean(np.abs(channels_no_rot[0:100])**2)
 power_rot = np.mean(np.abs(channels_rot[0:100])**2)
@@ -162,9 +168,10 @@ print(f"Average power (90° rotation): {power_rot:.6f}")
 
 # %%
 # Rotate BS antennas in elevation
-ch_params.ant_bs.rotation = [0, 15, 0]  # 15° elevation (downtilt)
+ch_params.bs_antenna.rotation = [0, 15, 0]  # 15° elevation (downtilt)
 
-tilted_channels = dataset.get_time_domain_channel(ch_params=ch_params)
+dataset.compute_channels(ch_params)
+tilted_channels = dataset.channel
 print(f"Channels with tilted BS antennas shape: {tilted_channels.shape}")
 
 # %% [markdown]
@@ -175,15 +182,18 @@ print(f"Channels with tilted BS antennas shape: {tilted_channels.shape}")
 # %%
 # Single antenna vs. array
 ch_params_single = dm.ChannelParameters()
-ch_params_single.ant_bs.shape = [1, 1]
-ch_params_single.ant_ue.shape = [1, 1]
+ch_params_single.bs_antenna.shape = [1, 1]
+ch_params_single.ue_antenna.shape = [1, 1]
 
 ch_params_array = dm.ChannelParameters()
-ch_params_array.ant_bs.shape = [8, 1]
-ch_params_array.ant_ue.shape = [4, 1]
+ch_params_array.bs_antenna.shape = [8, 1]
+ch_params_array.ue_antenna.shape = [4, 1]
 
-channels_single = dataset.get_time_domain_channel(ch_params=ch_params_single)
-channels_array = dataset.get_time_domain_channel(ch_params=ch_params_array)
+dataset.compute_channels(ch_params_single)
+channels_single = dataset.channel
+
+dataset.compute_channels(ch_params_array)
+channels_array = dataset.channel
 
 print(f"Single antenna channel shape: {channels_single.shape}")
 print(f"Array antenna channel shape: {channels_array.shape}")

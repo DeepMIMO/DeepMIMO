@@ -36,11 +36,12 @@ dataset = dm.load(scen_name)
 # %%
 # Configure multi-antenna system
 ch_params = dm.ChannelParameters()
-ch_params.ant_bs.shape = [8, 1]  # 8-element linear array at BS
-ch_params.ant_ue.shape = [1, 1]  # Single antenna at UE
+ch_params.bs_antenna.shape = [8, 1]  # 8-element linear array at BS
+ch_params.ue_antenna.shape = [1, 1]  # Single antenna at UE
 
 # Generate channels
-channels = dataset.get_time_domain_channel(ch_params=ch_params)
+dataset.compute_channels(ch_params)
+channels = dataset.channel
 print(f"Channel shape: {channels.shape}")
 
 # %% [markdown]
@@ -50,12 +51,12 @@ print(f"Channel shape: {channels.shape}")
 
 # %%
 # Array parameters
-num_antennas = ch_params.ant_bs.shape[0]
-antenna_spacing = ch_params.ant_bs.spacing  # in wavelengths
+num_antennas = ch_params.bs_antenna.shape[0]
+antenna_spacing = ch_params.bs_antenna.spacing  # in wavelengths
 
 # Generate steering vector for a specific angle
 theta = 30  # degrees
-sv = dm.steering_vec(theta, num_antennas, antenna_spacing)
+sv = dm.steering_vec(ch_params.bs_antenna.shape, phi=theta).squeeze()
 
 print(f"Steering vector shape: {sv.shape}")
 print(f"Steering vector for {theta}°: {sv[:4]}...")
@@ -66,7 +67,7 @@ print(f"Steering vector for {theta}°: {sv[:4]}...")
 # %%
 # Generate steering vectors for a range of angles
 angles = np.arange(-90, 91, 5)  # -90° to 90° in 5° steps
-steering_vectors = np.array([dm.steering_vec(angle, num_antennas, antenna_spacing) 
+steering_vectors = np.array([dm.steering_vec(ch_params.bs_antenna.shape, phi=angle).squeeze() 
                               for angle in angles])
 
 print(f"Steering vectors shape: {steering_vectors.shape}")
@@ -77,7 +78,7 @@ print(f"Steering vectors shape: {steering_vectors.shape}")
 # %%
 # Compute beamforming gain for a specific user
 user_idx = 0
-h = channels[user_idx, :, 0, 0]  # Channel vector for user 0
+h = channels[user_idx, 0, :, 0]  # Channel vector (RX ant 0, all TX ants, path 0)
 
 # Matched filter beamformer (MF)
 w_mf = h.conj() / np.linalg.norm(h)
@@ -100,9 +101,9 @@ print(f"Beamforming gain: {10*np.log10(bf_gain/no_bf_power):.2f} dB")
 # Compute array factor for different angles
 array_factor = []
 for angle in angles:
-    sv = dm.steering_vec(angle, num_antennas, antenna_spacing)
+    sv = dm.steering_vec(ch_params.bs_antenna.shape, phi=angle).squeeze()
     # Beamformer pointed at 0 degrees
-    w = dm.steering_vec(0, num_antennas, antenna_spacing)
+    w = dm.steering_vec(ch_params.bs_antenna.shape, phi=0).squeeze()
     af = np.abs(np.dot(w.conj(), sv))
     array_factor.append(af)
 
@@ -144,10 +145,10 @@ num_users = min(100, len(dataset.power))  # Use first 100 users
 beam_powers = np.zeros((num_users, len(angles)))
 
 for user_idx in range(num_users):
-    h = channels[user_idx, :, 0, 0]  # Channel vector
+    h = channels[user_idx, 0, :, 0]  # Channel vector (RX ant 0, all TX ants, path 0)
     
     for angle_idx, angle in enumerate(angles):
-        w = dm.steering_vec(angle, num_antennas, antenna_spacing)
+        w = dm.steering_vec(ch_params.bs_antenna.shape, phi=angle).squeeze()
         power = np.abs(np.dot(w.conj(), h))**2
         beam_powers[user_idx, angle_idx] = power
 
@@ -171,8 +172,8 @@ best_beams = np.argmax(beam_powers, axis=1)
 best_angles = angles[best_beams]
 
 plt.figure(figsize=(10, 6))
-plt.scatter(dataset.user_positions[:num_users, 0],
-            dataset.user_positions[:num_users, 1],
+plt.scatter(dataset.rx_pos[:num_users, 0],
+            dataset.rx_pos[:num_users, 1],
             c=best_angles, cmap='viridis', s=20)
 plt.colorbar(label='Best Beam Angle (degrees)')
 plt.xlabel('X (m)')
@@ -189,8 +190,8 @@ plt.show()
 max_powers = np.max(beam_powers, axis=1)
 
 plt.figure(figsize=(10, 6))
-plt.scatter(dataset.user_positions[:num_users, 0],
-            dataset.user_positions[:num_users, 1],
+plt.scatter(dataset.rx_pos[:num_users, 0],
+            dataset.rx_pos[:num_users, 1],
             c=10*np.log10(max_powers + 1e-10), 
             cmap='viridis', s=20)
 plt.colorbar(label='Max Received Power (dBW)')
@@ -209,7 +210,7 @@ num_selected_users = min(num_antennas - 1, num_users)
 selected_users = np.random.choice(num_users, num_selected_users, replace=False)
 
 # Channel matrix for selected users
-H = np.array([channels[u, :, 0, 0] for u in selected_users]).T
+H = np.array([channels[u, 0, :, 0] for u in selected_users]).T
 
 # Zero-forcing precoder
 W_zf = np.linalg.pinv(H)
@@ -226,7 +227,7 @@ gains_mf = []
 gains_uniform = []
 
 for user_idx in range(num_users):
-    h = channels[user_idx, :, 0, 0]
+    h = channels[user_idx, 0, :, 0]
     
     # Matched filter
     w_mf = h.conj() / np.linalg.norm(h)

@@ -56,7 +56,10 @@ print(dataset)
 
 # %%
 # Generate time-domain channels
-channels = dataset.get_time_domain_channel()
+ch_params = dm.ChannelParameters()
+ch_params.freq_domain = False
+dataset.compute_channels(ch_params)
+channels = dataset.channel
 print(f"Channel shape: {channels.shape}")
 print(f"Channel type: {type(channels)}")
 
@@ -87,23 +90,28 @@ print(f"Average pathloss: {np.mean(pathloss[pathloss > -np.inf]):.2f} dB")
 
 # %%
 # Load a city scenario with multiple base stations
-city_scen = "city_18_denver"
+city_scen = "city_18_denver_3p5"
 dm.download(city_scen)
-city_dataset = dm.load(city_scen)
+# Load specific TX/RX sets to get a single dataset
+city_dataset = dm.load(city_scen, tx_sets=[1], rx_sets=[0])
 
 # %% [markdown]
 # ### Explore TX/RX Pairs and Sets
 
 # %%
 # Get information about transmitter and receiver sets
-print("Available TX sets:", dm.get_txrx_sets(city_scen)["tx_sets"])
-print("Available RX sets:", dm.get_txrx_sets(city_scen)["rx_sets"])
+txrx_sets = dm.get_txrx_sets(city_scen)
+print("Available TX-RX sets:")
+for txrx_set in txrx_sets:
+    print(f"  {txrx_set}")
 
 # %%
 # Get TX/RX pair information
-pairs = dm.get_txrx_pairs(city_scen)
+pairs = dm.get_txrx_pairs(txrx_sets)
 print(f"Number of TX/RX pairs: {len(pairs)}")
-print(f"First few pairs: {pairs[:5]}")
+print(f"First few pairs:")
+for pair in pairs[:5]:
+    print(f"  {pair}")
 
 # %% [markdown]
 # ### Explore Available Matrices
@@ -131,11 +139,9 @@ print(f"AOD (azimuth) matrix shape: {city_dataset.aod_az.shape}")
 # Get a high-level overview of the scenario.
 
 # %%
-# Get scenario information
-info = dm.get_scenario_info(city_scen)
+# Get scenario summary
 print("Scenario Summary:")
-for key, value in info.items():
-    print(f"  {key}: {value}")
+dm.summary(city_scen)
 
 # %% [markdown]
 # ---
@@ -166,11 +172,13 @@ dm.info('ch_params')
 
 # %%
 # Inspect the docstring of a function
-dm.info(dm.load)
+# dm.info(dm.load)  # Uncomment to view docstring
+print("Use dm.info(dm.load) to view the docstring of dm.load()")
 
 # %%
 # Inspect the docstring of a method
-dm.info(dataset.get_time_domain_channel)
+# dm.info(dataset.compute_channels)  # Uncomment to view docstring
+print("Use dm.info(dataset.compute_channels) to view the docstring")
 
 # %% [markdown]
 # ### Understanding Aliases
@@ -184,9 +192,9 @@ dm.info('rx_pos')  # This is an alias
 # %%
 # Common aliases
 print("Using aliases:")
-print(f"  dataset.rx_pos is the same as dataset.user_positions")
-print(f"  dataset.tx_pos is the same as dataset.bs_positions")
-print(f"  Shapes match: {np.array_equal(dataset.rx_pos, dataset.user_positions)}")
+print(f"  dataset.user_pos (alias) -> dataset.rx_pos (actual)")
+print(f"  dataset.bs_pos (alias) -> dataset.tx_pos (actual)")
+print(f"  RX positions shape: {dataset.rx_pos.shape}")
 
 # %% [markdown]
 # ### Implicit Computations
@@ -196,8 +204,8 @@ print(f"  Shapes match: {np.array_equal(dataset.rx_pos, dataset.user_positions)}
 # %%
 # These are computed implicitly:
 print(f"Number of paths per user: {dataset.num_paths[:10]}")  # Computed from power/delay
-print(f"Pathloss (dB): {dataset.pathloss[0, :5]}")  # Computed from power
-print(f"Distance (m): {dataset.dist[0, :5]}")  # Computed from delay
+print(f"Pathloss (dB) for first 5 users: {dataset.pathloss[:5]}")  # Computed from power
+print(f"Distance (m) for first 5 users: {dataset.dist[:5]}")  # Computed from delay
 
 # %% [markdown]
 # ### Discovering More Functions
@@ -213,7 +221,8 @@ for func in sorted(key_functions)[:20]:  # Show first 20
 
 # %%
 # Get help for any function
-dm.info(dm.download)
+# dm.info(dm.download)  # Uncomment to view docstring
+print("Use dm.info(dm.download) to view the docstring of any function")
 
 # %% [markdown]
 # ---

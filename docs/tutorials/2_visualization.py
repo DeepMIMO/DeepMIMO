@@ -54,8 +54,9 @@ plt.show()
 # Visualize ray propagation paths.
 
 # %%
-# Plot rays for a subset of users
-dataset.plot_rays(rx_indices=range(0, 1000, 100))
+# Plot rays for a user with line-of-sight
+u_idx = np.where(dataset.los == 1)[0][100]
+dataset.plot_rays(u_idx, proj_3D=False, dpi=100)
 plt.title('Ray Propagation Paths')
 plt.show()
 
@@ -142,8 +143,10 @@ fig, ax = plt.subplots(figsize=(12, 8))
 # Plot coverage as background
 dataset.power.plot(ax=ax)
 
-# Overlay rays for selected users
-dataset.plot_rays(rx_indices=range(0, 1000, 200), ax=ax, alpha=0.5)
+# Overlay rays for a selected user
+los_users = np.where(dataset.los == 1)[0]
+if len(los_users) > 0:
+    dataset.plot_rays(los_users[50], ax=ax, proj_3D=False)
 
 plt.title('Coverage Map with Ray Overlay')
 plt.show()
@@ -154,14 +157,10 @@ plt.show()
 # %%
 # 3D visualization with scene and rays
 if hasattr(dataset, 'scene'):
-    fig = plt.figure(figsize=(12, 8))
-    ax = fig.add_subplot(111, projection='3d')
-    
-    # Plot scene
+    # Plot rays first, then overlay the scene
+    ax = dataset.plot_rays(los_users[50])
     dataset.scene.plot(ax=ax)
-    
-    # Overlay rays
-    dataset.plot_rays(rx_indices=range(0, 100, 10), ax=ax)
+    ax.legend().set_visible(False)
     
     plt.title('3D Scene with Rays')
     plt.show()
