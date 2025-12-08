@@ -12,13 +12,16 @@ import os
 import shutil
 
 from deepmimo import consts as c
-from deepmimo.converters.sionna_rt.sionna_paths import _get_sionna_interaction_types as get_sionna_interaction_types
+from deepmimo.converters.sionna_rt.sionna_paths import (
+    _get_sionna_interaction_types as get_sionna_interaction_types,
+)
 from deepmimo.converters.sionna_rt.sionna_converter import sionna_rt_converter
+
 
 def test_get_sionna_interaction_types():
     """Test conversion of Sionna interaction types to DeepMIMO codes."""
     print("\n=== Testing Sionna to DeepMIMO Interaction Type Mapping ===")
-    
+
     # Test data dimensions
     n_users = 3
     max_paths = 4
@@ -80,7 +83,7 @@ def test_get_sionna_interaction_types():
 
     # Test main functionality (without RIS)
     result = get_sionna_interaction_types(types_no_ris, inter_pos)
-    
+
     np.testing.assert_array_almost_equal(result, expected)
 
     # Test RIS error separately
@@ -90,7 +93,7 @@ def test_get_sionna_interaction_types():
 
 def test_edge_cases():
     """Test edge cases for interaction type conversion."""
-    
+
     # Test empty arrays
     types = np.zeros((0, 5), dtype=np.float32)
     inter_pos = np.zeros((0, 5, 3, 3), dtype=np.float32)
@@ -109,6 +112,7 @@ def test_edge_cases():
     result = get_sionna_interaction_types(types, inter_pos)
     assert np.all(result == 0), "All zeros test failed"
 
+
 @patch("deepmimo.converters.sionna_rt.sionna_converter.read_rt_params")
 @patch("deepmimo.converters.sionna_rt.sionna_converter.read_txrx")
 @patch("deepmimo.converters.sionna_rt.sionna_converter.read_paths")
@@ -125,24 +129,24 @@ def test_sionna_rt_converter_flow(
     mock_read_materials,
     mock_read_paths,
     mock_read_txrx,
-    mock_read_rt_params
+    mock_read_rt_params,
 ):
     """Test the full flow of sionna_rt_converter orchestrator."""
-    
+
     # Setup mocks
     mock_cu.check_scenario_exists.return_value = True
     mock_read_rt_params.return_value = {"raytracer_version": "0.19.0"}
     mock_read_txrx.return_value = {}
     mock_read_materials.return_value = ({}, {})
-    
+
     mock_scene_obj = MagicMock()
     mock_scene_obj.export_data.return_value = {}
     mock_read_scene.return_value = mock_scene_obj
-    
+
     # Run converter
     rt_folder = "/path/to/rt_folder"
     result = sionna_rt_converter(rt_folder, scenario_name="test_scen")
-    
+
     # Verify calls
     assert result == "test_scen"
     mock_read_rt_params.assert_called_once_with(rt_folder)

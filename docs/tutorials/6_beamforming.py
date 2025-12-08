@@ -23,7 +23,7 @@ import numpy as np
 import deepmimo as dm
 
 # Set figure limit to avoid memory warnings
-plt.rcParams['figure.max_open_warning'] = 0
+plt.rcParams["figure.max_open_warning"] = 0
 
 # %%
 # Load dataset
@@ -70,8 +70,9 @@ print(f"Steering vector for {theta}°: {sv[:4]}...")
 # %%
 # Generate steering vectors for a range of angles
 angles = np.arange(-90, 91, 5)  # -90° to 90° in 5° steps
-steering_vectors = np.array([dm.steering_vec(ch_params.bs_antenna.shape, phi=angle).squeeze() 
-                              for angle in angles])
+steering_vectors = np.array(
+    [dm.steering_vec(ch_params.bs_antenna.shape, phi=angle).squeeze() for angle in angles]
+)
 
 print(f"Steering vectors shape: {steering_vectors.shape}")
 
@@ -88,12 +89,12 @@ h_norm = np.linalg.norm(h)
 if h_norm > 0:
     w_mf = h.conj() / h_norm
     # Compute received power with beamforming
-    bf_gain = np.abs(np.dot(w_mf.conj(), h))**2
-    no_bf_power = np.sum(np.abs(h)**2) / num_antennas
-    
-    print(f"Power without beamforming: {10*np.log10(no_bf_power + 1e-12):.2f} dB")
-    print(f"Power with beamforming: {10*np.log10(bf_gain + 1e-12):.2f} dB")
-    print(f"Beamforming gain: {10*np.log10(bf_gain/(no_bf_power + 1e-12)):.2f} dB")
+    bf_gain = np.abs(np.dot(w_mf.conj(), h)) ** 2
+    no_bf_power = np.sum(np.abs(h) ** 2) / num_antennas
+
+    print(f"Power without beamforming: {10 * np.log10(no_bf_power + 1e-12):.2f} dB")
+    print(f"Power with beamforming: {10 * np.log10(bf_gain + 1e-12):.2f} dB")
+    print(f"Beamforming gain: {10 * np.log10(bf_gain / (no_bf_power + 1e-12)):.2f} dB")
 else:
     print("Channel has zero power, skipping beamforming gain calculation")
 
@@ -117,10 +118,10 @@ array_factor = np.array(array_factor)
 
 # Plot array factor in dB
 plt.figure(figsize=(10, 6))
-plt.plot(angles, 20*np.log10(array_factor / np.max(array_factor)))
-plt.xlabel('Angle (degrees)')
-plt.ylabel('Array Factor (dB)')
-plt.title('Beamforming Array Factor Pattern')
+plt.plot(angles, 20 * np.log10(array_factor / np.max(array_factor)))
+plt.xlabel("Angle (degrees)")
+plt.ylabel("Array Factor (dB)")
+plt.title("Beamforming Array Factor Pattern")
 plt.grid(True)
 plt.ylim([-40, 0])
 plt.show()
@@ -130,12 +131,12 @@ plt.show()
 
 # %%
 # Polar plot of beam pattern
-fig, ax = plt.subplots(subplot_kw={'projection': 'polar'}, figsize=(8, 8))
+fig, ax = plt.subplots(subplot_kw={"projection": "polar"}, figsize=(8, 8))
 angles_rad = np.deg2rad(angles)
 ax.plot(angles_rad, array_factor)
-ax.set_theta_zero_location('N')
+ax.set_theta_zero_location("N")
 ax.set_theta_direction(-1)
-ax.set_title('Beam Pattern (Polar)')
+ax.set_title("Beam Pattern (Polar)")
 ax.grid(True)
 plt.show()
 
@@ -152,21 +153,25 @@ beam_powers = np.zeros((num_users, len(angles)))
 
 for user_idx in range(num_users):
     h = channels[user_idx, 0, :, 0]  # Channel vector (RX ant 0, all TX ants, path 0)
-    
+
     for angle_idx, angle in enumerate(angles):
         w = dm.steering_vec(ch_params.bs_antenna.shape, phi=angle).squeeze()
-        power = np.abs(np.dot(w.conj(), h))**2
+        power = np.abs(np.dot(w.conj(), h)) ** 2
         beam_powers[user_idx, angle_idx] = power
 
 # Plot heatmap
 plt.figure(figsize=(12, 6))
-plt.imshow(10*np.log10(beam_powers + 1e-10), 
-           aspect='auto', cmap='hot', origin='lower',
-           extent=[angles[0], angles[-1], 0, num_users])
-plt.colorbar(label='Received Power (dBW)')
-plt.xlabel('Beam Angle (degrees)')
-plt.ylabel('User Index')
-plt.title('Received Power per Beam and User')
+plt.imshow(
+    10 * np.log10(beam_powers + 1e-10),
+    aspect="auto",
+    cmap="hot",
+    origin="lower",
+    extent=[angles[0], angles[-1], 0, num_users],
+)
+plt.colorbar(label="Received Power (dBW)")
+plt.xlabel("Beam Angle (degrees)")
+plt.ylabel("User Index")
+plt.title("Received Power per Beam and User")
 plt.show()
 
 # %% [markdown]
@@ -178,13 +183,17 @@ best_beams = np.argmax(beam_powers, axis=1)
 best_angles = angles[best_beams]
 
 plt.figure(figsize=(10, 6))
-plt.scatter(dataset.rx_pos[:num_users, 0],
-            dataset.rx_pos[:num_users, 1],
-            c=best_angles, cmap='viridis', s=20)
-plt.colorbar(label='Best Beam Angle (degrees)')
-plt.xlabel('X (m)')
-plt.ylabel('Y (m)')
-plt.title('Best Beam Angle per User Position')
+plt.scatter(
+    dataset.rx_pos[:num_users, 0],
+    dataset.rx_pos[:num_users, 1],
+    c=best_angles,
+    cmap="viridis",
+    s=20,
+)
+plt.colorbar(label="Best Beam Angle (degrees)")
+plt.xlabel("X (m)")
+plt.ylabel("Y (m)")
+plt.title("Best Beam Angle per User Position")
 plt.grid(True)
 plt.show()
 
@@ -196,14 +205,17 @@ plt.show()
 max_powers = np.max(beam_powers, axis=1)
 
 plt.figure(figsize=(10, 6))
-plt.scatter(dataset.rx_pos[:num_users, 0],
-            dataset.rx_pos[:num_users, 1],
-            c=10*np.log10(max_powers + 1e-10), 
-            cmap='viridis', s=20)
-plt.colorbar(label='Max Received Power (dBW)')
-plt.xlabel('X (m)')
-plt.ylabel('Y (m)')
-plt.title('Maximum Received Power with Beamforming')
+plt.scatter(
+    dataset.rx_pos[:num_users, 0],
+    dataset.rx_pos[:num_users, 1],
+    c=10 * np.log10(max_powers + 1e-10),
+    cmap="viridis",
+    s=20,
+)
+plt.colorbar(label="Max Received Power (dBW)")
+plt.xlabel("X (m)")
+plt.ylabel("Y (m)")
+plt.title("Maximum Received Power with Beamforming")
 plt.grid(True)
 plt.show()
 
@@ -234,31 +246,34 @@ gains_uniform = []
 
 for user_idx in range(num_users):
     h = channels[user_idx, 0, :, 0]
-    
+
     # Matched filter
     h_norm = np.linalg.norm(h)
     if h_norm > 0:
         w_mf = h.conj() / h_norm
-        gain_mf = np.abs(np.dot(w_mf.conj(), h))**2
+        gain_mf = np.abs(np.dot(w_mf.conj(), h)) ** 2
     else:
         gain_mf = 0.0
-    
+
     # Uniform weighting
     w_uniform = np.ones(num_antennas) / np.sqrt(num_antennas)
-    gain_uniform = np.abs(np.dot(w_uniform.conj(), h))**2
-    
+    gain_uniform = np.abs(np.dot(w_uniform.conj(), h)) ** 2
+
     gains_mf.append(gain_mf)
     gains_uniform.append(gain_uniform)
 
 # Plot comparison
 plt.figure(figsize=(10, 6))
 epsilon = 1e-10  # Prevent log10(0)
-plt.hist([10*np.log10(np.array(gains_uniform) + epsilon), 
-          10*np.log10(np.array(gains_mf) + epsilon)], 
-         bins=30, label=['Uniform', 'Matched Filter'], alpha=0.7)
-plt.xlabel('Received Power (dBW)')
-plt.ylabel('Count')
-plt.title('Beamforming Gain Comparison')
+plt.hist(
+    [10 * np.log10(np.array(gains_uniform) + epsilon), 10 * np.log10(np.array(gains_mf) + epsilon)],
+    bins=30,
+    label=["Uniform", "Matched Filter"],
+    alpha=0.7,
+)
+plt.xlabel("Received Power (dBW)")
+plt.ylabel("Count")
+plt.title("Beamforming Gain Comparison")
 plt.legend()
 plt.grid(True)
 plt.show()
@@ -271,4 +286,3 @@ plt.show()
 # Continue with:
 # - **Tutorial 7: Convert & Upload Ray-tracing dataset** - Work with external ray tracers
 # - **Tutorial 8: Migration Guide** - Migrating from DeepMIMO v3 to v4
-

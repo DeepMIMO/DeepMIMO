@@ -3,6 +3,7 @@
 from deepmimo import info
 from deepmimo import consts as c
 
+
 def test_info_general(capsys):
     """Test general info output."""
     info()
@@ -11,12 +12,14 @@ def test_info_general(capsys):
     assert "Computed/Derived Matrices" in captured.out
     assert "Additional Dataset Fields" in captured.out
 
+
 def test_info_specific_param(capsys):
     """Test info for specific parameter."""
     info("power")
     captured = capsys.readouterr()
     assert "Tap power. Received power in dBW" in captured.out
     assert "num_rx, num_paths" in captured.out
+
 
 def test_info_alias(capsys):
     """Test info for alias parameter."""
@@ -32,11 +35,13 @@ def test_info_alias(capsys):
     captured = capsys.readouterr()
     assert "Channel matrix between TX and RX antennas" in captured.out
 
+
 def test_info_not_found(capsys):
     """Test info for non-existent parameter."""
     info("non_existent_param")
     captured = capsys.readouterr()
     assert "Unknown parameter: non_existent_param" in captured.out
+
 
 def test_info_ch_params(capsys):
     """Test info for channel parameters."""
@@ -45,11 +50,13 @@ def test_info_ch_params(capsys):
     assert "Channel Generation Parameters" in captured.out
     assert c.PARAMSET_ANT_BS in captured.out
 
+
 def test_info_channel_params_alias(capsys):
     """Test info for channel_params alias."""
     info("channel_params")
     captured = capsys.readouterr()
     assert "Channel Generation Parameters" in captured.out
+
 
 def test_info_all(capsys):
     """Test info for all parameters."""
@@ -59,12 +66,15 @@ def test_info_all(capsys):
     assert "Computed/Derived Matrices" in captured.out
     assert "Additional Dataset Fields" in captured.out
 
+
 def test_info_with_object():
     """Test info with a non-string object (should call help())."""
     # Should call built-in help, which prints to stdout
     # We can't easily capture help() output, so just ensure it doesn't crash
     import sys
+
     info(sys)  # Pass a module object
+
 
 def test_info_fundamental_matrices(capsys):
     """Test info for various fundamental matrices."""
@@ -73,6 +83,7 @@ def test_info_fundamental_matrices(capsys):
         captured = capsys.readouterr()
         assert param in captured.out or "alias" in captured.out.lower()
 
+
 def test_info_computed_matrices(capsys):
     """Test info for various computed matrices."""
     for param in [c.LOS_PARAM_NAME, c.PATHLOSS_PARAM_NAME, c.NUM_PATHS_PARAM_NAME]:
@@ -80,10 +91,10 @@ def test_info_computed_matrices(capsys):
         captured = capsys.readouterr()
         assert param in captured.out or "alias" in captured.out.lower()
 
+
 def test_info_additional_fields(capsys):
     """Test info for additional fields."""
     for param in [c.SCENE_PARAM_NAME, c.MATERIALS_PARAM_NAME, c.TXRX_PARAM_NAME]:
         info(param)
         captured = capsys.readouterr()
         assert param in captured.out or "alias" in captured.out.lower()
-

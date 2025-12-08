@@ -36,7 +36,7 @@ dataset = dm.load(scen_name)
 
 # %%
 # Get help on channel parameters
-dm.info('ch_params')
+dm.info("ch_params")
 
 # %%
 # Create channel parameters
@@ -80,9 +80,9 @@ cir = time_channels[user_idx, 0, 0, :]  # First RX ant, first TX ant
 
 plt.figure(figsize=(10, 5))
 plt.stem(np.abs(cir))
-plt.xlabel('Path Index')
-plt.ylabel('|h|')
-plt.title(f'Channel Impulse Response - User {user_idx}')
+plt.xlabel("Path Index")
+plt.ylabel("|h|")
+plt.title(f"Channel Impulse Response - User {user_idx}")
 plt.grid(True)
 plt.show()
 
@@ -112,9 +112,9 @@ freq_response = freq_channels[user_idx, 0, 0, :]  # First RX ant, first TX ant
 
 plt.figure(figsize=(10, 5))
 plt.plot(np.abs(freq_response))
-plt.xlabel('Subcarrier Index')
-plt.ylabel('|H[k]|')
-plt.title(f'Channel Frequency Response - User {user_idx}')
+plt.xlabel("Subcarrier Index")
+plt.ylabel("|H[k]|")
+plt.title(f"Channel Frequency Response - User {user_idx}")
 plt.grid(True)
 plt.show()
 
@@ -157,8 +157,8 @@ ch_params.bs_antenna.rotation = [90, 0, 0]
 dataset.compute_channels(ch_params)
 channels_rot = dataset.channel
 
-power_no_rot = np.mean(np.abs(channels_no_rot[0:100])**2)
-power_rot = np.mean(np.abs(channels_rot[0:100])**2)
+power_no_rot = np.mean(np.abs(channels_no_rot[0:100]) ** 2)
+power_rot = np.mean(np.abs(channels_rot[0:100]) ** 2)
 
 print(f"Average power (no rotation): {power_no_rot:.6f}")
 print(f"Average power (90° rotation): {power_rot:.6f}")
@@ -206,4 +206,3 @@ print(f"Array antenna channel shape: {channels_array.shape}")
 # Continue with:
 # - **Tutorial 4: User Selection and Dataset Manipulation** - Learn how to filter and sample users
 # - **Tutorial 5: Doppler and Mobility** - Add time-varying effects to your channels
-

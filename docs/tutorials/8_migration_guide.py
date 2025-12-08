@@ -34,7 +34,7 @@ import numpy as np
 
 # %%
 # V3 Example (DO NOT RUN - for reference only)
-v3_example = '''
+v3_example = """
 # DeepMIMO v3 workflow:
 import DeepMIMOv3
 
@@ -56,7 +56,7 @@ dataset = DeepMIMOv3.generate_data(params)
 
 # Access data
 channels = dataset[0]["user"]["channel"]
-'''
+"""
 
 print("DeepMIMO v3 workflow (deprecated):")
 print(v3_example)
@@ -111,7 +111,7 @@ print("v4: import deepmimo as dm")
 # ### 3. Dataset Loading
 
 # %%
-comparison = '''
+comparison = """
 # v3:
 params = DeepMIMOv3.default_params()
 params["dataset_folder"] = "."
@@ -121,7 +121,7 @@ dataset = DeepMIMOv3.generate_data(params)
 # v4:
 dm.download("asu_campus_3p5")
 dataset = dm.load("asu_campus_3p5")
-'''
+"""
 
 print("Dataset Loading:")
 print(comparison)
@@ -135,13 +135,13 @@ print(comparison)
 # ### v3: Implicit Generation
 
 # %%
-v3_channel_gen = '''
+v3_channel_gen = """
 # v3: Channels generated during dataset loading
 params["OFDM"]["subcarriers"] = 512
 params["OFDM"]["bandwidth"] = 10e6
 dataset = DeepMIMOv3.generate_data(params)
 channels = dataset[0]["user"]["channel"]
-'''
+"""
 
 print("v3 channel generation (automatic):")
 print(v3_channel_gen)
@@ -169,13 +169,13 @@ print(f"v4 channel shape: {channels.shape}")
 # ### v3: Nested Dictionary
 
 # %%
-v3_data_access = '''
+v3_data_access = """
 # v3: Nested dictionary access
 power = dataset[bs_idx]["user"]["power"]
 delay = dataset[bs_idx]["user"]["delay"]
 aoa = dataset[bs_idx]["user"]["DoA_phi"]
 aod = dataset[bs_idx]["user"]["DoD_phi"]
-'''
+"""
 
 print("v3 data access (nested):")
 print(v3_data_access)
@@ -204,11 +204,11 @@ print(f"  AOA (az) shape: {aoa_az.shape}")
 # ### v3: Row/Column Selection
 
 # %%
-v3_user_selection = '''
+v3_user_selection = """
 # v3: Use row indices during parameter setup
 params["user_rows"] = np.arange(0, 100, 10)  # Every 10th row
 dataset = DeepMIMOv3.generate_data(params)
-'''
+"""
 
 print("v3 user selection (pre-generation):")
 print(v3_user_selection)
@@ -218,7 +218,7 @@ print(v3_user_selection)
 
 # %%
 # v4: Select users after loading
-row_idxs = dataset.get_idxs(mode='row', row_idxs=list(range(0, 100, 10)))
+row_idxs = dataset.get_idxs(mode="row", row_idxs=list(range(0, 100, 10)))
 subset = dataset.trim(idxs=row_idxs)
 
 print(f"v4 user selection (post-loading):")
@@ -279,22 +279,22 @@ print("  - Average size reduction: ~50%")
 # %%
 print("Pattern 1: Basic Channel Generation")
 print("\nv3:")
-print('''
+print("""
 params = DeepMIMOv3.default_params()
 params["scenario"] = "O1_60"
 params["bs_antenna"]["shape"] = [4, 4]
 dataset = DeepMIMOv3.generate_data(params)
 ch = dataset[0]["user"]["channel"]
-''')
+""")
 
 print("\nv4:")
-print('''
+print("""
 dataset = dm.load("city_18_denver_3p5")
 ch_params = dm.ChannelParameters()
 ch_params.bs_antenna.shape = [4, 4]
 dataset.compute_channels(ch_params)
 ch = dataset.channel
-''')
+""")
 
 # %% [markdown]
 # ### Pattern 2: OFDM Channels
@@ -302,20 +302,20 @@ ch = dataset.channel
 # %%
 print("\nPattern 2: OFDM Channels")
 print("\nv3:")
-print('''
+print("""
 params["OFDM"]["subcarriers"] = 512
 params["OFDM"]["bandwidth"] = 10e6
 dataset = DeepMIMOv3.generate_data(params)
-''')
+""")
 
 print("\nv4:")
-print('''
+print("""
 ch_params.freq_domain = True
 ch_params.ofdm.subcarriers = 512
 ch_params.ofdm.bandwidth = 10e6
 dataset.compute_channels(ch_params)
 ch = dataset.channel
-''')
+""")
 
 # %% [markdown]
 # ### Pattern 3: User Sampling
@@ -323,17 +323,17 @@ ch = dataset.channel
 # %%
 print("\nPattern 3: User Sampling")
 print("\nv3:")
-print('''
+print("""
 params["user_rows"] = [0, 10, 20]
 dataset = DeepMIMOv3.generate_data(params)
-''')
+""")
 
 print("\nv4:")
-print('''
+print("""
 dataset = dm.load(scenario)
 row_idxs = dataset.get_idxs(mode='row', row_idxs=[0, 10, 20])
 subset = dataset.trim(idxs=row_idxs)
-''')
+""")
 
 # %% [markdown]
 # ## Benefits of v4
@@ -362,4 +362,3 @@ subset = dataset.trim(idxs=row_idxs)
 # - **Tutorial 1: Getting Started** - Learn v4 basics
 # - **Tutorial 2: Visualization** - Use new visualization features
 # - **Tutorial 3: Channel Generation** - Master channel generation
-

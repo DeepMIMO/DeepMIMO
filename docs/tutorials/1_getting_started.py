@@ -122,7 +122,7 @@ for pair in pairs[:5]:
 # List available fundamental matrices
 print("Available dataset attributes:")
 for attr in dir(city_dataset):
-    if not attr.startswith('_') and not callable(getattr(city_dataset, attr)):
+    if not attr.startswith("_") and not callable(getattr(city_dataset, attr)):
         print(f"  - {attr}")
 
 # %%
@@ -155,15 +155,15 @@ dm.summary(city_scen)
 
 # %%
 # Get information about all available parameters
-dm.info('all')
+dm.info("all")
 
 # %%
 # Get information about a specific parameter
-dm.info('power')
+dm.info("power")
 
 # %%
 # Get information about channel parameters
-dm.info('ch_params')
+dm.info("ch_params")
 
 # %% [markdown]
 # ### Inspecting Function Docstrings
@@ -187,7 +187,7 @@ print("Use dm.info(dataset.compute_channels) to view the docstring")
 
 # %%
 # Check if an alias resolves to a parameter
-dm.info('rx_pos')  # This is an alias
+dm.info("rx_pos")  # This is an alias
 
 # %%
 # Common aliases
@@ -215,7 +215,7 @@ print(f"Distance (m) for first 5 users: {dataset.dist[:5]}")  # Computed from de
 # %%
 # List key functions in the dm module
 print("Key DeepMIMO functions:")
-key_functions = [f for f in dir(dm) if not f.startswith('_') and callable(getattr(dm, f))]
+key_functions = [f for f in dir(dm) if not f.startswith("_") and callable(getattr(dm, f))]
 for func in sorted(key_functions)[:20]:  # Show first 20
     print(f"  - dm.{func}()")
 
@@ -238,4 +238,3 @@ print("Use dm.info(dm.download) to view the docstring of any function")
 # - **Tutorial 6: Beamforming** - Implement beamforming and spatial processing
 # - **Tutorial 7: Convert & Upload Ray-tracing dataset** - Work with external ray tracers
 # - **Tutorial 8: Migration Guide** - Migrating from DeepMIMO v3 to v4
-

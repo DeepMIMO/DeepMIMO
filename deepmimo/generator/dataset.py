@@ -2089,4 +2089,3 @@ class DynamicDataset(MacroDataset):
                 dataset_2.rx_vel = dataset_curr.rx_vel
                 dataset_2.tx_vel = dataset_curr.tx_vel
                 dataset_2.scene.objects.vel = dataset_curr.scene.objects.vel
-

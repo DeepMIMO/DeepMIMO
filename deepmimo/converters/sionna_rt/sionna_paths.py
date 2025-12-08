@@ -149,7 +149,7 @@ def _process_paths_batch(
         theta_r = theta_r[:, tx_idx, :]
         theta_t = theta_t[:, tx_idx, :]
         vertices = vertices[:, :, tx_idx, ...]
-        
+
         if not sionna_v1:
             types = types[:, 0, tx_idx, 0, :]
 

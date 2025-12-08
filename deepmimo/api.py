@@ -904,7 +904,7 @@ def download(
     if rt_source:
         # For RT source files, extract to RT sources directory
         rt_sources_dir = get_rt_sources_dir()
-        time.sleep(0.5) # wait for the file to be file lock to be lifted
+        time.sleep(0.5)  # wait for the file to be file lock to be lifted
         unzipped_folder = unzip(output_path)
 
         # Move extracted folder to RT sources directory

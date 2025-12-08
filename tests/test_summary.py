@@ -3,17 +3,18 @@
 import unittest
 from unittest.mock import MagicMock, patch
 import numpy as np
+
 # Correctly import functions from the module
 from deepmimo.summary import summary, plot_summary
 from deepmimo import consts as c
 
+
 class TestSummary(unittest.TestCase):
-    
-    @patch('deepmimo.summary.load_dict_from_json')
-    @patch('deepmimo.summary.get_params_path')
+    @patch("deepmimo.summary.load_dict_from_json")
+    @patch("deepmimo.summary.get_params_path")
     def test_summary(self, mock_get_path, mock_load_json):
         mock_get_path.return_value = "params.json"
-        
+
         # Mock params dictionary
         mock_load_json.return_value = {
             c.RT_PARAMS_PARAM_NAME: {
@@ -38,14 +39,14 @@ class TestSummary(unittest.TestCase):
                 c.RT_PARAM_RAY_CASTING_RANGE_AZ: 360,
                 c.RT_PARAM_RAY_CASTING_RANGE_EL: 180,
                 c.RT_PARAM_SYNTHETIC_ARRAY: False,
-                c.RT_PARAM_GPS_BBOX: (0, 0, 1, 1)
+                c.RT_PARAM_GPS_BBOX: (0, 0, 1, 1),
             },
             c.SCENE_PARAM_NAME: {
                 c.SCENE_PARAM_NUMBER_SCENES: 1,
                 c.SCENE_PARAM_N_OBJECTS: 10,
                 c.SCENE_PARAM_N_VERTICES: 100,
                 c.SCENE_PARAM_N_FACES: 50,
-                c.SCENE_PARAM_N_TRIANGULAR_FACES: 50
+                c.SCENE_PARAM_N_TRIANGULAR_FACES: 50,
             },
             c.MATERIALS_PARAM_NAME: {
                 "mat1": {
@@ -54,7 +55,7 @@ class TestSummary(unittest.TestCase):
                     c.MATERIALS_PARAM_CONDUCTIVITY: 0.01,
                     c.MATERIALS_PARAM_SCATTERING_MODEL: "None",
                     c.MATERIALS_PARAM_SCATTERING_COEF: 0.1,
-                    c.MATERIALS_PARAM_CROSS_POL_COEF: 0.1
+                    c.MATERIALS_PARAM_CROSS_POL_COEF: 0.1,
                 }
             },
             c.TXRX_PARAM_NAME: {
@@ -65,7 +66,7 @@ class TestSummary(unittest.TestCase):
                     c.TXRX_PARAM_NUM_POINTS: 1,
                     c.TXRX_PARAM_NUM_ACTIVE_POINTS: 1,
                     c.TXRX_PARAM_NUM_ANT: 1,
-                    c.TXRX_PARAM_DUAL_POL: False
+                    c.TXRX_PARAM_DUAL_POL: False,
                 },
                 "rx_set": {
                     c.TXRX_PARAM_NAME_FIELD: "RX1",
@@ -74,42 +75,42 @@ class TestSummary(unittest.TestCase):
                     c.TXRX_PARAM_NUM_POINTS: 10,
                     c.TXRX_PARAM_NUM_ACTIVE_POINTS: 10,
                     c.TXRX_PARAM_NUM_ANT: 1,
-                    c.TXRX_PARAM_DUAL_POL: False
-                }
-            }
+                    c.TXRX_PARAM_DUAL_POL: False,
+                },
+            },
         }
-        
+
         # Test string output
         res = summary("MyScenario", print_summary=False)
         assert "DeepMIMO MyScenario Scenario Summary" in res
         assert "Frequency: 28.0 GHz" in res
         assert "Total number of receivers: 10" in res
 
-    @patch('deepmimo.summary.plt')
-    @patch('deepmimo.summary.os.makedirs')
+    @patch("deepmimo.summary.plt")
+    @patch("deepmimo.summary.os.makedirs")
     def test_plot_summary(self, mock_makedirs, mock_plt):
         # Mock dataset
         mock_ds = MagicMock()
         mock_ds.scene.plot = MagicMock()
         mock_ds.txrx_sets = [
             MagicMock(is_tx=True, num_points=1, id=0, is_rx=False),
-            MagicMock(is_tx=False, is_rx=True, id=1, num_points=10)
+            MagicMock(is_tx=False, is_rx=True, id=1, num_points=10),
         ]
-        mock_ds.txrx = [{"rx_set_id": 1}] # Map to rx set
+        mock_ds.txrx = [{"rx_set_id": 1}]  # Map to rx set
         mock_ds.bs_pos = np.array([[0, 0, 10]])
         mock_ds.rx_pos = np.zeros((10, 3))
         mock_ds.n_ue = 10
         mock_ds.has_valid_grid.return_value = False
-        
+
         # Configure returned dataset from indexing (mock_ds[0])
         sub_ds = MagicMock()
         sub_ds.n_ue = 10
         sub_ds.rx_pos = np.zeros((10, 3))
         sub_ds.has_valid_grid.return_value = False
         mock_ds.__getitem__.return_value = sub_ds
-        
+
         # Test plotting
         res = plot_summary("MyScenario", dataset=mock_ds, save_imgs=True)
-        assert len(res) == 2 # 2 images
+        assert len(res) == 2  # 2 images
         mock_ds.scene.plot.assert_called()
         mock_plt.savefig.assert_called()

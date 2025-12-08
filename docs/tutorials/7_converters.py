@@ -13,7 +13,7 @@
 - From AODT - Convert from AODT format
 - Upload to DeepMIMO - Upload your datasets to the DeepMIMO database
 
-**Related Videos:** 
+**Related Videos:**
 - [Convert Video](https://youtu.be/kXY2bMWeDgg)
 - [Upload Video](https://youtu.be/tNF6TN_ueU4)
 
@@ -59,7 +59,7 @@ print("See documentation for detailed usage")
 # NOTE: This requires Sionna RT to be installed and configured
 
 # In your Sionna RT script, use the exporter:
-example_code = '''
+example_code = """
 # In Sionna:
 from deepmimo.converters import sionna_exporter
 
@@ -72,7 +72,7 @@ sionna_exporter(
     output_dir="./deepmimo_output",
     scenario_name="my_sionna_scenario"
 )
-'''
+"""
 
 print("Sionna RT exporter example:")
 print(example_code)
@@ -244,4 +244,3 @@ print("Validation example (after successful conversion)")
 #
 # - **Tutorial 8: Migration Guide** - Migrating from DeepMIMO v3 to v4
 # - Return to **Tutorial 1: Getting Started** for more basic operations
-

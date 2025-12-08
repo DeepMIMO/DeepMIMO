@@ -9,4 +9,3 @@ from .conftest import run_tutorial
 def test_channel_generation():
     """Test that the channel generation tutorial runs without errors."""
     run_tutorial("3_channel_generation.py")
-

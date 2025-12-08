@@ -91,7 +91,7 @@ dataset.compute_channels(ch_params)
 channels_with_doppler = dataset.channel
 
 # Access computed Doppler shifts
-if hasattr(dataset, 'doppler'):
+if hasattr(dataset, "doppler"):
     print(f"Computed Doppler shifts: {dataset.doppler[0, :5]} Hz")
 
 # %% [markdown]
@@ -118,14 +118,14 @@ print("For static scenarios, Doppler is applied based on configured velocities")
 
 # %%
 # Analyze Doppler spectrum
-if hasattr(dataset, 'doppler') and dataset.doppler is not None:
+if hasattr(dataset, "doppler") and dataset.doppler is not None:
     doppler_values = dataset.doppler[dataset.doppler != 0]
-    
+
     plt.figure(figsize=(10, 5))
-    plt.hist(doppler_values, bins=50, edgecolor='black')
-    plt.xlabel('Doppler Shift (Hz)')
-    plt.ylabel('Count')
-    plt.title('Doppler Spectrum Distribution')
+    plt.hist(doppler_values, bins=50, edgecolor="black")
+    plt.xlabel("Doppler Shift (Hz)")
+    plt.ylabel("Count")
+    plt.title("Doppler Spectrum Distribution")
     plt.grid(True)
     plt.show()
 
@@ -145,10 +145,10 @@ time_steps = np.linspace(0, 1.0, 10)  # 0 to 1 second, 10 steps
 positions_over_time = np.array([start_pos + velocity * t for t in time_steps])
 
 plt.figure(figsize=(10, 6))
-plt.plot(positions_over_time[:, 0], positions_over_time[:, 1], 'o-')
-plt.xlabel('X (m)')
-plt.ylabel('Y (m)')
-plt.title('Linear Motion Trajectory')
+plt.plot(positions_over_time[:, 0], positions_over_time[:, 1], "o-")
+plt.xlabel("X (m)")
+plt.ylabel("Y (m)")
+plt.title("Linear Motion Trajectory")
 plt.grid(True)
 plt.show()
 
@@ -162,19 +162,23 @@ radius = 50  # meters
 angular_velocity = 2 * np.pi / 10  # rad/s (complete circle in 10 seconds)
 time_steps = np.linspace(0, 10, 50)  # 10 seconds, 50 steps
 
-circular_positions = np.array([
-    [center[0] + radius * np.cos(angular_velocity * t),
-     center[1] + radius * np.sin(angular_velocity * t),
-     center[2]]
-    for t in time_steps
-])
+circular_positions = np.array(
+    [
+        [
+            center[0] + radius * np.cos(angular_velocity * t),
+            center[1] + radius * np.sin(angular_velocity * t),
+            center[2],
+        ]
+        for t in time_steps
+    ]
+)
 
 plt.figure(figsize=(8, 8))
-plt.plot(circular_positions[:, 0], circular_positions[:, 1], 'o-')
-plt.xlabel('X (m)')
-plt.ylabel('Y (m)')
-plt.title('Circular Motion Trajectory')
-plt.axis('equal')
+plt.plot(circular_positions[:, 0], circular_positions[:, 1], "o-")
+plt.xlabel("X (m)")
+plt.ylabel("Y (m)")
+plt.title("Circular Motion Trajectory")
+plt.axis("equal")
 plt.grid(True)
 plt.show()
 
@@ -189,7 +193,7 @@ max_velocity = 30  # m/s (108 km/h)
 
 max_doppler = (max_velocity / speed_of_light) * carrier_freq
 
-print(f"Carrier frequency: {carrier_freq/1e9} GHz")
+print(f"Carrier frequency: {carrier_freq / 1e9} GHz")
 print(f"Maximum velocity: {max_velocity} m/s")
 print(f"Maximum Doppler shift: {max_doppler:.2f} Hz")
 
@@ -201,4 +205,3 @@ print(f"Maximum Doppler shift: {max_doppler:.2f} Hz")
 # Continue with:
 # - **Tutorial 6: Beamforming** - Implement beamforming and spatial processing
 # - **Tutorial 7: Convert & Upload Ray-tracing dataset** - Work with external ray tracers
-
