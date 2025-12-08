@@ -22,6 +22,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import deepmimo as dm
 
+# Set figure limit to avoid memory warnings
+plt.rcParams['figure.max_open_warning'] = 0
+
 # %%
 # Load dataset
 scen_name = "asu_campus_3p5"
@@ -81,15 +84,18 @@ user_idx = 0
 h = channels[user_idx, 0, :, 0]  # Channel vector (RX ant 0, all TX ants, path 0)
 
 # Matched filter beamformer (MF)
-w_mf = h.conj() / np.linalg.norm(h)
-
-# Compute received power with beamforming
-bf_gain = np.abs(np.dot(w_mf.conj(), h))**2
-no_bf_power = np.sum(np.abs(h)**2) / num_antennas
-
-print(f"Power without beamforming: {10*np.log10(no_bf_power):.2f} dB")
-print(f"Power with beamforming: {10*np.log10(bf_gain):.2f} dB")
-print(f"Beamforming gain: {10*np.log10(bf_gain/no_bf_power):.2f} dB")
+h_norm = np.linalg.norm(h)
+if h_norm > 0:
+    w_mf = h.conj() / h_norm
+    # Compute received power with beamforming
+    bf_gain = np.abs(np.dot(w_mf.conj(), h))**2
+    no_bf_power = np.sum(np.abs(h)**2) / num_antennas
+    
+    print(f"Power without beamforming: {10*np.log10(no_bf_power + 1e-12):.2f} dB")
+    print(f"Power with beamforming: {10*np.log10(bf_gain + 1e-12):.2f} dB")
+    print(f"Beamforming gain: {10*np.log10(bf_gain/(no_bf_power + 1e-12)):.2f} dB")
+else:
+    print("Channel has zero power, skipping beamforming gain calculation")
 
 # %% [markdown]
 # ## Beam Patterns
@@ -230,8 +236,12 @@ for user_idx in range(num_users):
     h = channels[user_idx, 0, :, 0]
     
     # Matched filter
-    w_mf = h.conj() / np.linalg.norm(h)
-    gain_mf = np.abs(np.dot(w_mf.conj(), h))**2
+    h_norm = np.linalg.norm(h)
+    if h_norm > 0:
+        w_mf = h.conj() / h_norm
+        gain_mf = np.abs(np.dot(w_mf.conj(), h))**2
+    else:
+        gain_mf = 0.0
     
     # Uniform weighting
     w_uniform = np.ones(num_antennas) / np.sqrt(num_antennas)

@@ -1,0 +1,9 @@
+"""Test tutorial 1: Getting Started."""
+
+from .conftest import run_tutorial
+
+
+def test_getting_started():
+    """Test that the getting started tutorial runs without errors."""
+    run_tutorial("1_getting_started.py")
+
