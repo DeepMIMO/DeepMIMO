@@ -9,7 +9,10 @@ Each exporter has its own dependencies which can be installed separately:
 
 
 # Import the modules but don't execute the imports until needed
-def __getattr__(name):
+from typing import Any
+
+
+def __getattr__(name: str) -> Any:
     if name == "aodt_exporter":
         import importlib
 

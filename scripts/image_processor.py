@@ -4,7 +4,7 @@ from pathlib import Path
 from PIL import Image
 
 
-def process_image(input_path, output_path, zoom_factor=1.5) -> None:
+def process_image(input_path: str, output_path: str, zoom_factor: float = 1.5) -> None:
     # Open the image
     img = Image.open(input_path)
 

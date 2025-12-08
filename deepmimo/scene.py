@@ -1,6 +1,6 @@
 from typing import Any
 
-'Physical world representation module.\n\nThis module provides core classes for representing physical objects in a wireless environment,\nincluding buildings, terrain, vegetation, and other structures that affect wireless propagation.\n\nModule Organization:\n1. Constants - Categories and labels for physical elements\n2. Core Classes - Main classes for scene representation:\n   - BoundingBox: 3D bounding box representation\n   - Face: Surface representation with dual face approach\n   - PhysicalElement: Base class for physical objects\n   - PhysicalElementGroup: Group operations on physical elements\n   - Scene: Complete physical environment representation\n3. Object handling: Get faces of objects as lists of vertices\n    - get_object_faces: Generate faces for physical objects\n    - Road object handling:\n        - _get_2d_face: Get 2D face of road objects (calls all functions below)\n        - _detect_endpoints: Detect endpoints (terminations) of road objects\n        - _trim_points_protected: Trim points of road objects\n        - _compress_path: Compress path of road objects\n        - _calculate_angle_deviation: Calculate angle deviation\n          (used in _compress_path and _tsp_held_karp_no_intersections)\n        - _ccw: Check if points are in counter-clockwise order (used in _segments_intersect)\n        - _segments_intersect: Check if two line segments intersect (used in _tsp_held_karp_no_intersections)\n        - _tsp_held_karp_no_intersections: Held-Karp TSP with angle penalty + intersection check\n          (used in _get_2d_face)\n        - _signed_distance_to_curve: Calculate signed distance from point to curve\n          (used in _trim_points_protected to trim along the road)\n\nThe `Scene` class acts as a container for multiple `PhysicalElement` objects,\neach representing a distinct object in the environment. Each `PhysicalElement` is\ncomposed of `Face` objects, which define the surfaces of the element and are associated\nwith materials. The `BoundingBox` class provides spatial boundaries for these elements.\nTogether, these components allow for the representation and manipulation of complex environments,\nwith functionalities for plotting and material management integrated into the scene.\n'
+"Physical world representation module.\n\nThis module provides core classes for representing physical objects in a wireless environment,\nincluding buildings, terrain, vegetation, and other structures that affect wireless propagation.\n\nModule Organization:\n1. Constants - Categories and labels for physical elements\n2. Core Classes - Main classes for scene representation:\n   - BoundingBox: 3D bounding box representation\n   - Face: Surface representation with dual face approach\n   - PhysicalElement: Base class for physical objects\n   - PhysicalElementGroup: Group operations on physical elements\n   - Scene: Complete physical environment representation\n3. Object handling: Get faces of objects as lists of vertices\n    - get_object_faces: Generate faces for physical objects\n    - Road object handling:\n        - _get_2d_face: Get 2D face of road objects (calls all functions below)\n        - _detect_endpoints: Detect endpoints (terminations) of road objects\n        - _trim_points_protected: Trim points of road objects\n        - _compress_path: Compress path of road objects\n        - _calculate_angle_deviation: Calculate angle deviation\n          (used in _compress_path and _tsp_held_karp_no_intersections)\n        - _ccw: Check if points are in counter-clockwise order (used in _segments_intersect)\n        - _segments_intersect: Check if two line segments intersect (used in _tsp_held_karp_no_intersections)\n        - _tsp_held_karp_no_intersections: Held-Karp TSP with angle penalty + intersection check\n          (used in _get_2d_face)\n        - _signed_distance_to_curve: Calculate signed distance from point to curve\n          (used in _trim_points_protected to trim along the road)\n\nThe `Scene` class acts as a container for multiple `PhysicalElement` objects,\neach representing a distinct object in the environment. Each `PhysicalElement` is\ncomposed of `Face` objects, which define the surfaces of the element and are associated\nwith materials. The `BoundingBox` class provides spatial boundaries for these elements.\nTogether, these components allow for the representation and manipulation of complex environments,\nwith functionalities for plotting and material management integrated into the scene.\n"
 import itertools
 from dataclasses import dataclass
 from pathlib import Path
@@ -22,11 +22,11 @@ from .general_utils import (
 
 if TYPE_CHECKING:
     from .materials import MaterialList
-CAT_BUILDINGS: str = 'buildings'
-CAT_TERRAIN: str = 'terrain'
-CAT_VEGETATION: str = 'vegetation'
-CAT_FLOORPLANS: str = 'floorplans'
-CAT_OBJECTS: str = 'objects'
+CAT_BUILDINGS: str = "buildings"
+CAT_TERRAIN: str = "terrain"
+CAT_VEGETATION: str = "vegetation"
+CAT_FLOORPLANS: str = "floorplans"
+CAT_OBJECTS: str = "objects"
 ELEMENT_CATEGORIES = [CAT_BUILDINGS, CAT_TERRAIN, CAT_VEGETATION, CAT_FLOORPLANS, CAT_OBJECTS]
 
 @dataclass
@@ -180,7 +180,7 @@ class PhysicalElement:
 
     DEFAULT_LABELS = {CAT_BUILDINGS, CAT_TERRAIN, CAT_VEGETATION, CAT_FLOORPLANS, CAT_OBJECTS}
 
-    def __init__(self: Any, faces: list[Face], object_id: int=-1, label: str=CAT_OBJECTS, color: str='', name: str='') -> None:
+    def __init__(self: Any, faces: list[Face], object_id: int=-1, label: str=CAT_OBJECTS, color: str="", name: str="") -> None:
         """Initialize a physical object from its faces.
 
         Args:
@@ -268,7 +268,7 @@ class PhysicalElement:
             Dict containing object metadata with face vertex and material indices
 
         """
-        obj_metadata = {'name': self.name, 'label': self.label, 'id': self.object_id, 'face_vertex_idxs': [], 'face_material_idxs': []}
+        obj_metadata = {"name": self.name, "label": self.label, "id": self.object_id, "face_vertex_idxs": [], "face_material_idxs": []}
         for face in self.faces:
             face_vertex_indices = []
             for tri_vertices in face.triangular_faces:
@@ -278,12 +278,12 @@ class PhysicalElement:
                         vertex_map[vertex_tuple] = len(vertex_map)
                     if vertex_map[vertex_tuple] not in face_vertex_indices:
                         face_vertex_indices.append(vertex_map[vertex_tuple])
-            obj_metadata['face_vertex_idxs'].append(face_vertex_indices)
-            obj_metadata['face_material_idxs'].append(face.material_idx)
+            obj_metadata["face_vertex_idxs"].append(face_vertex_indices)
+            obj_metadata["face_material_idxs"].append(face.material_idx)
         return obj_metadata
 
     @classmethod
-    def from_dict(cls: Any, data: dict, vertices: np.ndarray) -> 'PhysicalElement':
+    def from_dict(cls: Any, data: dict, vertices: np.ndarray) -> "PhysicalElement":
         """Create physical object from dictionary format.
 
         Args:
@@ -294,8 +294,8 @@ class PhysicalElement:
             PhysicalElement: Created object
 
         """
-        faces = [Face(vertices=vertices[vertex_idxs], material_idx=material_idx) for (vertex_idxs, material_idx) in zip(data['face_vertex_idxs'], data['face_material_idxs'], strict=False)]
-        return cls(faces=faces, name=data['name'], object_id=data['id'], label=data['label'])
+        faces = [Face(vertices=vertices[vertex_idxs], material_idx=material_idx) for (vertex_idxs, material_idx) in zip(data["face_vertex_idxs"], data["face_material_idxs"], strict=False)]
+        return cls(faces=faces, name=data["name"], object_id=data["id"], label=data["label"])
 
     @property
     def position(self: Any) -> np.ndarray:
@@ -305,7 +305,7 @@ class PhysicalElement:
             self._position = np.array([(bb.x_max + bb.x_min) / 2, (bb.y_max + bb.y_min) / 2, (bb.z_max + bb.z_min) / 2])
         return self._position
 
-    def plot(self: Any, ax: plt.Axes | None=None, mode: Literal['faces', 'tri_faces']='faces', alpha: float=0.8, color: str | None=None) -> tuple[plt.Figure, plt.Axes]:
+    def plot(self: Any, ax: plt.Axes | None=None, mode: Literal["faces", "tri_faces"]="faces", alpha: float=0.8, color: str | None=None) -> tuple[plt.Figure, plt.Axes]:
         """Plot the object using the specified visualization mode.
 
         Args:
@@ -315,16 +315,16 @@ class PhysicalElement:
             color: Color for visualization (default: None, uses object's color)
 
         """
-        ax = ax or plt.subplots(1, 1, subplot_kw={'projection': '3d'})[1]
-        if mode == 'faces':
+        ax = ax or plt.subplots(1, 1, subplot_kw={"projection": "3d"})[1]
+        if mode == "faces":
             vertices_list = [face.vertices for face in self.faces]
-        elif mode == 'tri_faces':
+        elif mode == "tri_faces":
             vertices_list = [tri for face in self.faces for tri in face.triangular_faces]
         for vertices in vertices_list:
             poly3d = Poly3DCollection([vertices], alpha=alpha)
             plot_color = self.color or color
             poly3d.set_facecolor(plot_color)
-            poly3d.set_edgecolor('black')
+            poly3d.set_edgecolor("black")
             ax.add_collection3d(poly3d)
         return (ax.get_figure(), ax)
 
@@ -351,7 +351,7 @@ class PhysicalElement:
         if type(value) == list or type(value) == tuple:
             value = np.array(value)
         if value.shape != (3,):
-            msg = 'Velocity must be a 3D vector (x, y, z) in meters per second'
+            msg = "Velocity must be a 3D vector (x, y, z) in meters per second"
             raise ValueError(msg)
         self._vel = value
 
@@ -363,7 +363,7 @@ class PhysicalElement:
 
         """
         bb = self.bounding_box
-        dims = f'{bb.width:.0f} x {bb.length:.0f} x {bb.height:.0f} m'
+        dims = f"{bb.width:.0f} x {bb.length:.0f} x {bb.height:.0f} m"
         return f"PhysicalElement(name='{self.name}', id={self.object_id}, label='{self.label}', faces={len(self._faces)}, dims={dims})"
 
 class PhysicalElementGroup:
@@ -388,14 +388,14 @@ class PhysicalElementGroup:
 
     def __repr__(self: Any) -> str:
         """Return a concise string representation of the physical element group."""
-        obj_list = '\n'.join(f'  {obj}' for obj in self._objects)
-        return f'PhysicalElementGroup(objects={len(self._objects)})\nObjects:\n{obj_list}'
+        obj_list = "\n".join(f"  {obj}" for obj in self._objects)
+        return f"PhysicalElementGroup(objects={len(self._objects)})\nObjects:\n{obj_list}"
 
     def get_materials(self: Any) -> list[int]:
         """Get list of material indices used by objects in this group."""
         return list(set().union(*(obj.materials for obj in self._objects)))
 
-    def get_objects(self: Any, label: str | None=None, material: int | None=None) -> 'PhysicalElementGroup':
+    def get_objects(self: Any, label: str | None=None, material: int | None=None) -> "PhysicalElementGroup":
         """Get objects filtered by label and/or material.
 
         Args:
@@ -418,7 +418,7 @@ class PhysicalElementGroup:
         """Get the bounding box containing all objects."""
         if self._bounding_box is None:
             if not self._objects:
-                msg = 'Group is empty'
+                msg = "Group is empty"
                 raise ValueError(msg)
             boxes = [obj.bounding_box.bounds for obj in self._objects]
             boxes = np.array(boxes)
@@ -430,7 +430,7 @@ class PhysicalElementGroup:
 class Scene:
     """Represents a physical scene with various objects affecting wireless propagation."""
 
-    DEFAULT_VISUALIZATION_SETTINGS = {CAT_TERRAIN: {'z_order': 1, 'alpha': 0.1, 'color': 'black'}, CAT_VEGETATION: {'z_order': 2, 'alpha': 0.8, 'color': 'green'}, CAT_BUILDINGS: {'z_order': 3, 'alpha': 0.6, 'color': None}, CAT_FLOORPLANS: {'z_order': 4, 'alpha': 0.8, 'color': 'blue'}, CAT_OBJECTS: {'z_order': 5, 'alpha': 0.8, 'color': 'red'}}
+    DEFAULT_VISUALIZATION_SETTINGS = {CAT_TERRAIN: {"z_order": 1, "alpha": 0.1, "color": "black"}, CAT_VEGETATION: {"z_order": 2, "alpha": 0.8, "color": "green"}, CAT_BUILDINGS: {"z_order": 3, "alpha": 0.6, "color": None}, CAT_FLOORPLANS: {"z_order": 4, "alpha": 0.8, "color": "blue"}, CAT_OBJECTS: {"z_order": 5, "alpha": 0.8, "color": "red"}}
 
     def __init__(self: Any) -> None:
         """Initialize an empty scene."""
@@ -544,12 +544,12 @@ class Scene:
         for (vertex, idx) in vertex_map.items():
             all_vertices[idx] = vertex
         vertices = np.array(all_vertices)
-        save_mat(vertices, 'vertices', f'{base_folder}/vertices.mat')
-        save_dict_as_json(f'{base_folder}/objects.json', objects_metadata)
-        return {SCENE_PARAM_NUMBER_SCENES: 1, 'n_objects': len(self.objects), 'n_vertices': len(vertices), 'n_faces': sum(len(obj.faces) for obj in self.objects), 'n_triangular_faces': sum(len(obj_face_idxs) for obj_face_idxs in self.face_indices)}
+        save_mat(vertices, "vertices", f"{base_folder}/vertices.mat")
+        save_dict_as_json(f"{base_folder}/objects.json", objects_metadata)
+        return {SCENE_PARAM_NUMBER_SCENES: 1, "n_objects": len(self.objects), "n_vertices": len(vertices), "n_faces": sum(len(obj.faces) for obj in self.objects), "n_triangular_faces": sum(len(obj_face_idxs) for obj_face_idxs in self.face_indices)}
 
     @classmethod
-    def from_data(cls: Any, base_folder: str) -> 'Scene':
+    def from_data(cls: Any, base_folder: str) -> "Scene":
         """Create scene from metadata dictionary and data files.
 
         Args:
@@ -558,21 +558,21 @@ class Scene:
         """
         scene = cls()
         try:
-            vertices = load_mat(f'{base_folder}/vertices.{MAT_FMT}', 'vertices')
-            objects_metadata = load_dict_from_json(f'{base_folder}/objects.json')
+            vertices = load_mat(f"{base_folder}/vertices.{MAT_FMT}", "vertices")
+            objects_metadata = load_dict_from_json(f"{base_folder}/objects.json")
         except FileNotFoundError:
-            print(f'FileNotFoundError: {base_folder}/vertices.mat or {base_folder}/objects.json not found')
+            print(f"FileNotFoundError: {base_folder}/vertices.mat or {base_folder}/objects.json not found")
             vertices = np.array([])
             objects_metadata = []
         except Exception as e:
-            msg = f'Error loading scene from {base_folder}: {e}'
+            msg = f"Error loading scene from {base_folder}: {e}"
             raise Exception(msg)
         for object_data in objects_metadata:
             obj = PhysicalElement.from_dict(object_data, vertices)
             scene.add_object(obj)
         return scene
 
-    def plot(self: Any, title: bool=True, mode: Literal['faces', 'tri_faces']='faces', ax: plt.Axes | None=None, proj_3D: bool=True, figsize: tuple=(10, 10), dpi: int=100, legend: bool=False) -> plt.Axes:
+    def plot(self: Any, title: bool=True, mode: Literal["faces", "tri_faces"]="faces", ax: plt.Axes | None=None, proj_3D: bool=True, figsize: tuple=(10, 10), dpi: int=100, legend: bool=False) -> plt.Axes:
         """Create a visualization of the scene.
 
         The scene can be visualized in either 2D (top-down view) or 3D mode:
@@ -610,43 +610,43 @@ class Scene:
 
         """
         if len(self.objects) == 0:
-            print('No objects in scene - skipping plot')
+            print("No objects in scene - skipping plot")
             return ax
         if ax is None:
-            (_, ax) = plt.subplots(figsize=figsize, dpi=dpi, subplot_kw={'projection': '3d' if proj_3D else None})
+            (_, ax) = plt.subplots(figsize=figsize, dpi=dpi, subplot_kw={"projection": "3d" if proj_3D else None})
         label_groups = {}
         for obj in self.objects:
             if obj.label not in label_groups:
                 label_groups[obj.label] = []
             label_groups[obj.label].append(obj)
-        default_vis_settings = {'z_order': 3, 'alpha': 0.8, 'color': None}
+        default_vis_settings = {"z_order": 3, "alpha": 0.8, "color": None}
         for (label, objects) in label_groups.items():
             vis_settings = self.visualization_settings.get(label, default_vis_settings)
             n_objects = len(objects)
-            if vis_settings['color'] is None:
+            if vis_settings["color"] is None:
                 colors = plt.cm.rainbow(np.linspace(0, 1, n_objects))
             else:
-                colors = [vis_settings['color']] * n_objects
+                colors = [vis_settings["color"]] * n_objects
             for (obj_idx, obj) in enumerate(objects):
                 color = obj.color or colors[obj_idx]
                 if proj_3D:
-                    obj.plot(ax, mode=mode, alpha=vis_settings['alpha'], color=color)
+                    obj.plot(ax, mode=mode, alpha=vis_settings["alpha"], color=color)
                 else:
                     vertices_2d = obj.vertices[:, :2]
                     hull = ConvexHull(vertices_2d)
                     hull_vertices = vertices_2d[hull.vertices]
-                    ax.fill(hull_vertices[:, 0], hull_vertices[:, 1], alpha=vis_settings['alpha'], color=color, label=label if obj_idx == 0 else '')
-        ax.set_xlabel('X (m)')
-        ax.set_ylabel('Y (m)')
+                    ax.fill(hull_vertices[:, 0], hull_vertices[:, 1], alpha=vis_settings["alpha"], color=color, label=label if obj_idx == 0 else "")
+        ax.set_xlabel("X (m)")
+        ax.set_ylabel("Y (m)")
         if proj_3D:
-            ax.set_zlabel('Z (m)')
+            ax.set_zlabel("Z (m)")
         if title:
             ax.set_title(self._get_title_with_counts())
         if proj_3D:
             ax.view_init(elev=40, azim=-45)
             self._set_axes_lims_to_scale(ax)
         else:
-            ax.set_aspect('equal')
+            ax.set_aspect("equal")
             ax.grid(True, alpha=0.3)
         if len(label_groups) > 1 and legend:
             ax.legend()
@@ -683,10 +683,10 @@ class Scene:
         counts = []
         for (label, count) in label_counts.items():
             label_name = label.capitalize()
-            if count == 1 and label_name.endswith('s'):
+            if count == 1 and label_name.endswith("s"):
                 label_name = label_name[:-1]
-            counts.append(f'{label_name}: {count}')
-        return ', '.join(counts)
+            counts.append(f"{label_name}: {count}")
+        return ", ".join(counts)
 
     def count_objects_by_label(self: Any) -> dict[str, int]:
         """Count the number of objects for each label in the scene.
@@ -710,10 +710,10 @@ class Scene:
         """
         label_counts = self.count_objects_by_label()
         bb = self.bounding_box
-        dims = f'{bb.width:.1f} x {bb.length:.1f} x {bb.height:.1f} m'
-        counts = [f'{label}: {count}' for (label, count) in label_counts.items()]
-        counts_str = ', '.join(counts)
-        return f'Scene({len(self.objects)} objects [{counts_str}], dims = {dims})'
+        dims = f"{bb.width:.1f} x {bb.length:.1f} x {bb.height:.1f} m"
+        counts = [f"{label}: {count}" for (label, count) in label_counts.items()]
+        counts_str = ", ".join(counts)
+        return f"Scene({len(self.objects)} objects [{counts_str}], dims = {dims})"
 
 def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float, float]]]:
     """Generate faces using convex hull approach (fast but simplified).
@@ -734,7 +734,7 @@ def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float
         base_shape = points_2d[hull.vertices]
     except Exception:
         if np.linalg.matrix_rank(points_2d - points_2d[0]) < 2:
-            print('Convex hull failed - collinear vertices')
+            print("Convex hull failed - collinear vertices")
             return None
         raise
     bottom_face = [(x, y, base_height) for (x, y) in base_shape]
@@ -790,7 +790,7 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
                 for m in subset:
                     if m == k:
                         continue
-                    (prev_cost, prev_path) = C.get((prev_bits, m), (float('inf'), []))
+                    (prev_cost, prev_path) = C.get((prev_bits, m), (float("inf"), []))
                     if not prev_path:
                         continue
                     new_seg = (points[m], points[k])
@@ -825,7 +825,7 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
         angle_cost = _calculate_angle_deviation(points[path[-2]], points[k], points[0])
         final_cost = cost + np.linalg.norm(points[k] - points[0]) + angle_cost
         res.append((final_cost, [*path, 0]))
-    return min(res) if res else (float('inf'), [])
+    return min(res) if res else (float("inf"), [])
 
 def _detect_endpoints(points_2d: np.ndarray, min_distance: float=2.0) -> tuple[np.ndarray, np.ndarray]:
     """Detect the endpoints of a road by finding pairs of points that are furthest from each other.
@@ -905,8 +905,8 @@ def _trim_points_protected(points: np.ndarray, protected_indices: list[int], max
 
     """
     protected_indices = set(protected_indices)
-    assert max_points >= len(protected_indices), 'max_points must be >= number of protected points'
-    assert len(points) >= len(protected_indices), 'len(points) must be >= max_points'
+    assert max_points >= len(protected_indices), "max_points must be >= number of protected points"
+    assert len(points) >= len(protected_indices), "len(points) must be >= max_points"
     x = points[:, 0]
     y = points[:, 1]
     z = np.polyfit(x, y, 3)
@@ -975,7 +975,7 @@ def _get_2d_face(vertices: np.ndarray, z_tolerance: float=0.1, max_points: int=1
 
     """
     if not np.allclose(vertices[:, 2], vertices[0, 2], atol=z_tolerance):
-        msg = 'Vertices are not 2D'
+        msg = "Vertices are not 2D"
         raise ValueError(msg)
     endpoints = _detect_endpoints(vertices[:, :2])
     kept_indices = _trim_points_protected(vertices[:, :2], protected_indices=endpoints, max_points=max_points)
@@ -1014,22 +1014,22 @@ def get_object_faces(vertices: list[tuple[float, float, float]], fast: bool=True
     if len(vertices) < 3:
         return None
     return _get_faces_convex_hull(vertices) if fast else _get_2d_face(vertices)
-if __name__ == '__main__':
+if __name__ == "__main__":
     points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
     path = [0, 1, 2, 3]
     compressed = _compress_path(points, path)
     print(compressed)
 
-    def plot_points(points: Any, path: Any=None, title: Any='') -> None:
+    def plot_points(points: Any, path: Any=None, title: Any="") -> None:
         plt.figure(figsize=(8, 6))
-        plt.scatter(points[:, 0], points[:, 1], color='blue')
+        plt.scatter(points[:, 0], points[:, 1], color="blue")
         for (i, (x, y)) in enumerate(points):
             plt.text(x + 1, y + 1, str(i), fontsize=9)
         if path:
             for i in range(len(path) - 1):
                 (p1, p2) = (points[path[i]], points[path[i + 1]])
-                plt.plot([p1[0], p2[0]], [p1[1], p2[1]], 'r-')
+                plt.plot([p1[0], p2[0]], [p1[1], p2[1]], "r-")
         plt.title(title)
-        plt.axis('equal')
+        plt.axis("equal")
         plt.grid(True)
         plt.show()

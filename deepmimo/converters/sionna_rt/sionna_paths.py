@@ -202,7 +202,10 @@ def _process_paths_batch(
     return inactive_count
 
 
-def _get_path_key(paths_dict, key, fallback_key=None, default=None):
+from typing import Any
+
+
+def _get_path_key(paths_dict: dict[str, Any], key: str, fallback_key: str | None = None, default: Any = None) -> Any:
     if key in paths_dict:
         return paths_dict[key]
     if fallback_key and fallback_key in paths_dict:

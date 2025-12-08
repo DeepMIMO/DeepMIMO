@@ -52,7 +52,7 @@ class DeepMIMOConfig:
 
     def _initialize(self: Any) -> None:
         """Initialize the configuration with default values."""
-        self._config = {'wireless_insite_version': RAYTRACER_VERSION_WIRELESS_INSITE, 'sionna_version': RAYTRACER_VERSION_SIONNA, 'aodt_version': RAYTRACER_VERSION_AODT, 'use_gpu': False, 'gpu_device_id': 0, 'scenarios_folder': SCENARIOS_FOLDER, 'rt_sources_folder': RT_SOURCES_FOLDER}
+        self._config = {"wireless_insite_version": RAYTRACER_VERSION_WIRELESS_INSITE, "sionna_version": RAYTRACER_VERSION_SIONNA, "aodt_version": RAYTRACER_VERSION_AODT, "use_gpu": False, "gpu_device_id": 0, "scenarios_folder": SCENARIOS_FOLDER, "rt_sources_folder": RT_SOURCES_FOLDER}
 
     def set(self: Any, key: str, value: Any) -> None:
         """Set a configuration value.
@@ -87,11 +87,11 @@ class DeepMIMOConfig:
 
     def get_config_str(self: Any) -> str:
         """Return a string representation of the configuration."""
-        result = '\nDeepMIMO Configuration:\n'
-        result += '-' * 50 + '\n'
+        result = "\nDeepMIMO Configuration:\n"
+        result += "-" * 50 + "\n"
         for (key, value) in self._config.items():
-            result += f'{key}: {value}\n'
-        result += '-' * 50
+            result += f"{key}: {value}\n"
+        result += "-" * 50
         return result
 
     def print_config(self: Any) -> None:
@@ -139,7 +139,7 @@ class DeepMIMOConfig:
             self.set(args[0], args[1])
             return None
         if args and kwargs:
-            msg = 'Cannot mix positional arguments and keyword arguments'
+            msg = "Cannot mix positional arguments and keyword arguments"
             raise ValueError(msg)
         return None
 
@@ -147,4 +147,4 @@ class DeepMIMOConfig:
         """Return a string representation of the configuration."""
         return self.get_config_str()
 config = DeepMIMOConfig()
-__all__ = ['config']
+__all__ = ["config"]

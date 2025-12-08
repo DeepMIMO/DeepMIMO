@@ -4,6 +4,7 @@ This module handles loading and converting material data from Sionna's format to
 """
 
 from pathlib import Path
+from typing import Any
 
 from deepmimo.general_utils import load_pickle
 from deepmimo.materials import Material, MaterialList
@@ -43,8 +44,8 @@ def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:
         scattering_model = Material.SCATTERING_NONE if not scat_coeff else scattering_model
 
         # Create Material object
-        def safe_float(val, default=0.0):
-            return float(val) if val is not None else default
+        def safe_float(val: Any, default: float = 0.0) -> float:
+            return float(val) if val is not None else float(default)
 
         material = Material(
             id=i,

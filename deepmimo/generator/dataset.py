@@ -117,7 +117,7 @@ class Dataset(DotDict):
 
         """
         super().__init__(data or {})
-    WRAPPABLE_ARRAYS = ['power', 'phase', 'delay', 'aoa_az', 'aoa_el', 'aod_az', 'aod_el', 'inter', 'los', 'channel', 'power_linear', 'pathloss', 'distance', 'num_paths', 'inter_str', 'doppler', 'inter_obj', 'inter_int']
+    WRAPPABLE_ARRAYS = ["power", "phase", "delay", "aoa_az", "aoa_el", "aod_az", "aod_el", "inter", "los", "channel", "power_linear", "pathloss", "distance", "num_paths", "inter_str", "doppler", "inter_obj", "inter_int"]
 
     def _wrap_array(self: Any, key: str, value: Any) -> Any:
         """Wrap numpy arrays with DeepMIMOArray if appropriate.
@@ -251,12 +251,12 @@ class Dataset(DotDict):
         n_paths_to_gen = params.num_paths
         n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
         default_doppler = np.zeros((self.n_ue, n_paths))
-        use_doppler = self.hasattr('doppler') and params[c.PARAMSET_DOPPLER_EN]
+        use_doppler = self.hasattr("doppler") and params[c.PARAMSET_DOPPLER_EN]
         if not use_doppler:
             all_obj_vel = np.array([obj.vel for obj in self.scene.objects])
             use_doppler = self.tx_vel.any() or self.rx_vel.any() or all_obj_vel.any()
             if not use_doppler and params[c.PARAMSET_DOPPLER_EN]:
-                print('No doppler in channel generation because all velocities are zero')
+                print("No doppler in channel generation because all velocities are zero")
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
         channel = _generate_MIMO_channel(array_response_product=array_response_product[..., :n_paths], powers=self._power_linear_ant_gain[..., :n_paths], delays=self.delay[..., :n_paths], phases=self.phase[..., :n_paths], dopplers=dopplers, ofdm_params=params.ofdm, times=times, freq_domain=params.freq_domain)
         self[c.CHANNEL_PARAM_NAME] = channel
@@ -270,7 +270,7 @@ class Dataset(DotDict):
             Array of transmitter orientation
 
         """
-        return self.ch_params['bs_antenna']['rotation'] * np.pi / 180
+        return self.ch_params["bs_antenna"]["rotation"] * np.pi / 180
 
     @property
     def bs_ori(self: Any) -> np.ndarray:
@@ -290,7 +290,7 @@ class Dataset(DotDict):
             Array of receiver orientation
 
         """
-        return self.ch_params['ue_antenna']['rotation'] * np.pi / 180
+        return self.ch_params["ue_antenna"]["rotation"] * np.pi / 180
 
     @property
     def ue_ori(self: Any) -> np.ndarray:
@@ -384,8 +384,8 @@ class Dataset(DotDict):
 
         """
         look_pos = np.array(look_pos)
-        if not hasattr(self, 'rx_pos') or self.rx_pos is None:
-            print('Warning: No user positions found. Ensure positions are loaded and available in dataset.rx_pos.')
+        if not hasattr(self, "rx_pos") or self.rx_pos is None:
+            print("Warning: No user positions found. Ensure positions are loaded and available in dataset.rx_pos.")
             return
         if look_pos.ndim == 1:
             target_positions = np.tile(look_pos, (self.n_ue, 1))
@@ -394,11 +394,11 @@ class Dataset(DotDict):
                 target_positions = np.tile(look_pos, (self.n_ue, 1))
             else:
                 if look_pos.shape[0] != self.n_ue:
-                    msg = f'Number of target positions ({look_pos.shape[0]}) must match number of users ({self.n_ue})'
+                    msg = f"Number of target positions ({look_pos.shape[0]}) must match number of users ({self.n_ue})"
                     raise ValueError(msg)
                 target_positions = look_pos
         else:
-            msg = 'look_pos must be 1D or 2D array'
+            msg = "look_pos must be 1D or 2D array"
             raise ValueError(msg)
         (azimuth_degrees, elevation_degrees) = self._look_at(self.rx_pos, target_positions)
         curr_rot = np.atleast_2d(self.ch_params.ue_antenna[c.PARAMSET_ANT_ROTATION])
@@ -574,10 +574,10 @@ class Dataset(DotDict):
 
         """
         inter_raw_str = self.inter.astype(str)
-        INTER_MAP = str.maketrans({'0': '', '1': 'R', '2': 'D', '3': 'S', '4': 'T'})
+        INTER_MAP = str.maketrans({"0": "", "1": "R", "2": "D", "3": "S", "4": "T"})
 
         def translate_code(s: str) -> str:
-            return s[:-2].translate(INTER_MAP) if s != 'nan' else 'n'
+            return s[:-2].translate(INTER_MAP) if s != "nan" else "n"
         return np.vectorize(translate_code)(inter_raw_str)
 
     def _compute_n_ue(self: Any) -> int:
@@ -623,7 +623,7 @@ class Dataset(DotDict):
         y_positions = np.unique(self.rx_pos[:, 1])
         grid_size = np.array([len(x_positions), len(y_positions)])
         grid_spacing = np.array([np.mean(np.diff(x_positions)) if len(x_positions) > 1 else 0, np.mean(np.diff(y_positions)) if len(y_positions) > 1 else 0])
-        return {'grid_size': grid_size, 'grid_spacing': grid_spacing}
+        return {"grid_size": grid_size, "grid_spacing": grid_spacing}
 
     def has_valid_grid(self: Any) -> bool:
         """Check if the dataset has a valid grid structure.
@@ -687,7 +687,7 @@ class Dataset(DotDict):
             np.ndarray: 1D array of integer indices for the selected rows.
 
         """
-        return get_grid_idxs(self.grid_size, 'row', row_idxs)
+        return get_grid_idxs(self.grid_size, "row", row_idxs)
 
     def _get_col_idxs(self: Any, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
         """Internal: Return indices of users in the specified grid columns.
@@ -699,7 +699,7 @@ class Dataset(DotDict):
             np.ndarray: 1D array of integer indices for the selected columns.
 
         """
-        return get_grid_idxs(self.grid_size, 'col', col_idxs)
+        return get_grid_idxs(self.grid_size, "col", col_idxs)
 
     def get_idxs(self: Any, mode: str, **kwargs: Any) -> np.ndarray:
         """Unified dispatcher for user index selection.
@@ -717,19 +717,19 @@ class Dataset(DotDict):
 
         """
         m = mode.lower()
-        if m == 'active':
+        if m == "active":
             return self._get_active_idxs()
-        if m == 'linear':
-            return self._get_linear_idxs(kwargs['start_pos'], kwargs['end_pos'], kwargs['n_steps'], kwargs.get('filter_repeated', True))
-        if m == 'uniform':
-            return self._get_uniform_idxs(kwargs['steps'])
-        if m == 'row':
-            return self._get_row_idxs(kwargs['row_idxs'])
-        if m == 'col':
-            return self._get_col_idxs(kwargs['col_idxs'])
-        if m == 'limits':
+        if m == "linear":
+            return self._get_linear_idxs(kwargs["start_pos"], kwargs["end_pos"], kwargs["n_steps"], kwargs.get("filter_repeated", True))
+        if m == "uniform":
+            return self._get_uniform_idxs(kwargs["steps"])
+        if m == "row":
+            return self._get_row_idxs(kwargs["row_idxs"])
+        if m == "col":
+            return self._get_col_idxs(kwargs["col_idxs"])
+        if m == "limits":
             return get_idxs_with_limits(self.rx_pos, **kwargs)
-        msg = f'Unknown mode: {mode}'
+        msg = f"Unknown mode: {mode}"
         raise ValueError(msg)
 
     def _trim_by_path(self: Any, path_mask: np.ndarray) -> Dataset:
@@ -773,12 +773,12 @@ class Dataset(DotDict):
         for param in SHARED_PARAMS:
             if self.hasattr(param):
                 initial_data[param] = getattr(self, param)
-        initial_data['n_ue'] = len(idxs)
+        initial_data["n_ue"] = len(idxs)
         new_dataset = Dataset(initial_data)
         for (attr, value) in self.to_dict().items():
-            if not attr.startswith('_') and attr not in [*SHARED_PARAMS, 'n_ue']:
+            if not attr.startswith("_") and attr not in [*SHARED_PARAMS, "n_ue"]:
                 if isinstance(value, np.ndarray) and len(value.shape) == 0:
-                    print(f'{attr} is a scalar')
+                    print(f"{attr} is a scalar")
                 if isinstance(value, np.ndarray) and value.ndim > 0 and (value.shape[0] == self.n_ue):
                     setattr(new_dataset, attr, value[idxs])
                 else:
@@ -847,7 +847,7 @@ class Dataset(DotDict):
             A new Dataset with paths trimmed to only include allowed interaction types.
 
         """
-        type_to_code = {'LoS': c.INTERACTION_LOS, 'R': c.INTERACTION_REFLECTION, 'D': c.INTERACTION_DIFFRACTION, 'S': c.INTERACTION_SCATTERING, 'T': c.INTERACTION_TRANSMISSION}
+        type_to_code = {"LoS": c.INTERACTION_LOS, "R": c.INTERACTION_REFLECTION, "D": c.INTERACTION_DIFFRACTION, "S": c.INTERACTION_SCATTERING, "T": c.INTERACTION_TRANSMISSION}
         allowed_codes = [type_to_code[t] for t in allowed_types]
         path_mask = np.zeros_like(self.inter, dtype=bool)
         for user_idx in range(self.n_ue):
@@ -900,7 +900,7 @@ class Dataset(DotDict):
         """
         return plot_coverage(self.rx_pos, cov_map, bs_pos=self.tx_pos.T, bs_ori=self.tx_ori, **kwargs)
 
-    def plot_rays(self: Any, idx: int, color_strat: str='none', **kwargs: Any) -> Any:
+    def plot_rays(self: Any, idx: int, color_strat: str="none", **kwargs: Any) -> Any:
         """Plot the rays of the dataset.
 
         Args:
@@ -912,21 +912,21 @@ class Dataset(DotDict):
             **kwargs: Additional keyword arguments to pass to the plot_rays function.
 
         """
-        if kwargs.get('color_by_inter_obj', False):
+        if kwargs.get("color_by_inter_obj", False):
             inter_objs = self.inter_objects[idx]
             inter_obj_labels = {obj_id: obj.name for (obj_id, obj) in enumerate(self.scene.objects)}
         else:
             inter_objs = None
             inter_obj_labels = None
-        kwargs.pop('color_by_inter_obj', None)
-        default_kwargs = {'proj_3D': True, 'color_by_type': True, 'inter_objects': inter_objs, 'inter_obj_labels': inter_obj_labels}
-        if color_strat != 'none':
-            default_kwargs['color_rays_by_pwr'] = True
-            default_kwargs['powers'] = self.power[idx]
-            if color_strat == 'absolute':
-                default_kwargs['limits'] = (np.nanmin(self.power), np.nanmax(self.power))
-            if 'show_cbar' not in kwargs:
-                kwargs['show_cbar'] = True
+        kwargs.pop("color_by_inter_obj", None)
+        default_kwargs = {"proj_3D": True, "color_by_type": True, "inter_objects": inter_objs, "inter_obj_labels": inter_obj_labels}
+        if color_strat != "none":
+            default_kwargs["color_rays_by_pwr"] = True
+            default_kwargs["powers"] = self.power[idx]
+            if color_strat == "absolute":
+                default_kwargs["limits"] = (np.nanmin(self.power), np.nanmax(self.power))
+            if "show_cbar" not in kwargs:
+                kwargs["show_cbar"] = True
         default_kwargs.update(kwargs)
         return plot_rays(self.rx_pos[idx], self.tx_pos[0], self.inter_pos[idx], self.inter[idx], **default_kwargs)
 
@@ -942,7 +942,7 @@ class Dataset(DotDict):
             np.ndarray: The velocities of the users in cartesian coordinates. (n_ue, 3) `m/s`
 
         """
-        if not self.hasattr('_rx_vel'):
+        if not self.hasattr("_rx_vel"):
             self._rx_vel = np.zeros((self.n_ue, 3))
         return self._rx_vel
 
@@ -964,10 +964,10 @@ class Dataset(DotDict):
             self._rx_vel = np.repeat(velocities[None, :], self.n_ue, axis=0)
         else:
             if velocities.shape[1] != 3:
-                msg = 'Velocities must be in cartesian coordinates (n_ue, 3)'
+                msg = "Velocities must be in cartesian coordinates (n_ue, 3)"
                 raise ValueError(msg)
             if velocities.shape[0] != self.n_ue:
-                msg = 'Number of users must match number of velocities (n_ue, 3)'
+                msg = "Number of users must match number of velocities (n_ue, 3)"
                 raise ValueError(msg)
             self._rx_vel = velocities
 
@@ -983,50 +983,50 @@ class Dataset(DotDict):
 
         """
         if idx < 0 or idx >= self.n_ue:
-            msg = f'User index {idx} is out of range [0, {self.n_ue})'
+            msg = f"User index {idx} is out of range [0, {self.n_ue})"
             raise IndexError(msg)
         if path_idxs is None:
             path_idxs = np.arange(self.num_paths[idx])
         else:
             path_idxs = np.array(path_idxs)
             if np.any((path_idxs < 0) | (path_idxs >= self.num_paths[idx])):
-                msg = f'Path indices must be in range [0, {self.num_paths[idx]})'
+                msg = f"Path indices must be in range [0, {self.num_paths[idx]})"
                 raise IndexError(msg)
-        print('\nUser Information:')
-        print(f'Position: {self.rx_pos[idx]}')
-        print(f'Velocity: {self.rx_vel[idx]}')
-        print('\nPath Information:')
-        print(f'Number of paths selected: {len(path_idxs)} (total: {self.num_paths[idx]})')
-        print(f'Powers (dBm): {self.power[idx][path_idxs]}')
-        print(f'Phases (deg): {self.phase[idx][path_idxs]}')
-        print(f'Delays (us): {self.delay[idx][path_idxs] * 1000000.0}')
-        print('\nAngles:')
-        print(f'Azimuth of Departure (deg): {self.aod_phi[idx][path_idxs]}')
-        print(f'Elevation of Departure (deg): {self.aod_theta[idx][path_idxs]}')
-        print(f'Azimuth of Arrival (deg): {self.aoa_phi[idx][path_idxs]}')
-        print(f'Elevation of Arrival (deg): {self.aoa_theta[idx][path_idxs]}')
-        print('\nInteraction Information:')
-        print(f'Interaction types: {self.inter[idx][path_idxs]}')
-        print(f'Number of interactions: {self.num_interactions[idx][path_idxs]}')
-        print('Interaction positions:')
+        print("\nUser Information:")
+        print(f"Position: {self.rx_pos[idx]}")
+        print(f"Velocity: {self.rx_vel[idx]}")
+        print("\nPath Information:")
+        print(f"Number of paths selected: {len(path_idxs)} (total: {self.num_paths[idx]})")
+        print(f"Powers (dBm): {self.power[idx][path_idxs]}")
+        print(f"Phases (deg): {self.phase[idx][path_idxs]}")
+        print(f"Delays (us): {self.delay[idx][path_idxs] * 1000000.0}")
+        print("\nAngles:")
+        print(f"Azimuth of Departure (deg): {self.aod_phi[idx][path_idxs]}")
+        print(f"Elevation of Departure (deg): {self.aod_theta[idx][path_idxs]}")
+        print(f"Azimuth of Arrival (deg): {self.aoa_phi[idx][path_idxs]}")
+        print(f"Elevation of Arrival (deg): {self.aoa_theta[idx][path_idxs]}")
+        print("\nInteraction Information:")
+        print(f"Interaction types: {self.inter[idx][path_idxs]}")
+        print(f"Number of interactions: {self.num_interactions[idx][path_idxs]}")
+        print("Interaction positions:")
         for (p_idx, path_idx) in enumerate(path_idxs):
             n_inter = int(self.num_interactions[idx][path_idx])
             if np.isnan(n_inter):
-                print(f'  Path {path_idx}: No interactions')
+                print(f"  Path {path_idx}: No interactions")
                 continue
-            print(f'  Path {path_idx} ({n_inter} interactions):')
+            print(f"  Path {path_idx} ({n_inter} interactions):")
             for _i in range(n_inter):
-                print(f'    {p_idx + 1}: {self.inter_pos[idx][path_idx][p_idx]}')
-        if self.hasattr('inter_objects'):
-            print('\nInteraction objects:')
+                print(f"    {p_idx + 1}: {self.inter_pos[idx][path_idx][p_idx]}")
+        if self.hasattr("inter_objects"):
+            print("\nInteraction objects:")
             for (p_idx, path_idx) in enumerate(path_idxs):
                 n_inter = int(self.num_interactions[idx][path_idx])
                 if np.isnan(n_inter):
-                    print(f'  Path {path_idx}: No interactions')
+                    print(f"  Path {path_idx}: No interactions")
                     continue
-                print(f'  Path {path_idx} ({n_inter} interactions):')
+                print(f"  Path {path_idx} ({n_inter} interactions):")
                 for _i in range(n_inter):
-                    print(f'    {p_idx + 1}: {self.inter_objects[idx][path_idx][p_idx]}')
+                    print(f"    {p_idx + 1}: {self.inter_objects[idx][path_idx][p_idx]}")
 
     @property
     def tx_vel(self: Any) -> np.ndarray:
@@ -1036,7 +1036,7 @@ class Dataset(DotDict):
             np.ndarray: The velocities of the base stations in cartesian coordinates. (3,) `m/s`
 
         """
-        if not self.hasattr('_tx_vel'):
+        if not self.hasattr("_tx_vel"):
             self._tx_vel = np.zeros(3)
         return self._tx_vel
 
@@ -1055,7 +1055,7 @@ class Dataset(DotDict):
         if isinstance(velocities, (list, tuple)):
             velocities = np.array(velocities)
         if velocities.ndim != 1:
-            msg = 'Tx velocity must be in a single cartesian coordinate (3,)'
+            msg = "Tx velocity must be in a single cartesian coordinate (3,)"
             raise ValueError(msg)
         self._tx_vel = velocities
         return
@@ -1079,7 +1079,7 @@ class Dataset(DotDict):
         elif doppler.ndim == 2 and doppler.shape[0] == self.n_ue and (doppler.shape[1] == self.max_paths):
             pass
         else:
-            msg = f'Invalid doppler shape: {doppler.shape}'
+            msg = f"Invalid doppler shape: {doppler.shape}"
             raise ValueError(msg)
         self.doppler = doppler
 
@@ -1099,7 +1099,7 @@ class Dataset(DotDict):
         if vel.ndim == 1:
             vel = np.repeat(vel[None, :], len(obj_idx), axis=0)
         if vel.shape[0] != len(obj_idx):
-            msg = 'Number of velocities must match number of objects'
+            msg = "Number of velocities must match number of objects"
             raise ValueError(msg)
         if isinstance(obj_idx, int):
             obj_idx = [obj_idx]
@@ -1136,7 +1136,7 @@ class Dataset(DotDict):
         k_rx = spherical_to_cartesian(rx_coord_cat)
         k_i = self._compute_inter_angles()
         inter_objects = self._compute_inter_objects()
-        for ue_i in tqdm(range(self.n_ue), desc='Computing doppler per UE'):
+        for ue_i in tqdm(range(self.n_ue), desc="Computing doppler per UE"):
             n_paths = self.num_paths[ue_i]
             for path_i in range(n_paths):
                 if np.isnan(self.inter[ue_i, path_i]):
@@ -1168,7 +1168,7 @@ class Dataset(DotDict):
 
         """
         inter_angles = np.zeros((self.n_ue, self.max_paths, self.max_inter + 1, 3))
-        for ue_i in tqdm(range(self.n_ue), desc='Computing interaction angles per UE'):
+        for ue_i in tqdm(range(self.n_ue), desc="Computing interaction angles per UE"):
             for path_i in range(self.max_paths):
                 n_inter = self.num_interactions[ue_i, path_i]
                 if np.isnan(n_inter) or n_inter == 0:
@@ -1195,16 +1195,16 @@ class Dataset(DotDict):
 
         """
         inter_obj_ids = np.zeros((self.n_ue, self.max_paths, self.max_inter)) * np.nan
-        terrain_objs = [obj for obj in self.scene.objects if obj.label == 'terrain']
+        terrain_objs = [obj for obj in self.scene.objects if obj.label == "terrain"]
         if len(terrain_objs) > 1:
-            msg = 'There should be only one terrain object'
+            msg = "There should be only one terrain object"
             raise ValueError(msg)
         terrain_obj = terrain_objs[0]
         terrain_z_coord = terrain_obj.bounding_box.z_max
-        non_terrain_objs = [obj for obj in self.scene.objects if obj.label != 'terrain']
+        non_terrain_objs = [obj for obj in self.scene.objects if obj.label != "terrain"]
         obj_centers = np.array([obj.bounding_box.center for obj in non_terrain_objs])
         obj_ids = np.array([obj.object_id for obj in non_terrain_objs])
-        for ue_i in tqdm(range(self.n_ue), desc='Computing interaction objects per UE'):
+        for ue_i in tqdm(range(self.n_ue), desc="Computing interaction objects per UE"):
             for path_i in range(self.max_paths):
                 n_inter = self.num_interactions[ue_i, path_i]
                 if np.isnan(n_inter) or n_inter == 0:
@@ -1248,7 +1248,7 @@ class Dataset(DotDict):
             list[TxRxSet]: The txrx sets for the dataset.
 
         """
-        return get_txrx_sets(self.get('parent_name', self.name))
+        return get_txrx_sets(self.get("parent_name", self.name))
 
     def info(self: Any, param_name: str | None=None) -> None:
         """Display help information about DeepMIMO dataset parameters.
@@ -1265,7 +1265,7 @@ class Dataset(DotDict):
             param_name = resolved_name
         info(param_name)
 
-    def to_binary(self: Any, output_dir: str='./datasets') -> None:
+    def to_binary(self: Any, output_dir: str="./datasets") -> None:
         """Export dataset to binary format for web visualizer.
 
         This method exports the dataset to a binary format suitable for the DeepMIMO
@@ -1276,9 +1276,9 @@ class Dataset(DotDict):
             output_dir: Output directory for binary files (default: "./datasets")
 
         """
-        dataset_name = getattr(self, 'name', 'dataset')
+        dataset_name = getattr(self, "name", "dataset")
         export_dataset_to_binary(self, dataset_name, output_dir)
-    _computed_attributes = {c.N_UE_PARAM_NAME: '_compute_n_ue', c.NUM_PATHS_PARAM_NAME: '_compute_num_paths', c.MAX_PATHS_PARAM_NAME: '_compute_max_paths', c.NUM_INTERACTIONS_PARAM_NAME: '_compute_num_interactions', c.MAX_INTERACTIONS_PARAM_NAME: '_compute_max_interactions', c.DIST_PARAM_NAME: '_compute_distances', c.PATHLOSS_PARAM_NAME: 'compute_pathloss', c.CHANNEL_PARAM_NAME: 'compute_channels', c.LOS_PARAM_NAME: '_compute_los', c.CH_PARAMS_PARAM_NAME: 'set_channel_params', c.DOPPLER_PARAM_NAME: '_compute_doppler', c.INTER_OBJECTS_PARAM_NAME: '_compute_inter_objects', c.PWR_LINEAR_PARAM_NAME: '_compute_power_linear', c.AOA_AZ_ROT_PARAM_NAME: '_compute_rotated_angles', c.AOA_EL_ROT_PARAM_NAME: '_compute_rotated_angles', c.AOD_AZ_ROT_PARAM_NAME: '_compute_rotated_angles', c.AOD_EL_ROT_PARAM_NAME: '_compute_rotated_angles', c.ARRAY_RESPONSE_PRODUCT_PARAM_NAME: '_compute_array_response_product', c.PWR_LINEAR_ANT_GAIN_PARAM_NAME: '_compute_power_linear_ant_gain', c.GRID_SIZE_PARAM_NAME: '_compute_grid_info', c.GRID_SPACING_PARAM_NAME: '_compute_grid_info', c.INTER_STR_PARAM_NAME: '_compute_inter_str', c.INTER_INT_PARAM_NAME: '_compute_inter_int', c.TXRX_PARAM_NAME: '_get_txrx_sets'}
+    _computed_attributes = {c.N_UE_PARAM_NAME: "_compute_n_ue", c.NUM_PATHS_PARAM_NAME: "_compute_num_paths", c.MAX_PATHS_PARAM_NAME: "_compute_max_paths", c.NUM_INTERACTIONS_PARAM_NAME: "_compute_num_interactions", c.MAX_INTERACTIONS_PARAM_NAME: "_compute_max_interactions", c.DIST_PARAM_NAME: "_compute_distances", c.PATHLOSS_PARAM_NAME: "compute_pathloss", c.CHANNEL_PARAM_NAME: "compute_channels", c.LOS_PARAM_NAME: "_compute_los", c.CH_PARAMS_PARAM_NAME: "set_channel_params", c.DOPPLER_PARAM_NAME: "_compute_doppler", c.INTER_OBJECTS_PARAM_NAME: "_compute_inter_objects", c.PWR_LINEAR_PARAM_NAME: "_compute_power_linear", c.AOA_AZ_ROT_PARAM_NAME: "_compute_rotated_angles", c.AOA_EL_ROT_PARAM_NAME: "_compute_rotated_angles", c.AOD_AZ_ROT_PARAM_NAME: "_compute_rotated_angles", c.AOD_EL_ROT_PARAM_NAME: "_compute_rotated_angles", c.ARRAY_RESPONSE_PRODUCT_PARAM_NAME: "_compute_array_response_product", c.PWR_LINEAR_ANT_GAIN_PARAM_NAME: "_compute_power_linear_ant_gain", c.GRID_SIZE_PARAM_NAME: "_compute_grid_info", c.GRID_SPACING_PARAM_NAME: "_compute_grid_info", c.INTER_STR_PARAM_NAME: "_compute_inter_str", c.INTER_INT_PARAM_NAME: "_compute_inter_int", c.TXRX_PARAM_NAME: "_get_txrx_sets"}
 
 class MacroDataset:
     """A container class that holds multiple Dataset instances and propagates operations to all children.
@@ -1289,8 +1289,8 @@ class MacroDataset:
     it will return single value instead of a list with a single element.
     """
 
-    SINGLE_ACCESS_METHODS = ['info']
-    PROPAGATE_METHODS = {name for (name, _) in inspect.getmembers(Dataset, predicate=inspect.isfunction) if not name.startswith('__')}
+    SINGLE_ACCESS_METHODS = ["info"]
+    PROPAGATE_METHODS = {name for (name, _) in inspect.getmembers(Dataset, predicate=inspect.isfunction) if not name.startswith("__")}
 
     def __init__(self: Any, datasets: list[Dataset] | None=None) -> None:
         """Initialize with optional list of Dataset instances.
@@ -1313,7 +1313,7 @@ class MacroDataset:
 
         """
         if not self.datasets:
-            msg = 'MacroDataset is empty'
+            msg = "MacroDataset is empty"
             raise IndexError(msg)
         return self.datasets[0][key]
 
@@ -1384,7 +1384,7 @@ class MacroDataset:
         """
         self.datasets.append(dataset)
 
-    def to_binary(self: Any, output_dir: str='./datasets') -> None:
+    def to_binary(self: Any, output_dir: str="./datasets") -> None:
         """Export all datasets to binary format for web visualizer.
 
         This method exports all contained datasets to binary format suitable for the
@@ -1394,7 +1394,7 @@ class MacroDataset:
             output_dir: Output directory for binary files (default: "./datasets")
 
         """
-        dataset_name = getattr(self.datasets[0], 'name', 'dataset') if self.datasets else 'dataset'
+        dataset_name = getattr(self.datasets[0], "name", "dataset") if self.datasets else "dataset"
         export_dataset_to_binary(self, dataset_name, output_dir)
 
 class DynamicDataset(MacroDataset):
@@ -1421,13 +1421,13 @@ class DynamicDataset(MacroDataset):
         For scene, return a DelegatingList of scenes from all datasets.
         For other shared parameters, use parent class behavior.
         """
-        if key == 'scene':
+        if key == "scene":
             return DelegatingList([dataset.scene for dataset in self.datasets])
         return super()._get_single(key)
 
     def __getattr__(self: Any, name: Any) -> Any:
         """Override __getattr__ to handle txrx_sets specially."""
-        if name == 'txrx_sets':
+        if name == "txrx_sets":
             return get_txrx_sets(self.name)
         return super().__getattr__(name)
 
@@ -1447,10 +1447,10 @@ class DynamicDataset(MacroDataset):
         elif isinstance(timestamps, list):
             self.timestamps = np.array(timestamps)
         if len(self.timestamps) != self.n_scenes:
-            msg = f'Time reference must be a single value or a list of {self.n_scenes} values'
+            msg = f"Time reference must be a single value or a list of {self.n_scenes} values"
             raise ValueError(msg)
         if self.timestamps.ndim != 1:
-            msg = 'Time reference must be single dimension.'
+            msg = "Time reference must be single dimension."
             raise ValueError(msg)
         self._compute_speeds()
 

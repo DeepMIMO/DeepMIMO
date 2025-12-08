@@ -5,6 +5,7 @@ city files used in electromagnetic simulations, including material properties.
 """
 
 from pathlib import Path
+from typing import Any
 
 from plyfile import PlyData  # type: ignore
 
@@ -45,7 +46,7 @@ def convert_ply2city(
     return (len(ply_data["vertex"]), len(ply_data["face"]))
 
 
-def write_reference_sec(f) -> None:
+def write_reference_sec(f: Any) -> None:
     """Write the reference section to the city file.
 
     Args:
@@ -59,7 +60,7 @@ def write_reference_sec(f) -> None:
     return f.writelines(reference_sec)
 
 
-def write_material_sec(f, material_sec: list[str]) -> None:
+def write_material_sec(f: Any, material_sec: list[str]) -> None:
     """Write the material section to the city file.
 
     Args:

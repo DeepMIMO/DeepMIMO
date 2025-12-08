@@ -21,7 +21,7 @@ from matplotlib.figure import Figure
 from tqdm import tqdm
 
 
-def _create_colorbar(scatter_plot: plt.scatter, cov_map: np.ndarray, cmap: str, cbar_title: str='', cat_labels: list[str] | None=None, ax: Axes | None=None) -> Colorbar:
+def _create_colorbar(scatter_plot: plt.scatter, cov_map: np.ndarray, cmap: str, cbar_title: str="", cat_labels: list[str] | None=None, ax: Axes | None=None) -> Colorbar:
     """Create a colorbar for the coverage plot, handling both continuous and categorical data.
 
     Args:
@@ -41,7 +41,7 @@ def _create_colorbar(scatter_plot: plt.scatter, cov_map: np.ndarray, cmap: str, 
     unique_vals = np.sort(np.unique(valid_data))
     n_cats = len(unique_vals)
     if cat_labels is not None and len(cat_labels) != n_cats:
-        msg = f'Number of category labels ({len(cat_labels)}) must match number of unique values ({n_cats})'
+        msg = f"Number of category labels ({len(cat_labels)}) must match number of unique values ({n_cats})"
         raise ValueError(msg)
     if n_cats < 30 or cat_labels:
         if isinstance(cmap, str):
@@ -64,7 +64,7 @@ def _create_colorbar(scatter_plot: plt.scatter, cov_map: np.ndarray, cmap: str, 
         cbar = fig.colorbar(scatter_plot, ax=ax, label=cbar_title)
     return cbar
 
-def plot_coverage(rxs: np.ndarray, cov_map: tuple[float, ...] | list[float] | np.ndarray, dpi: int=100, figsize: tuple=(6, 4), cbar_title: str='', title: bool | str=False, scat_sz: float=0.5, bs_pos: np.ndarray | None=None, bs_ori: np.ndarray | None=None, legend: bool=False, lims: tuple[float, float] | None=None, proj_3D: bool=False, equal_aspect: bool=False, tight: bool=True, cmap: str | list='viridis', cbar_labels: list[str] | None=None, ax: Axes | None=None) -> tuple[Figure, Axes, Colorbar]:
+def plot_coverage(rxs: np.ndarray, cov_map: tuple[float, ...] | list[float] | np.ndarray, dpi: int=100, figsize: tuple=(6, 4), cbar_title: str="", title: bool | str=False, scat_sz: float=0.5, bs_pos: np.ndarray | None=None, bs_ori: np.ndarray | None=None, legend: bool=False, lims: tuple[float, float] | None=None, proj_3D: bool=False, equal_aspect: bool=False, tight: bool=True, cmap: str | list="viridis", cbar_labels: list[str] | None=None, ax: Axes | None=None) -> tuple[Figure, Axes, Colorbar]:
     """Generate coverage map visualization for user positions.
 
     This function creates a customizable plot showing user positions colored by
@@ -97,35 +97,35 @@ def plot_coverage(rxs: np.ndarray, cov_map: tuple[float, ...] | list[float] | np
 
     """
     cmap = cmap if isinstance(cmap, (str, Colormap)) else ListedColormap(cmap)
-    plt_params = {'cmap': cmap}
+    plt_params = {"cmap": cmap}
     if lims:
-        (plt_params['vmin'], plt_params['vmax']) = (lims[0], lims[1])
+        (plt_params["vmin"], plt_params["vmax"]) = (lims[0], lims[1])
     n = 3 if proj_3D else 2
-    xyz_arg_names = ['x' if n == 2 else 'xs', 'y' if n == 2 else 'ys', 'zs']
+    xyz_arg_names = ["x" if n == 2 else "xs", "y" if n == 2 else "ys", "zs"]
     xyz = {s: rxs[:, i] for (s, i) in zip(xyz_arg_names, range(n), strict=False)}
     if not ax:
-        (_, ax) = plt.subplots(dpi=dpi, figsize=figsize, subplot_kw={'projection': '3d'} if proj_3D else {})
+        (_, ax) = plt.subplots(dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3D else {})
     cov_map = np.array(cov_map) if isinstance(cov_map, list) else cov_map
-    im = ax.scatter(**xyz, c=cov_map, s=scat_sz, marker='s', **plt_params)
+    im = ax.scatter(**xyz, c=cov_map, s=scat_sz, marker="s", **plt_params)
     cbar = _create_colorbar(im, cov_map, cmap, cbar_title, cbar_labels, ax)
-    ax.set_xlabel('x (m)')
-    ax.set_ylabel('y (m)')
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
     if proj_3D:
-        ax.set_zlabel('z (m)')
+        ax.set_zlabel("z (m)")
     if bs_pos is not None:
         bs_pos = bs_pos.squeeze()
-        ax.scatter(*bs_pos[:n], marker='P', c='r', label='TX')
+        ax.scatter(*bs_pos[:n], marker="P", c="r", label="TX")
     if bs_ori is not None and bs_pos is not None:
         r = 30
         tx_lookat = np.copy(bs_pos)
         tx_lookat[:2] += r * np.array([np.cos(bs_ori[2]), np.sin(bs_ori[2])])
         tx_lookat[2] -= r / 10 * np.sin(bs_ori[1])
         line_components = [[bs_pos[i], tx_lookat[i]] for i in range(n)]
-        ax.plot(*line_components, c='k', alpha=0.5, zorder=3)
+        ax.plot(*line_components, c="k", alpha=0.5, zorder=3)
     if title:
         ax.set_title(title)
     if legend:
-        ax.legend(loc='upper center', ncols=10, framealpha=0.5)
+        ax.legend(loc="upper center", ncols=10, framealpha=0.5)
     if tight:
         s = 1
         all_points = np.vstack([rxs, bs_pos.reshape(1, -1)]) if bs_pos is not None else rxs
@@ -135,7 +135,7 @@ def plot_coverage(rxs: np.ndarray, cov_map: tuple[float, ...] | list[float] | np
         if proj_3D:
             ax.axes.set_zlim3d([mins[2], maxs[2]])
     if equal_aspect:
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
     return (ax, cbar)
 
 def transform_coordinates(coords: Any, lon_max: Any, lon_min: Any, lat_min: Any, lat_max: Any) -> Any:
@@ -164,7 +164,7 @@ def transform_coordinates(coords: Any, lon_max: Any, lon_min: Any, lat_min: Any,
         lats += [lat_min + (y - y_min) / (y_max - y_min) * (lat_max - lat_min)]
     return (lats, lons)
 
-def export_xyz_csv(data: dict[str, Any], z_var: np.ndarray, outfile: str='', google_earth: bool=False, lat_min: float=33.418081, lat_max: float=33.420961, lon_min: float=-111.932875, lon_max: float=-111.928567) -> None:
+def export_xyz_csv(data: dict[str, Any], z_var: np.ndarray, outfile: str="", google_earth: bool=False, lat_min: float=33.418081, lat_max: float=33.420961, lon_min: float=-111.932875, lon_max: float=-111.928567) -> None:
     """Export user locations and values to CSV format.
 
     This function generates a CSV file containing x,y,z coordinates that can be
@@ -185,16 +185,16 @@ def export_xyz_csv(data: dict[str, Any], z_var: np.ndarray, outfile: str='', goo
         None. Writes data to CSV file.
 
     """
-    user_idxs = np.where(data['user']['LoS'] != -1)[0]
-    locs = data['user']['location'][user_idxs]
+    user_idxs = np.where(data["user"]["LoS"] != -1)[0]
+    locs = data["user"]["location"][user_idxs]
     if google_earth:
         (lats, lons) = transform_coordinates(locs, lon_min=lon_min, lon_max=lon_max, lat_min=lat_min, lat_max=lat_max)
     else:
         (lats, lons) = (locs[:, 0], locs[:, 1])
-    data_dict = {'latitude' if google_earth else 'x': lats if google_earth else locs[:, 0], 'longitude' if google_earth else 'y': lons if google_earth else locs[:, 1], 'z': z_var[user_idxs]}
+    data_dict = {"latitude" if google_earth else "x": lats if google_earth else locs[:, 0], "longitude" if google_earth else "y": lons if google_earth else locs[:, 1], "z": z_var[user_idxs]}
     if not outfile:
-        outfile = 'test.csv'
-    with Path(outfile).open(mode='w', newline='') as file:
+        outfile = "test.csv"
+    with Path(outfile).open(mode="w", newline="") as file:
         writer = csv.writer(file)
         writer.writerow(data_dict.keys())
         writer.writerows(zip(*data_dict.values(), strict=False))
@@ -237,7 +237,7 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
 
     """
     if not ax:
-        (_, ax) = plt.subplots(dpi=dpi, figsize=figsize, subplot_kw={'projection': '3d'} if proj_3D else {})
+        (_, ax) = plt.subplots(dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3D else {})
     rx_loc = np.asarray(rx_loc)
     tx_loc = np.asarray(tx_loc)
     inter_pos = np.asarray(inter_pos)
@@ -251,18 +251,18 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
     def plot_point(point: Any, **kwargs: Any) -> None:
         coords = point[:3] if proj_3D else point[:2]
         ax.scatter(*coords, **kwargs)
-    interaction_colors = {0: 'green', 1: 'red', 2: 'orange', 3: 'blue', 4: 'purple', -1: 'gray'}
-    interaction_names = {0: 'Line-of-sight', 1: 'Reflection', 2: 'Diffraction', 3: 'Scattering', 4: 'Transmission', -1: 'Unknown'}
+    interaction_colors = {0: "green", 1: "red", 2: "orange", 3: "blue", 4: "purple", -1: "gray"}
+    interaction_names = {0: "Line-of-sight", 1: "Reflection", 2: "Diffraction", 3: "Scattering", 4: "Transmission", -1: "Unknown"}
     if inter_objects is not None:
         unique_objs = np.unique(inter_objects)
-        inter_obj_colors = {obj_id: f'C{i}' for (i, obj_id) in enumerate(unique_objs)}
+        inter_obj_colors = {obj_id: f"C{i}" for (i, obj_id) in enumerate(unique_objs)}
         if inter_obj_labels is None:
             inter_obj_labels = {obj_id: str(int(obj_id)) for obj_id in unique_objs}
     if color_rays_by_pwr:
         if powers is None:
-            msg = 'Powers must be provided when color_rays_by_pwr is True'
+            msg = "Powers must be provided when color_rays_by_pwr is True"
             raise ValueError(msg)
-        cmap = plt.get_cmap('jet')
+        cmap = plt.get_cmap("jet")
         if limits is not None:
             (vmin, vmax) = limits
         else:
@@ -271,7 +271,7 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
         if show_cbar:
             sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
             sm.set_array([])
-            plt.colorbar(sm, ax=ax, label='Power (dBm)')
+            plt.colorbar(sm, ax=ax, label="Power (dBm)")
     for path_idx in range(n_valid_paths):
         valid_inters = ~np.any(np.isnan(inter_pos[path_idx]), axis=1)
         path_interactions = inter_pos[path_idx][valid_inters]
@@ -282,32 +282,32 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
         else:
             path_types = [int(d) for d in str(path_type_int)]
         is_los = len(path_interactions) == 0
-        ray_color = cmap(norm(powers[path_idx])) if color_rays_by_pwr else 'g' if is_los else 'r'
-        ray_plt_args = {'color': ray_color, 'alpha': 1 if is_los else 0.5, 'zorder': 2 if is_los else 1, 'linewidth': 2 if is_los else 1}
+        ray_color = cmap(norm(powers[path_idx])) if color_rays_by_pwr else "g" if is_los else "r"
+        ray_plt_args = {"color": ray_color, "alpha": 1 if is_los else 0.5, "zorder": 2 if is_los else 1, "linewidth": 2 if is_los else 1}
         if is_los:
-            plot_line(path_points[0], path_points[1], **ray_plt_args, label='LoS' if not color_rays_by_pwr else None)
+            plot_line(path_points[0], path_points[1], **ray_plt_args, label="LoS" if not color_rays_by_pwr else None)
             continue
         for i in range(len(path_points) - 1):
             plot_line(path_points[i], path_points[i + 1], **ray_plt_args)
         if len(path_interactions) > 0:
             for (i, pos) in enumerate(path_interactions):
                 if color_by_type and i < len(path_types) and (inter_objects is None):
-                    point_color = interaction_colors.get(path_types[i], 'gray')
-                    point_label = interaction_names.get(path_types[i], 'Unknown')
+                    point_color = interaction_colors.get(path_types[i], "gray")
+                    point_label = interaction_names.get(path_types[i], "Unknown")
                 elif inter_objects is not None:
-                    point_color = inter_obj_colors.get(inter_objects[path_idx, i], 'gray')
-                    point_label = inter_obj_labels.get(inter_objects[path_idx, i], 'unknown obj?')
+                    point_color = inter_obj_colors.get(inter_objects[path_idx, i], "gray")
+                    point_label = inter_obj_labels.get(inter_objects[path_idx, i], "unknown obj?")
                 else:
-                    print(f'Unclassified interaction point: path {path_idx}, inter {i}')
-                    point_color = 'black'
+                    print(f"Unclassified interaction point: path {path_idx}, inter {i}")
+                    point_color = "black"
                     point_label = None
-                plot_point(pos, c=point_color, marker='o', s=10, label=point_label, zorder=2)
-    plot_point(tx_loc, c='white', marker='^', s=100, label='TX', zorder=3, edgecolors='black')
-    plot_point(rx_loc, c='white', marker='v', s=100, label='RX', zorder=3, edgecolors='black')
-    ax.set_xlabel('x (m)')
-    ax.set_ylabel('y (m)')
+                plot_point(pos, c=point_color, marker="o", s=10, label=point_label, zorder=2)
+    plot_point(tx_loc, c="white", marker="^", s=100, label="TX", zorder=3, edgecolors="black")
+    plot_point(rx_loc, c="white", marker="v", s=100, label="RX", zorder=3, edgecolors="black")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
     if proj_3D:
-        ax.set_zlabel('z (m)')
+        ax.set_zlabel("z (m)")
     if color_by_type or inter_objects is not None:
         (handles, labels) = ax.get_legend_handles_labels()
         by_label = dict(zip(labels, handles, strict=False))
@@ -316,7 +316,7 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
         legend = ax.legend()
     legend.set_bbox_to_anchor((1, 0.9))
     if not proj_3D:
-        ax.set_aspect('equal')
+        ax.set_aspect("equal")
     ax.grid()
     return ax
 
@@ -341,18 +341,18 @@ def plot_power_discarding(dataset: Any, trim_delay: float | None=None) -> tuple[
 
     """
     if trim_delay is None:
-        if not hasattr(dataset, 'channel_params'):
-            msg = 'Dataset has no channel parameters. Please provide trim_delay explicitly.'
+        if not hasattr(dataset, "channel_params"):
+            msg = "Dataset has no channel parameters. Please provide trim_delay explicitly."
             raise ValueError(msg)
         trim_delay = dataset.channel_params.ofdm.subcarriers / dataset.channel_params.ofdm.bandwidth
     if np.nanmax(dataset.delay) < trim_delay:
-        print(f'Maximum path delay: {np.nanmax(dataset.delay) * 1000000.0:.1f} μs')
-        print(f'Trim delay: {trim_delay * 1000000.0:.1f} μs')
-        print('No paths will be discarded.')
+        print(f"Maximum path delay: {np.nanmax(dataset.delay) * 1000000.0:.1f} μs")
+        print(f"Trim delay: {trim_delay * 1000000.0:.1f} μs")
+        print("No paths will be discarded.")
         return (None, None)
     discarded_power_ratios = []
     n_users = len(dataset.delay)
-    for user_idx in tqdm(range(n_users), desc='Calculating discarded power ratios per user'):
+    for user_idx in tqdm(range(n_users), desc="Calculating discarded power ratios per user"):
         user_delays = dataset.delay[user_idx]
         user_powers = dataset.power_linear[user_idx]
         valid_mask = ~np.isnan(user_delays) & ~np.isnan(user_powers)
@@ -374,18 +374,18 @@ def plot_power_discarding(dataset: Any, trim_delay: float | None=None) -> tuple[
     mean_discard_ratio = np.mean(discarded_power_ratios)
     affected_users = np.sum(discarded_power_ratios > 0)
     non_zero_ratios = discarded_power_ratios[discarded_power_ratios > 0]
-    print('\nPower Discarding Analysis')
-    print('=' * 50)
-    print(f'\nTrim delay: {trim_delay * 1000000.0:.1f} μs')
-    print(f'Maximum delay: {np.nanmax(dataset.delay) * 1000000.0:.1f} μs\n')
-    print(f'Maximum power discarded: {max_discard_ratio:.1f}%')
-    print(f'Average power discarded: {mean_discard_ratio:.1f}%')
-    print(f'Users with discarded paths: {affected_users}')
+    print("\nPower Discarding Analysis")
+    print("=" * 50)
+    print(f"\nTrim delay: {trim_delay * 1000000.0:.1f} μs")
+    print(f"Maximum delay: {np.nanmax(dataset.delay) * 1000000.0:.1f} μs\n")
+    print(f"Maximum power discarded: {max_discard_ratio:.1f}%")
+    print(f"Average power discarded: {mean_discard_ratio:.1f}%")
+    print(f"Users with discarded paths: {affected_users}")
     (fig, ax) = plt.subplots(dpi=200, figsize=(6, 4))
     ax.hist(non_zero_ratios, bins=20)
-    ax.set_title('Distribution of Discarded Power')
-    ax.set_xlabel('Discarded Power (%)')
-    ax.set_ylabel('Number of Users')
+    ax.set_title("Distribution of Discarded Power")
+    ax.set_xlabel("Discarded Power (%)")
+    ax.set_ylabel("Number of Users")
     ax.grid(True)
     plt.tight_layout()
     return (fig, ax)

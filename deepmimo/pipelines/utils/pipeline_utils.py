@@ -20,6 +20,7 @@ import random
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -96,7 +97,7 @@ def _split_coords(x: str) -> np.ndarray:
     return np.array(x.split(",") if type(x) == str else [x]).astype(np.float32)
 
 
-def load_params_from_row(row, params_dict) -> None:
+def load_params_from_row(row: Any, params_dict: dict[str, Any]) -> None:
     """Load parameters from a DataFrame row into a parameters dictionary.
 
     Args:

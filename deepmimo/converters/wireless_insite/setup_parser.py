@@ -27,14 +27,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-RE_BOOL_TRUE = re.compile('yes')
-RE_BOOL_FALSE = re.compile('no')
-RE_BEGIN_NODE = re.compile('begin_<(?P<node_name>\\S*)>')
-RE_END_NODE = re.compile('end_<(?P<node_name>\\S*)>')
-RE_INT = re.compile('^-?\\d+$')
-RE_FLOAT = re.compile('^-?\\d+[.]\\d+$')
-RE_LABEL = re.compile('\\S+')
-NL_TOKEN = '\n'
+RE_BOOL_TRUE = re.compile("yes")
+RE_BOOL_FALSE = re.compile("no")
+RE_BEGIN_NODE = re.compile("begin_<(?P<node_name>\\S*)>")
+RE_END_NODE = re.compile("end_<(?P<node_name>\\S*)>")
+RE_INT = re.compile("^-?\\d+$")
+RE_FLOAT = re.compile("^-?\\d+[.]\\d+$")
+RE_LABEL = re.compile("\\S+")
+NL_TOKEN = "\n"
 
 def tokenize_file(path: str) -> str:
     """Break a Wireless Insite file into whitespace-separated tokens.
@@ -51,7 +51,7 @@ def tokenize_file(path: str) -> str:
     """
     with Path(path).open() as f:
         first_line = f.readline()
-        if first_line.startswith('Format type:keyword version:'):
+        if first_line.startswith("Format type:keyword version:"):
             pass
         else:
             yield from first_line.split()
@@ -116,8 +116,8 @@ class Node:
 
     """
 
-    name: str = ''
-    kind: str = ''
+    name: str = ""
+    kind: str = ""
     values: dict = field(default_factory=dict)
     labels: list = field(default_factory=list)
     data: list = field(default_factory=list)
@@ -162,7 +162,7 @@ class Node:
 def eat(tokens: Any, expected: Any) -> None:
     """Ensures the next token is what's expected."""
     if (tok := next(tokens)) != expected:
-        msg = f'Expected token {expected!r}, got {tok!r}.'
+        msg = f"Expected token {expected!r}, got {tok!r}."
         raise RuntimeError(msg)
 
 def parse_document(tokens: Any) -> dict[str, Node]:
@@ -184,14 +184,14 @@ def parse_document(tokens: Any) -> dict[str, Node]:
     while tokens.has_values():
         tok = tokens.peek()
         if not RE_BEGIN_NODE.match(tok):
-            msg = f'Non node {tok!r} at the top-level of the document.'
+            msg = f"Non node {tok!r} at the top-level of the document."
             raise RuntimeError(msg)
         (node_name, node) = parse_node(tokens)
         node.kind = node_name
-        potential_name = '_'.join(tok.split(' ')[1:])[:-1]
+        potential_name = "_".join(tok.split(" ")[1:])[:-1]
         node_name = potential_name if potential_name else node.name
         if node_name in document:
-            msg = f'Node with duplicate name {node_name} found.'
+            msg = f"Node with duplicate name {node_name} found."
             raise RuntimeError(msg)
         document[node_name] = node
     return document
@@ -213,10 +213,10 @@ def parse_node(tokens: Any) -> tuple[str, Node]:
     node = Node()
     begin_tag = next(tokens)
     begin_match = RE_BEGIN_NODE.match(begin_tag)
-    node_name = begin_match.group('node_name')
+    node_name = begin_match.group("node_name")
     while tokens.peek() != NL_TOKEN:
-        node.name += next(tokens) + ' '
-    if node.name and node.name[-1] == ' ':
+        node.name += next(tokens) + " "
+    if node.name and node.name[-1] == " ":
         node.name = node.name[:-1]
     eat(tokens, NL_TOKEN)
     for value in parse_values(tokens):
@@ -229,7 +229,7 @@ def parse_node(tokens: Any) -> tuple[str, Node]:
                 node[label] = rest
             case _:
                 node.data.append(value)
-    eat(tokens, f'end_<{node_name}>')
+    eat(tokens, f"end_<{node_name}>")
     eat(tokens, NL_TOKEN)
     return (node_name, node)
 
@@ -297,6 +297,6 @@ def parse_file(file_path: str) -> dict[str, Node]:
 
     """
     return parse_document(tokenize_file(file_path))
-if __name__ == '__main__':
-    tokens = tokenize_file('sample.txrx')
+if __name__ == "__main__":
+    tokens = tokenize_file("sample.txrx")
     document = parse_document(tokens)

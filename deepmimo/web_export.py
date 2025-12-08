@@ -12,7 +12,7 @@ from pathlib import Path
 import numpy as np
 
 
-def export_dataset_to_binary(dataset, dataset_name: str, output_dir: str = "./datasets") -> None:
+def export_dataset_to_binary(dataset: Any, dataset_name: str, output_dir: str = "./datasets") -> None:
     """Export DeepMIMO dataset to binary format for web visualizer.
 
     This function handles both single datasets and MacroDatasets with multiple TX/RX sets.
@@ -51,7 +51,7 @@ def export_dataset_to_binary(dataset, dataset_name: str, output_dir: str = "./da
     print(f"Export completed for {dataset_name} with {len(tx_rx_sets_info)} TX/RX sets")
 
 
-def _process_macro_dataset(dataset, base_dir: Path) -> list:
+def _process_macro_dataset(dataset: Any, base_dir: Path) -> list:
     """Process MacroDataset using TX/RX set information from datasets."""
     tx_rx_sets_info = []
 
@@ -111,7 +111,7 @@ def _save_binary_array(arr: np.ndarray, file_path: str | Path) -> None:
 
 
 def _process_single_dataset_to_binary(
-    dataset,
+    dataset: Any,
     base_dir: Path,
     tx_set_id: int,
     rx_set_id: int,
@@ -216,7 +216,7 @@ def _process_single_dataset_to_binary(
     return set_info
 
 
-def _process_scene_to_binary(scene, base_dir: Path) -> None:
+def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:
     """Process scene data to binary format.
 
     Args:

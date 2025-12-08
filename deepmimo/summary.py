@@ -34,6 +34,7 @@ Three functions:
 # Standard library imports
 import time
 from pathlib import Path
+from typing import Any
 
 # Third-party imports
 import matplotlib.pyplot as plt
@@ -182,7 +183,7 @@ def summary(scen_name: str, print_summary: bool = True) -> str | None:
 def plot_summary(
     scenario_name: str | None = None,
     save_imgs: bool = False,
-    dataset=None,
+    dataset: Any = None,
     plot_idx: int | list[int] | None = None,
 ) -> list[str]:
     """Make images for the scenario.

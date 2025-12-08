@@ -21,9 +21,9 @@ from tqdm import tqdm
 from . import consts as c
 from .config import config
 
-K = TypeVar('K', bound=str)
-V = TypeVar('V')
-HEADERS = {'User-Agent': 'DeepMIMO-Python/1.0', 'Accept': '*/*'}
+K = TypeVar("K", bound=str)
+V = TypeVar("V")
+HEADERS = {"User-Agent": "DeepMIMO-Python/1.0", "Accept": "*/*"}
 
 def check_scen_name(scen_name: str) -> None:
     """Check if a scenario name is valid.
@@ -33,7 +33,7 @@ def check_scen_name(scen_name: str) -> None:
 
     """
     if np.any([char in scen_name for char in c.SCENARIO_NAME_INVALID_CHARS]):
-        msg = f'Invalid scenario name: {scen_name}.\nContains one of the following invalid characters: {c.SCENARIO_NAME_INVALID_CHARS}'
+        msg = f"Invalid scenario name: {scen_name}.\nContains one of the following invalid characters: {c.SCENARIO_NAME_INVALID_CHARS}"
         raise ValueError(msg)
 
 def get_scenarios_dir() -> str:
@@ -45,7 +45,7 @@ def get_scenarios_dir() -> str:
         str: Absolute path to the scenarios directory
 
     """
-    return str(Path.cwd() / config.get('scenarios_folder'))
+    return str(Path.cwd() / config.get("scenarios_folder"))
 
 def get_scenario_folder(scenario_name: str) -> str:
     """Get the absolute path to a specific scenario folder.
@@ -69,7 +69,7 @@ def get_rt_sources_dir() -> str:
         str: Absolute path to the RT sources directory
 
     """
-    return str(Path.cwd() / config.get('rt_sources_folder'))
+    return str(Path.cwd() / config.get("rt_sources_folder"))
 
 def get_rt_source_folder(scenario_name: str) -> str:
     """Get the absolute path to a specific RT source folder.
@@ -101,15 +101,15 @@ def get_params_path(scenario_name: str) -> str:
     scenario_folder = get_scenario_folder(scenario_name)
     scenario_folder_path = Path(scenario_folder)
     if not scenario_folder_path.exists():
-        msg = f'Scenario folder not found: {scenario_name}'
+        msg = f"Scenario folder not found: {scenario_name}"
         raise FileNotFoundError(msg)
-    path = scenario_folder_path / f'{c.PARAMS_FILENAME}.json'
+    path = scenario_folder_path / f"{c.PARAMS_FILENAME}.json"
     if not path.exists():
         subdirs = [d for d in scenario_folder_path.iterdir() if d.is_dir()]
         if subdirs:
-            path = subdirs[0] / f'{c.PARAMS_FILENAME}.json'
+            path = subdirs[0] / f"{c.PARAMS_FILENAME}.json"
     if not path.exists():
-        msg = f'Params file not found for scenario: {scenario_name}'
+        msg = f"Params file not found for scenario: {scenario_name}"
         raise FileNotFoundError(msg)
     return str(path)
 
@@ -140,8 +140,8 @@ def get_mat_filename(key: str, tx_set_idx: int, tx_idx: int, rx_set_idx: int, fm
         str: Complete filename with .mat extension.
 
     """
-    str_id = f't{tx_set_idx:03}_tx{tx_idx:03}_r{rx_set_idx:03}'
-    return f'{key}_{str_id}.{fmt}'
+    str_id = f"t{tx_set_idx:03}_tx{tx_idx:03}_r{rx_set_idx:03}"
+    return f"{key}_{str_id}.{fmt}"
 
 def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str=c.MAT_FMT) -> None:
     """Save data to a .mat file with standardized naming.
@@ -160,12 +160,12 @@ def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str=c.MAT_FMT
         file_path: Output path
 
     """
-    if fmt == 'mat':
+    if fmt == "mat":
         scipy.io.savemat(file_path, {data_key: data})
-    elif fmt == 'npz':
-        np.savez_compressed(file_path.replace('.mat', '.npz'), **{data_key: data})
-    elif fmt == 'npy':
-        np.save(file_path.replace('.mat', '.npz'), data)
+    elif fmt == "npz":
+        np.savez_compressed(file_path.replace(".mat", ".npz"), **{data_key: data})
+    elif fmt == "npy":
+        np.save(file_path.replace(".mat", ".npz"), data)
     else:
         msg = 'Format {fmt} not recognized. Choose "mat" (default), "npz" or "npy".'
         raise Exception(msg)
@@ -180,19 +180,19 @@ def load_mat(mat_path: str, key: str | None=None) -> Any:
         mat_path: Path to the .mat file
 
     """
-    supported_formats = ['.mat', '.npz', '.npy']
+    supported_formats = [".mat", ".npz", ".npy"]
     mat_path_obj = Path(mat_path)
     base_path = mat_path_obj.parent / mat_path_obj.stem
     for fmt in supported_formats:
         try_path = base_path.with_suffix(fmt)
         if try_path.exists():
-            if fmt == '.mat':
+            if fmt == ".mat":
                 return scipy.io.loadmat(try_path)[key]
-            if fmt == '.npz':
+            if fmt == ".npz":
                 return np.load(try_path, allow_pickle=True)[key]
-            if fmt == '.npy':
+            if fmt == ".npy":
                 return np.load(try_path)
-    print(f'No supported format found for {mat_path}. Supported formats are: {supported_formats}')
+    print(f"No supported format found for {mat_path}. Supported formats are: {supported_formats}")
     return None
 
 def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
@@ -203,12 +203,12 @@ def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
         data_dict: Dictionary to save
 
     """
-    if not output_path.endswith('.json'):
-        output_path += '.json'
+    if not output_path.endswith(".json"):
+        output_path += ".json"
 
     def numpy_handler(x: Any) -> list[Any] | str:
         return x.tolist() if isinstance(x, np.ndarray) else str(x)
-    with Path(output_path).open('w') as f:
+    with Path(output_path).open("w") as f:
         json.dump(data_dict, f, indent=2, default=numpy_handler)
 
 def load_dict_from_json(file_path: str) -> dict[str, Any]:
@@ -246,9 +246,9 @@ def deep_dict_merge(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, A
         {'a': 1, 'b': {'c': 4, 'd': 3}}
 
     """
-    if hasattr(dict1, 'to_dict'):
+    if hasattr(dict1, "to_dict"):
         dict1 = dict1.to_dict()
-    if hasattr(dict2, 'to_dict'):
+    if hasattr(dict2, "to_dict"):
         dict2 = dict2.to_dict()
     result = deepcopy(dict1)
     for (key, value) in dict2.items():
@@ -327,7 +327,7 @@ class DotDict(Mapping[K, V]):
         If it is, it uses the property setter. Otherwise, it falls back to
         storing the value in the internal dictionary.
         """
-        if key == '_data':
+        if key == "_data":
             super().__setattr__(key, value)
             return
         attr = getattr(type(self), key, None)
@@ -415,7 +415,7 @@ class DotDict(Mapping[K, V]):
                 result[key] = value
         return result
 
-    def deepcopy(self: Any) -> 'DotDict':
+    def deepcopy(self: Any) -> "DotDict":
         """Create a deep copy of the DotDict instance.
 
         This method creates a completely independent copy of the DotDict,
@@ -483,15 +483,15 @@ def zip(folder_path: str) -> str:
         Path to the created zip file
 
     """
-    zip_path = folder_path + '.zip'
+    zip_path = folder_path + ".zip"
     all_files = []
     for (root, _, files) in os.walk(folder_path):
         for file in files:
             file_path = Path(root) / file
             rel_path = file_path.relative_to(folder_path)
             all_files.append((str(file_path), str(rel_path)))
-    with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
-        for (file_path, rel_path) in tqdm(all_files, desc='Compressing', unit='file'):
+    with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+        for (file_path, rel_path) in tqdm(all_files, desc="Compressing", unit="file"):
             zipf.write(file_path, rel_path)
     return zip_path
 
@@ -512,10 +512,10 @@ def unzip(path_to_zip: str) -> str:
         Path to the extracted folder
 
     """
-    extracted_path = path_to_zip.replace('.zip', '')
-    with zipfile.ZipFile(path_to_zip, 'r') as zip_ref:
+    extracted_path = path_to_zip.replace(".zip", "")
+    with zipfile.ZipFile(path_to_zip, "r") as zip_ref:
         files = zip_ref.namelist()
-        for file in tqdm(files, desc='Extracting', unit='file'):
+        for file in tqdm(files, desc="Extracting", unit="file"):
             zip_ref.extract(file, extracted_path)
     return extracted_path
 
@@ -603,8 +603,8 @@ class DelegatingList(list):
         if not self:
             msg = f"Empty list has no attribute '{name}'"
             raise AttributeError(msg)
-        if hasattr(value, '__iter__') and (not isinstance(value, (str, bytes))) and (len(value) == len(self)):
-            for (item, val) in __builtins__['zip'](self, value):
+        if hasattr(value, "__iter__") and (not isinstance(value, (str, bytes))) and (len(value) == len(self)):
+            for (item, val) in __builtins__["zip"](self, value):
                 setattr(item, name, val)
         else:
             for item in self:
@@ -621,7 +621,7 @@ def save_pickle(obj: Any, filename: str) -> None:
         IOError: If file cannot be written
 
     """
-    with Path(filename).open('wb') as file:
+    with Path(filename).open("wb") as file:
         pickle.dump(obj, file)
 
 def load_pickle(filename: str) -> Any:
@@ -638,5 +638,5 @@ def load_pickle(filename: str) -> Any:
         pickle.UnpicklingError: If file cannot be unpickled
 
     """
-    with Path(filename).open('rb') as file:
+    with Path(filename).open("rb") as file:
         return pickle.load(file)
