@@ -45,6 +45,7 @@ import json
 import os
 import shutil
 import time
+from pathlib import Path
 
 import requests
 from tqdm import tqdm
@@ -82,7 +83,7 @@ class _ProgressFileReader:
         self.file_path = file_path
         self.progress_bar = progress_bar
         self.file_object = open(file_path, "rb")
-        self.len = os.path.getsize(file_path)
+        self.len = Path(file_path).stat().st_size
         self.bytes_read = 0
 
     def read(self, size=-1):
@@ -595,15 +596,15 @@ def _make_submission_on_server(
                 print("Cleaning up local image files...")
                 cleaned_count = 0
                 for img_path in img_paths:
-                    if os.path.exists(img_path):
-                        os.remove(img_path)
+                    if Path(img_path).exists():
+                        Path(img_path).unlink()
                         cleaned_count += 1
                 print(f"Cleaned up {cleaned_count} local image files.")
 
                 # Clean up the figure's directory if it's empty
-                temp_dir = os.path.dirname(img_paths[0])
-                if os.path.exists(temp_dir) and not os.listdir(temp_dir):
-                    os.rmdir(temp_dir)
+                temp_dir = Path(img_paths[0]).parent
+                if temp_dir.exists() and not list(temp_dir.iterdir()):
+                    temp_dir.rmdir()
                     print(f"Removed empty directory: {temp_dir}")
 
     return submission_scenario_name
@@ -826,19 +827,19 @@ def download(
     if rt_source:
         # For RT sources, use dedicated RT sources directory unless output_dir is specified
         download_dir = output_dir if output_dir else get_rt_sources_dir()
-        output_path = os.path.join(download_dir, f"{scenario_name}_rt_source.zip")
+        output_path = str(Path(download_dir) / f"{scenario_name}_rt_source.zip")
         rt_source_folder = get_rt_source_folder(scenario_name)
         # Check if RT source folder already exists
-        if os.path.exists(rt_source_folder):
+        if Path(rt_source_folder).exists():
             print(f'RT source "{scenario_name}" already exists at {rt_source_folder}')
             return None
     else:
         # For regular scenarios, use scenarios directory unless output_dir is specified
         download_dir = output_dir if output_dir else get_scenarios_dir()
         scenario_folder = get_scenario_folder(scenario_name)
-        output_path = os.path.join(download_dir, f"{scenario_name}_downloaded.zip")
+        output_path = str(Path(download_dir) / f"{scenario_name}_downloaded.zip")
         # Check if scenario already exists in scenarios folder
-        if os.path.exists(scenario_folder):
+        if Path(scenario_folder).exists():
             print(f'Scenario "{scenario_name}" already exists in {scenarios_dir}')
             return None
 
@@ -846,9 +847,9 @@ def download(
     url = _download_url(scenario_name, rt_source)
 
     # Check if file already exists in download folder
-    if not os.path.exists(output_path):
+    if not Path(output_path).exists():
         # Create download directory if it doesn't exist
-        os.makedirs(download_dir, exist_ok=True)
+        Path(download_dir).mkdir(parents=True, exist_ok=True)
 
         download_type = "raytracing source" if rt_source else "scenario"
         print(f"Downloading {download_type} '{scenario_name}'")

@@ -88,12 +88,10 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
     @patch("deepmimo.api.unzip")
     @patch("deepmimo.api.shutil.move")
     @patch("deepmimo.api.os.rename")
-    @patch("deepmimo.api.os.path.exists")
-    @patch("deepmimo.api.os.makedirs")
+    @patch("deepmimo.api.Path")
     def test_download_scenario(
         self,
-        mock_makedirs,
-        mock_exists,
+        mock_path,
         mock_rename,
         mock_move,
         mock_unzip,
@@ -105,13 +103,35 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
         mock_get_scenarios_dir.return_value = "scenarios"
         mock_get_folder.return_value = "scenarios/myscenario"
 
+        # Setup mock Path behavior
+        class MockPath:
+            def __init__(self, path_str) -> None:
+                self.path_str = str(path_str)
+
+            def __str__(self) -> str:
+                return self.path_str
+
+            def __truediv__(self, other):
+                return MockPath(f"{self.path_str}/{other}")
+
+            def exists(self):
+                return self.path_str == "scenarios/myscenario"
+
+            def mkdir(self, **kwargs) -> None:
+                pass
+
+        mock_path.side_effect = MockPath
+
         # Case 1: Scenario already exists
-        mock_exists.side_effect = lambda p: p == "scenarios/myscenario"
         res = api.download("MyScenario")
         assert res is None  # Should return None if exists
 
         # Case 2: Download
-        mock_exists.side_effect = lambda p: False  # Not exist
+        class MockPathNoExist(MockPath):
+            def exists(self) -> bool:
+                return False
+
+        mock_path.side_effect = MockPathNoExist
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {"redirectUrl": "http://dl.url"}
