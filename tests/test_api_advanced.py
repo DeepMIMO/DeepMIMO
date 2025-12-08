@@ -87,12 +87,10 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
     @patch("deepmimo.api.get_scenario_folder")
     @patch("deepmimo.api.unzip")
     @patch("deepmimo.api.shutil.move")
-    @patch("deepmimo.api.os.rename")
     @patch("deepmimo.api.Path")
     def test_download_scenario(
         self,
         mock_path,
-        mock_rename,
         mock_move,
         mock_unzip,
         mock_get_folder,

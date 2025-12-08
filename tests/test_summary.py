@@ -89,8 +89,8 @@ class TestSummary(unittest.TestCase):
         assert "Total number of receivers: 10" in res
 
     @patch("deepmimo.summary.plt")
-    @patch("deepmimo.summary.os.makedirs")
-    def test_plot_summary(self, mock_makedirs, mock_plt) -> None:
+    @patch("pathlib.Path.mkdir")
+    def test_plot_summary(self, mock_mkdir, mock_plt) -> None:
         # Mock dataset
         mock_ds = MagicMock()
         mock_ds.scene.plot = MagicMock()

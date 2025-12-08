@@ -25,9 +25,9 @@ def test_transform_interaction_types() -> None:
 
 @patch("deepmimo.converters.aodt.aodt_paths.pd")
 @patch.object(Path, "exists")
-@patch("deepmimo.converters.aodt.aodt_paths.os.makedirs")
+@patch("pathlib.Path.mkdir")
 @patch("deepmimo.converters.aodt.aodt_paths.gu.save_mat")
-def test_read_paths(mock_save_mat, mock_makedirs, mock_exists, mock_pd) -> None:
+def test_read_paths(mock_save_mat, mock_mkdir, mock_exists, mock_pd) -> None:
     """Test read_paths with mocked parquet data."""
     mock_exists.return_value = True
 
