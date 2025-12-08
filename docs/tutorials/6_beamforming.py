@@ -242,7 +242,9 @@ for user_idx in range(num_users):
 
 # Plot comparison
 plt.figure(figsize=(10, 6))
-plt.hist([10*np.log10(gains_uniform), 10*np.log10(gains_mf)], 
+epsilon = 1e-10  # Prevent log10(0)
+plt.hist([10*np.log10(np.array(gains_uniform) + epsilon), 
+          10*np.log10(np.array(gains_mf) + epsilon)], 
          bins=30, label=['Uniform', 'Matched Filter'], alpha=0.7)
 plt.xlabel('Received Power (dBW)')
 plt.ylabel('Count')

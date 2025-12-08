@@ -270,26 +270,31 @@ zone_idxs_set = set(zone_idxs)
 los_idxs_set = set(los_idxs)
 
 # Intersection of all criteria
-combined_idxs = list(set(active_idxs) & zone_idxs_set & los_idxs_set)
-combined_idxs.sort()
+combined_idxs = np.array(sorted(set(active_idxs) & zone_idxs_set & los_idxs_set), dtype=int)
 
 print(f"Users matching all criteria: {len(combined_idxs)}")
 
-combined_dataset = dataset.trim(idxs=combined_idxs)
+if len(combined_idxs) > 0:
+    combined_dataset = dataset.trim(idxs=combined_idxs)
+else:
+    print("No users match all criteria, skipping combined dataset creation")
 
 # Visualize combined filtering
-plt.figure(figsize=(10, 6))
-plt.scatter(dataset.rx_pos[:, 0], dataset.rx_pos[:, 1],
-            c='lightgray', s=1, alpha=0.3, label='All users')
-plt.scatter(combined_dataset.rx_pos[:, 0],
-            combined_dataset.rx_pos[:, 1],
-            c='purple', s=15, label='Combined filter')
-plt.xlabel('X (m)')
-plt.ylabel('Y (m)')
-plt.title('Combined Filtering: Active + Zone + LOS')
-plt.legend()
-plt.grid(True)
-plt.show()
+if len(combined_idxs) > 0:
+    plt.figure(figsize=(10, 6))
+    plt.scatter(dataset.rx_pos[:, 0], dataset.rx_pos[:, 1],
+                c='lightgray', s=1, alpha=0.3, label='All users')
+    plt.scatter(combined_dataset.rx_pos[:, 0],
+                combined_dataset.rx_pos[:, 1],
+                c='purple', s=15, label='Combined filter')
+    plt.xlabel('X (m)')
+    plt.ylabel('Y (m)')
+    plt.title('Combined Filtering: Active + Zone + LOS')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+else:
+    print("Skipping visualization as no users match all criteria")
 
 # %% [markdown]
 # ---

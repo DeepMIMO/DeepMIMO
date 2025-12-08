@@ -75,8 +75,8 @@ dataset = dm.load(scen_name)
 
 # Configure channel parameters
 ch_params = dm.ChannelParameters()
-ch_params.ant_bs.shape = [8, 1]
-ch_params.ant_ue.shape = [1, 1]
+ch_params.bs_antenna.shape = [8, 1]
+ch_params.ue_antenna.shape = [1, 1]
 
 # Generate channels
 dataset.compute_channels(ch_params)
@@ -218,8 +218,8 @@ print(v3_user_selection)
 
 # %%
 # v4: Select users after loading
-row_idxs = dataset.get_row_idxs(list(range(0, 100, 10)))
-subset = dataset.subset(row_idxs)
+row_idxs = dataset.get_idxs(mode='row', row_idxs=list(range(0, 100, 10)))
+subset = dataset.trim(idxs=row_idxs)
 
 print(f"v4 user selection (post-loading):")
 print(f"  Selected {len(row_idxs)} users")
@@ -291,7 +291,7 @@ print("\nv4:")
 print('''
 dataset = dm.load("city_18_denver_3p5")
 ch_params = dm.ChannelParameters()
-ch_params.ant_bs.shape = [4, 4]
+ch_params.bs_antenna.shape = [4, 4]
 dataset.compute_channels(ch_params)
 ch = dataset.channel
 ''')
@@ -331,8 +331,8 @@ dataset = DeepMIMOv3.generate_data(params)
 print("\nv4:")
 print('''
 dataset = dm.load(scenario)
-row_idxs = dataset.get_row_idxs([0, 10, 20])
-subset = dataset.subset(row_idxs)
+row_idxs = dataset.get_idxs(mode='row', row_idxs=[0, 10, 20])
+subset = dataset.trim(idxs=row_idxs)
 ''')
 
 # %% [markdown]
