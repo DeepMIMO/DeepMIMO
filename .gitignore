@@ -23,6 +23,7 @@ api_keys.py
 .vscode
 .coverage
 coverage.xml
+*.bin
 
 
 # Development:
