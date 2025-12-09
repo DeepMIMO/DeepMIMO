@@ -120,7 +120,7 @@ def _compute_sha1(file_path: Path) -> str:
     return sha1.hexdigest()
 
 
-def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR0911, PLR0912
+def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901
     """Upload a file to the DeepMIMO API server.
 
     Args:
@@ -136,6 +136,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
         Handles file upload only, no longer returns direct download URLs.
 
     """
+    result = None
     try:
         # Get file info
         file_path = Path(file)
@@ -144,7 +145,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
 
         if file_size > FILE_SIZE_LIMIT:
             print(f"Error: File size limit of {FILE_SIZE_LIMIT / 1024**3} GB exceeded.")
-            return None
+            return result
 
         # Get presigned upload URL with filename validation built-in
         auth_response = requests.get(
@@ -158,7 +159,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
 
         if not auth_data.get("presignedUrl"):
             print("Error: Invalid authorization response")
-            return None
+            return result
 
         # Verify the authorized filename matches our source filename
         authorized_filename = auth_data.get("filename")
@@ -168,7 +169,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
                 f"Server authorized '{authorized_filename}' but trying to upload '{filename}'"
             )
             print(msg)
-            return None
+            return result
 
         # Calculate file hash
         file_hash = _compute_sha1(file_path)
@@ -192,6 +193,10 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
                 timeout=REQUEST_TIMEOUT,
             )
             upload_response.raise_for_status()
+
+            # Check status and set result
+            if upload_response.status_code == HTTP_OK:
+                result = authorized_filename or filename
         finally:
             progress_reader.close()
             pbar.close()
@@ -211,21 +216,14 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
                 )  # Fallback to raw text
         else:
             print("API call failed without receiving a response from the server.")
-        return None
     except requests.exceptions.RequestException as e:  # Catch other network/request errors
         print(f"API call failed: {e!s}")
         if hasattr(e, "response") and e.response:
             print(f"Server response: {json.loads(e.response.text)['error']}")
-        return None
     except Exception as e:  # noqa: BLE001
         print(f"Upload failed due to an unexpected error: {e!s}")
-        return None
-    else:
-        # Return the authorized filename (not the local filename)
-        # This ensures we're consistent with what was actually uploaded
-        if upload_response.status_code != HTTP_OK:
-            return None
-        return authorized_filename or filename
+
+    return result
 
 
 def dm_upload_api_call(file: str, key: str) -> str | None:
@@ -764,7 +762,7 @@ def upload(  # noqa: PLR0913
     return submission_scenario_name
 
 
-def upload_rt_source(  # noqa: C901, PLR0911
+def upload_rt_source(
     scenario_name: str, rt_zip_path: str, key: str
 ) -> bool:
     """Upload a Ray Tracing (RT) source file to the database.
@@ -794,6 +792,7 @@ def upload_rt_source(  # noqa: C901, PLR0911
         print(f"Error: RT source file size limit of {RT_FILE_SIZE_LIMIT / 1024**3} GB exceeded.")
         return False
 
+    result = False
     try:
         # 1. Get presigned upload URL for the RT database
         print("Requesting RT upload authorization from server...")
@@ -808,7 +807,7 @@ def upload_rt_source(  # noqa: C901, PLR0911
 
         if not auth_data.get("presignedUrl"):
             print("Error: Invalid authorization response from server.")
-            return False
+            return result
 
         # Server confirms the filename it authorized for the RT bucket
         authorized_filename = auth_data.get("filename")
@@ -818,7 +817,7 @@ def upload_rt_source(  # noqa: C901, PLR0911
                 "Server authorized RT upload for "
                 f"'{authorized_filename}' but expected '{target_filename}'",
             )
-            return False
+            return result
 
         print(f"✓ Authorization granted. Uploading to RT database as '{authorized_filename}'...")
 
@@ -842,6 +841,8 @@ def upload_rt_source(  # noqa: C901, PLR0911
                 timeout=REQUEST_TIMEOUT,
             )
             upload_response.raise_for_status()
+            print(f"✓ RT source uploaded successfully as {authorized_filename}")
+            result = True
         finally:
             if progress_reader:
                 progress_reader.close()
@@ -854,16 +855,12 @@ def upload_rt_source(  # noqa: C901, PLR0911
             print(f"Server Error: {error_details.get('error', e.response.text)}")
         except ValueError:
             print(f"Server Response: {e.response.text}")
-        return False
     except requests.exceptions.RequestException as e:
         print(f"Network or request error during RT upload: {e!s}")
-        return False
     except Exception as e:  # noqa: BLE001
         print(f"An unexpected error occurred during RT upload: {e!s}")
-        return False
-    else:
-        print(f"✓ RT source uploaded successfully as {authorized_filename}")
-        return True
+
+    return result
 
 
 def _download_url(scenario_name: str, *, rt_source: bool = False) -> str:
@@ -1045,7 +1042,7 @@ def download(  # noqa: C901, PLR0912, PLR0915
     return output_path
 
 
-def search(query: dict | None = None) -> list[str] | None:  # noqa: PLR0911
+def search(query: dict | None = None) -> list[str] | None:
     """Search for scenarios in the DeepMIMO database.
 
     Args:
@@ -1095,19 +1092,15 @@ def search(query: dict | None = None) -> list[str] | None:  # noqa: PLR0911
                 print(f"Server error details: {error_data.get('error', e.response.text)}")
             except (ValueError, json.JSONDecodeError):
                 print(f"Server response: {e.response.text}")
-        return None
     except requests.exceptions.ConnectionError:
         print("Error: Connection failed. Please check your internet connection and try again.")
-        return None
     except requests.exceptions.Timeout:
         print("Error: Request timed out. Please try again later.")
-        return None
     except requests.exceptions.RequestException as e:
         print(f"Request Error: {e!s}")
-        return None
     except ValueError as e:
         print(f"Error parsing response: {e!s}")
-        return None
     except Exception as e:  # noqa: BLE001
         print(f"Unexpected error: {e!s}")
-        return None
+
+    return None
