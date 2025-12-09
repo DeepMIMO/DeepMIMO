@@ -9,7 +9,7 @@ import numpy as np
 mpl.use("Agg")  # Use non-interactive backend for tests
 import matplotlib.pyplot as plt
 
-from deepmimo.generator import visualization
+from deepmimo.datasets import visualization
 
 
 class TestVisualization(unittest.TestCase):
@@ -34,7 +34,7 @@ class TestVisualization(unittest.TestCase):
         visualization.plot_coverage(ue_pos, los, cbar_labels=["No Line of Sight", "Line of Sight"])
         plt.close("all")
 
-    @patch("deepmimo.generator.visualization.plt")
+    @patch("deepmimo.datasets.visualization.plt")
     def test_plot_coverage(self, mock_plt) -> None:
         """Plot coverage with mocked matplotlib handles."""
         rng = np.random.default_rng()
@@ -82,7 +82,7 @@ class TestVisualization(unittest.TestCase):
         visualization.plot_rays(rx_loc, tx_loc, inter_pos, inter)
         plt.close("all")
 
-    @patch("deepmimo.generator.visualization.plt")
+    @patch("deepmimo.datasets.visualization.plt")
     def test_plot_rays(self, mock_plt) -> None:
         """Plot rays with mocked matplotlib objects."""
         # Mock data
@@ -112,7 +112,7 @@ class TestVisualization(unittest.TestCase):
         # Check if lines were plotted
         assert mock_ax.plot.called
 
-    @patch("deepmimo.generator.visualization.plt")
+    @patch("deepmimo.datasets.visualization.plt")
     def test_plot_power_discarding(self, mock_plt) -> None:
         """Visualize discarded power fractions for delays."""
         # Mock dataset

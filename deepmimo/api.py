@@ -61,7 +61,7 @@ from .general_utils import (
     unzip,
     zip,  # noqa: A004
 )
-from .summary import plot_summary, summary
+from .datasets.summary import plot_summary, summary
 
 API_BASE_URL = "https://deepmimo.net"
 

@@ -8,14 +8,14 @@ import numpy as np
 from deepmimo import consts as c
 
 # Correctly import functions from the module
-from deepmimo.summary import plot_summary, summary
+from deepmimo.datasets.summary import plot_summary, summary
 
 
 class TestSummary(unittest.TestCase):
     """Unit tests for dataset summary reporting."""
 
-    @patch("deepmimo.summary.load_dict_from_json")
-    @patch("deepmimo.summary.get_params_path")
+    @patch("deepmimo.datasets.summary.load_dict_from_json")
+    @patch("deepmimo.datasets.summary.get_params_path")
     def test_summary(self, mock_get_path, mock_load_json) -> None:
         """Render textual summary from mocked params."""
         mock_get_path.return_value = "params.json"
@@ -91,7 +91,7 @@ class TestSummary(unittest.TestCase):
         assert "Frequency: 28.0 GHz" in res
         assert "Total number of receivers: 10" in res
 
-    @patch("deepmimo.summary.plt")
+    @patch("deepmimo.datasets.summary.plt")
     @patch("pathlib.Path.mkdir")
     def test_plot_summary(self, mock_mkdir, mock_plt) -> None:
         """Render summary plots and ensure images are saved."""

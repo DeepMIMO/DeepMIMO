@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 
 from deepmimo.converters.wireless_insite import insite_txrx
-from deepmimo.txrx import TxRxSet
+from deepmimo.core.txrx import TxRxSet
 
 
 def test_insite_txrx_set_grid() -> None:

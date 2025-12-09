@@ -5,6 +5,8 @@ __version__ = "4.0.0b11"
 # Core functionality
 # Import immediate modules
 from . import consts, general_utils
+
+# API imports - using root api.py until api/ folder is fully migrated
 from .api import (
     download,
     search,
@@ -15,7 +17,33 @@ from .api import (
 
 # Import the config instance
 from .config import config
+
+# Converters
 from .converters.converter import convert
+
+# Core models (moved from root to core/)
+from .core.materials import Material, MaterialList
+from .core.rt_params import RayTracingParameters
+from .core.scene import BoundingBox, Face, PhysicalElement, PhysicalElementGroup, Scene
+from .core.txrx import (
+    TxRxPair,
+    TxRxSet,
+    get_txrx_pairs,
+    get_txrx_sets,
+    print_available_txrx_pair_ids,
+)
+
+# Datasets (moved from generator/ to datasets/)
+from .datasets.dataset import Dataset, DynamicDataset, MacroDataset
+from .datasets.generate import generate
+from .datasets.load import load
+from .datasets.visualization import (
+    plot_coverage,
+    plot_power_discarding,
+    plot_rays,
+)
+
+# General utilities
 from .general_utils import (
     get_available_scenarios,
     get_params_path,
@@ -27,65 +55,53 @@ from .general_utils import (
     zip,  # noqa: A004
 )
 
-# Channel parameters
+# Channel parameters (still in generator/)
 from .generator.channel import ChannelParameters
-from .generator.core import (
-    generate,
-    load,
-)
-from .generator.dataset import Dataset, DynamicDataset, MacroDataset
-from .generator.geometry import (
-    steering_vec,
-)
+from .generator.geometry import steering_vec
 
-# Visualization
-from .generator.visualization import (
-    plot_coverage,
-    plot_power_discarding,
-    plot_rays,
-)
+# Info
 from .info import info
 
-# Materials
-from .materials import (
-    Material,
-    MaterialList,
-)
+# Integrations
+from .integrations.web import export_dataset_to_binary
 
-# Physical world representation
-from .scene import Face, PhysicalElement, PhysicalElementGroup, Scene
-from .summary import plot_summary, summary
+# Summary (moved to datasets/)
+from .datasets.summary import plot_summary, summary
 
-# TX/RX handling
-from .txrx import (
-    TxRxPair,
-    TxRxSet,
-    get_txrx_pairs,
-    get_txrx_sets,
-    print_available_txrx_pair_ids,
-)
+# Backward compatibility - re-export web_export
+from .integrations import web as web_export
 
 __all__ = [
+    # Channel Parameters
     "ChannelParameters",
+    # Datasets
     "Dataset",
     "DynamicDataset",
+    "MacroDataset",
     # Physical world representation
     "Face",
-    "MacroDataset",
     # Materials
     "Material",
     "MaterialList",
     "PhysicalElement",
     "PhysicalElementGroup",
+    # Ray Tracing Parameters
+    "RayTracingParameters",
     "Scene",
-    "TxRxPair",
+    # Bounding Box
+    "BoundingBox",
     # TX/RX handling
+    "TxRxPair",
     "TxRxSet",
     "config",
     # Constants and configuration
     "consts",
+    # Converters
     "convert",
+    # Database API
     "download",
+    # Integrations
+    "export_dataset_to_binary",
     "general_utils",
     # Core functionality
     "generate",
@@ -116,6 +132,8 @@ __all__ = [
     "upload",
     "upload_images",
     "upload_rt_source",
+    # Backward compatibility
+    "web_export",
     # Zip/unzip
     "zip",
 ]

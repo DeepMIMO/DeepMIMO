@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.wireless_insite import insite_materials
-from deepmimo.materials import Material
+from deepmimo.core.materials import Material
 
 
 def test_insite_material_conversion() -> None:

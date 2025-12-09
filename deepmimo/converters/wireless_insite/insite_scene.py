@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from deepmimo.scene import (
+from deepmimo.core.scene import (
     CAT_BUILDINGS,
     CAT_FLOORPLANS,
     CAT_OBJECTS,

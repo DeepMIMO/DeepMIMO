@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
-from deepmimo.generator.dataset import Dataset, DynamicDataset, MacroDataset
+from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
 
 
 @pytest.fixture

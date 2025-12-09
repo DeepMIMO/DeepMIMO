@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from deepmimo.generator import generator_utils as gu
+from deepmimo.datasets import sampling as gu
 
 
 def test_get_linear_idxs() -> None:

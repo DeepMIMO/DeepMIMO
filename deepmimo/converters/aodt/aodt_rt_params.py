@@ -18,7 +18,7 @@ from pathlib import Path
 
 from deepmimo.config import config
 from deepmimo.consts import RAYTRACER_NAME_AODT
-from deepmimo.rt_params import RayTracingParameters
+from deepmimo.core.rt_params import RayTracingParameters
 
 from .safe_import import pd
 

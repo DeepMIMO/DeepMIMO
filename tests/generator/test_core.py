@@ -7,13 +7,15 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
-from deepmimo.generator import core
+from deepmimo.datasets import load as load_func
+from deepmimo.datasets import generate as generate_func
+from deepmimo.datasets.load import validate_txrx_sets
 
 
 @pytest.fixture
 def mock_dataset_cls():
-    """Fixture mocking Dataset class within generator.core."""
-    with patch("deepmimo.generator.core.Dataset") as mock:
+    """Fixture mocking Dataset class within datasets.load."""
+    with patch("deepmimo.datasets.load.Dataset") as mock:
         yield mock
 
 
@@ -21,12 +23,12 @@ def mock_dataset_cls():
 def mock_utils():
     """Fixture providing patched core helpers and filesystem checks."""
     with (
-        patch("deepmimo.generator.core.load_dict_from_json") as load_json,
-        patch("deepmimo.generator.core.load_mat") as load_mat,
-        patch("deepmimo.generator.core.get_scenario_folder") as get_folder,
-        patch("deepmimo.generator.core.get_params_path") as get_params,
-        patch("deepmimo.generator.core.Scene") as mock_scene,
-        patch("deepmimo.generator.core.MaterialList") as mock_mat_list,
+        patch("deepmimo.datasets.load.load_dict_from_json") as load_json,
+        patch("deepmimo.datasets.load.load_mat") as load_mat,
+        patch("deepmimo.datasets.load.get_scenario_folder") as get_folder,
+        patch("deepmimo.datasets.load.get_params_path") as get_params,
+        patch("deepmimo.datasets.load.Scene") as mock_scene,
+        patch("deepmimo.datasets.load.MaterialList") as mock_mat_list,
         patch.object(Path, "exists") as mock_exists,
     ):
         mock_exists.return_value = True
@@ -63,7 +65,7 @@ def test_load_single_scene(mock_utils, mock_dataset_cls) -> None:
     mock_utils["load_mat"].return_value = np.zeros((10, 5))  # 10 RX, 5 paths
 
     # Call load
-    core.load("test_scen")
+    load_func("test_scen")
 
     # Verify calls
     mock_utils["get_folder"].assert_called_with("test_scen")
@@ -93,7 +95,7 @@ def test_generate(mock_utils, mock_dataset_cls) -> None:
     mock_dataset_cls.return_value = ds_mock
 
     # Call generate
-    result = core.generate("test_scen")
+    result = generate_func("test_scen")
 
     assert result == ds_mock
     ds_mock.compute_channels.assert_called()
@@ -107,21 +109,21 @@ def test_validate_txrx_sets() -> None:
     }
 
     # Test "all"
-    sets = core.validate_txrx_sets("all", txrx_dict, "tx")
+    sets = validate_txrx_sets("all", txrx_dict, "tx")
     assert 0 in sets
     assert len(sets[0]) == 5
 
-    sets = core.validate_txrx_sets("all", txrx_dict, "rx")
+    sets = validate_txrx_sets("all", txrx_dict, "rx")
     assert 1 in sets
     assert len(sets[1]) == 10
 
     # Test list of IDs
-    sets = core.validate_txrx_sets([0], txrx_dict, "tx")
+    sets = validate_txrx_sets([0], txrx_dict, "tx")
     assert 0 in sets
     assert len(sets[0]) == 5
 
     # Test dict
-    sets = core.validate_txrx_sets({0: [0, 1]}, txrx_dict, "tx")
+    sets = validate_txrx_sets({0: [0, 1]}, txrx_dict, "tx")
     assert 0 in sets
     assert len(sets[0]) == 2
     assert sets[0][0] == 0

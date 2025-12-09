@@ -40,10 +40,10 @@ from typing import Any
 import matplotlib.pyplot as plt
 import numpy as np
 
-from . import consts as c
+from deepmimo import consts as c
 
 # Local imports
-from .general_utils import (
+from deepmimo.general_utils import (
     get_params_path,
     load_dict_from_json,
 )
@@ -341,7 +341,7 @@ def plot_summary(
 
     """
     # Import load function here to avoid circular import
-    from .generator.core import load  # noqa: PLC0415
+    from .load import load  # noqa: PLC0415
 
     # Create figures directory if it doesn't exist
     temp_dir = "./figures"

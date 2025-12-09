@@ -1,16 +1,16 @@
-"""DeepMIMO generator module."""
+"""DeepMIMO Channel Generator Module.
+
+This module provides channel generation functionality:
+- Channel parameter management
+- MIMO channel computation
+- Beamforming geometry calculations
+- Antenna pattern handling
+"""
+
+from .channel import ChannelParameters
+from .geometry import steering_vec
 
 __all__ = [
     "ChannelParameters",
-    "Dataset",
-    "DeepMIMOArray",
-    "LinearPath",
-    "generate",
-    "get_idxs_with_limits",
-    "get_uniform_idxs",
-    "load",
-    "plot_coverage",
-    "plot_power_discarding",
-    "plot_rays",
-    "steering_vector",
+    "steering_vec",
 ]

@@ -3,7 +3,7 @@
 from unittest.mock import patch
 
 from deepmimo import consts as c
-from deepmimo.txrx import (
+from deepmimo.core.txrx import (
     TxRxPair,
     TxRxSet,
     get_txrx_pairs,
@@ -39,8 +39,8 @@ def test_txrx_pair() -> None:
     assert "RX" in str(pair)
 
 
-@patch("deepmimo.txrx.load_dict_from_json")
-@patch("deepmimo.txrx.get_params_path")
+@patch("deepmimo.core.txrx.load_dict_from_json")
+@patch("deepmimo.core.txrx.get_params_path")
 def test_get_txrx_sets(mock_get_path, mock_load_json) -> None:
     """Test getting TXRX sets from params."""
     mock_params = {
@@ -89,7 +89,7 @@ def test_get_txrx_pairs() -> None:
     assert pairs[2].rx == rx1
 
 
-@patch("deepmimo.txrx.get_txrx_sets")
+@patch("deepmimo.core.txrx.get_txrx_sets")
 def test_print_pairs(mock_get_sets, capsys) -> None:
     """Test printing pairs."""
     tx = TxRxSet(name="TX", id=0, is_tx=True, num_points=1)

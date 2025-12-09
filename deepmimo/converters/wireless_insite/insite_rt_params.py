@@ -21,7 +21,7 @@ import numpy as np
 
 from deepmimo.config import config
 from deepmimo.consts import BBOX_PAD, RAYTRACER_NAME_WIRELESS_INSITE
-from deepmimo.rt_params import RayTracingParameters
+from deepmimo.core.rt_params import RayTracingParameters
 
 from .setup_parser import parse_file
 

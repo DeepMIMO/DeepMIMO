@@ -15,8 +15,8 @@ import numpy as np
 from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from scipy.spatial import ConvexHull
 
-from .consts import MAT_FMT, SCENE_PARAM_NUMBER_SCENES
-from .general_utils import (
+from deepmimo.consts import MAT_FMT, SCENE_PARAM_NUMBER_SCENES
+from deepmimo.general_utils import (
     DelegatingList,
     load_dict_from_json,
     load_mat,
@@ -25,7 +25,7 @@ from .general_utils import (
 )
 
 if TYPE_CHECKING:
-    from .materials import MaterialList
+    from deepmimo.core.materials import MaterialList
 
 CAT_BUILDINGS: str = "buildings"
 CAT_TERRAIN: str = "terrain"

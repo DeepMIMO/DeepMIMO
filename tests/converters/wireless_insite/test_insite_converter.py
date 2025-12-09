@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.wireless_insite import insite_converter
-from deepmimo.scene import Scene
+from deepmimo.core.scene import Scene
 
 
 def test_insite_rt_converter(tmp_path) -> None:

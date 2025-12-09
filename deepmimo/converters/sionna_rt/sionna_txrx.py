@@ -4,7 +4,7 @@ This module handles loading and converting transmitter and receiver data from
 Sionna's format to DeepMIMO's format.
 """
 
-from deepmimo.txrx import TxRxSet
+from deepmimo.core.txrx import TxRxSet
 
 
 def read_txrx(rt_params_dict: dict) -> dict:

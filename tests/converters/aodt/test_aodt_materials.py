@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.aodt import aodt_materials
-from deepmimo.materials import Material
+from deepmimo.core.materials import Material
 
 
 def test_aodt_material_conversion() -> None:

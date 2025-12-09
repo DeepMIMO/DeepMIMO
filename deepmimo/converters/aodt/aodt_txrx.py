@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 
-from deepmimo.txrx import TxRxSet
+from deepmimo.core.txrx import TxRxSet
 
 from . import aodt_utils as au
 from .safe_import import pd

@@ -17,7 +17,7 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from deepmimo.materials import Material, MaterialList  # Base material classes
+from deepmimo.core.materials import Material, MaterialList  # Base material classes
 
 # Local imports
 from .setup_parser import parse_file  # For parsing Wireless InSite setup-like files

@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from deepmimo.general_utils import load_pickle
-from deepmimo.materials import Material, MaterialList
+from deepmimo.core.materials import Material, MaterialList
 
 
 def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:

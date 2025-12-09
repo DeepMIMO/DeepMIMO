@@ -40,24 +40,29 @@ from tqdm import tqdm
 
 from deepmimo import consts as c
 from deepmimo.converters import converter_utils as cu
+from deepmimo.core.txrx import TxRxSet, get_txrx_sets
 from deepmimo.general_utils import DelegatingList, DotDict, spherical_to_cartesian
 from deepmimo.info import info
-from deepmimo.summary import plot_summary
-from deepmimo.txrx import TxRxSet, get_txrx_sets
-from deepmimo.web_export import export_dataset_to_binary
+from deepmimo.integrations.web import export_dataset_to_binary
 
-from .ant_patterns import AntennaPattern
-from .array_wrapper import DeepMIMOArray
-from .channel import ChannelParameters, _generate_mimo_channel
-from .generator_utils import (
+from deepmimo.datasets.array_wrapper import DeepMIMOArray
+from deepmimo.datasets.sampling import (
     dbw2watt,
     get_grid_idxs,
     get_idxs_with_limits,
     get_linear_idxs,
     get_uniform_idxs,
 )
-from .geometry import _ant_indices, _apply_fov_batch, _array_response_batch, _rotate_angles_batch
-from .visualization import plot_coverage, plot_rays
+from deepmimo.datasets.summary import plot_summary
+from deepmimo.datasets.visualization import plot_coverage, plot_rays
+from deepmimo.generator.ant_patterns import AntennaPattern
+from deepmimo.generator.channel import ChannelParameters, _generate_mimo_channel
+from deepmimo.generator.geometry import (
+    _ant_indices,
+    _apply_fov_batch,
+    _array_response_batch,
+    _rotate_angles_batch,
+)
 
 CARTESIAN_DIM = 3
 DOPPLER_DIM = 2

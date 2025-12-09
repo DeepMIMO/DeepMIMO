@@ -5,7 +5,7 @@ import numpy as np
 from deepmimo import Dataset
 from deepmimo import consts as c
 from deepmimo.generator.channel import ChannelParameters
-from deepmimo.generator.dataset import DynamicDataset
+from deepmimo.datasets.dataset import DynamicDataset
 
 
 def test_full_generation_flow() -> None:

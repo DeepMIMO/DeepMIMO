@@ -6,7 +6,7 @@ This module handles loading and converting scene data from Sionna's format to De
 from pathlib import Path
 
 from deepmimo.general_utils import load_pickle
-from deepmimo.scene import (
+from deepmimo.core.scene import (
     CAT_BUILDINGS,
     CAT_TERRAIN,
     Face,

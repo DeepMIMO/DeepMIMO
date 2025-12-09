@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from deepmimo.config import config
-from deepmimo.txrx import TxRxSet
+from deepmimo.core.txrx import TxRxSet
 
 from .xml_parser import parse_insite_xml
 

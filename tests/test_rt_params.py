@@ -2,7 +2,7 @@
 
 import pytest
 
-from deepmimo.rt_params import RayTracingParameters
+from deepmimo.core.rt_params import RayTracingParameters
 
 
 def test_rt_params_initialization() -> None:

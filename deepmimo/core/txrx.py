@@ -6,8 +6,8 @@ to represent transmitter and receiver configurations.
 
 from dataclasses import asdict, dataclass, field
 
-from . import consts as c
-from .general_utils import get_params_path, load_dict_from_json
+from deepmimo import consts as c
+from deepmimo.general_utils import get_params_path, load_dict_from_json
 
 
 @dataclass
@@ -176,3 +176,4 @@ def print_available_txrx_pair_ids(scenario_name: str) -> None:
         tx_id, rx_id = pair.get_ids()
         print(f"{idx:^6} | {tx_id:^6} | {rx_id:^6}")
     print("-" * 25)
+

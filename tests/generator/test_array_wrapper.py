@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
-from deepmimo.generator.array_wrapper import DeepMIMOArray
+from deepmimo.datasets.array_wrapper import DeepMIMOArray
 
 
 def test_array_creation() -> None:

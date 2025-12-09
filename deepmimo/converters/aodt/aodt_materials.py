@@ -10,7 +10,7 @@ from pathlib import Path
 import numpy as np
 
 from deepmimo.converters import converter_utils as cu
-from deepmimo.materials import Material, MaterialList
+from deepmimo.core.materials import Material, MaterialList
 
 from .safe_import import pd
 

@@ -6,26 +6,38 @@ import pytest
 
 # Excluding anything under deepmimo.pipelines.*
 MODULES = [
+    # API
     "deepmimo.api",
-    "deepmimo.web_export",
-    "deepmimo.txrx",
-    "deepmimo.summary",
-    "deepmimo.scene",
-    "deepmimo.rt_params",
-    "deepmimo.materials",
-    "deepmimo.integrations.sionna_adapter",
-    "deepmimo.info",
-    "deepmimo.generator.visualization",
-    "deepmimo.generator.geometry",
-    "deepmimo.generator.generator_utils",
-    "deepmimo.generator.dataset",
-    "deepmimo.generator.core",
+    # Core models
+    "deepmimo.core.materials",
+    "deepmimo.core.rt_params",
+    "deepmimo.core.scene",
+    "deepmimo.core.txrx",
+    # Datasets
+    "deepmimo.datasets.dataset",
+    "deepmimo.datasets.array_wrapper",
+    "deepmimo.datasets.visualization",
+    "deepmimo.datasets.sampling",
+    "deepmimo.datasets.summary",
+    "deepmimo.datasets.generate",
+    "deepmimo.datasets.load",
+    # Generator (streamlined)
     "deepmimo.generator.channel",
-    "deepmimo.generator.array_wrapper",
+    "deepmimo.generator.geometry",
     "deepmimo.generator.ant_patterns",
+    # Integrations
+    "deepmimo.integrations.web",
+    "deepmimo.integrations.sionna_adapter",
+    # Utilities
     "deepmimo.general_utils",
+    "deepmimo.info",
+    # Config
+    "deepmimo.config",
+    "deepmimo.consts",
+    # Exporters
     "deepmimo.exporters.sionna_exporter",
     "deepmimo.exporters.aodt_exporter",
+    # Converters
     "deepmimo.converters.wireless_insite.xml_parser",
     "deepmimo.converters.wireless_insite.setup_parser",
     "deepmimo.converters.wireless_insite.p2m_parser",
@@ -50,8 +62,6 @@ MODULES = [
     "deepmimo.converters.aodt.aodt_scene",
     "deepmimo.converters.aodt.aodt_paths",
     "deepmimo.converters.aodt.aodt_materials",
-    "deepmimo.consts",
-    "deepmimo.config",
 ]
 
 

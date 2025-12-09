@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from deepmimo.scene import (
+from deepmimo.core.scene import (
     CAT_BUILDINGS,
     CAT_OBJECTS,
     CAT_TERRAIN,

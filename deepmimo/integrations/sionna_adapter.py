@@ -16,7 +16,7 @@ can be generated using (transpose) reciprocity.
 import numpy as np
 from numpy.typing import NDArray
 
-from deepmimo.generator.dataset import Dataset, MacroDataset
+from deepmimo.datasets.dataset import Dataset, MacroDataset
 
 
 class SionnaAdapter:

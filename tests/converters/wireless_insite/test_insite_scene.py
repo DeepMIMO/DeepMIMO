@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from deepmimo.converters.wireless_insite import insite_scene
-from deepmimo.scene import CAT_BUILDINGS
+from deepmimo.core.scene import CAT_BUILDINGS
 
 
 def test_extract_objects() -> None:

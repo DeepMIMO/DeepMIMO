@@ -1,13 +1,11 @@
-"""DeepMIMO Core Generation Module.
+"""DeepMIMO Dataset Loading Module.
 
-This module provides the core functionality for generating and managing DeepMIMO datasets.
+This module provides functionality for loading DeepMIMO scenarios from disk.
 It handles:
-- Dataset generation and scenario management
-- Ray-tracing data loading and processing
-- Channel computation and parameter validation
-- Multi-user MIMO channel generation
-
-The module serves as the main entry point for creating DeepMIMO datasets from ray-tracing data.
+- Loading ray-tracing data from saved files
+- Creating Dataset and MacroDataset objects
+- Managing scenario parameters and metadata
+- TX/RX set validation and loading
 """
 
 # Standard library imports
@@ -19,9 +17,9 @@ import numpy as np
 
 # Local imports
 from deepmimo import consts as c
-
-# Scenario management
-from deepmimo.api import download
+from deepmimo.core.scene import Scene
+from deepmimo.core.materials import MaterialList
+from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
 from deepmimo.general_utils import (
     DotDict,
     get_mat_filename,
@@ -30,65 +28,6 @@ from deepmimo.general_utils import (
     load_dict_from_json,
     load_mat,
 )
-from deepmimo.materials import MaterialList
-from deepmimo.scene import Scene
-
-# Channel generation
-from .channel import ChannelParameters
-from .dataset import Dataset, DynamicDataset, MacroDataset
-
-
-def generate(
-    scen_name: str,
-    *,
-    load_params: dict[str, Any] | None = None,
-    trim_params: dict[str, Any] | None = None,
-    ch_params: dict[str, Any] | None = None,
-) -> Dataset | MacroDataset | DynamicDataset:
-    """Generate a DeepMIMO dataset for a given scenario.
-
-    This function wraps loading scenario data, computing channels, and organizing results.
-
-    Args:
-        scen_name (str): Name of the scenario to generate data for
-        load_params (dict): Parameters for loading the scenario. Defaults to {}.
-        trim_params (dict, optional): Parameters for dataset trimming. Supports:
-            - idxs (array-like): UE indices to keep (applied first)
-            - idxs_mode (str): One of 'active'|'linear'|'uniform'|'row'|'col'|'limits'
-            - idxs_kwargs (dict): Keyword args for the idxs mode
-            - bs_fov (list|tuple [h_deg, v_deg])
-            - ue_fov (list|tuple [h_deg, v_deg])
-            - path_depth (int)
-            - path_types (list[str])
-        ch_params (dict): Parameters for channel generation. Defaults to {}.
-
-    Returns:
-        Dataset: Generated DeepMIMO dataset containing channel matrices and metadata
-
-    Raises:
-        ValueError: If scenario name is invalid or required files are missing
-
-    """
-    if ch_params is None:
-        ch_params = {}
-    if trim_params is None:
-        trim_params = {}
-    if load_params is None:
-        load_params = {}
-    dataset = load(scen_name, **load_params)
-
-    if trim_params:
-        if "idxs" not in trim_params:
-            trim_params["idxs"] = dataset.get_idxs(
-                trim_params["idxs_mode"],
-                **trim_params.get("idxs_kwargs", {}),
-            )
-
-        dataset = dataset.trim(**trim_params)
-
-    _ = dataset.compute_channels(ch_params if ch_params else ChannelParameters())
-
-    return dataset
 
 
 def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
@@ -139,6 +78,7 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
         print("Scenario not found. Would you like to download it? [Y/n]")
         response = input().lower()
         if response in ["", "y", "yes"]:
+            from deepmimo.api import download  # Lazy import to avoid circular dependency  # noqa: PLC0415
             download(scen_name)
         else:
             msg = f"Scenario {scen_name} not found"
@@ -538,3 +478,4 @@ def validate_txrx_sets(
 ) -> dict[int, list]:
     """Public wrapper around `_validate_txrx_sets`."""
     return _validate_txrx_sets(sets, txrx_dict, tx_or_rx)
+

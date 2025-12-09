@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, mock_open, patch
 
 import numpy as np
 
-from deepmimo import web_export
+from deepmimo.integrations import web as web_export
 
 
 class TestWebExport(unittest.TestCase):

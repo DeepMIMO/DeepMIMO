@@ -2,7 +2,7 @@
 
 from dataclasses import asdict
 
-from deepmimo.materials import Material, MaterialList
+from deepmimo.core.materials import Material, MaterialList
 
 
 def test_material_initialization() -> None:
