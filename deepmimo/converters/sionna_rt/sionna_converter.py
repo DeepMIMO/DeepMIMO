@@ -45,8 +45,8 @@ def sionna_rt_converter(  # noqa: PLR0913
         scenario_name (str): Custom name for output folder. Uses rt folder name if empty.
         print_params (bool): Whether to print the parameters to the console. Defaults to False.
         parent_folder (str): Name of parent folder containing the scenario.
-            If empty, the scenario is saved in the DeepMIMO scenarios folder.
-            This parameter is only used if the scenario is time-varying.
+                             If empty, the scenario is saved in the DeepMIMO scenarios folder.
+                             This parameter is only used if the scenario is time-varying.
         num_scenes (int): Number of scenes in the scenario. Defaults to 1.
                           This parameter is only used if the scenario is time-varying.
 
