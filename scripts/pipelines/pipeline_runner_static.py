@@ -1,5 +1,4 @@
-"""
-Run a pipeline that uses static user positions.
+"""Run a pipeline that uses static user positions.
 
 This file is used to ray tracer a static dataset, i.e., a dataset where users are fixed.
 
@@ -13,16 +12,14 @@ Steps:
 #%% Imports
 
 import os
-import pandas as pd
+
 import numpy as np
 
 import deepmimo as dm  # type: ignore
-
-from deepmimo.pipelines.txrx_placement import gen_rx_grid, gen_tx_pos, gen_plane_grid
-from deepmimo.pipelines.utils.pipeline_utils import get_origin_coords, load_params_from_row
+from deepmimo.pipelines.txrx_placement import gen_plane_grid
 
 # Configure Ray Tracing Versions (before importing the pipeline modules)
-dm.config('wireless_insite_version', "4.0.1")  # E.g. '3.3.0', '4.0.1'
+dm.config("wireless_insite_version", "4.0.1")  # E.g. '3.3.0', '4.0.1'
 
 # from deepmimo.pipelines.wireless_insite.insite_raytracer import raytrace_insite
 from deepmimo.pipelines.sionna_rt.sionna_raytracer import raytrace_sionna
