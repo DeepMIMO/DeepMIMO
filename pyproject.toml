@@ -168,6 +168,9 @@ all = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = [
+    "scripts",
+]
 
 [tool.ruff.lint]
 select = ["ALL"]
