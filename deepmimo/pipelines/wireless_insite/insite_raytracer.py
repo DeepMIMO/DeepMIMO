@@ -30,13 +30,13 @@ from deepmimo.consts import BBOX_PAD
 from deepmimo.pipelines.utils.geo_utils import convert_GpsBBox2CartesianBBox
 from deepmimo.pipelines.utils.pipeline_utils import run_command
 from deepmimo.pipelines.wireless_insite.convert_ply2city import convert_to_city_file
-from deepmimo.pipelines.wireless_insite.WI_interface.setup_editor import (
+from deepmimo.pipelines.wireless_insite.wi_interface.setup_editor import (
     RayTracingParam,
     SetupEditor,
 )
-from deepmimo.pipelines.wireless_insite.WI_interface.terrain_editor import TerrainEditor
-from deepmimo.pipelines.wireless_insite.WI_interface.txrx_editor import TxRxEditor
-from deepmimo.pipelines.wireless_insite.WI_interface.xml_generator import XmlGenerator
+from deepmimo.pipelines.wireless_insite.wi_interface.terrain_editor import TerrainEditor
+from deepmimo.pipelines.wireless_insite.wi_interface.txrx_editor import TxRxEditor
+from deepmimo.pipelines.wireless_insite.wi_interface.xml_generator import XmlGenerator
 
 TERRAIN_TEMPLATE = "newTerrain.ter"
 
