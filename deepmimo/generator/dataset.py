@@ -716,9 +716,9 @@ class Dataset(DotDict):
         """Compute received power with antenna patterns applied.
 
         Args:
-            tx_ant_params (Optional[Dict[str, Any]]): Transmitter antenna parameters.
+            tx_ant_params (Optional[dict[str, Any]]): Transmitter antenna parameters.
                 If None, uses stored params.
-            rx_ant_params (Optional[Dict[str, Any]]): Receiver antenna parameters.
+            rx_ant_params (Optional[dict[str, Any]]): Receiver antenna parameters.
                 If None, uses stored params.
 
         Returns:
@@ -822,7 +822,7 @@ class Dataset(DotDict):
         """Uniformly sample users over the receiver grid.
 
         Args:
-            steps (List[int]): `[x_step, y_step]` stride per grid axis.
+            steps (list[int]): `[x_step, y_step]` stride per grid axis.
 
         Returns:
             np.ndarray: 1D array of integer indices sampled on a uniform grid.

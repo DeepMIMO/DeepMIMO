@@ -184,7 +184,7 @@ def plot_summary(  # noqa: PLR0912, PLR0915, C901
     scenario_name: str | None = None,
     *,
     save_imgs: bool = False,
-    dataset: Any = None,
+    dataset: Any = None,  # Dataset, MacroDataset, or DynamicDataset
     plot_idx: int | list[int] | None = None,
 ) -> list[str]:
     """Make images for the scenario.

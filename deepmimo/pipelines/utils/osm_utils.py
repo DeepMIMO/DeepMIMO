@@ -61,7 +61,7 @@ class Building:
 
         Args:
             element (Dict): OSM element containing building data
-            nodes_cache (Dict[int, Tuple[float, float]]): Cache of node coordinates
+            nodes_cache (dict[int, tuple[float, float]]): Cache of node coordinates
 
         Returns:
             Optional[Building]: Building instance or None if invalid
@@ -114,7 +114,7 @@ def get_buildings(lat: float, lon: float, radius: float = SEARCH_RADIUS) -> list
         radius (float): Search radius in meters, defaults to SEARCH_RADIUS
 
     Returns:
-        List[Building]: List of Building instances
+        list[Building]: List of Building instances
 
     """
     overpass_url = "https://overpass-api.de/api/interpreter"
@@ -160,7 +160,7 @@ def is_point_clear_of_buildings(point: Point, buildings: list[Building]) -> bool
 
     Args:
         point (Point): Point to check
-        buildings (List[Building]): List of Building instances
+        buildings (list[Building]): List of Building instances
 
     Returns:
         bool: True if point maintains minimum distance from all buildings
@@ -191,10 +191,10 @@ def find_nearest_clear_location(
     Args:
         original_lat (float): Original latitude
         original_lon (float): Original longitude
-        buildings (List[Building]): List of Building instances
+        buildings (list[Building]): List of Building instances
 
     Returns:
-        Tuple[float, float]: Tuple of (latitude, longitude) for location clear of buildings
+        tuple[float, float]: Tuple of (latitude, longitude) for location clear of buildings
 
     """
     original_point = Point(original_lon, original_lat)

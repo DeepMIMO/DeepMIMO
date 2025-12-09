@@ -37,7 +37,7 @@ def read_panels(rt_folder: str) -> dict[str, Any]:
         rt_folder (str): Path to folder containing panels.parquet.
 
     Returns:
-        Dict[str, Any]: Dictionary mapping panel IDs to configurations.
+        dict[str, Any]: Dictionary mapping panel IDs to configurations.
 
     """
     panels_file = str(Path(rt_folder) / "panels.parquet")
@@ -78,7 +78,7 @@ def convert_to_deepmimo_txrxset(
     """Convert AODT TX/RX data to DeepMIMO TxRxSet format.
 
     Args:
-        tx_rx_data (Dict[str, Any]): Dictionary containing TX/RX configuration
+        tx_rx_data (dict[str, Any]): Dictionary containing TX/RX configuration
         is_tx (bool): Whether this is a transmitter (True) or receiver (False)
         id_ (int): Unique identifier for the DeepMIMO set
 
@@ -144,7 +144,7 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
 
     Args:
         rt_folder (str): Path to folder containing patterns.parquet
-        panels (Dict[str, Any]): Dictionary of panel configurations
+        panels (dict[str, Any]): Dictionary of panel configurations
 
     Raises:
         FileNotFoundError: If patterns.parquet is not found
@@ -213,10 +213,10 @@ def read_transmitters(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, 
 
     Args:
         rt_folder (str): Path to folder containing rus.parquet
-        panels (Dict[str, Any]): Dictionary of panel configurations
+        panels (dict[str, Any]): Dictionary of panel configurations
 
     Returns:
-        List[Dict[str, Any]]: List of processed transmitter configurations
+        list[dict[str, Any]]: List of processed transmitter configurations
 
     Raises:
         FileNotFoundError: If rus.parquet is not found
@@ -258,10 +258,10 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
 
     Args:
         rt_folder (str): Path to folder containing ues.parquet
-        panels (Dict[str, Any]): Dictionary of panel configurations
+        panels (dict[str, Any]): Dictionary of panel configurations
 
     Returns:
-        List[Dict[str, Any]]: List of processed receiver configurations
+        list[dict[str, Any]]: List of processed receiver configurations
 
     Raises:
         FileNotFoundError: If ues.parquet is not found
@@ -337,7 +337,7 @@ def is_dynamic(rt_params: dict[str, Any]) -> bool:
     """Check if the scenario is dynamic.
 
     Args:
-        rt_params (Dict[str, Any]): Ray tracing parameters dictionary.
+        rt_params (dict[str, Any]): Ray tracing parameters dictionary.
 
     Returns:
         bool: True if the scenario is dynamic, False otherwise.
@@ -357,10 +357,10 @@ def read_txrx(rt_folder: str, rt_params: dict[str, Any]) -> dict[str, Any]:
 
     Args:
         rt_folder (str): Path to folder containing configuration files.
-        rt_params (Dict[str, Any]): Ray tracing parameters dictionary.
+        rt_params (dict[str, Any]): Ray tracing parameters dictionary.
 
     Returns:
-        Dict[str, Any]: Dictionary containing TX/RX configurations in DeepMIMO format.
+        dict[str, Any]: Dictionary containing TX/RX configurations in DeepMIMO format.
 
     Raises:
         FileNotFoundError: If required files are not found.

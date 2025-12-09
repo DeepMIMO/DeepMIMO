@@ -17,8 +17,8 @@ class TerrainEditor:
 
     Attributes:
         template_ter_file (str): Path to the template terrain file
-        file (List[str]): Contents of the terrain file
-        material_file (Optional[List[str]]): Contents of the material file
+        file (list[str]): Contents of the terrain file
+        material_file (Optional[list[str]]): Contents of the material file
 
     """
 

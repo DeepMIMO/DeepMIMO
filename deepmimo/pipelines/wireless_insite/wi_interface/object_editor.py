@@ -16,7 +16,7 @@ class ObjectEditor:
 
     Attributes:
         infile_path (str): Path to the input object file
-        file (List[str]): Contents of the file as lines of text
+        file (list[str]): Contents of the file as lines of text
 
     """
 
@@ -43,7 +43,7 @@ class ObjectEditor:
         Rotation is performed around the Z-axis (flat earth assumption).
 
         Args:
-            translate (List[float], optional): Translation vector [x, y, z]. Defaults to [0, 0, 0].
+            translate (list[float], optional): Translation vector [x, y, z]. Defaults to [0, 0, 0].
             rotate_angle (float, optional): Rotation angle in degrees. Defaults to 0.
 
         """

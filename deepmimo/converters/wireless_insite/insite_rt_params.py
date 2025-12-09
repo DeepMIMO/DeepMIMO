@@ -52,7 +52,7 @@ def _get_gps_bbox(
         pad (float): Padding for the bounding box in degrees
 
     Returns:
-        Tuple[float, float, float, float]: Bounding box of the study area
+        tuple[float, float, float, float]: Bounding box of the study area
 
     """
     if origin_lat == 0 and origin_lon == 0:

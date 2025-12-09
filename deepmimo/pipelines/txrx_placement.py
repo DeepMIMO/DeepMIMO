@@ -11,15 +11,15 @@ def gen_tx_pos(rt_params: dict[str, Any]) -> np.ndarray:
     """Generate transmitter positions from GPS coordinates.
 
     Args:
-        rt_params (Dict[str, Any]): Ray tracing parameters
+        rt_params (dict[str, Any]): Ray tracing parameters
         Required Parameters:
-            - bs_lats (List[float]): Latitude coordinates of base stations
-            - bs_lons (List[float]): Longitude coordinates of base stations
-            - bs_heights (List[float]): Height coordinates of base stations
+            - bs_lats (list[float]): Latitude coordinates of base stations
+            - bs_lons (list[float]): Longitude coordinates of base stations
+            - bs_heights (list[float]): Height coordinates of base stations
             - origin_lat, origin_lon (float): Origin GPS coordinates
 
     Returns:
-        List[List[float]]: Transmitter positions in Cartesian coordinates
+        list[list[float]]: Transmitter positions in Cartesian coordinates
 
     """
     num_bs = len(rt_params["bs_lats"])
@@ -79,7 +79,7 @@ def gen_rx_grid(rt_params: dict[str, Any]) -> np.ndarray:
     """Generate user grid in Cartesian coordinates.
 
     Args:
-        rt_params (Dict[str, Any]): Ray tracing parameters
+        rt_params (dict[str, Any]): Ray tracing parameters
             Required Parameters:
                 - min_lat, min_lon, max_lat, max_lon (float): GPS coordinates of the area
                 - origin_lat, origin_lon (float): Origin GPS coordinates

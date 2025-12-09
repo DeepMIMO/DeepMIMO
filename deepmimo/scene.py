@@ -336,7 +336,7 @@ class PhysicalElement:
         return obj_metadata
 
     @classmethod
-    def from_dict(cls: Any, data: dict, vertices: np.ndarray) -> "PhysicalElement":
+    def from_dict(cls: "PhysicalElement", data: dict, vertices: np.ndarray) -> "PhysicalElement":
         """Create physical object from dictionary format.
 
         Args:
@@ -786,7 +786,7 @@ class Scene:
             ax.legend()
         return ax
 
-    def _set_axes_lims_to_scale(self, ax: Any, zoom: float = 1.3) -> None:
+    def _set_axes_lims_to_scale(self, ax: plt.Axes, zoom: float = 1.3) -> None:
         """Set axis limits based on scene bounding box with equal scaling.
 
         Args:
@@ -826,7 +826,7 @@ class Scene:
         """Count the number of objects for each label in the scene.
 
         Returns:
-            Dict[str, int]: Dictionary mapping labels to their counts
+            dict[str, int]: Dictionary mapping labels to their counts
 
         """
         label_counts = {}
@@ -883,7 +883,7 @@ def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float
     return [bottom_face, top_face, *side_faces]
 
 
-def _calculate_angle_deviation(p1: Any, p2: Any, p3: Any) -> Any:
+def _calculate_angle_deviation(p1: np.ndarray, p2: np.ndarray, p3: np.ndarray) -> float:
     """Calculate the deviation from a straight line at point p2.
 
     Returns angle in degrees, where:
@@ -914,7 +914,7 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
     """Held-Karp TSP with angle penalty + intersection check.
 
     Returns:
-        Tuple[float, List[int]]: Minimum cost and path
+        tuple[float, list[int]]: Minimum cost and path
 
     """
     n = len(points)
@@ -1028,7 +1028,7 @@ def _signed_distance_to_curve(
         x_range: Range of x-values for the curve
 
     Returns:
-        Tuple[float, np.ndarray]: Signed distance and closest point on curve
+        tuple[float, np.ndarray]: Signed distance and closest point on curve
 
     """
     curve_x = np.linspace(x_range[0], x_range[1], 1000)
@@ -1221,7 +1221,7 @@ if __name__ == "__main__":
     compressed = _compress_path(points, path)
     print(compressed)
 
-    def plot_points(points: Any, path: Any = None, title: Any = "") -> None:
+    def plot_points(points: np.ndarray, path: list[int] | None = None, title: str = "") -> None:
         """Visualize a set of points and optionally connect them."""
         plt.figure(figsize=(8, 6))
         plt.scatter(points[:, 0], points[:, 1], color="blue")

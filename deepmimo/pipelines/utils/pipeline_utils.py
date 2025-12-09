@@ -40,7 +40,7 @@ def run_command(command: list[str], description: str) -> None:
     """Run a shell command and stream output in real-time.
 
     Args:
-        command (List[str]): Command to run
+        command (list[str]): Command to run
         description (str): Description of the command for logging
 
     """
@@ -72,7 +72,7 @@ def get_origin_coords(osm_folder: str) -> tuple[float, float]:
         osm_folder (str): Path to the OSM folder
 
     Returns:
-        Tuple[float, float]: Origin coordinates (latitude, longitude)
+        tuple[float, float]: Origin coordinates (latitude, longitude)
 
     """
     origin_file = str(Path(osm_folder) / "osm_gps_origin.txt")
@@ -176,7 +176,7 @@ def validate_and_adjust_point(  # noqa: C901
         default_height (float): Default height for BS placement in meters
 
     Returns:
-        Tuple[float, float, float, bool]: Tuple containing:
+        tuple[float, float, float, bool]: Tuple containing:
             - latitude of valid location (or last attempt)
             - longitude of valid location (or last attempt)
             - height of BS placement
@@ -255,7 +255,7 @@ def generate_uniform_positions(
         delta_lon (float): Longitude span of bounding box
 
     Returns:
-        List[Tuple[float, float]]: List of (lat, lon) positions
+        list[tuple[float, float]]: List of (lat, lon) positions
 
     """
     # Calculate box boundaries (80% of full box size to keep BS away from edges)
@@ -341,7 +341,7 @@ def generate_bs_positions(  # noqa: PLR0913
         delta_lon (float): Longitude span of bounding box
 
     Returns:
-        Tuple[List[float], List[float], List[float]]: Lists of BS latitudes, longitudes, and heights
+        tuple[list[float], list[float], list[float]]: Lists of BS latitudes, longitudes, and heights
 
     """
     bs_lats, bs_lons, bs_heights = [], [], []
@@ -398,7 +398,7 @@ def plot_scenario(bbox_info: dict[str, str]) -> None:
     """Plot the bounding box and BS positions for a CSV scenario.
 
     Args:
-        bbox_info (Dict[str, str]): Dictionary containing bounding box information
+        bbox_info (dict[str, str]): Dictionary containing bounding box information
 
     """
     # Extract coordinates

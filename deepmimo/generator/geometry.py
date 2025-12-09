@@ -113,7 +113,7 @@ def _ant_indices(panel_size: tuple[int, int]) -> NDArray:
     in 3D space for a rectangular antenna panel.
 
     Args:
-        panel_size (Tuple[int, int]): Panel dimensions as tuple (Mx, My)
+        panel_size (tuple[int, int]): Panel dimensions as tuple (Mx, My)
 
     Returns:
         NDArray: Array of antenna indices with shape (N,3) where N is total number of elements
@@ -132,7 +132,7 @@ def _apply_fov(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> 
     in both elevation and azimuth directions.
 
     Args:
-        fov (Tuple[float, float]): Field of view limits [horizontal, vertical] in degrees
+        fov (tuple[float, float]): Field of view limits [horizontal, vertical] in degrees
         theta (numpy.ndarray): Elevation angles in radians
         phi (numpy.ndarray): Azimuth angles in radians
 
@@ -171,7 +171,7 @@ def _apply_fov_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarra
     Uses the same FoV for all users.
 
     Args:
-        fov (Tuple[float, float]): Field of view limits [horizontal_fov, vertical_fov] in degrees.
+        fov (tuple[float, float]): Field of view limits [horizontal_fov, vertical_fov] in degrees.
             Single FoV applied to all users.
         theta (numpy.ndarray): Elevation angles [batch_size, n_paths] in radians
         phi (numpy.ndarray): Azimuth angles [batch_size, n_paths] in radians

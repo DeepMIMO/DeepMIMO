@@ -49,7 +49,7 @@ def create_directory_structure(osm_folder: str, rt_params: dict[str, Any]) -> tu
         rt_params: Ray tracing parameters.
 
     Returns:
-        Tuple[str, str]: Paths to the insite directory and study area directory.
+        tuple[str, str]: Paths to the insite directory and study area directory.
 
     """
     # Format folder name with key parameters

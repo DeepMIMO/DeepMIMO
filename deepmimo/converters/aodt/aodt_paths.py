@@ -126,7 +126,7 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
     Args:
         rt_folder (str): Path to folder containing parquet files.
         output_folder (str): Path to folder where processed paths will be saved.
-        txrx_dict (Dict[str, Any]): Dictionary containing TX/RX configurations.
+        txrx_dict (dict[str, Any]): Dictionary containing TX/RX configurations.
 
     Raises:
         FileNotFoundError: If required files are not found.

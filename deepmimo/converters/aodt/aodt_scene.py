@@ -73,7 +73,7 @@ class AODTScene:
             output_folder (str): Path to folder where additional data may be saved.
 
         Returns:
-            Dict[str, Any]: Dictionary containing scene data including:
+            dict[str, Any]: Dictionary containing scene data including:
                 - primitives: List of primitive paths
                 - materials: List of material names
                 - rf_properties: List of RF property dictionaries

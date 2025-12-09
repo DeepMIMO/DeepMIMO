@@ -83,14 +83,14 @@ class SetupEditor:
 
     Attributes:
         scenario_path (str): Path to the scenario directory
-        feature_template (List[str]): Template for feature section
-        txrx_template (List[str]): Template for transmitter/receiver section
+        feature_template (list[str]): Template for feature section
+        txrx_template (list[str]): Template for transmitter/receiver section
         num_feature (int): Number of features
-        feature_sec (List[str]): Feature section of the setup file
-        txrx_sec (List[str]): Transmitter/receiver section of the setup file
-        setup_file (List[str]): Contents of the setup file
+        feature_sec (list[str]): Feature section of the setup file
+        txrx_sec (list[str]): Transmitter/receiver section of the setup file
+        setup_file (list[str]): Contents of the setup file
         name (str): Name of the setup
-        features (List[Feature]): List of features in the setup
+        features (list[Feature]): List of features in the setup
 
     """
 

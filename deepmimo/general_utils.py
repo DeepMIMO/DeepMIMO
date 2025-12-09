@@ -190,7 +190,7 @@ def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_F
         raise ValueError(msg)
 
 
-def load_mat(mat_path: str, key: str | None = None) -> Any:
+def load_mat(mat_path: str, key: str | None = None) -> np.ndarray | None:
     """Load a .mat file with supported extensions (mat, npz, npy).
 
     This function tries to load a .mat file with supported extensions (mat, npz, npy).
@@ -217,6 +217,9 @@ def load_mat(mat_path: str, key: str | None = None) -> Any:
     return None
 
 
+def _numpy_handler(x: Any) -> list[Any] | str:
+    return x.tolist() if isinstance(x, np.ndarray) else str(x)
+
 def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
     """Save dictionary as JSON, handling NumPy arrays and other non-JSON types.
 
@@ -228,11 +231,8 @@ def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
     if not output_path.endswith(".json"):
         output_path += ".json"
 
-    def numpy_handler(x: Any) -> list[Any] | str:
-        return x.tolist() if isinstance(x, np.ndarray) else str(x)
-
     with Path(output_path).open("w") as f:
-        json.dump(data_dict, f, indent=2, default=numpy_handler)
+        json.dump(data_dict, f, indent=2, default=_numpy_handler)
 
 
 def load_dict_from_json(file_path: str) -> dict[str, Any]:
@@ -614,7 +614,7 @@ class DelegatingList(list):
     and the results will be returned as a list.
     """
 
-    def __getattr__(self, name: Any) -> Any:
+    def __getattr__(self, name: str) -> Any:
         """Delegate attribute access to each item in the list.
 
         If the attribute is a method, it will be called on each item and results returned as a list.
@@ -635,7 +635,7 @@ class DelegatingList(list):
         results = [getattr(item, name) for item in self]
         return DelegatingList(results)
 
-    def __setattr__(self, name: Any, value: Any) -> None:
+    def __setattr__(self, name: str, value: Any) -> None:
         """Delegate attribute assignment to each item in the list.
 
         If value is a list/iterable, each item in the list gets the corresponding value.

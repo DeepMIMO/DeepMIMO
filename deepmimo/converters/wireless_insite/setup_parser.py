@@ -183,7 +183,7 @@ def parse_document(tokens: Any) -> dict[str, Node]:
         tokens: Iterator of tokens from tokenize_file()
 
     Returns:
-        Dict[str, Node]: Dictionary mapping node names to Node objects
+        dict[str, Node]: Dictionary mapping node names to Node objects
 
     Raises:
         RuntimeError: If document structure is invalid or contains duplicate nodes
@@ -215,7 +215,7 @@ def parse_node(tokens: Any) -> tuple[str, Node]:
         tokens: Iterator of tokens from tokenize_file()
 
     Returns:
-        Tuple[str, Node]: Node name and parsed Node object
+        tuple[str, Node]: Node name and parsed Node object
 
     Notes:
         A node section starts with begin_<name> and ends with end_<name>.
@@ -304,7 +304,7 @@ def parse_file(file_path: str) -> dict[str, Node]:
         file_path (str): Path to the setup file to parse
 
     Returns:
-        Dict[str, Node]: Dictionary mapping node names to Node objects
+        dict[str, Node]: Dictionary mapping node names to Node objects
 
     Raises:
         FileNotFoundError: If file_path does not exist

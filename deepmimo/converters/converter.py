@@ -58,7 +58,7 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> str 
         path_to_rt_folder (str): Path to the folder containing raytracing data.
                                  If the folder contains multiple scenes, the function will
                                  sort them with sorted() and convert each folder to a time snapshot.
-        **conversion_params (Dict[str, Any]): Additional parameters for the conversion process
+        **conversion_params (dict[str, Any]): Additional parameters for the conversion process
 
     Returns:
         Optional[Any]: Scenario object if conversion is successful, None otherwise

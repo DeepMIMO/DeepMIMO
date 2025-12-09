@@ -108,7 +108,7 @@ class SionnaAdapter:
         from DeepMIMO format to Sionna format.
 
         Returns:
-            Tuple[NDArray, NDArray]: Tuple containing:
+            tuple[NDArray, NDArray]: Tuple containing:
                 - Channel coefficients array of shape ch_shape.
                 - Path delays array of shape t_shape.
 

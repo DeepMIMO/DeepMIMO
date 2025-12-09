@@ -56,7 +56,7 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
         file (str): Path to the .p2m file to parse
 
     Returns:
-        Dict[str, np.ndarray]: Dictionary containing path information with keys:
+        dict[str, np.ndarray]: Dictionary containing path information with keys:
             - aoa_az/el: Angles of arrival (azimuth/elevation) (degrees)
             - aod_az/el: Angles of departure (azimuth/elevation) (degrees)
             - toa: Time of arrival (s)

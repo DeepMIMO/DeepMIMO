@@ -26,7 +26,7 @@ def convert_ply2city(
                                              If None, derived from ply_path. Defaults to None.
 
     Returns:
-        Tuple[int, int]: Number of vertices and faces in the city file
+        tuple[int, int]: Number of vertices and faces in the city file
 
     """
     if not object_name:
@@ -65,7 +65,7 @@ def write_material_sec(f: TextIO, material_sec: list[str]) -> None:
 
     Args:
         f: File object to write to
-        material_sec (List[str]): Material section lines
+        material_sec (list[str]): Material section lines
 
     """
     # Replace 'none' by 'directive_with_backscatter' in 'diffuse_scattering_model'

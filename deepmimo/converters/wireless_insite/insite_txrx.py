@@ -37,7 +37,7 @@ class InSiteTxRxSet:
     convert to DeepMIMO format.
 
     Attributes:
-        data (Dict[str, Any]): Raw dictionary containing the TX/RX set configuration
+        data (dict[str, Any]): Raw dictionary containing the TX/RX set configuration
         set_type (str): Type of set, either 'grid' or 'point'
 
     """
@@ -173,7 +173,7 @@ class InSiteTxRxSet:
         """Create an InSiteTxRxSet instance from a dictionary.
 
         Args:
-            data (Dict[str, Any]): Dictionary containing TX/RX set configuration
+            data (dict[str, Any]): Dictionary containing TX/RX set configuration
             set_type (str, optional): Type of set. Defaults to 'point'.
 
         Returns:
@@ -257,7 +257,7 @@ def convert_sets_to_deepmimo(
     by splitting them into separate TX and RX sets when necessary.
 
     Args:
-        insite_sets (List[InSiteTxRxSet]): List of InSite TX/RX sets to convert
+        insite_sets (list[InSiteTxRxSet]): List of InSite TX/RX sets to convert
 
     Returns:
         Tuple containing:
@@ -306,7 +306,7 @@ def get_txrx_insite_sets_from_xml(xml_file: str) -> list[InSiteTxRxSet]:
         xml_file (str): Path to InSite XML file
 
     Returns:
-        List[InSiteTxRxSet]: List of parsed InSite TX/RX sets
+        list[InSiteTxRxSet]: List of parsed InSite TX/RX sets
 
     """
     data = parse_insite_xml(xml_file)
@@ -337,10 +337,10 @@ def plot_txrx_sets(
     """Create a 2D visualization of TxRx sets and their positions.
 
     Args:
-        txrx_sets (List[TxRxSet]): List of DeepMIMO TX/RX sets
-        point_locations (Dict[int, np.ndarray]): Mapping of set IDs to point coordinates
+        txrx_sets (list[TxRxSet]): List of DeepMIMO TX/RX sets
+        point_locations (dict[int, np.ndarray]): Mapping of set IDs to point coordinates
         max_points (int, optional): Maximum number of points to plot per set. Defaults to 5000.
-        figsize (Tuple[float, float], optional): Figure size as (width, height). Defaults to (8, 8).
+        figsize (tuple[float, float], optional): Figure size as (width, height). Defaults to (8, 8).
 
     """
     plt.figure(figsize=figsize)
@@ -375,7 +375,7 @@ def read_txrx(folder: str, *, plot: bool = False) -> dict[str, Any]:
         plot (bool, optional): Whether to plot the TX/RX sets. Defaults to False.
 
     Returns:
-        Dict[str, Any]: Dictionary containing TX/RX set information and indices
+        dict[str, Any]: Dictionary containing TX/RX set information and indices
 
     """
     sim_folder = Path(folder)

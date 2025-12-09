@@ -62,10 +62,10 @@ def ext_in_list(extension: str, file_list: list[str]) -> list[str]:
 
     Args:
         extension (str): File extension to filter by (e.g. '.txt')
-        file_list (List[str]): List of filenames to filter
+        file_list (list[str]): List of filenames to filter
 
     Returns:
-        List[str]: Filtered list containing only filenames ending with extension
+        list[str]: Filtered list containing only filenames ending with extension
 
     """
     return [el for el in file_list if el.endswith(extension)]
@@ -76,7 +76,7 @@ def save_rt_source_files(sim_folder: str, source_exts: list[str]) -> None:
 
     Args:
         sim_folder (str): Path to simulation folder.
-        source_exts (List[str]): List of file extensions to copy.
+        source_exts (list[str]): List of file extensions to copy.
         verbose (bool): Whether to print progress messages. Defaults to True.
 
     """
@@ -145,11 +145,11 @@ def compress_path_data(data: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     3. Trimming arrays to remove unused entries
 
     Args:
-        data (Dict[str, np.ndarray]): Dictionary containing path information arrays
+        data (dict[str, np.ndarray]): Dictionary containing path information arrays
         num_paths_key (str): Key in data dict containing number of paths. Defaults to 'n_paths'
 
     Returns:
-        Dict[str, np.ndarray]: Compressed data dictionary with unused entries removed
+        dict[str, np.ndarray]: Compressed data dictionary with unused entries removed
 
     """
     # Compute max paths
@@ -204,7 +204,7 @@ def get_max_paths(arr: dict[str, np.ndarray], angle_key: str = c.AOA_AZ_PARAM_NA
     the first path index where all entries (across all receivers) are NaN.
 
     Args:
-        arr (Dict[str, np.ndarray]): Dictionary containing path information arrays
+        arr (dict[str, np.ndarray]): Dictionary containing path information arrays
         angle_key (str): Key to use for checking valid paths. Defaults to AOA_AZ
 
     Returns:

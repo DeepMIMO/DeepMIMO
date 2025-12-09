@@ -99,7 +99,7 @@ def xy_from_latlong(
         long (float | np.ndarray): Longitude in degrees
 
     Returns:
-        Tuple[float | np.ndarray, float | np.ndarray]: Tuple containing:
+        tuple[float | np.ndarray, float | np.ndarray]: Tuple containing:
             - x (easting): Distance in meters east from zone origin
             - y (northing): Distance in meters north from equator
 
@@ -137,7 +137,7 @@ def convert_GpsBBox2CartesianBBox(  # noqa: PLR0913, N802
         pad (float, optional): Padding to add to the bounding box in meters
 
     Returns:
-        Tuple[float, float, float, float]: Tuple containing:
+        tuple[float, float, float, float]: Tuple containing:
             - xmin: Minimum x coordinate in meters from origin
             - ymin: Minimum y coordinate in meters from origin
             - xmax: Maximum x coordinate in meters from origin
@@ -179,7 +179,7 @@ def convert_Gps2RelativeCartesian(  # noqa: N802
         origin_lon (float): Origin longitude in degrees
 
     Returns:
-        Tuple[float | np.ndarray, float | np.ndarray]: Tuple containing:
+        tuple[float | np.ndarray, float | np.ndarray]: Tuple containing:
             - x: Distance in meters east from origin
             - y: Distance in meters north from origin
 

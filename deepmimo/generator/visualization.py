@@ -119,14 +119,14 @@ def plot_coverage(  # noqa: PLR0913, C901
         rxs (np.ndarray): User position array with shape (n_users, 3)
         cov_map (tuple[float, ...] | list[float] | np.ndarray): Coverage map values for coloring
         dpi (int): Plot resolution in dots per inch. Defaults to 300.
-        figsize (Tuple[int, int]): Figure dimensions (width, height) in inches. Defaults to (6,4).
+        figsize (tuple[int, int]): Figure dimensions (width, height) in inches. Defaults to (6,4).
         cbar_title (str): Title for the colorbar. Defaults to ''.
         title (bool | str): Plot title. Defaults to False.
         scat_sz (float): Size of scatter markers. Defaults to 0.5.
         bs_pos (Optional[np.ndarray]): Base station position coordinates. Defaults to None.
         bs_ori (Optional[np.ndarray]): Base station orientation angles. Defaults to None.
         legend (bool): Whether to show plot legend. Defaults to False.
-        lims (Optional[Tuple[float, float]]): Color scale limits (min, max). Defaults to None.
+        lims (Optional[tuple[float, float]]): Color scale limits (min, max). Defaults to None.
         proj_3d (bool): Whether to create 3D projection. Defaults to False.
         equal_aspect (bool): Whether to maintain equal axis scaling. Defaults to False.
         tight (bool): Whether to set tight axis limits around data points. Defaults to True.
@@ -215,7 +215,7 @@ def transform_coordinates(
         lat_max (float): Maximum latitude value for output range
 
     Returns:
-        Tuple[List[float], List[float]]: Lists of transformed latitudes and longitudes
+        tuple[list[float], list[float]]: Lists of transformed latitudes and longitudes
 
     """
     lats = []
@@ -246,7 +246,7 @@ def export_xyz_csv(  # noqa: PLR0913
     both Cartesian and geographical coordinate formats.
 
     Args:
-        data (Dict[str, Any]): DeepMIMO dataset for one basestation
+        data (dict[str, Any]): DeepMIMO dataset for one basestation
         z_var (np.ndarray): Values to use for z-coordinate or coloring
         outfile (str): Output CSV file path. Defaults to ''.
         google_earth (bool): Whether to convert coordinates to geographical format.
@@ -330,7 +330,7 @@ def plot_rays(  # noqa: PLR0912, PLR0913, PLR0915, C901
         powers (Optional[np.ndarray], optional): Power values for each path.
             Required if color_rays_by_pwr is True.
         show_cbar (bool, optional): Whether to show the colorbar. Defaults to False.
-        limits (Optional[Tuple[float, float]], optional): Power limits for coloring
+        limits (Optional[tuple[float, float]], optional): Power limits for coloring
             (min, max). If None, uses relative scaling.
         ax (Optional[Axes], optional): Matplotlib Axes object. Defaults to None.
             When provided, the figure and axes are not created.
