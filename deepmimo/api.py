@@ -45,7 +45,7 @@ import json
 import shutil
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import requests
 from tqdm import tqdm
@@ -79,6 +79,15 @@ HTTP_OK = 200
 SUB6_UPPER_GHZ = 6
 MMW_UPPER_GHZ = 100
 MAX_IMAGES_PER_UPLOAD = 5
+
+
+class SubmissionConfig(TypedDict):
+    """Configuration for scenario submission."""
+
+    params_dict: dict
+    details: list[str] | None
+    extra_metadata: dict | None
+    include_images: bool
 
 
 class _ProgressFileReader:
@@ -153,11 +162,11 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
             return None
 
         # Calculate file hash
-        sha256 = hashlib.sha256()
+        sha1 = hashlib.sha1()  # noqa: S324  (SHA1 is required)
         with file_path.open("rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
-                sha256.update(chunk)
-        file_hash = sha256.hexdigest()
+                sha1.update(chunk)
+        file_hash = sha1.hexdigest()
 
         # Upload file to DB
         print(f"Uploading {authorized_filename} to DB...")
@@ -172,7 +181,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
                 headers={
                     "Content-Type": auth_data.get("contentType", "application/zip"),
                     "Content-Length": str(file_size),
-                    "X-Bz-Content-sha256": file_hash,
+                    "X-Bz-Content-sha1": file_hash,
                 },
                 data=progress_reader,
                 timeout=REQUEST_TIMEOUT,
@@ -558,16 +567,52 @@ def _upload_to_db(scen_folder: str, key: str, *, skip_zip: bool = False) -> str:
     return upload_result.split(".")[0].split("/")[-1].split("\\")[-1]
 
 
-def _make_submission_on_server(  # noqa: PLR0913, PLR0915, C901
+def _handle_submission_images(
     submission_scenario_name: str,
     key: str,
-    params_dict: dict,
-    details: list[str],
-    extra_metadata: dict,
-    *,
-    include_images: bool = True,
+) -> None:
+    """Generate and upload images for a submission."""
+    print("Generating scenario visualizations...")
+    img_paths = []
+    try:
+        img_paths = plot_summary(submission_scenario_name, save_imgs=True)
+        if img_paths:
+            uploaded_images_meta = upload_images(submission_scenario_name, img_paths, key)
+            print(
+                f"Image upload process completed. {len(uploaded_images_meta)} images attached.",
+            )
+    except Exception as e:  # noqa: BLE001
+        print("Warning: Failed during image generation or upload phase")
+        print(f"Error: {e!s}")
+    finally:
+        # Clean up locally generated temporary image files
+        if img_paths:
+            print("Cleaning up local image files...")
+            cleaned_count = 0
+            for img_path in img_paths:
+                if Path(img_path).exists():
+                    Path(img_path).unlink()
+                    cleaned_count += 1
+            print(f"Cleaned up {cleaned_count} local image files.")
+
+            # Clean up the figure's directory if it's empty
+            temp_dir = Path(img_paths[0]).parent
+            if temp_dir.exists() and not list(temp_dir.iterdir()):
+                temp_dir.rmdir()
+                print(f"Removed empty directory: {temp_dir}")
+
+
+def _make_submission_on_server(
+    submission_scenario_name: str,
+    key: str,
+    config: SubmissionConfig,
 ) -> str:
     """Make a submission on the server."""
+    params_dict = config["params_dict"]
+    details = config["details"]
+    extra_metadata = config["extra_metadata"]
+    include_images = config["include_images"]
+
     try:
         # Process parameters and generate submission data
         processed_params = _process_params_data(params_dict, extra_metadata)
@@ -620,55 +665,18 @@ def _make_submission_on_server(  # noqa: PLR0913, PLR0915, C901
 
     # Generate and upload images if requested
     if include_images:
-        print("Generating scenario visualizations...")
-        try:
-            img_paths = plot_summary(submission_scenario_name, save_imgs=True)
-            if img_paths:
-                uploaded_images_meta = upload_images(submission_scenario_name, img_paths, key)
-                print(
-                    f"Image upload process completed. {len(uploaded_images_meta)} images attached.",
-                )
-        except Exception as e:  # noqa: BLE001
-            print("Warning: Failed during image generation or upload phase")
-            print(f"Error: {e!s}")
-        finally:
-            # Clean up locally generated temporary image files
-            if img_paths:
-                print("Cleaning up local image files...")
-                cleaned_count = 0
-                for img_path in img_paths:
-                    if Path(img_path).exists():
-                        Path(img_path).unlink()
-                        cleaned_count += 1
-                print(f"Cleaned up {cleaned_count} local image files.")
-
-                # Clean up the figure's directory if it's empty
-                temp_dir = Path(img_paths[0]).parent
-                if temp_dir.exists() and not list(temp_dir.iterdir()):
-                    temp_dir.rmdir()
-                    print(f"Removed empty directory: {temp_dir}")
+        _handle_submission_images(submission_scenario_name, key)
 
     return submission_scenario_name
 
 
-def make_submission_on_server(  # noqa: PLR0913
+def make_submission_on_server(
     submission_scenario_name: str,
     key: str,
-    params_dict: dict,
-    details: list[str],
-    extra_metadata: dict,
-    *,
-    include_images: bool = True,
+    config: SubmissionConfig,
 ) -> str:
     """Public wrapper for `_make_submission_on_server`."""
-    return _make_submission_on_server(
-        submission_scenario_name,
-        key,
-        params_dict,
-        details,
-        extra_metadata,
-        include_images=include_images,
-    )
+    return _make_submission_on_server(submission_scenario_name, key, config)
 
 
 def upload(  # noqa: PLR0913
@@ -734,13 +742,17 @@ def upload(  # noqa: PLR0913
     else:
         submission_scenario_name = scenario_name
 
+    config: SubmissionConfig = {
+        "params_dict": params_dict,
+        "details": details or [],
+        "extra_metadata": extra_metadata or {},
+        "include_images": include_images,
+    }
+
     make_submission_on_server(
         submission_scenario_name,
         key,
-        params_dict,
-        details,
-        extra_metadata,
-        include_images,
+        config,
     )
 
     # Return the scenario name used for submission
@@ -806,11 +818,11 @@ def upload_rt_source(  # noqa: C901, PLR0911, PLR0915
         print(f"✓ Authorization granted. Uploading to RT database as '{authorized_filename}'...")
 
         # 2. Calculate file hash (using the local rt_zip_path file)
-        sha256 = hashlib.sha256()
+        sha1 = hashlib.sha1()  # noqa: S324  (SHA1 is required)
         with rt_zip_path_obj.open("rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
-                sha256.update(chunk)
-        file_hash = sha256.hexdigest()
+                sha1.update(chunk)
+        file_hash = sha1.hexdigest()
 
         # 3. Upload file to the RT database using the presigned URL
         pbar = tqdm(total=file_size, unit="B", unit_scale=True, desc="Uploading RT Source")
@@ -823,7 +835,7 @@ def upload_rt_source(  # noqa: C901, PLR0911, PLR0915
                 headers={
                     "Content-Type": auth_data.get("contentType", "application/zip"),
                     "Content-Length": str(file_size),
-                    "X-Bz-Content-sha256": file_hash,  # Required by the database
+                    "X-Bz-Content-sha1": file_hash,  # Required by the database
                 },
                 data=progress_reader,
                 timeout=REQUEST_TIMEOUT,

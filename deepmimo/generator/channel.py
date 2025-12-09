@@ -5,11 +5,12 @@ This module provides functionality for MIMO channel generation, including:
 - OFDM path generation and verification
 - Channel matrix computation
 
-The main function is generate_MIMO_channel() which generates MIMO channel matrices
+The main function is generate_mimo_channel() which generates MIMO channel matrices
 based on path information from ray-tracing and antenna configurations.
 """
 
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import numpy as np
@@ -20,6 +21,25 @@ from deepmimo.general_utils import DotDict, compare_two_dicts, deep_dict_merge
 
 ROT_DIM = 3
 RANGE_DIM = 2
+
+
+@dataclass
+class PathData:
+    """Container for path parameters for a single user."""
+
+    power: np.ndarray
+    delays: np.ndarray
+    phases: np.ndarray
+    dopplers: np.ndarray
+
+
+@dataclass
+class ChannelGenerationConfig:
+    """Configuration for channel generation."""
+
+    freq_domain: bool = True
+    squeeze_time: bool = True
+    times: float | np.ndarray = 0.0
 
 
 def _convert_lists_to_arrays(obj: Any) -> Any:
@@ -394,22 +414,98 @@ class OFDMPathGenerator:
         return h_pkn.astype(np.complex64, copy=False)
 
 
-def _generate_MIMO_channel(  # noqa: N802, PLR0913, PLR0915
+def _check_ofdm_compatibility(ofdm_params: dict, delays: np.ndarray) -> None:
+    """Check if path delays are compatible with OFDM symbol duration."""
+    ts = 1.0 / ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
+    ofdm_symbol_duration = ofdm_params[c.PARAMSET_OFDM_SC_NUM] * ts
+    subcarrier_spacing = (
+        ofdm_params[c.PARAMSET_OFDM_BANDWIDTH] / ofdm_params[c.PARAMSET_OFDM_SC_NUM]
+    )  # Hz
+    max_delay = np.nanmax(delays)
+
+    if max_delay <= ofdm_symbol_duration:
+        return
+
+    print("\nWarning: Some path delays exceed OFDM symbol duration")
+    print("-" * 50)
+    print("OFDM Configuration:")
+    print(f"- Number of subcarriers (N): {ofdm_params[c.PARAMSET_OFDM_SC_NUM]}")
+    print(f"- Bandwidth (B): {ofdm_params[c.PARAMSET_OFDM_BANDWIDTH] / 1e6:.1f} MHz")
+    print(f"- Subcarrier spacing (Δf = B/N): {subcarrier_spacing / 1e3:.1f} kHz")
+    print(f"- Symbol duration (T = 1/Δf = N/B): {ofdm_symbol_duration * 1e6:.1f} μs")
+    print("\nPath Information:")
+    print(f"- Maximum path delay: {max_delay * 1e6:.1f} μs")
+    print(f"- Excess delay: {(max_delay - ofdm_symbol_duration) * 1e6:.1f} μs")
+    print("\nPaths arriving after the symbol duration will be clipped.")
+    print("To avoid clipping, either:")
+    print("1. Increase the number of subcarriers (N)")
+    print("2. Decrease the bandwidth (B)")
+    print(
+        "3. Switch to time-domain channel generation "
+        f"(set ch_params['{c.PARAMSET_FD_CH}'] = 0)",
+    )
+    print("-" * 50)
+
+
+def _compute_single_user_freq(
+    array_product: np.ndarray,
+    path_data: PathData,
+    path_gen: OFDMPathGenerator,
+    ts: float,
+    times: np.ndarray,
+) -> np.ndarray:
+    """Compute frequency domain channel for a single user."""
+    # path_gains: [P, K, N_t]
+    path_gains = path_gen.generate(
+        pwr=path_data.power,
+        toa=path_data.delays,
+        phs=path_data.phases,
+        ts=ts,
+        dopplers=path_data.dopplers,
+        times=times,
+    )
+    # Combine with array responses: [M_rx, M_tx, P] x [P, K, N_t] -> [M_rx, M_tx, K, N_t]
+    return np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
+        np.complex64,
+        copy=False,
+    )
+
+
+def _compute_single_user_time(
+    array_product: np.ndarray,
+    path_data: PathData,
+    times: np.ndarray,
+) -> np.ndarray:
+    """Compute time domain channel for a single user."""
+    # Time-domain per-path gains:
+    # a_pt = sqrt(P) * exp(j(phi + 2π fD t))  -> [P, N_t]
+    phase0 = np.deg2rad(path_data.phases)[:, None]  # [P,1]
+    a_pt = np.sqrt(path_data.power)[:, None] * np.exp(
+        1j * (phase0 + 2 * np.pi * path_data.dopplers[:, None] * times[None, :]),
+    )  # [P,N_t]
+    # Combine: [M_rx,M_tx,P] x [P,N_t] -> [M_rx,M_tx,P,N_t]
+    return np.einsum("rtp,pn->r t p n", array_product, a_pt, optimize=True).astype(
+        np.complex64,
+        copy=False,
+    )
+
+
+def _generate_mimo_channel(
     array_response_product: np.ndarray,
-    powers: np.ndarray,
-    delays: np.ndarray,
-    phases: np.ndarray,
-    dopplers: np.ndarray,
+    paths: dict[str, np.ndarray],
     ofdm_params: dict,
-    times: float | np.ndarray = 0.0,
-    *,
-    freq_domain: bool = True,
-    squeeze_time: bool = True,
+    config: ChannelGenerationConfig,
 ) -> np.ndarray:
     """Generate MIMO channel matrices in frequency or time domain."""
+    # Extract path parameters
+    powers = paths["power"]
+    delays = paths["delay"]
+    phases = paths["phase"]
+    dopplers = paths["doppler"]
+
     # Time handling
-    times = np.atleast_1d(times).astype(float)  # [N_t]
-    n_times = times.shape[0]
+    times_arr = np.atleast_1d(config.times).astype(float)  # [N_t]
+    n_times = times_arr.shape[0]
 
     ts = 1.0 / ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
     subcarriers = ofdm_params[c.PARAMSET_OFDM_SC_SAMP]
@@ -417,41 +513,17 @@ def _generate_MIMO_channel(  # noqa: N802, PLR0913, PLR0915
     path_gen = OFDMPathGenerator(ofdm_params, subcarriers)
 
     # Delay sanity for OFDM mode
-    if freq_domain:
-        ofdm_symbol_duration = ofdm_params[c.PARAMSET_OFDM_SC_NUM] * ts
-        subcarrier_spacing = (
-            ofdm_params[c.PARAMSET_OFDM_BANDWIDTH] / ofdm_params[c.PARAMSET_OFDM_SC_NUM]
-        )  # Hz
-        max_delay = np.nanmax(delays)
-        if max_delay > ofdm_symbol_duration:
-            print("\nWarning: Some path delays exceed OFDM symbol duration")
-            print("-" * 50)
-            print("OFDM Configuration:")
-            print(f"- Number of subcarriers (N): {ofdm_params[c.PARAMSET_OFDM_SC_NUM]}")
-            print(f"- Bandwidth (B): {ofdm_params[c.PARAMSET_OFDM_BANDWIDTH] / 1e6:.1f} MHz")
-            print(f"- Subcarrier spacing (Δf = B/N): {subcarrier_spacing / 1e3:.1f} kHz")
-            print(f"- Symbol duration (T = 1/Δf = N/B): {ofdm_symbol_duration * 1e6:.1f} μs")
-            print("\nPath Information:")
-            print(f"- Maximum path delay: {max_delay * 1e6:.1f} μs")
-            print(f"- Excess delay: {(max_delay - ofdm_symbol_duration) * 1e6:.1f} μs")
-            print("\nPaths arriving after the symbol duration will be clipped.")
-            print("To avoid clipping, either:")
-            print("1. Increase the number of subcarriers (N)")
-            print("2. Decrease the bandwidth (B)")
-            print(
-                "3. Switch to time-domain channel generation "
-                f"(set ch_params['{c.PARAMSET_FD_CH}'] = 0)",
-            )
-            print("-" * 50)
+    if config.freq_domain:
+        _check_ofdm_compatibility(ofdm_params, delays)
 
     n_ues = powers.shape[0]
     p_max = powers.shape[1]
     m_rx, m_tx = array_response_product.shape[1:3]
 
-    last_ch_dim = k_subcarriers if freq_domain else p_max
+    last_ch_dim = k_subcarriers if config.freq_domain else p_max
 
     # Allocate output
-    if n_times == 1 and squeeze_time:
+    if n_times == 1 and config.squeeze_time:
         channel = np.zeros((n_ues, m_rx, m_tx, last_ch_dim), dtype=np.csingle)
     else:
         channel = np.zeros((n_ues, m_rx, m_tx, last_ch_dim, n_times), dtype=np.csingle)
@@ -468,38 +540,25 @@ def _generate_MIMO_channel(  # noqa: N802, PLR0913, PLR0915
 
         # Slice per-user arrays
         array_product = array_response_product[i][..., non_nan_mask]  # [M_rx, M_tx, P]
-        power_u = powers[i, non_nan_mask]
-        delays_u = delays[i, non_nan_mask]
-        phases_u = phases[i, non_nan_mask]
-        fd_u = dopplers[i, non_nan_mask]
+        path_data = PathData(
+            power=powers[i, non_nan_mask],
+            delays=delays[i, non_nan_mask],
+            phases=phases[i, non_nan_mask],
+            dopplers=dopplers[i, non_nan_mask],
+        )
 
-        if freq_domain:
-            # path_gains: [P, K, N_t]
-            path_gains = path_gen.generate(
-                pwr=power_u,
-                toa=delays_u,
-                phs=phases_u,
-                ts=ts,
-                dopplers=fd_u,
-                times=times,
-            )  # complex64
-            # Combine with array responses: [M_rx, M_tx, P] x [P, K, N_t] -> [M_rx, M_tx, K, N_t]
-            hi_fk_t = np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
-                np.complex64,
-                copy=False,
+        if config.freq_domain:
+            hi_fk_t = _compute_single_user_freq(
+                array_product,
+                path_data,
+                path_gen,
+                ts,
+                times_arr,
             )
             channel[i] = hi_fk_t[..., 0] if n_times == 1 else hi_fk_t
         else:
-            # Time-domain per-path gains:
-            # a_pt = sqrt(P) * exp(j(phi + 2π fD t))  -> [P, N_t]
-            phase0 = np.deg2rad(phases_u)[:, None]  # [P,1]
-            a_pt = np.sqrt(power_u)[:, None] * np.exp(
-                1j * (phase0 + 2 * np.pi * fd_u[:, None] * times[None, :]),
-            )  # [P,N_t]
-            # Combine: [M_rx,M_tx,P] x [P,N_t] -> [M_rx,M_tx,P,N_t]
-            hi_pt = np.einsum("rtp,pn->r t p n", array_product, a_pt, optimize=True).astype(
-                np.complex64,
-                copy=False,
+            hi_pt = _compute_single_user_time(
+                array_product, path_data, times_arr
             )
             # Pad zeros for invalid paths to preserve last_ch_dim
             shape = (m_rx, m_tx, p_max) if n_times == 1 else (m_rx, m_tx, p_max, n_times)

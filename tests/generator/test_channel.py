@@ -5,9 +5,10 @@ import pytest
 
 from deepmimo import consts as c
 from deepmimo.generator.channel import (
+    ChannelGenerationConfig,
     ChannelParameters,
     _convert_lists_to_arrays,
-    _generate_MIMO_channel,
+    _generate_mimo_channel,
 )
 
 
@@ -63,9 +64,14 @@ def test_generate_mimo_channel_time_domain() -> None:
     ofdm_params = ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM]
 
     # Generate channel (Time Domain)
-    channel = _generate_MIMO_channel(
-        array_response, powers, delays, phases, dopplers, ofdm_params, times=0.0, freq_domain=False
-    )
+    paths = {
+        "power": powers,
+        "delay": delays,
+        "phase": phases,
+        "doppler": dopplers,
+    }
+    config = ChannelGenerationConfig(freq_domain=False, times=0.0)
+    channel = _generate_mimo_channel(array_response, paths, ofdm_params, config)
 
     # Expected shape: [n_users, M_rx, M_tx, P_max] (squeezed time)
     assert channel.shape == (n_users, n_rx_ant, n_tx_ant, n_paths)
@@ -92,15 +98,20 @@ def test_generate_mimo_channel_freq_domain() -> None:
     # Set known subcarriers
     ofdm_params[c.PARAMSET_OFDM_SC_SAMP] = np.array([0, 1])  # 2 subcarriers
 
-    channel = _generate_MIMO_channel(
-        array_response, powers, delays, phases, dopplers, ofdm_params, times=0.0, freq_domain=True
-    )
+    paths = {
+        "power": powers,
+        "delay": delays,
+        "phase": phases,
+        "doppler": dopplers,
+    }
+    config = ChannelGenerationConfig(freq_domain=True, times=0.0)
+    channel = _generate_mimo_channel(array_response, paths, ofdm_params, config)
 
     # Expected shape: [n_users, M_rx, M_tx, K_sel]
     assert channel.shape == (n_users, n_rx_ant, n_tx_ant, 2)
 
     # Check values. Power splits over total subcarriers in OFDM usually?
-    # In generate_MIMO_channel:
+    # In generate_mimo_channel:
     # a_pt = sqrt(power / total_subcarriers) ...
     # So magnitude should be related to total_subcarriers.
     total_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]
@@ -126,16 +137,20 @@ def test_doppler_progression() -> None:
     ofdm_params = ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM]
     times = np.array([0.0, 0.0025])  # 0 and 1/4 cycle (period = 1/100 = 0.01s)
 
-    channel = _generate_MIMO_channel(
+    paths = {
+        "power": powers,
+        "delay": delays,
+        "phase": phases,
+        "doppler": dopplers,
+    }
+    config = ChannelGenerationConfig(
+        freq_domain=False, times=times, squeeze_time=False
+    )
+    channel = _generate_mimo_channel(
         array_response,
-        powers,
-        delays,
-        phases,
-        dopplers,
+        paths,
         ofdm_params,
-        times=times,
-        freq_domain=False,
-        squeeze_time=False,
+        config,
     )
 
     # channel shape: [1, 1, 1, 1, 2]

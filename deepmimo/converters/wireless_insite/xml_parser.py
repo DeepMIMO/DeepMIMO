@@ -13,27 +13,34 @@ I_STRING = "remcom_rxapi_String"
 I_POLARIZATION = "remcom_rxapi_PolarizationEnum"
 
 
-def xml_to_dict(element: ET.Element) -> dict[str, Any] | str | None:  # noqa: C901, PLR0911, PLR0912
+def _parse_value_attribute(value: str) -> bool | int | float | str:
+    """Parse the 'Value' attribute string into a specific type."""
+    try:
+        if "." in value:
+            return float(value)
+        return int(value)
+    except ValueError:
+        lower_val = value.lower()
+        if lower_val == "true":
+            return True
+        if lower_val == "false":
+            return False
+        return value
+
+
+def xml_to_dict(
+    element: ET.Element,
+) -> dict[str, Any] | str | int | float | bool | None:
     """Convert XML to a dictionary structure."""
+    # Handle special case of Value attribute
+    if "Value" in element.attrib:
+        return _parse_value_attribute(element.attrib["Value"])
+
     result: dict[str, Any] = {}
 
     # Add attributes if any
     if element.attrib:
-        if "Value" in element.attrib:
-            # Handle special case of Value attribute
-            value = element.attrib["Value"]
-            try:
-                if "." in value:
-                    return float(value)
-                return int(value)
-            except ValueError:
-                if value.lower() == "true":
-                    return True
-                if value.lower() == "false":
-                    return False
-                return value
-        else:
-            result.update(element.attrib)
+        result.update(element.attrib)
 
     # Add children
     for child in element:
@@ -48,8 +55,8 @@ def xml_to_dict(element: ET.Element) -> dict[str, Any] | str | None:  # noqa: C9
         else:
             result[tag] = child_data
 
-    # If the element has no children and no attributes, check for text
-    if not result and not element.attrib:
+    # If the element has no children and no attributes (result is empty), check for text
+    if not result:
         if element.text and element.text.strip():
             return element.text.strip()
         return None
@@ -71,7 +78,6 @@ def parse_insite_xml(xml_file: str) -> dict[str, Any]:
     root = ET.fromstring(content)  # noqa: S314 (Wireless InSite output is trusted input)
     # Include root element in result
     return {root.tag: xml_to_dict(root)}
-
 
 
 if __name__ == "__main__":

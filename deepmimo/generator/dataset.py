@@ -48,7 +48,7 @@ from deepmimo.web_export import export_dataset_to_binary
 
 from .ant_patterns import AntennaPattern
 from .array_wrapper import DeepMIMOArray
-from .channel import ChannelParameters, _generate_MIMO_channel
+from .channel import ChannelGenerationConfig, ChannelParameters, _generate_mimo_channel
 from .generator_utils import (
     dbw2watt,
     get_grid_idxs,
@@ -309,15 +309,19 @@ class Dataset(DotDict):
             if not use_doppler and params[c.PARAMSET_DOPPLER_EN]:
                 print("No doppler in channel generation because all velocities are zero")
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
-        channel = _generate_MIMO_channel(
+        channel = _generate_mimo_channel(
             array_response_product=array_response_product[..., :n_paths],
-            powers=self._power_linear_ant_gain[..., :n_paths],
-            delays=self.delay[..., :n_paths],
-            phases=self.phase[..., :n_paths],
-            dopplers=dopplers,
+            paths={
+                "power": self._power_linear_ant_gain[..., :n_paths],
+                "delay": self.delay[..., :n_paths],
+                "phase": self.phase[..., :n_paths],
+                "doppler": dopplers,
+            },
             ofdm_params=params.ofdm,
-            times=times,
-            freq_domain=params.freq_domain,
+            config=ChannelGenerationConfig(
+                times=times,
+                freq_domain=params.freq_domain,
+            ),
         )
         self[c.CHANNEL_PARAM_NAME] = channel
         return channel
@@ -864,6 +868,7 @@ class Dataset(DotDict):
             - 'row': row selection: requires row_idxs
             - 'col': column selection: requires col_idxs
             - 'limits': position bounds: requires x_min, x_max, y_min, y_max, z_min, z_max
+            - 'id': user IDs selection: requires user_ids
 
         Returns:
             np.ndarray of selected indices
@@ -1219,7 +1224,7 @@ class Dataset(DotDict):
             path_idxs = np.array(path_idxs)
             if np.any((path_idxs < 0) | (path_idxs >= self.num_paths[idx])):
                 msg = f"Path indices must be in range [0, {self.num_paths[idx]})"
-                raise IndexError(msg)
+            raise IndexError(msg)
         print("\nUser Information:")
         print(f"Position: {self.rx_pos[idx]}")
         print(f"Velocity: {self.rx_vel[idx]}")

@@ -75,9 +75,13 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
 
             # Test success
             # The function returns the input scenario name unchanged
-            res = api.make_submission_on_server(
-                "MyScenario", "key", {}, ["detail"], {}, include_images=True
-            )
+            config = {
+                "params_dict": {},
+                "details": ["detail"],
+                "extra_metadata": {},
+                "include_images": True,
+            }
+            res = api.make_submission_on_server("MyScenario", "key", config)
             assert res == "MyScenario"
             mock_upl_imgs.assert_called()
             mock_summary.assert_called()
@@ -85,8 +89,14 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
             # Test failure
             mock_post.return_value.raise_for_status.side_effect = Exception("Server error")
             mock_post.return_value.text = '{"error": "msg"}'
+            config = {
+                "params_dict": {},
+                "details": [],
+                "extra_metadata": {},
+                "include_images": False,
+            }
             with pytest.raises(RuntimeError):
-                api.make_submission_on_server("MyScenario", "key", {}, [], {}, include_images=False)
+                api.make_submission_on_server("MyScenario", "key", config)
 
     @patch("deepmimo.api.get_scenarios_dir", return_value="scenarios")
     @patch("deepmimo.api.get_scenario_folder", return_value="scenarios/myscenario")
