@@ -248,7 +248,44 @@ def _process_single_dataset_to_binary(
     return set_info
 
 
-def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:  # noqa: C901, PLR0912
+def _process_object_type_to_binary(
+    obj_list: list, output_path: Path, obj_type_name: str
+) -> None:
+    """Process a list of scene objects to binary format.
+
+    Args:
+        obj_list: List of scene objects (buildings, terrain, or vegetation)
+        output_path: Path where to save the binary file
+        obj_type_name: Name of object type for logging
+
+    """
+    if not obj_list:
+        return
+
+    max_faces = 0
+    max_vertices = 0
+
+    # First pass to find maximum dimensions
+    for obj in obj_list:
+        max_faces = max(max_faces, len(obj.faces))
+        for face in obj.faces:
+            max_vertices = max(max_vertices, len(face.vertices))
+
+    # Second pass to create padded arrays
+    processed_objects = []
+    for obj in obj_list:
+        obj_data = np.zeros((max_faces, max_vertices, 3), dtype=np.float32)
+        for i, face in enumerate(obj.faces):
+            for j, vertex in enumerate(face.vertices):
+                obj_data[i, j] = vertex
+        processed_objects.append(obj_data)
+
+    objects_array = np.array(processed_objects, dtype=np.float32)
+    save_binary_array(objects_array, output_path)
+    print(f"Saved {obj_type_name} to {output_path}")
+
+
+def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:
     """Process scene data to binary format.
 
     Args:
@@ -258,85 +295,14 @@ def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:  # noqa: C901,
     """
     print(f"Processing scene data: {type(scene)}")
 
-    # Get all objects in the scene
+    # Get all objects in the scene and process each type
     buildings_obj = scene.get_objects("buildings")
     terrain_obj = scene.get_objects("terrain")
     vegetation_obj = scene.get_objects("vegetation")
 
-    # Process buildings
-    if buildings_obj:
-        buildings = []
-        max_faces = 0
-        max_vertices = 0
-
-        # First pass to find maximum dimensions
-        for building in buildings_obj:
-            max_faces = max(max_faces, len(building.faces))
-            for face in building.faces:
-                max_vertices = max(max_vertices, len(face.vertices))
-
-        # Second pass to create padded arrays
-        for building in buildings_obj:
-            building_data = np.zeros((max_faces, max_vertices, 3), dtype=np.float32)
-            for i, face in enumerate(building.faces):
-                for j, vertex in enumerate(face.vertices):
-                    building_data[i, j] = vertex
-            buildings.append(building_data)
-
-        buildings_array = np.array(buildings, dtype=np.float32)
-        file_path = base_dir / "buildings.bin"
-        save_binary_array(buildings_array, file_path)
-        print(f"Saved buildings to {file_path}")
-
-    # Process terrain objects
-    if terrain_obj:
-        terrain = []
-        max_faces = 0
-        max_vertices = 0
-
-        # First pass to find maximum dimensions
-        for terr in terrain_obj:
-            max_faces = max(max_faces, len(terr.faces))
-            for face in terr.faces:
-                max_vertices = max(max_vertices, len(face.vertices))
-
-        # Second pass to create padded arrays
-        for terr in terrain_obj:
-            terrain_data = np.zeros((max_faces, max_vertices, 3), dtype=np.float32)
-            for i, face in enumerate(terr.faces):
-                for j, vertex in enumerate(face.vertices):
-                    terrain_data[i, j] = vertex
-            terrain.append(terrain_data)
-
-        terrain_array = np.array(terrain, dtype=np.float32)
-        file_path = base_dir / "terrain.bin"
-        save_binary_array(terrain_array, file_path)
-        print(f"Saved terrain to {file_path}")
-
-    # Process vegetation objects
-    if vegetation_obj:
-        vegetation = []
-        max_faces = 0
-        max_vertices = 0
-
-        # First pass to find maximum dimensions
-        for veg in vegetation_obj:
-            max_faces = max(max_faces, len(veg.faces))
-            for face in veg.faces:
-                max_vertices = max(max_vertices, len(face.vertices))
-
-        # Second pass to create padded arrays
-        for veg in vegetation_obj:
-            vegetation_data = np.zeros((max_faces, max_vertices, 3), dtype=np.float32)
-            for i, face in enumerate(veg.faces):
-                for j, vertex in enumerate(face.vertices):
-                    vegetation_data[i, j] = vertex
-            vegetation.append(vegetation_data)
-
-        vegetation_array = np.array(vegetation, dtype=np.float32)
-        file_path = base_dir / "vegetation.bin"
-        save_binary_array(vegetation_array, file_path)
-        print(f"Saved vegetation to {file_path}")
+    _process_object_type_to_binary(buildings_obj, base_dir / "buildings.bin", "buildings")
+    _process_object_type_to_binary(terrain_obj, base_dir / "terrain.bin", "terrain")
+    _process_object_type_to_binary(vegetation_obj, base_dir / "vegetation.bin", "vegetation")
 
 
 # Public aliases for external callers and tests.

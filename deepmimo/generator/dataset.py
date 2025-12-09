@@ -1198,42 +1198,80 @@ class Dataset(DotDict):
                 raise ValueError(msg)
             self._rx_vel = velocities
 
-    def print_rx(  # noqa: C901
-        self, idx: int, path_idxs: np.ndarray | list[int] | None = None
-    ) -> None:
-        """Print detailed information about a specific user.
+    def _validate_rx_index(self, idx: int, path_idxs: np.ndarray | None) -> np.ndarray:
+        """Validate user index and path indices.
 
         Args:
-            idx: Index of the user to print information for
-            path_idxs: Optional array of path indices to print. If None, prints all paths.
+            idx: User index to validate
+            path_idxs: Path indices to validate (or None for all)
+
+        Returns:
+            Validated path indices as numpy array
 
         Raises:
-            IndexError: If idx is out of range or if any path index is out of range
+            IndexError: If indices are out of range
 
         """
         if idx < 0 or idx >= self.n_ue:
             msg = f"User index {idx} is out of range [0, {self.n_ue})"
             raise IndexError(msg)
+
         if path_idxs is None:
-            path_idxs = np.arange(self.num_paths[idx])
-        else:
-            path_idxs = np.array(path_idxs)
-            if np.any((path_idxs < 0) | (path_idxs >= self.num_paths[idx])):
-                msg = f"Path indices must be in range [0, {self.num_paths[idx]})"
+            return np.arange(self.num_paths[idx])
+
+        path_idxs = np.array(path_idxs)
+        if np.any((path_idxs < 0) | (path_idxs >= self.num_paths[idx])):
+            msg = f"Path indices must be in range [0, {self.num_paths[idx]})"
             raise IndexError(msg)
+        return path_idxs
+
+    def _print_rx_basic_info(self, idx: int) -> None:
+        """Print basic user information.
+
+        Args:
+            idx: User index
+
+        """
         print("\nUser Information:")
         print(f"Position: {self.rx_pos[idx]}")
         print(f"Velocity: {self.rx_vel[idx]}")
+
+    def _print_rx_path_info(self, idx: int, path_idxs: np.ndarray) -> None:
+        """Print path information for a user.
+
+        Args:
+            idx: User index
+            path_idxs: Path indices to print
+
+        """
         print("\nPath Information:")
         print(f"Number of paths selected: {len(path_idxs)} (total: {self.num_paths[idx]})")
         print(f"Powers (dBm): {self.power[idx][path_idxs]}")
         print(f"Phases (deg): {self.phase[idx][path_idxs]}")
         print(f"Delays (us): {self.delay[idx][path_idxs] * 1000000.0}")
+
+    def _print_rx_angles(self, idx: int, path_idxs: np.ndarray) -> None:
+        """Print angle information for a user.
+
+        Args:
+            idx: User index
+            path_idxs: Path indices to print
+
+        """
         print("\nAngles:")
         print(f"Azimuth of Departure (deg): {self.aod_phi[idx][path_idxs]}")
         print(f"Elevation of Departure (deg): {self.aod_theta[idx][path_idxs]}")
         print(f"Azimuth of Arrival (deg): {self.aoa_phi[idx][path_idxs]}")
         print(f"Elevation of Arrival (deg): {self.aoa_theta[idx][path_idxs]}")
+
+    def _print_rx_interactions(self, idx: int, path_idxs: np.ndarray) -> None:
+        """Print interaction information for a user.
+
+        Args:
+            idx: User index
+            path_idxs: Path indices to print
+
+        """
         print("\nInteraction Information:")
         print(f"Interaction types: {self.inter[idx][path_idxs]}")
         print(f"Number of interactions: {self.num_interactions[idx][path_idxs]}")
@@ -1246,6 +1284,7 @@ class Dataset(DotDict):
             print(f"  Path {path_idx} ({n_inter} interactions):")
             for _i in range(n_inter):
                 print(f"    {p_idx + 1}: {self.inter_pos[idx][path_idx][p_idx]}")
+
         if self.hasattr("inter_objects"):
             print("\nInteraction objects:")
             for p_idx, path_idx in enumerate(path_idxs):
@@ -1256,6 +1295,25 @@ class Dataset(DotDict):
                 print(f"  Path {path_idx} ({n_inter} interactions):")
                 for _i in range(n_inter):
                     print(f"    {p_idx + 1}: {self.inter_objects[idx][path_idx][p_idx]}")
+
+    def print_rx(
+        self, idx: int, path_idxs: np.ndarray | list[int] | None = None
+    ) -> None:
+        """Print detailed information about a specific user.
+
+        Args:
+            idx: Index of the user to print information for
+            path_idxs: Optional array of path indices to print. If None, prints all paths.
+
+        Raises:
+            IndexError: If idx is out of range or if any path index is out of range
+
+        """
+        path_idxs = self._validate_rx_index(idx, path_idxs)
+        self._print_rx_basic_info(idx)
+        self._print_rx_path_info(idx, path_idxs)
+        self._print_rx_angles(idx, path_idxs)
+        self._print_rx_interactions(idx, path_idxs)
 
     @property
     def tx_vel(self) -> np.ndarray:

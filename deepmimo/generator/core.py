@@ -344,7 +344,152 @@ def _load_tx_rx_raydata(  # noqa: PLR0913
 
 
 # Helper functions
-def _validate_txrx_sets(  # noqa: PLR0912, C901
+def _validate_set_id(
+    set_id: int, valid_set_ids: list[int], set_str: str, info_str: str
+) -> None:
+    """Validate that a set ID is in the allowed list.
+
+    Args:
+        set_id: Set ID to validate
+        valid_set_ids: List of valid set IDs
+        set_str: "Tx" or "Rx" for error messages
+        info_str: Additional info string for error messages
+
+    Raises:
+        ValueError: If set ID is not valid
+
+    """
+    if set_id not in valid_set_ids:
+        raise ValueError(
+            f"{set_str} set {set_id} not in allowed sets {valid_set_ids}\n" + info_str
+        )
+
+
+def _process_dict_sets(
+    sets: dict[int, list | str | np.ndarray],
+    txrx_dict: dict[str, Any],
+    valid_set_ids: list[int],
+    set_str: str,
+    info_str: str,
+) -> dict[int, np.ndarray]:
+    """Process TX/RX sets specified as a dictionary.
+
+    Args:
+        sets: Dictionary mapping set IDs to indices
+        txrx_dict: Raytracing parameters
+        valid_set_ids: List of valid set IDs
+        set_str: "Tx" or "Rx" for error messages
+        info_str: Additional info string for error messages
+
+    Returns:
+        Processed dictionary with numpy arrays
+
+    Raises:
+        ValueError: If any set ID or indices are invalid
+
+    """
+    for set_id, idxs in sets.items():
+        _validate_set_id(set_id, valid_set_ids, set_str, info_str)
+
+        # Get the txrx_set info for this index
+        txrx_set_key = f"txrx_set_{set_id}"
+        txrx_set = txrx_dict[txrx_set_key]
+        all_idxs_available = np.arange(txrx_set["num_points"])
+
+        # Convert to numpy array if needed
+        if isinstance(idxs, np.ndarray):
+            pass  # Already correct type
+        elif isinstance(idxs, list):
+            sets[set_id] = np.array(idxs)
+        elif isinstance(idxs, str):
+            if idxs == "all":
+                sets[set_id] = all_idxs_available
+            else:
+                msg = f"String '{idxs}' not recognized for tx/rx indices "
+                raise ValueError(msg)
+        else:
+            msg = "Only <list> of <np.ndarray> allowed as tx/rx indices"
+            raise TypeError(msg)
+
+        # Validate that indices are within available range
+        if not set(sets[set_id]).issubset(set(all_idxs_available.tolist())):
+            raise ValueError(f"Some indices of {idxs} are not in {all_idxs_available}. " + info_str)
+
+    return sets
+
+
+def _process_list_sets(
+    sets: list[int],
+    txrx_dict: dict[str, Any],
+    valid_set_ids: list[int],
+    set_str: str,
+    info_str: str,
+) -> dict[int, np.ndarray]:
+    """Process TX/RX sets specified as a list.
+
+    Args:
+        sets: List of set IDs
+        txrx_dict: Raytracing parameters
+        valid_set_ids: List of valid set IDs
+        set_str: "Tx" or "Rx" for error messages
+        info_str: Additional info string for error messages
+
+    Returns:
+        Dictionary mapping set IDs to all available indices
+
+    Raises:
+        ValueError: If any set ID is invalid
+
+    """
+    sets_dict = {}
+    for set_id in sets:
+        _validate_set_id(set_id, valid_set_ids, set_str, info_str)
+        sets_dict[set_id] = np.arange(txrx_dict[f"txrx_set_{set_id}"]["num_points"])
+    return sets_dict
+
+
+def _process_str_sets(
+    sets: str,
+    txrx_dict: dict[str, Any],
+    valid_set_ids: list[int],
+    tx_or_rx: str,
+) -> dict[int, np.ndarray]:
+    """Process TX/RX sets specified as a string.
+
+    Args:
+        sets: String specification ("all" or "rx_only")
+        txrx_dict: Raytracing parameters
+        valid_set_ids: List of valid set IDs
+        tx_or_rx: "tx" or "rx"
+
+    Returns:
+        Dictionary mapping set IDs to all available indices
+
+    Raises:
+        ValueError: If string is not recognized
+
+    """
+    if sets not in ["all", "rx_only"]:
+        msg = (
+            f"String '{sets}' not understood. Only strings allowed "
+            "are 'all' to generate all available sets and indices, "
+            "or 'rx_only' to generate all available rx sets and indices"
+        )
+        raise ValueError(msg)
+
+    sets_dict = {}
+    for set_id in valid_set_ids:
+        set_dict = txrx_dict[f"txrx_set_{set_id}"]
+
+        # If rx_only, only include sets that are only rx
+        if sets == "rx_only" and tx_or_rx == "rx" and set_dict["is_tx"]:
+            continue
+        sets_dict[set_id] = np.arange(set_dict["num_points"])
+
+    return sets_dict
+
+
+def _validate_txrx_sets(
     sets: dict[int, list | str] | list | str,
     txrx_dict: dict[str, Any],
     tx_or_rx: str = "tx",
@@ -377,72 +522,17 @@ def _validate_txrx_sets(  # noqa: PLR0912, C901
     set_str = "Tx" if tx_or_rx == "tx" else "Rx"
 
     info_str = "To see supported TX/RX sets and indices run dm.info(<scenario_name>)"
-    if type(sets) is dict:
-        for set_id, idxs in sets.items():
-            # check the the tx/rx_set indices are valid
-            if set_id not in valid_set_ids:
-                raise ValueError(
-                    f"{set_str} set {set_id} not in allowed sets {valid_set_ids}\n" + info_str,
-                )
 
-            # Get the txrx_set info for this index
-            txrx_set_key = f"txrx_set_{set_id}"  # Use id for internal operations
-            txrx_set = txrx_dict[txrx_set_key]
-            all_idxs_available = np.arange(txrx_set["num_points"])
+    # Process based on input type
+    if isinstance(sets, dict):
+        return _process_dict_sets(sets, txrx_dict, valid_set_ids, set_str, info_str)
+    if isinstance(sets, list):
+        return _process_list_sets(sets, txrx_dict, valid_set_ids, set_str, info_str)
+    if isinstance(sets, str):
+        return _process_str_sets(sets, txrx_dict, valid_set_ids, tx_or_rx)
 
-            if type(idxs) is np.ndarray:
-                pass  # correct
-            elif type(idxs) is list:
-                sets[set_id] = np.array(idxs)
-            elif type(idxs) is str:
-                if idxs == "all":
-                    sets[set_id] = all_idxs_available
-                else:
-                    msg = f"String '{idxs}' not recognized for tx/rx indices "
-                    raise ValueError(msg)
-            else:
-                msg = "Only <list> of <np.ndarray> allowed as tx/rx indices"
-                raise ValueError(msg)
-
-            # check that the specific tx/rx indices inside the sets are valid
-            if not set(sets[set_id]).issubset(set(all_idxs_available.tolist())):
-                raise ValueError(
-                    f"Some indices of {idxs} are not in {all_idxs_available}. " + info_str,
-                )
-
-        sets_dict = sets
-    elif type(sets) is list:
-        # Generate all user indices
-        sets_dict = {}
-        for set_id in sets:
-            if set_id not in valid_set_ids:
-                raise ValueError(
-                    f"{set_str} set {set_id} not in allowed sets {valid_set_ids}\n" + info_str,
-                )
-
-            sets_dict[set_id] = np.arange(txrx_dict[f"txrx_set_{set_id}"]["num_points"])
-    elif type(sets) is str:
-        if sets not in ["all", "rx_only"]:
-            msg = (
-                f"String '{sets}' not understood. Only strings allowed "
-                "are 'all' to generate all available sets and indices, "
-                "or 'rx_only' to generate all available rx sets and indices"
-            )
-            raise ValueError(
-                msg,
-            )
-
-        # Generate dict with all sets and indices available
-        sets_dict = {}
-        for set_id in valid_set_ids:
-            set_dict = txrx_dict[f"txrx_set_{set_id}"]
-
-            # If rx_only, only include sets that are only rx
-            if sets == "rx_only" and tx_or_rx == "rx" and set_dict["is_tx"]:
-                continue
-            sets_dict[set_id] = np.arange(set_dict["num_points"])
-
-    return sets_dict
+    msg = "Sets must be dict, list, or str"
+    raise ValueError(msg)
 
 
 def validate_txrx_sets(

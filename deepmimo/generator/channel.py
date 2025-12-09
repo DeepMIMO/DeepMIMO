@@ -195,7 +195,75 @@ class ChannelParameters(DotDict):
         if kwargs:
             self.update(deep_dict_merge(self, kwargs))
 
-    def validate(self, n_ues: int) -> "ChannelParameters":  # noqa: C901, PLR0912
+    def _validate_antenna_params(
+        self, params: DotDict, n_ues: int | None = None
+    ) -> None:
+        """Validate and set antenna rotation and radiation pattern for BS or UE.
+
+        Args:
+            params: Antenna parameters dict (bs_antenna or ue_antenna)
+            n_ues: Number of UEs (only needed for UE rotation validation)
+
+        """
+        # Validate rotation
+        if c.PARAMSET_ANT_ROTATION in params:
+            params[c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
+                params[c.PARAMSET_ANT_ROTATION], n_ues
+            )
+        else:
+            params[c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
+
+        # Validate radiation pattern
+        if c.PARAMSET_ANT_RAD_PAT in params:
+            params[c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
+                params[c.PARAMSET_ANT_RAD_PAT]
+            )
+        else:
+            params[c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[0]
+
+    def _validate_ofdm_subcarriers(self, ofdm_params: dict) -> None:
+        """Validate OFDM subcarrier selection parameters.
+
+        Args:
+            ofdm_params: OFDM parameters dictionary
+
+        Raises:
+            ValueError: If subcarrier parameters are invalid
+
+        """
+        if c.PARAMSET_OFDM_SC_SAMP not in ofdm_params or c.PARAMSET_OFDM_SC_NUM not in ofdm_params:
+            return
+
+        sc_sel = np.asarray(ofdm_params[c.PARAMSET_OFDM_SC_SAMP])
+
+        if sc_sel.ndim > 1:
+            msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a 1-D array"
+            raise ValueError(msg)
+
+        if sc_sel.size == 0:
+            msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a non-empty array"
+            raise ValueError(msg)
+
+        if not np.issubdtype(sc_sel.dtype, np.integer):
+            try:
+                sc_sel = sc_sel.astype(int, copy=False)
+                ofdm_params[c.PARAMSET_OFDM_SC_SAMP] = sc_sel
+            except Exception as err:
+                msg = (
+                    f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices "
+                    "(invalid values provided)"
+                )
+                raise ValueError(msg) from err
+
+        n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]
+        if np.any(sc_sel < 0) or np.any(sc_sel >= n_sc):
+            error_msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' values must be within [0, {n_sc - 1}]\n"
+            error_msg += f"Got max value: {np.max(sc_sel)}.\n"
+            error_msg += f"Adjust ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_SAMP} or "
+            error_msg += f"ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_NUM}."
+            raise ValueError(error_msg)
+
+    def validate(self, n_ues: int) -> "ChannelParameters":
         """Validate channel generation parameters.
 
         This method checks that channel generation parameters are valid and
@@ -220,73 +288,16 @@ class ChannelParameters(DotDict):
             print("The following parameters seem unnecessary:")
             print(additional_keys)
 
-        # BS Antenna Rotation
-        if c.PARAMSET_ANT_ROTATION in self_converted[c.PARAMSET_ANT_BS]:
-            self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
-                self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION],
-            )
-        else:
-            self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
+        # Validate BS antenna parameters
+        self._validate_antenna_params(self_converted[c.PARAMSET_ANT_BS])
 
-        # UE Antenna Rotation
-        if c.PARAMSET_ANT_ROTATION in self_converted[c.PARAMSET_ANT_UE]:
-            self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
-                self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION],
-                n_ues,
-            )
-        else:
-            self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
+        # Validate UE antenna parameters
+        self._validate_antenna_params(self_converted[c.PARAMSET_ANT_UE], n_ues)
 
-        # BS Antenna Radiation Pattern
-        if c.PARAMSET_ANT_RAD_PAT in self_converted[c.PARAMSET_ANT_BS]:
-            self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
-                self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT],
-            )
-        else:
-            self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[
-                0
-            ]
-
-        # UE Antenna Radiation Pattern
-        if c.PARAMSET_ANT_RAD_PAT in self_converted[c.PARAMSET_ANT_UE]:
-            self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
-                self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT],
-            )
-        else:
-            self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[
-                0
-            ]
-
-        # OFDM selected subcarriers validation (indices within [0, N_sc-1])
+        # Validate OFDM parameters
         if c.PARAMSET_OFDM in self_converted:
-            ofdm_params = self_converted[c.PARAMSET_OFDM]
-            if c.PARAMSET_OFDM_SC_SAMP in ofdm_params and c.PARAMSET_OFDM_SC_NUM in ofdm_params:
-                sc_sel = np.asarray(ofdm_params[c.PARAMSET_OFDM_SC_SAMP])
-                if sc_sel.ndim > 1:
-                    msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a 1-D array"
-                    raise ValueError(msg)
-                if sc_sel.size == 0:
-                    msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must be a non-empty array"
-                    raise ValueError(msg)
-                if not np.issubdtype(sc_sel.dtype, np.integer):
-                    try:
-                        sc_sel = sc_sel.astype(int, copy=False)
-                        self_converted[c.PARAMSET_OFDM][c.PARAMSET_OFDM_SC_SAMP] = sc_sel
-                    except Exception as err:
-                        msg = (
-                            f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices "
-                            "(invalid values provided)"
-                        )
-                        raise ValueError(msg) from err
-                n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]
-                if np.any(sc_sel < 0) or np.any(sc_sel >= n_sc):
-                    error_msg = (
-                        f"'{c.PARAMSET_OFDM_SC_SAMP}' values must be within [0, {n_sc - 1}]\n"
-                    )
-                    error_msg += f"Got max value: {np.max(sc_sel)}.\n"
-                    error_msg += f"Adjust ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_SAMP} or "
-                    error_msg += f"ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_NUM}."
-                    raise ValueError(error_msg)
+            self._validate_ofdm_subcarriers(self_converted[c.PARAMSET_OFDM])
+
         return self_converted
 
 
