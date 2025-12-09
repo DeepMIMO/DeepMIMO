@@ -334,6 +334,9 @@ class OFDMPathGenerator:
     ) -> np.ndarray:
         """Generate per-path, per-subcarrier, per-time path gains with correct Doppler progression.
 
+        Computes: h[p,k,n] = √(P/N) · exp(j(φ₀ + 2πfD·t)) · exp(-j2πτk/N)
+        where N=total subcarriers, k=subcarrier index, τ=delay (in samples), fD=Doppler
+
         Inputs:
             pwr       : [P]       linear powers per path
             toa       : [P]       times of arrival (seconds)
@@ -574,7 +577,9 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
         user_doppler = doppler[i, non_nan_mask]
 
         if freq_domain:
-            # Generate OFDM path gains
+            # Generate OFDM path gains: h[p,k,n] = √(P/N) · exp(j(φ₀ + 2πfD·t)) · exp(-j2πτk/N)
+            # where N=total subcarriers, k=subcarrier index, τ=delay, fD=Doppler
+            # Delays create per-subcarrier phase shifts (frequency-dependent)
             path_gains = path_gen.generate(
                 pwr=user_power,
                 toa=user_delay,
@@ -587,7 +592,8 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
                 array_product, path_gains, squeeze_time=squeeze_time
             )
         else:
-            # Generate time-domain path gains
+            # Generate time-domain path gains: a[p,n] = √P · exp(j(φ₀ + 2πfD·t))
+            # Delays are represented structurally: each path index p has delay[p]
             phase0 = np.deg2rad(user_phase)[:, None]  # [P, 1]
             path_gains = np.sqrt(user_power)[:, None] * np.exp(
                 1j * (phase0 + 2 * np.pi * user_doppler[:, None] * times_arr[None, :]),
