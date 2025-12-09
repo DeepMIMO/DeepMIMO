@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 import deepmimo as dm  # type: ignore
 
-from deepmimo.pipelines.TxRxPlacement import gen_rx_grid, gen_tx_pos, gen_plane_grid
+from deepmimo.pipelines.txrx_placement import gen_rx_grid, gen_tx_pos, gen_plane_grid
 from deepmimo.pipelines.utils.pipeline_utils import get_origin_coords, load_params_from_row
 from deepmimo.pipelines.blender_osm import fetch_osm_scene
 from deepmimo.pipelines.utils.geo_utils import get_city_name, fetch_satellite_view

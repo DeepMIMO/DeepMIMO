@@ -127,7 +127,7 @@ deepmimo/
     ├── sionna_rt/          # Sionna raytracer pipeline
     ├── wireless_insite/    # Wireless Insite pipeline
     ├── blender_osm.py      # Blender OSM export utilities
-    ├── TxRxPlacement.py    # Transmitter/Receiver placement
+    ├── txrx_placement.py   # Transmitter/Receiver placement
     └── utils/              # Pipeline utilities
 
 Additional directories:
