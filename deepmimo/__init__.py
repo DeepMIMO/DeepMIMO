@@ -24,7 +24,7 @@ from .general_utils import (
     get_scenario_folder,
     load_dict_from_json,
     unzip,
-    zip,
+    zip,  # noqa: A004
 )
 
 # Channel parameters

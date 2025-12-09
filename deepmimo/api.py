@@ -59,7 +59,7 @@ from .general_utils import (
     get_scenarios_dir,
     load_dict_from_json,
     unzip,
-    zip,
+    zip,  # noqa: A004
 )
 from .summary import plot_summary, summary
 
@@ -74,6 +74,11 @@ HEADERS = {
 FILE_SIZE_LIMIT = 1 * 1024**3  # Scenario zip file size limit: 1GB
 RT_FILE_SIZE_LIMIT = 5 * 1024**3  # RT source zip file size limit: 5GB
 IMAGE_SIZE_LIMIT = 10 * 1024**2  # Image size limit: 10MB
+REQUEST_TIMEOUT = 30  # seconds
+HTTP_OK = 200
+SUB6_UPPER_GHZ = 6
+MMW_UPPER_GHZ = 100
+MAX_IMAGES_PER_UPLOAD = 5
 
 
 class _ProgressFileReader:
@@ -82,7 +87,7 @@ class _ProgressFileReader:
     def __init__(self, file_path: str | Path, progress_bar: Any) -> None:
         self.file_path = file_path
         self.progress_bar = progress_bar
-        self.file_object = Path(file_path).open("rb")
+        self.file_object = Path(file_path).open("rb")  # noqa: SIM115
         self.len = Path(file_path).stat().st_size
         self.bytes_read = 0
 
@@ -97,7 +102,7 @@ class _ProgressFileReader:
         self.file_object.close()
 
 
-def _dm_upload_api_call(file: str, key: str) -> str | None:
+def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR0911, PLR0912
     """Upload a file to the DeepMIMO API server.
 
     Args:
@@ -128,6 +133,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:
             f"{API_BASE_URL}/api/b2/authorize-upload",
             params={"filename": filename},  # Use the actual filename from the file
             headers={"Authorization": f"Bearer {key}"},
+            timeout=REQUEST_TIMEOUT,
         )
         auth_response.raise_for_status()
         auth_data = auth_response.json()
@@ -139,13 +145,15 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:
         # Verify the authorized filename matches our source filename
         authorized_filename = auth_data.get("filename")
         if authorized_filename and authorized_filename != filename:
-            print(
-                f"Error: Filename mismatch. Server authorized '{authorized_filename}' but trying to upload '{filename}'",
+            msg = (
+                "Error: Filename mismatch. "
+                f"Server authorized '{authorized_filename}' but trying to upload '{filename}'"
             )
+            print(msg)
             return None
 
         # Calculate file hash
-        sha1 = hashlib.sha1()
+        sha1 = hashlib.sha1()  # noqa: S324
         with file_path.open("rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
                 sha1.update(chunk)
@@ -167,17 +175,12 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:
                     "X-Bz-Content-Sha1": file_hash,
                 },
                 data=progress_reader,
+                timeout=REQUEST_TIMEOUT,
             )
             upload_response.raise_for_status()
         finally:
             progress_reader.close()
             pbar.close()
-
-        # Return the authorized filename (not the local filename)
-        # This ensures we're consistent with what was actually uploaded
-        if upload_response.status_code == 200:
-            return authorized_filename or filename
-        return None
 
     except requests.exceptions.HTTPError as e:  # Catch HTTPError specifically
         print(f"API call failed: {e!s}")  # Print standard HTTP error
@@ -200,9 +203,15 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:
         if hasattr(e, "response") and e.response:
             print(f"Server response: {json.loads(e.response.text)['error']}")
         return None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Upload failed due to an unexpected error: {e!s}")
         return None
+    else:
+        # Return the authorized filename (not the local filename)
+        # This ensures we're consistent with what was actually uploaded
+        if upload_response.status_code != HTTP_OK:
+            return None
+        return authorized_filename or filename
 
 
 def dm_upload_api_call(file: str, key: str) -> str | None:
@@ -256,9 +265,9 @@ def _process_params_data(params_dict: dict, extra_metadata: dict | None = None) 
     # Create base parameter dictionaries
     primary_params = {
         "bands": {
-            "sub6": frequency >= 0 and frequency < 6,
-            "mmW": frequency >= 6 and frequency <= 100,
-            "subTHz": frequency > 100,
+            "sub6": 0 <= frequency < SUB6_UPPER_GHZ,
+            "mmW": SUB6_UPPER_GHZ <= frequency <= MMW_UPPER_GHZ,
+            "subTHz": frequency > MMW_UPPER_GHZ,
         },
         "numRx": num_rx,
         "maxReflections": rt_params.get("max_reflections", 1),
@@ -329,8 +338,8 @@ def _generate_key_components(summary_str: str) -> dict:
     current_section = None
     current_lines = []
 
-    for line in summary_str.split("\n"):
-        line = line.strip()
+    for line_str in summary_str.split("\n"):
+        line = line_str.strip()
         if not line or line.startswith("="):  # Skip empty lines and separator lines
             continue
 
@@ -428,7 +437,7 @@ def upload_images(scenario_name: str, img_paths: list[str], key: str) -> list[di
         print("No images provided for upload")
         return []
 
-    if len(img_paths) > 5:
+    if len(img_paths) > MAX_IMAGES_PER_UPLOAD:
         print("Warning: You cannot upload more than 5 images to a submission.")
         return []
 
@@ -491,6 +500,7 @@ def upload_images(scenario_name: str, img_paths: list[str], key: str) -> list[di
                     headers={"Authorization": f"Bearer {key}"},
                     files=files,
                     data=data,  # Send heading/description in form data
+                    timeout=REQUEST_TIMEOUT,
                 )
 
             response.raise_for_status()  # Raises HTTPError for bad responses (4xx or 5xx)
@@ -502,31 +512,33 @@ def upload_images(scenario_name: str, img_paths: list[str], key: str) -> list[di
 
             # Update the progress bar ONLY after successful upload
             pbar.update(1)
-        except Exception as e:
-            if e.response is not None:
-                server_message = json.loads(e.response.text)["error"]
+        except requests.exceptions.RequestException as err:
+            if err.response is not None:
+                server_message = json.loads(err.response.text)["error"]
                 print(
                     f"✗ Failed to upload {filename}: {server_message} "
-                    f"(Server Response Code: {e.response.status_code})",
+                    f"(Server Response Code: {err.response.status_code})",
                 )
             else:
                 # Handle cases where the error didn't have a response object
-                print(f"✗ Failed to upload {filename}: {e}")
+                print(f"✗ Failed to upload {filename}: {err}")
 
     # Close the progress bar after the loop finishes or breaks
     pbar.close()
 
     if uploaded_image_objects:
-        print(
-            f"✓ Finished image upload process. Successfully attached {len(uploaded_image_objects)} images.",
+        msg = (
+            "✓ Finished image upload process. "
+            f"Successfully attached {len(uploaded_image_objects)} images."
         )
+        print(msg)
     else:
         print("No images were successfully attached.")
 
     return uploaded_image_objects
 
 
-def _upload_to_db(scen_folder: str, key: str, skip_zip: bool = False) -> str:
+def _upload_to_db(scen_folder: str, key: str, *, skip_zip: bool = False) -> str:
     """Upload a zip file to the database."""
     # Zip scenario
     zip_path = scen_folder + ".zip" if skip_zip else zip(scen_folder)
@@ -534,7 +546,7 @@ def _upload_to_db(scen_folder: str, key: str, skip_zip: bool = False) -> str:
     try:
         print("Uploading to the database...")
         upload_result = _dm_upload_api_call(zip_path, key)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Error: Failed to upload to the database - {e!s}")
 
     if not upload_result:
@@ -546,12 +558,13 @@ def _upload_to_db(scen_folder: str, key: str, skip_zip: bool = False) -> str:
     return upload_result.split(".")[0].split("/")[-1].split("\\")[-1]
 
 
-def _make_submission_on_server(
+def _make_submission_on_server(  # noqa: PLR0913
     submission_scenario_name: str,
     key: str,
     params_dict: dict,
     details: list[str],
     extra_metadata: dict,
+    *,
     include_images: bool = True,
 ) -> str:
     """Make a submission on the server."""
@@ -564,7 +577,7 @@ def _make_submission_on_server(
     except Exception as e:
         print("Error: Failed to process parameters and generate key components")
         msg = f"Failed to process parameters and generate key components - {e!s}"
-        raise RuntimeError(msg)
+        raise RuntimeError(msg) from e
 
     submission_data = {
         "title": submission_scenario_name,
@@ -580,6 +593,7 @@ def _make_submission_on_server(
             f"{API_BASE_URL}/api/submissions",
             json={"type": "scenario", "content": submission_data},
             headers={"Authorization": f"Bearer {key}"},
+            timeout=REQUEST_TIMEOUT,
         )
         response.raise_for_status()
         print("✓ Submission created successfully")
@@ -590,14 +604,19 @@ def _make_submission_on_server(
         print("\n >> Please upload the ray tracing source as well by calling:")
         print(f"upload_rt_source('{submission_scenario_name}', dm.zip(<rt_folder>), <key>)")
         print(
-            "where <rt_folder> is the path to the ray tracing source folder as in dm.convert(<rt_folder>)",
+            "where <rt_folder> is the path to the ray tracing source folder "
+            "as in dm.convert(<rt_folder>)",
         )
 
-    except Exception as e:
+    except requests.exceptions.RequestException as err:
         print(f"Error: Failed to create submission for {submission_scenario_name}")
         print(json.loads(response.text)["error"])
-        msg = f"Failed to create submission - {e!s}"
-        raise RuntimeError(msg)
+        msg = f"Failed to create submission - {err!s}"
+        raise RuntimeError(msg) from err
+    except Exception as err:
+        print(f"Unexpected error creating submission for {submission_scenario_name}: {err!s}")
+        msg = f"Failed to create submission - {err!s}"
+        raise RuntimeError(msg) from err
 
     # Generate and upload images if requested
     if include_images:
@@ -609,7 +628,7 @@ def _make_submission_on_server(
                 print(
                     f"Image upload process completed. {len(uploaded_images_meta)} images attached.",
                 )
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print("Warning: Failed during image generation or upload phase")
             print(f"Error: {e!s}")
         finally:
@@ -632,12 +651,13 @@ def _make_submission_on_server(
     return submission_scenario_name
 
 
-def make_submission_on_server(
+def make_submission_on_server(  # noqa: PLR0913
     submission_scenario_name: str,
     key: str,
     params_dict: dict,
     details: list[str],
     extra_metadata: dict,
+    *,
     include_images: bool = True,
 ) -> str:
     """Public wrapper for `_make_submission_on_server`."""
@@ -647,15 +667,16 @@ def make_submission_on_server(
         params_dict,
         details,
         extra_metadata,
-        include_images,
+        include_images=include_images,
     )
 
 
-def upload(
+def upload(  # noqa: PLR0913
     scenario_name: str,
     key: str,
     details: list[str] | None = None,
     extra_metadata: dict | None = None,
+    *,
     skip_zip: bool = False,
     submission_only: bool = False,
     include_images: bool = True,
@@ -699,13 +720,17 @@ def upload(
         print("Parsing scenario parameters...")
         params_dict = load_dict_from_json(params_path)
         print("✓ Parameters parsed successfully")
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        print("Error: Failed to parse parameters")
+        msg = f"Failed to parse parameters - {e!s}"
+        raise RuntimeError(msg) from e
     except Exception as e:
         print("Error: Failed to parse parameters")
         msg = f"Failed to parse parameters - {e!s}"
-        raise RuntimeError(msg)
+        raise RuntimeError(msg) from e
 
     if not submission_only:
-        submission_scenario_name = _upload_to_db(scen_folder, key, skip_zip)
+        submission_scenario_name = _upload_to_db(scen_folder, key, skip_zip=skip_zip)
     else:
         submission_scenario_name = scenario_name
 
@@ -722,7 +747,9 @@ def upload(
     return submission_scenario_name
 
 
-def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
+def upload_rt_source(  # noqa: C901, PLR0911, PLR0915
+    scenario_name: str, rt_zip_path: str, key: str
+) -> bool:
     """Upload a Ray Tracing (RT) source file to the database.
 
     Args:
@@ -757,6 +784,7 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
             f"{API_BASE_URL}/api/b2/authorize-rt-upload",
             params={"scenario_name": scenario_name},  # Server expects scenario_name
             headers={"Authorization": f"Bearer {key}"},
+            timeout=REQUEST_TIMEOUT,
         )
         auth_response.raise_for_status()
         auth_data = auth_response.json()
@@ -770,14 +798,15 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
         if not authorized_filename or authorized_filename != target_filename:
             print("Error: Filename mismatch.")
             print(
-                f"Server authorized RT upload for '{authorized_filename}' but expected '{target_filename}'",
+                "Server authorized RT upload for "
+                f"'{authorized_filename}' but expected '{target_filename}'",
             )
             return False
 
         print(f"✓ Authorization granted. Uploading to RT database as '{authorized_filename}'...")
 
         # 2. Calculate file hash (using the local rt_zip_path file)
-        sha1 = hashlib.sha1()
+        sha1 = hashlib.sha1()  # noqa: S324
         with rt_zip_path_obj.open("rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
                 sha1.update(chunk)
@@ -797,16 +826,13 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
                     "X-Bz-Content-Sha1": file_hash,  # Required by the database
                 },
                 data=progress_reader,
+                timeout=REQUEST_TIMEOUT,
             )
             upload_response.raise_for_status()
         finally:
             if progress_reader:
                 progress_reader.close()
             pbar.close()
-
-        print(f"✓ RT source uploaded successfully as {authorized_filename}")
-
-        return True
 
     except requests.exceptions.HTTPError as e:
         print(f"API call failed: {e.response.status_code}")
@@ -819,12 +845,15 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
     except requests.exceptions.RequestException as e:
         print(f"Network or request error during RT upload: {e!s}")
         return False
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"An unexpected error occurred during RT upload: {e!s}")
         return False
+    else:
+        print(f"✓ RT source uploaded successfully as {authorized_filename}")
+        return True
 
 
-def _download_url(scenario_name: str, rt_source: bool = False) -> str:
+def _download_url(scenario_name: str, *, rt_source: bool = False) -> str:
     """Get the secure download endpoint URL for a DeepMIMO scenario.
 
     Args:
@@ -847,14 +876,15 @@ def _download_url(scenario_name: str, rt_source: bool = False) -> str:
     return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}{rt_param}"
 
 
-def download_url(scenario_name: str, rt_source: bool = False) -> str:
+def download_url(scenario_name: str, *, rt_source: bool = False) -> str:
     """Public wrapper around `_download_url`."""
-    return _download_url(scenario_name, rt_source)
+    return _download_url(scenario_name, rt_source=rt_source)
 
 
-def download(
+def download(  # noqa: C901, PLR0912, PLR0915
     scenario_name: str,
     output_dir: str | None = None,
+    *,
     rt_source: bool = False,
 ) -> str | None:
     """Download a DeepMIMO scenario from the database.
@@ -891,7 +921,7 @@ def download(
             return None
 
     # Get secure download URL using existing helper
-    url = _download_url(scenario_name, rt_source)
+    url = _download_url(scenario_name, rt_source=rt_source)
 
     # Check if file already exists in download folder
     if not Path(output_path).exists():
@@ -902,7 +932,7 @@ def download(
         print(f"Downloading {download_type} '{scenario_name}'")
         try:
             # Get download token and redirect URL
-            resp = requests.get(url, headers=HEADERS)
+            resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
             resp.raise_for_status()
             token_data = resp.json()
 
@@ -920,7 +950,9 @@ def download(
                 redirect_url = f"{url.split('/api/')[0]}{redirect_url}"
 
             # Download the file
-            download_resp = requests.get(redirect_url, stream=True, headers=HEADERS)
+            download_resp = requests.get(
+                redirect_url, stream=True, headers=HEADERS, timeout=REQUEST_TIMEOUT
+            )
             download_resp.raise_for_status()
             total_size = int(download_resp.headers.get("content-length", 0))
 
@@ -1000,7 +1032,7 @@ def download(
     return output_path
 
 
-def search(query: dict | None = None) -> list[str] | None:
+def search(query: dict | None = None) -> list[str] | None:  # noqa: PLR0911
     """Search for scenarios in the DeepMIMO database.
 
     Args:
@@ -1036,7 +1068,9 @@ def search(query: dict | None = None) -> list[str] | None:
     if query is None:
         query = {}
     try:
-        response = requests.post(f"{API_BASE_URL}/api/search/scenarios", json=query)
+        response = requests.post(
+            f"{API_BASE_URL}/api/search/scenarios", json=query, timeout=REQUEST_TIMEOUT
+        )
         response.raise_for_status()
         data = response.json()
         return data["scenarios"]
@@ -1046,7 +1080,7 @@ def search(query: dict | None = None) -> list[str] | None:
             try:
                 error_data = e.response.json()
                 print(f"Server error details: {error_data.get('error', e.response.text)}")
-            except:
+            except (ValueError, json.JSONDecodeError):
                 print(f"Server response: {e.response.text}")
         return None
     except requests.exceptions.ConnectionError:
@@ -1061,6 +1095,6 @@ def search(query: dict | None = None) -> list[str] | None:
     except ValueError as e:
         print(f"Error parsing response: {e!s}")
         return None
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Unexpected error: {e!s}")
         return None
