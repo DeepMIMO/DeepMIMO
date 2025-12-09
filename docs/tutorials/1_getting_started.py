@@ -1,4 +1,3 @@
-# ruff: noqa: N999
 """# Getting Started with DeepMIMO.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/1_getting_started.py)
@@ -9,9 +8,9 @@
 
 **Tutorial Overview:**
 - **Part 1**: Hello World - Load a simple scenario, generate channels
- - **Part 2**: Deep Dive - Explore complex scenarios with multiple base stations
- - **Part 3**: Discovery - Learn how to discover more using `dm.info()`,
-   aliases, and implicit computations
+- **Part 2**: Deep Dive - Explore complex scenarios with multiple base stations
+- **Part 3**: Discovery - Learn how to discover more using `dm.info()`,
+  aliases, and implicit computations
 
 **Related Video:** [Getting Started Video](https://youtu.be/LDG6IPEHY54)
 

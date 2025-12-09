@@ -198,6 +198,9 @@ ignore = [
     # Harmless in tests: allow missing annotations
     "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204",
 ]
+"docs/tutorials/*.py" = [
+    "N999",    # Allow tutorial names to start with a number
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,4 +1,3 @@
-# ruff: noqa: N999
 """# Detailed Channel Generation.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/3_channel_generation.py)

@@ -10,7 +10,6 @@ This module provides:
 
 The module serves as a shared utility library for all DeepMIMO converters.
 """
-# ruff: noqa: I001
 
 import shutil
 from pathlib import Path
@@ -19,7 +18,8 @@ from typing import Any
 import numpy as np
 
 from deepmimo import consts as c
-from deepmimo.general_utils import save_dict_as_json, zip as zip_folder
+from deepmimo.general_utils import save_dict_as_json
+from deepmimo.general_utils import zip as zip_folder
 
 TWO_DIMS = 2
 THREE_DIMS = 3

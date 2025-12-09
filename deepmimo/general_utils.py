@@ -507,7 +507,7 @@ class PrintIfVerbose:
             print(message)
 
 
-def zip_folder(folder_path: str) -> str:
+def zip(folder_path: str) -> str:  # noqa: A001  (used via dm.zip - and rarely elsewhere)
     """Create zip archive of folder contents.
 
     This function creates a zip archive containing all files and subdirectories in the
@@ -532,11 +532,6 @@ def zip_folder(folder_path: str) -> str:
         for file_path, rel_path in tqdm(all_files, desc="Compressing", unit="file"):
             zipf.write(file_path, rel_path)
     return zip_path
-
-
-def zip(folder_path: str) -> str:  # noqa: A001
-    """Backward-compatible wrapper around `zip_folder`."""
-    return zip_folder(folder_path)
 
 
 def unzip(path_to_zip: str) -> str:

@@ -290,7 +290,7 @@ class ChannelParameters(DotDict):
         return self_converted
 
 
-class OFDM_PathGenerator:  # noqa: N801
+class OFDMPathGenerator:
     """Class for generating OFDM paths with specified parameters.
 
     This class handles the generation of OFDM paths including optional
@@ -414,7 +414,7 @@ def _generate_MIMO_channel(  # noqa: N802, PLR0913, PLR0915
     ts = 1.0 / ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
     subcarriers = ofdm_params[c.PARAMSET_OFDM_SC_SAMP]
     k_subcarriers = len(subcarriers)
-    path_gen = OFDM_PathGenerator(ofdm_params, subcarriers)
+    path_gen = OFDMPathGenerator(ofdm_params, subcarriers)
 
     # Delay sanity for OFDM mode
     if freq_domain:

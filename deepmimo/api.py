@@ -153,11 +153,11 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
             return None
 
         # Calculate file hash
-        sha1 = hashlib.sha1()  # noqa: S324
+        sha256 = hashlib.sha256()
         with file_path.open("rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
-                sha1.update(chunk)
-        file_hash = sha1.hexdigest()
+                sha256.update(chunk)
+        file_hash = sha256.hexdigest()
 
         # Upload file to DB
         print(f"Uploading {authorized_filename} to DB...")
@@ -172,7 +172,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
                 headers={
                     "Content-Type": auth_data.get("contentType", "application/zip"),
                     "Content-Length": str(file_size),
-                    "X-Bz-Content-Sha1": file_hash,
+                    "X-Bz-Content-sha256": file_hash,
                 },
                 data=progress_reader,
                 timeout=REQUEST_TIMEOUT,
@@ -806,11 +806,11 @@ def upload_rt_source(  # noqa: C901, PLR0911, PLR0915
         print(f"✓ Authorization granted. Uploading to RT database as '{authorized_filename}'...")
 
         # 2. Calculate file hash (using the local rt_zip_path file)
-        sha1 = hashlib.sha1()  # noqa: S324
+        sha256 = hashlib.sha256()
         with rt_zip_path_obj.open("rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
-                sha1.update(chunk)
-        file_hash = sha1.hexdigest()
+                sha256.update(chunk)
+        file_hash = sha256.hexdigest()
 
         # 3. Upload file to the RT database using the presigned URL
         pbar = tqdm(total=file_size, unit="B", unit_scale=True, desc="Uploading RT Source")
@@ -823,7 +823,7 @@ def upload_rt_source(  # noqa: C901, PLR0911, PLR0915
                 headers={
                     "Content-Type": auth_data.get("contentType", "application/zip"),
                     "Content-Length": str(file_size),
-                    "X-Bz-Content-Sha1": file_hash,  # Required by the database
+                    "X-Bz-Content-sha256": file_hash,  # Required by the database
                 },
                 data=progress_reader,
                 timeout=REQUEST_TIMEOUT,

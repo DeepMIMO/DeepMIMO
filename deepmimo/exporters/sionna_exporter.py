@@ -299,8 +299,9 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
     scene_objects = _get_scene_objects(scene)
     for obj_name, obj in scene_objects.items():
         # Get vertices
-        n_v = obj._mi_shape.vertex_count()  # noqa: SLF001
-        obj_vertices = np.array(obj._mi_shape.vertex_position(np.arange(n_v)))  # noqa: SLF001
+        shape = obj._mi_shape  # noqa: SLF001  (necessary)
+        n_v = shape.vertex_count()
+        obj_vertices = np.array(shape.vertex_position(np.arange(n_v)))
         if sionna_v1:
             obj_vertices = obj_vertices.T
 
