@@ -427,78 +427,73 @@ def _check_ofdm_compatibility(ofdm_params: dict, delays: np.ndarray) -> None:
     print("-" * 50)
 
 
-def _compute_user_freq_channel(  # noqa: PLR0913 - all params needed for OFDM generation
+def _compute_single_freq_channel(
     array_product: np.ndarray,
-    user_power: np.ndarray,
-    user_delay: np.ndarray,
-    user_phase: np.ndarray,
-    user_doppler: np.ndarray,
-    path_gen: OFDMPathGenerator,
-    ts: float,
-    times_arr: np.ndarray,
+    path_gains: np.ndarray,
+    *,
+    squeeze_time: bool,
 ) -> np.ndarray:
-    """Compute frequency-domain channel for a single user.
+    """Compute frequency-domain channel for a single link.
 
     Args:
         array_product: [M_rx, M_tx, P] antenna array responses for valid paths
-        user_power: [P] path powers (linear scale)
-        user_delay: [P] path delays (seconds)
-        user_phase: [P] path phases (degrees)
-        user_doppler: [P] Doppler frequencies (Hz)
-        path_gen: OFDM path generator
-        ts: Sampling period (seconds)
-        times_arr: [N_t] time samples
+        path_gains: [P, K, N_t] per-path gains for each subcarrier and time
+        squeeze_time: If True and single time sample, squeeze time dimension
 
     Returns:
-        [M_rx, M_tx, K, N_t] frequency-domain channel
+        [M_rx, M_tx, K] if squeezed, else [M_rx, M_tx, K, N_t]
 
     """
-    # Compute per-path, per-subcarrier, per-time path gains
-    path_gains = path_gen.generate(
-        pwr=user_power,
-        toa=user_delay,
-        phs=user_phase,
-        ts=ts,
-        dopplers=user_doppler,
-        times=times_arr,
-    )
     # Combine with array responses: [M_rx, M_tx, P] x [P, K, N_t] -> [M_rx, M_tx, K, N_t]
-    return np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
+    channel = np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
         np.complex64,
         copy=False,
     )
+    # Squeeze time dimension if single snapshot
+    if squeeze_time and channel.shape[-1] == 1:
+        return channel[..., 0]
+    return channel
 
 
-def _compute_user_time_channel(
+def _compute_single_time_channel(
     array_product: np.ndarray,
-    user_power: np.ndarray,
-    user_phase: np.ndarray,
-    user_doppler: np.ndarray,
-    times_arr: np.ndarray,
+    path_gains: np.ndarray,
+    p_max: int,
+    *,
+    squeeze_time: bool,
 ) -> np.ndarray:
-    """Compute time-domain channel for a single user.
+    """Compute time-domain channel for a single link.
 
     Args:
         array_product: [M_rx, M_tx, P] antenna array responses for valid paths
-        user_power: [P] path powers (linear scale)
-        user_phase: [P] path phases (degrees)
-        user_doppler: [P] Doppler frequencies (Hz)
-        times_arr: [N_t] time samples
+        path_gains: [P, N_t] per-path complex gains over time
+        p_max: Maximum number of paths (for zero-padding)
+        squeeze_time: If True and single time sample, squeeze time dimension
 
     Returns:
-        [M_rx, M_tx, P, N_t] time-domain channel
+        [M_rx, M_tx, P_max] if squeezed, else [M_rx, M_tx, P_max, N_t]
 
     """
-    # Time-domain per-path gains: a_pt = sqrt(P) * exp(j(phi + 2π fD t))
-    phase0 = np.deg2rad(user_phase)[:, None]  # [P, 1]
-    a_pt = np.sqrt(user_power)[:, None] * np.exp(
-        1j * (phase0 + 2 * np.pi * user_doppler[:, None] * times_arr[None, :]),
-    )  # [P, N_t]
+    m_rx, m_tx, n_paths = array_product.shape
+    n_times = path_gains.shape[1]
+
     # Combine: [M_rx, M_tx, P] x [P, N_t] -> [M_rx, M_tx, P, N_t]
-    return np.einsum("rtp,pn->rtpn", array_product, a_pt, optimize=True).astype(
+    channel = np.einsum("rtp,pn->rtpn", array_product, path_gains, optimize=True).astype(
         np.complex64,
         copy=False,
     )
+
+    # Pad zeros for invalid paths to preserve p_max dimension
+    if squeeze_time and n_times == 1:
+        # Output: [M_rx, M_tx, P_max]
+        out = np.zeros((m_rx, m_tx, p_max), dtype=np.complex64)
+        out[..., :n_paths] = channel[..., 0]
+    else:
+        # Output: [M_rx, M_tx, P_max, N_t]
+        out = np.zeros((m_rx, m_tx, p_max, n_times), dtype=np.complex64)
+        out[..., :n_paths, :] = channel
+
+    return out
 
 
 def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred for clarity
@@ -579,37 +574,26 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
         user_doppler = doppler[i, non_nan_mask]
 
         if freq_domain:
-            # Compute frequency-domain channel
-            hi_fk_t = _compute_user_freq_channel(
-                array_product,
-                user_power,
-                user_delay,
-                user_phase,
-                user_doppler,
-                path_gen,
-                ts,
-                times_arr,
+            # Generate OFDM path gains
+            path_gains = path_gen.generate(
+                pwr=user_power,
+                toa=user_delay,
+                phs=user_phase,
+                ts=ts,
+                dopplers=user_doppler,
+                times=times_arr,
             )
-            channel[i] = hi_fk_t[..., 0] if n_times == 1 and squeeze_time else hi_fk_t
+            channel[i] = _compute_single_freq_channel(
+                array_product, path_gains, squeeze_time=squeeze_time
+            )
         else:
-            # Compute time-domain channel
-            hi_pt = _compute_user_time_channel(
-                array_product,
-                user_power,
-                user_phase,
-                user_doppler,
-                times_arr,
+            # Generate time-domain path gains
+            phase0 = np.deg2rad(user_phase)[:, None]  # [P, 1]
+            path_gains = np.sqrt(user_power)[:, None] * np.exp(
+                1j * (phase0 + 2 * np.pi * user_doppler[:, None] * times_arr[None, :]),
+            )  # [P, N_t]
+            channel[i] = _compute_single_time_channel(
+                array_product, path_gains, p_max, squeeze_time=squeeze_time
             )
-            # Pad zeros for invalid paths to preserve last_ch_dim
-            if n_times == 1 and squeeze_time:
-                shape = (m_rx, m_tx, p_max)
-            else:
-                shape = (m_rx, m_tx, p_max, n_times)
-            out = np.zeros(shape, dtype=np.complex64)
-            if n_times == 1 and squeeze_time:
-                out[..., :n_paths] = hi_pt[..., 0]
-            else:
-                out[..., :n_paths, :] = hi_pt
-            channel[i] = out
 
     return channel
