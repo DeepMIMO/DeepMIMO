@@ -205,6 +205,7 @@ norecursedirs = [
     "tests/tutorials",
     "deepmimo_scenarios",
     "docs",
+    "scripts",
     "DeepMIMO.egg-info",
 ]
 addopts = "-q"
