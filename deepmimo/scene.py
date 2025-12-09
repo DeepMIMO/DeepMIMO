@@ -682,9 +682,7 @@ class Scene:
             scene.add_object(obj)
         return scene
 
-    def _plot_objects_3d(
-        self, ax: plt.Axes, label_groups: dict, mode: str
-    ) -> None:
+    def _plot_objects_3d(self, ax: plt.Axes, label_groups: dict, mode: str) -> None:
         """Plot objects in 3D mode.
 
         Args:
@@ -706,9 +704,7 @@ class Scene:
                 color = obj.color or colors[obj_idx]
                 obj.plot(ax, mode=mode, alpha=vis_settings["alpha"], color=color)
 
-    def _plot_objects_2d(
-        self, ax: plt.Axes, label_groups: dict
-    ) -> None:
+    def _plot_objects_2d(self, ax: plt.Axes, label_groups: dict) -> None:
         """Plot objects in 2D mode (top-down view).
 
         Args:

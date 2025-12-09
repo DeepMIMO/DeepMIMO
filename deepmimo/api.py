@@ -794,9 +794,7 @@ def upload(  # noqa: PLR0913 - comprehensive upload requires all configuration p
     return submission_scenario_name
 
 
-def upload_rt_source(
-    scenario_name: str, rt_zip_path: str, key: str
-) -> bool:
+def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
     """Upload a Ray Tracing (RT) source file to the database.
 
     Args:

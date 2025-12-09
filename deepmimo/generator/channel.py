@@ -195,9 +195,7 @@ class ChannelParameters(DotDict):
         if kwargs:
             self.update(deep_dict_merge(self, kwargs))
 
-    def _validate_antenna_params(
-        self, params: DotDict, n_ues: int | None = None
-    ) -> None:
+    def _validate_antenna_params(self, params: DotDict, n_ues: int | None = None) -> None:
         """Validate and set antenna rotation and radiation pattern for BS or UE.
 
         Args:
@@ -215,9 +213,7 @@ class ChannelParameters(DotDict):
 
         # Validate radiation pattern
         if c.PARAMSET_ANT_RAD_PAT in params:
-            params[c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
-                params[c.PARAMSET_ANT_RAD_PAT]
-            )
+            params[c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(params[c.PARAMSET_ANT_RAD_PAT])
         else:
             params[c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[0]
 
@@ -435,8 +431,7 @@ def _check_ofdm_compatibility(ofdm_params: dict, delays: np.ndarray) -> None:
     print("1. Increase the number of subcarriers (N)")
     print("2. Decrease the bandwidth (B)")
     print(
-        "3. Switch to time-domain channel generation "
-        f"(set ch_params['{c.PARAMSET_FD_CH}'] = 0)",
+        f"3. Switch to time-domain channel generation (set ch_params['{c.PARAMSET_FD_CH}'] = 0)",
     )
     print("-" * 50)
 

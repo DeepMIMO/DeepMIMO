@@ -201,9 +201,7 @@ class PhysicalObjectParser:
             self.name = f"{self.name}_{i}"
 
             # Generate faces
-            object_faces = get_object_faces(
-                vertices_array, fast=use_fast_mode or force_fast_mode
-            )
+            object_faces = get_object_faces(vertices_array, fast=use_fast_mode or force_fast_mode)
             if object_faces is None:
                 print(f"Failed to generate faces for object {self.name}")
                 continue

@@ -362,9 +362,7 @@ class Dataset(DotDict):
         """
         return self.rx_ori
 
-    def _look_at(
-        self, from_pos: np.ndarray, to_pos: np.ndarray
-    ) -> tuple[np.ndarray, np.ndarray]:
+    def _look_at(self, from_pos: np.ndarray, to_pos: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         """Calculate azimuth and elevation angles for position pairs.
 
         Args:
@@ -1296,9 +1294,7 @@ class Dataset(DotDict):
                 for _i in range(n_inter):
                     print(f"    {p_idx + 1}: {self.inter_objects[idx][path_idx][p_idx]}")
 
-    def print_rx(
-        self, idx: int, path_idxs: np.ndarray | list[int] | None = None
-    ) -> None:
+    def print_rx(self, idx: int, path_idxs: np.ndarray | list[int] | None = None) -> None:
         """Print detailed information about a specific user.
 
         Args:

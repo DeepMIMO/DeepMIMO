@@ -124,10 +124,7 @@ class AntennaPattern:
 
         """
         if pattern not in c.PARAMSET_ANT_RAD_PAT_VALS:
-            msg = (
-                f"The '{pattern}' antenna radiation pattern is not applicable for "
-                f"{pattern_type}."
-            )
+            msg = f"The '{pattern}' antenna radiation pattern is not applicable for {pattern_type}."
             raise NotImplementedError(msg)
         if pattern not in PATTERN_REGISTRY:
             msg = f"The pattern '{pattern}' is defined but not implemented for {pattern_type}."

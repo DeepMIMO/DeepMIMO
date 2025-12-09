@@ -72,9 +72,7 @@ def read_panels(rt_folder: str) -> dict[str, Any]:
     return panels
 
 
-def convert_to_deepmimo_txrxset(
-    tx_rx_data: dict[str, Any], *, is_tx: bool, id_: int
-) -> TxRxSet:
+def convert_to_deepmimo_txrxset(tx_rx_data: dict[str, Any], *, is_tx: bool, id_: int) -> TxRxSet:
     """Convert AODT TX/RX data to DeepMIMO TxRxSet format.
 
     Args:

@@ -344,9 +344,7 @@ def _load_tx_rx_raydata(  # noqa: PLR0913 - all raytracing data loading paramete
 
 
 # Helper functions
-def _validate_set_id(
-    set_id: int, valid_set_ids: list[int], set_str: str, info_str: str
-) -> None:
+def _validate_set_id(set_id: int, valid_set_ids: list[int], set_str: str, info_str: str) -> None:
     """Validate that a set ID is in the allowed list.
 
     Args:
@@ -360,9 +358,7 @@ def _validate_set_id(
 
     """
     if set_id not in valid_set_ids:
-        raise ValueError(
-            f"{set_str} set {set_id} not in allowed sets {valid_set_ids}\n" + info_str
-        )
+        raise ValueError(f"{set_str} set {set_id} not in allowed sets {valid_set_ids}\n" + info_str)
 
 
 def _process_dict_sets(

@@ -130,33 +130,25 @@ CHANNEL_HELP_MESSAGES = {
     c.PARAMSET_ANT_BS: "Base station antenna array configuration parameters.\n",
     c.PARAMSET_ANT_UE: "User equipment antenna array configuration parameters.\n",
     # Antenna Parameters
-    c.PARAMSET_ANT_BS
-    + "."
-    + c.PARAMSET_ANT_SHAPE: dedent(
+    c.PARAMSET_ANT_BS + "." + c.PARAMSET_ANT_SHAPE: dedent(
         """\
         Antenna array dimensions [X, Y] or [X, Y, Z] elements
         \t Default: [1, 1]  |  Type: list[int]  |  Units: number of elements
         """
     ),
-    c.PARAMSET_ANT_BS
-    + "."
-    + c.PARAMSET_ANT_SPACING: dedent(
+    c.PARAMSET_ANT_BS + "." + c.PARAMSET_ANT_SPACING: dedent(
         """\
         Spacing between antenna elements
         \t Default: 0.5  |  Type: float  |  Units: wavelengths
         """
     ),
-    c.PARAMSET_ANT_BS
-    + "."
-    + c.PARAMSET_ANT_ROTATION: dedent(
+    c.PARAMSET_ANT_BS + "." + c.PARAMSET_ANT_ROTATION: dedent(
         """\
         Rotation angles [azimuth, elevation, polarization]
         \t Default: [0, 0, 0]  |  Type: list[float]  |  Units: degrees
         """
     ),
-    c.PARAMSET_ANT_BS
-    + "."
-    + c.PARAMSET_ANT_RAD_PAT: dedent(
+    c.PARAMSET_ANT_BS + "." + c.PARAMSET_ANT_RAD_PAT: dedent(
         """\
         Antenna element radiation pattern
         \t Default: "isotropic"  |  Type: str  |  Options: "isotropic", "halfwave-dipole"
@@ -200,17 +192,13 @@ CHANNEL_HELP_MESSAGES = {
         \t Default: 512  |  Type: int  |  Units: number of subcarriers
         """
     ),
-    c.PARAMSET_OFDM
-    + "."
-    + c.PARAMSET_OFDM_SC_SAMP: dedent(
+    c.PARAMSET_OFDM + "." + c.PARAMSET_OFDM_SC_SAMP: dedent(
         """\
         Indices of subcarriers to generate
         \t Default: None (all subcarriers)  |  Type: list[int]  |  Units: subcarrier indices
         """
     ),
-    c.PARAMSET_OFDM
-    + "."
-    + c.PARAMSET_OFDM_LPF: dedent(
+    c.PARAMSET_OFDM + "." + c.PARAMSET_OFDM_LPF: dedent(
         """\
         Enable/disable receive low-pass filter / ADC filter
         \t Default: False  |  Type: bool

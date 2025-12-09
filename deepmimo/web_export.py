@@ -248,9 +248,7 @@ def _process_single_dataset_to_binary(
     return set_info
 
 
-def _process_object_type_to_binary(
-    obj_list: list, output_path: Path, obj_type_name: str
-) -> None:
+def _process_object_type_to_binary(obj_list: list, output_path: Path, obj_type_name: str) -> None:
     """Process a list of scene objects to binary format.
 
     Args:

@@ -220,6 +220,7 @@ def load_mat(mat_path: str, key: str | None = None) -> np.ndarray | None:
 def _numpy_handler(x: Any) -> list[Any] | str:
     return x.tolist() if isinstance(x, np.ndarray) else str(x)
 
+
 def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
     """Save dictionary as JSON, handling NumPy arrays and other non-JSON types.
 

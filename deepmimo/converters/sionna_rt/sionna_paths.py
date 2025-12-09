@@ -220,7 +220,6 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
     return inactive_count
 
 
-
 def _get_path_key(
     paths_dict: dict[str, Any], key: str, fallback_key: str | None = None, default: Any = None
 ) -> Any:

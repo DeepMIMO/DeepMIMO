@@ -72,7 +72,6 @@ class Peekable:
         self._sentinel = object()
         self._next = self._sentinel
 
-
     def peek(self) -> Any:
         """Peeks at the next value of the iterator, if any."""
         if self._next is self._sentinel:
@@ -96,6 +95,7 @@ class Peekable:
             self._next = self._sentinel
             return next_value
         return next(self._iterator)
+
 
 # Backward compatibility alias
 peekable = Peekable

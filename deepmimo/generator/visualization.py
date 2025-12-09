@@ -80,8 +80,7 @@ def _create_colorbar(  # noqa: PLR0913 - all params needed for flexible colorbar
         )
         val_range = np.max(unique_vals) - np.min(unique_vals)
         str_labels = [
-            str(int(val)) if val_range > VAL_RANGE_THRESHOLD else str(val)
-            for val in unique_vals
+            str(int(val)) if val_range > VAL_RANGE_THRESHOLD else str(val) for val in unique_vals
         ]
         cbar.set_ticklabels(cat_labels if cat_labels else str_labels)
     else:
