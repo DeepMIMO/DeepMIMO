@@ -180,7 +180,148 @@ def summary(scen_name: str, *, print_summary: bool = True) -> str | None:  # noq
     return summary_str
 
 
-def plot_summary(  # noqa: PLR0912, PLR0915, C901
+def _plot_3d_scene(dataset: Any, temp_dir: str, timestamp: int, *, save_imgs: bool) -> str | None:
+    """Plot 3D scene visualization.
+
+    Args:
+        dataset: Dataset to plot
+        temp_dir: Directory to save images
+        timestamp: Timestamp for unique filename
+        save_imgs: Whether to save or show the plot
+
+    Returns:
+        Path to saved image if save_imgs is True, None otherwise
+
+    """
+    try:
+        scene_img_path = str(Path(temp_dir) / f"scene_{timestamp:016d}.png")
+        dataset.scene.plot()
+        if save_imgs:
+            plt.savefig(scene_img_path, dpi=100, bbox_inches="tight")
+            plt.close()
+            return scene_img_path
+
+        plt.show()
+    except (OSError, RuntimeError, ValueError) as e:
+        print(f"Error generating 3D scene plot: {e!s}")
+
+    return None
+
+
+def _plot_scenario_summary_2d(  # noqa: C901, PLR0912 - 2D summary requires checking multiple dataset configurations
+    dataset: Any, temp_dir: str, timestamp: int, *, save_imgs: bool
+) -> str | None:
+    """Plot 2D scenario summary with base stations and users.
+
+    Args:
+        dataset: Dataset to plot
+        temp_dir: Directory to save images
+        timestamp: Timestamp for unique filename
+        save_imgs: Whether to save or show the plot
+
+    Returns:
+        Path to saved image if save_imgs is True, None otherwise
+
+    """
+    try:
+        img2_path = str(Path(temp_dir) / f"scenario_summary_{timestamp:016d}.png")
+        txrx_sets = dataset.txrx_sets
+
+        tx_set = next(s for s in txrx_sets if s.is_tx)
+        n_bs = tx_set.num_points
+        ax = dataset.scene.plot(title=False, proj_3D=False)
+        bs_colors = ["red", "blue", "green", "yellow", "purple", "orange"]
+
+        # Plot base stations
+        for bs in range(n_bs):
+            if bs == 0 and n_bs == 1:
+                bs_dataset = dataset
+                # Workaround for DynamicDataset
+                if isinstance(bs_dataset.bs_pos, list):
+                    bs_dataset = dataset[0]
+                    print("Warning: plot_summary not supported for DynamicDatasets. ")
+                    print("Plotting the summary of the first snapshot only. ")
+                    print("For all snapshots, use dataset.plot_summary() instead.")
+            else:
+                bs_dataset = dataset[bs]
+            ax.scatter(
+                bs_dataset.bs_pos[0, 0],
+                bs_dataset.bs_pos[0, 1],
+                s=250,
+                color=bs_colors[bs],
+                label=f"BS {bs + 1}",
+                marker="*",
+            )
+
+        # Get receiver grid dataset
+        if isinstance(dataset.txrx, list):
+            rx_set_id = next(s for s in txrx_sets if s.is_rx and not s.is_tx).id
+            first_pair_with_rx_grid = next(
+                txrx_pair_idx
+                for txrx_pair_idx, txrx_dict in enumerate(dataset.txrx)
+                if txrx_dict["rx_set_id"] == rx_set_id
+            )
+            rx_grid_dataset = dataset[first_pair_with_rx_grid]
+        else:
+            rx_grid_dataset = dataset
+
+        # Select users to plot
+        max_users_for_grid = 5000
+        if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > max_users_for_grid:
+            idxs = rx_grid_dataset.get_uniform_idxs([8, 8])
+        else:
+            idxs = np.arange(rx_grid_dataset.n_ue)
+
+        ax.scatter(
+            rx_grid_dataset.rx_pos[idxs, 0],
+            rx_grid_dataset.rx_pos[idxs, 1],
+            s=10,
+            color="red",
+            label="users",
+            marker="o",
+            alpha=0.2,
+            zorder=0,
+        )
+
+        # Reorder legend handles and labels
+        legend_args = {
+            "ncol": 4 if n_bs == 1 else 3,
+            "loc": "center",
+            "bbox_to_anchor": (0.5, 1.0),
+            "fontsize": 15,
+        }
+        three_bs = 3
+        two_bs = 2
+        if n_bs == three_bs:
+            order = [2, 0, 3, 1, 4, 5]
+        elif n_bs == two_bs:
+            order = [2, 0, 3, 1, 4]
+        else:
+            order = [0, 1, 2, 3]
+        l1 = ax.legend(**legend_args)
+        l2 = ax.legend(
+            [l1.legend_handles[i] for i in order],
+            [l1.get_texts()[i].get_text() for i in order],
+            **legend_args,
+        )
+        l2.set_zorder(1e9)
+        for handle, text in zip(l2.legend_handles, l2.get_texts(), strict=False):
+            if text.get_text() == "users":  # Match by label
+                handle.set_sizes([100])  # marker area (not radius)
+
+        if save_imgs:
+            plt.savefig(img2_path, dpi=100, bbox_inches="tight")
+            plt.close()
+            return img2_path
+
+        plt.show()
+    except (OSError, RuntimeError, ValueError) as e:
+        print(f"Error generating 2D scenario summary: {e!s}")
+
+    return None
+
+
+def plot_summary(
     scenario_name: str | None = None,
     *,
     save_imgs: bool = False,
@@ -214,135 +355,27 @@ def plot_summary(  # noqa: PLR0912, PLR0915, C901
             raise ValueError(msg)
         dataset = load(scenario_name)
 
-    # Image paths
-    img_paths = []
-
+    # Determine which plots to generate
     if plot_idx is None:
         plot_idx = [0, 1]  # currently only 2 plots are supported
     elif isinstance(plot_idx, int):
         plot_idx = [plot_idx]
 
     timestamp = int(time.time() * 1000)
-    # Image 1: 3D Scene
+    img_paths = []
+
+    # Generate requested plots
     if 0 in plot_idx:
-        try:
-            scene_img_path = str(Path(temp_dir) / f"scene_{timestamp:016d}.png")
-            dataset.scene.plot()
-            if save_imgs:
-                plt.savefig(scene_img_path, dpi=100, bbox_inches="tight")
-                plt.close()
-                img_paths.append(scene_img_path)
-            else:
-                plt.show()
+        img_path = _plot_3d_scene(dataset, temp_dir, timestamp, save_imgs=save_imgs)
+        if img_path:
+            img_paths.append(img_path)
 
-        except (OSError, RuntimeError, ValueError) as e:
-            print(f"Error generating image 1: {e!s}")
-
-    # Image 2: Scenario summary (2D view)
     if 1 in plot_idx:
-        try:
-            img2_path = str(Path(temp_dir) / f"scenario_summary_{timestamp:016d}.png")
-            txrx_sets = dataset.txrx_sets
-
-            tx_set = next(s for s in txrx_sets if s.is_tx)
-            n_bs = tx_set.num_points
-            ax = dataset.scene.plot(title=False, proj_3D=False)
-            bs_colors = ["red", "blue", "green", "yellow", "purple", "orange"]
-            for bs in range(n_bs):
-                if bs == 0 and n_bs == 1:
-                    bs_dataset = dataset
-                    # Workaround for DynamicDataset
-                    if isinstance(bs_dataset.bs_pos, list):
-                        bs_dataset = dataset[0]
-                        print("Warning: plot_summary not supported for DynamicDatasets. ")
-                        print("Plotting the summary of the first snapshot only. ")
-                        print("For all snapshots, use dataset.plot_summary() instead.")
-                else:
-                    bs_dataset = dataset[bs]
-                ax.scatter(
-                    bs_dataset.bs_pos[0, 0],
-                    bs_dataset.bs_pos[0, 1],
-                    s=250,
-                    color=bs_colors[bs],
-                    label=f"BS {bs + 1}",
-                    marker="*",
-                )
-
-            # Get txrx pair index from the first receiver-only txrx (which is like a rx grid)
-            if isinstance(dataset.txrx, list):
-                rx_set_id = next(s for s in txrx_sets if s.is_rx and not s.is_tx).id
-                first_pair_with_rx_grid = next(
-                    txrx_pair_idx
-                    for txrx_pair_idx, txrx_dict in enumerate(dataset.txrx)
-                    if txrx_dict["rx_set_id"] == rx_set_id
-                )
-                rx_grid_dataset = dataset[first_pair_with_rx_grid]
-            else:
-                first_pair_with_rx_grid = 0
-                rx_grid_dataset = dataset
-
-            # Select users to plot
-            max_users_for_grid = 5000
-            if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > max_users_for_grid:
-                idxs = rx_grid_dataset.get_uniform_idxs([8, 8])
-            else:
-                idxs = np.arange(rx_grid_dataset.n_ue)
-
-            ax.scatter(
-                rx_grid_dataset.rx_pos[idxs, 0],
-                rx_grid_dataset.rx_pos[idxs, 1],
-                s=10,
-                color="red",
-                label="users",
-                marker="o",
-                alpha=0.2,
-                zorder=0,
-            )
-
-            # Reorder legend handles and labels
-            legend_args = {
-                "ncol": 4 if n_bs == 1 else 3,
-                "loc": "center",
-                "bbox_to_anchor": (0.5, 1.0),
-                "fontsize": 15,
-            }
-            three_bs = 3
-            two_bs = 2
-            if n_bs == three_bs:
-                order = [2, 0, 3, 1, 4, 5]
-            elif n_bs == two_bs:
-                order = [2, 0, 3, 1, 4]
-            else:
-                order = [0, 1, 2, 3]
-            l1 = ax.legend(**legend_args)
-            l2 = ax.legend(
-                [l1.legend_handles[i] for i in order],
-                [l1.get_texts()[i].get_text() for i in order],
-                **legend_args,
-            )
-            l2.set_zorder(1e9)
-            for handle, text in zip(l2.legend_handles, l2.get_texts(), strict=False):
-                if text.get_text() == "users":  # Match by label
-                    handle.set_sizes([100])  # marker area (not radius)
-
-            if save_imgs:
-                plt.savefig(img2_path, dpi=100, bbox_inches="tight")
-                plt.close()
-                img_paths.append(img2_path)
-            else:
-                plt.show()
-
-        except (OSError, RuntimeError, ValueError) as e:
-            print(f"Error generating images 2: {e!s}")
+        img_path = _plot_scenario_summary_2d(dataset, temp_dir, timestamp, save_imgs=save_imgs)
+        if img_path:
+            img_paths.append(img_path)
 
     # ISSUE: LoS is BS specific. Are we going to show the LoS for each BS?
-
-    # Image 3: Line of Sight (LOS)
-    # plot_coverage(dataset.rx_pos, dataset.los, bs_pos=dataset.bs_pos, bs_ori=dataset.bs_ori,
-    #               cmap='viridis', cbar_labels='LoS status')
-    # los_img_path = str(Path(temp_dir) / 'los.png')
-    # plt.savefig(los_img_path, dpi=100, bbox_inches='tight')
-    # plt.close()
-    # img_paths.append(los_img_path)
+    # Image 3: Line of Sight (LOS) - commented out for now
 
     return img_paths if img_paths else None

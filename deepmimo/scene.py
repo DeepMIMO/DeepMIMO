@@ -682,7 +682,97 @@ class Scene:
             scene.add_object(obj)
         return scene
 
-    def plot(  # noqa: PLR0912, PLR0913, C901
+    def _plot_objects_3d(
+        self, ax: plt.Axes, label_groups: dict, mode: str
+    ) -> None:
+        """Plot objects in 3D mode.
+
+        Args:
+            ax: Matplotlib 3D axes to plot on
+            label_groups: Dictionary mapping labels to lists of objects
+            mode: Visualization mode ('faces' or 'tri_faces')
+
+        """
+        default_vis_settings = {"z_order": 3, "alpha": 0.8, "color": None}
+        for label, objects in label_groups.items():
+            vis_settings = self.visualization_settings.get(label, default_vis_settings)
+            n_objects = len(objects)
+            colors = (
+                plt.cm.rainbow(np.linspace(0, 1, n_objects))
+                if vis_settings["color"] is None
+                else [vis_settings["color"]] * n_objects
+            )
+            for obj_idx, obj in enumerate(objects):
+                color = obj.color or colors[obj_idx]
+                obj.plot(ax, mode=mode, alpha=vis_settings["alpha"], color=color)
+
+    def _plot_objects_2d(
+        self, ax: plt.Axes, label_groups: dict
+    ) -> None:
+        """Plot objects in 2D mode (top-down view).
+
+        Args:
+            ax: Matplotlib 2D axes to plot on
+            label_groups: Dictionary mapping labels to lists of objects
+
+        """
+        default_vis_settings = {"z_order": 3, "alpha": 0.8, "color": None}
+        for label, objects in label_groups.items():
+            vis_settings = self.visualization_settings.get(label, default_vis_settings)
+            n_objects = len(objects)
+            colors = (
+                plt.cm.rainbow(np.linspace(0, 1, n_objects))
+                if vis_settings["color"] is None
+                else [vis_settings["color"]] * n_objects
+            )
+            for obj_idx, obj in enumerate(objects):
+                color = obj.color or colors[obj_idx]
+                vertices_2d = obj.vertices[:, :2]
+                hull = ConvexHull(vertices_2d)
+                hull_vertices = vertices_2d[hull.vertices]
+                ax.fill(
+                    hull_vertices[:, 0],
+                    hull_vertices[:, 1],
+                    alpha=vis_settings["alpha"],
+                    color=color,
+                    label=label if obj_idx == 0 else "",
+                )
+
+    def _configure_plot_axes(
+        self,
+        ax: plt.Axes,
+        *,
+        proj_3d: bool,
+        title: bool,
+        label_groups: dict,
+        legend: bool,
+    ) -> None:
+        """Configure axes labels, limits, and legend.
+
+        Args:
+            ax: Matplotlib axes to configure
+            proj_3d: Whether this is a 3D plot
+            title: Whether to show title
+            label_groups: Dictionary of label groups (for legend check)
+            legend: Whether to show legend
+
+        """
+        ax.set_xlabel("X (m)")
+        ax.set_ylabel("Y (m)")
+        if proj_3d:
+            ax.set_zlabel("Z (m)")
+        if title:
+            ax.set_title(self._get_title_with_counts())
+        if proj_3d:
+            ax.view_init(elev=40, azim=-45)
+            self._set_axes_lims_to_scale(ax)
+        else:
+            ax.set_aspect("equal")
+            ax.grid(visible=True, alpha=0.3)
+        if len(label_groups) > 1 and legend:
+            ax.legend()
+
+    def plot(  # noqa: PLR0913 - scientific visualization API needs customization options
         self,
         *,
         title: bool = True,
@@ -733,57 +823,37 @@ class Scene:
         """
         if "proj_3D" in kwargs:
             proj_3d = kwargs.pop("proj_3D")
+
         if len(self.objects) == 0:
             print("No objects in scene - skipping plot")
             return ax
+
+        # Create axes if not provided
         if ax is None:
             (_, ax) = plt.subplots(
                 figsize=figsize,
                 dpi=dpi,
                 subplot_kw={"projection": "3d" if proj_3d else None},
             )
+
+        # Group objects by label
         label_groups = {}
         for obj in self.objects:
             if obj.label not in label_groups:
                 label_groups[obj.label] = []
             label_groups[obj.label].append(obj)
-        default_vis_settings = {"z_order": 3, "alpha": 0.8, "color": None}
-        for label, objects in label_groups.items():
-            vis_settings = self.visualization_settings.get(label, default_vis_settings)
-            n_objects = len(objects)
-            if vis_settings["color"] is None:
-                colors = plt.cm.rainbow(np.linspace(0, 1, n_objects))
-            else:
-                colors = [vis_settings["color"]] * n_objects
-            for obj_idx, obj in enumerate(objects):
-                color = obj.color or colors[obj_idx]
-                if proj_3d:
-                    obj.plot(ax, mode=mode, alpha=vis_settings["alpha"], color=color)
-                else:
-                    vertices_2d = obj.vertices[:, :2]
-                    hull = ConvexHull(vertices_2d)
-                    hull_vertices = vertices_2d[hull.vertices]
-                    ax.fill(
-                        hull_vertices[:, 0],
-                        hull_vertices[:, 1],
-                        alpha=vis_settings["alpha"],
-                        color=color,
-                        label=label if obj_idx == 0 else "",
-                    )
-        ax.set_xlabel("X (m)")
-        ax.set_ylabel("Y (m)")
+
+        # Plot objects based on mode
         if proj_3d:
-            ax.set_zlabel("Z (m)")
-        if title:
-            ax.set_title(self._get_title_with_counts())
-        if proj_3d:
-            ax.view_init(elev=40, azim=-45)
-            self._set_axes_lims_to_scale(ax)
+            self._plot_objects_3d(ax, label_groups, mode)
         else:
-            ax.set_aspect("equal")
-            ax.grid(visible=True, alpha=0.3)
-        if len(label_groups) > 1 and legend:
-            ax.legend()
+            self._plot_objects_2d(ax, label_groups)
+
+        # Configure axes, labels, and legend
+        self._configure_plot_axes(
+            ax, proj_3d=proj_3d, title=title, label_groups=label_groups, legend=legend
+        )
+
         return ax
 
     def _set_axes_lims_to_scale(self, ax: plt.Axes, zoom: float = 1.3) -> None:
