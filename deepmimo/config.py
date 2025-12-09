@@ -50,10 +50,10 @@ class DeepMIMOConfig:
     def __new__(cls: type["DeepMIMOConfig"]) -> "DeepMIMOConfig":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance.initialize()
+            cls._instance.reset()
         return cls._instance
 
-    def initialize(self) -> None:
+    def _initialize(self) -> None:
         """Initialize the configuration with default values."""
         self._config = {
             "wireless_insite_version": RAYTRACER_VERSION_WIRELESS_INSITE,
