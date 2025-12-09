@@ -14,10 +14,12 @@ The module serves as a bridge between Wireless Insite's XML-based configuration
 and DeepMIMO's standardized dataset format.
 """
 
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from deepmimo.config import config
@@ -164,8 +166,6 @@ class InSiteTxRxSet:
             A new InSiteTxRxSet instance with copied data
 
         """
-        from copy import deepcopy
-
         return InSiteTxRxSet(deepcopy(self.data), self.set_type)
 
     @classmethod
@@ -338,13 +338,11 @@ def plot_txrx_sets(
 
     Args:
         txrx_sets (List[TxRxSet]): List of DeepMIMO TX/RX sets
-        point_locations (Dict[int, np.ndarray]): Dictionary mapping set IDs to their point coordinates
+        point_locations (Dict[int, np.ndarray]): Mapping of set IDs to point coordinates
         max_points (int, optional): Maximum number of points to plot per set. Defaults to 5000.
         figsize (Tuple[float, float], optional): Figure size as (width, height). Defaults to (8, 8).
 
     """
-    import matplotlib.pyplot as plt
-
     plt.figure(figsize=figsize)
     for txrx_set in txrx_sets:
         points = point_locations[txrx_set.id]
@@ -358,14 +356,14 @@ def plot_txrx_sets(
 
     plt.legend()
     plt.axis("equal")
-    plt.grid(True)
+    plt.grid()
     plt.title("TxRx Sets")
     plt.xlabel("X (m)")
     plt.ylabel("Y (m)")
     plt.show()
 
 
-def read_txrx(folder: str, plot: bool = False) -> dict[str, Any]:
+def read_txrx(folder: str, *, plot: bool = False) -> dict[str, Any]:
     """Create TX/RX information from a folder containing Wireless Insite files.
 
     This function:

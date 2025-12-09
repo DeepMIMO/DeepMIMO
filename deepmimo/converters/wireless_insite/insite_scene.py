@@ -31,6 +31,7 @@ OBJECT_LABELS: dict[str, str] = {
     ".flp": CAT_FLOORPLANS,
     ".obj": CAT_OBJECTS,
 }
+MIN_TRI_POINTS = 3
 
 
 def read_scene(folder_path: str | Path) -> Scene:
@@ -70,7 +71,7 @@ def read_scene(folder_path: str | Path) -> Scene:
         raise ValueError(msg)
 
     # Parse each type of file and add to scene
-    for suffix, type_files in found_files.items():
+    for type_files in found_files.values():
         if not type_files:
             continue
 
@@ -125,9 +126,9 @@ def visualize_road_object(
 
             # Fill face if it has at least 3 unique points
             unique_points = np.unique(face_array[:, :2], axis=0)
-            if len(unique_points) >= 3:
+            if len(unique_points) >= MIN_TRI_POINTS:
                 try:
-                    from matplotlib.tri import Triangulation
+                    from matplotlib.tri import Triangulation  # noqa: PLC0415
 
                     tri = Triangulation(face_array[:, 0], face_array[:, 1])
                     ax2.plot_trisurf(
@@ -137,8 +138,8 @@ def visualize_road_object(
                         triangles=tri.triangles,
                         alpha=0.2,
                     )
-                except Exception as e:
-                    print(f"  Warning: Could not triangulate face: {e!s}")
+                except (ImportError, ValueError, RuntimeError) as err:
+                    print(f"  Warning: Could not triangulate face: {err!s}")
             else:
                 print("  Warning: Face has fewer than 3 unique points in XY plane")
 
@@ -169,7 +170,7 @@ class PhysicalObjectParser:
         self.name = self.file_path.stem  # Get filename without extension
         self.starting_id = starting_id
 
-    def parse(self, force_fast_mode: bool = True) -> list[PhysicalElement]:
+    def parse(self, *, force_fast_mode: bool = True) -> list[PhysicalElement]:
         """Parse the file and return a list of physical objects.
 
         Returns:
@@ -193,14 +194,16 @@ class PhysicalObjectParser:
             total=n_obj,
             desc=f"Processing objs in {file_base}",
         ):
-            vertices = np.array(vertices)
+            vertices_array = np.array(vertices)
 
             # Use detailed mode for roads to preserve their geometry
             use_fast_mode = "road" not in self.name.lower()
             self.name = f"{self.name}_{i}"
 
             # Generate faces
-            object_faces = get_object_faces(vertices, fast=use_fast_mode or force_fast_mode)
+            object_faces = get_object_faces(
+                vertices_array, fast=use_fast_mode or force_fast_mode
+            )
             if object_faces is None:
                 print(f"Failed to generate faces for object {self.name}")
                 continue

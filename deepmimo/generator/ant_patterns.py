@@ -17,7 +17,7 @@ import numpy as np
 from deepmimo import consts as c
 
 
-def _pattern_isotropic(theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
+def _pattern_isotropic(_theta: np.ndarray, _phi: np.ndarray) -> np.ndarray:
     """Compute isotropic antenna pattern.
 
     Args:

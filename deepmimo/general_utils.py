@@ -35,7 +35,11 @@ def check_scen_name(scen_name: str) -> None:
 
     """
     if np.any([char in scen_name for char in c.SCENARIO_NAME_INVALID_CHARS]):
-        msg = f"Invalid scenario name: {scen_name}.\nContains one of the following invalid characters: {c.SCENARIO_NAME_INVALID_CHARS}"
+        invalids = c.SCENARIO_NAME_INVALID_CHARS
+        msg = (
+            f"Invalid scenario name: {scen_name}.\n"
+            f"Contains one of these invalid characters: {invalids}"
+        )
         raise ValueError(msg)
 
 
@@ -146,6 +150,7 @@ def get_mat_filename(
         tx_set_idx (int): Index of the transmitter set.
         tx_idx (int): Index of the transmitter within its set.
         rx_set_idx (int): Index of the receiver set.
+        fmt (str): File extension/format. Defaults to `c.MAT_FMT`.
 
     Returns:
         str: Complete filename with .mat extension.
@@ -170,6 +175,8 @@ def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_F
         data: Data array to save
         data_key: Key identifier for the data type
         file_path: Output path
+        fmt: File format/extension. Defaults to `c.MAT_FMT`.
+        fmt: File extension/format. Defaults to `c.MAT_FMT`.
 
     """
     if fmt == "mat":
@@ -180,7 +187,7 @@ def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_F
         np.save(file_path.replace(".mat", ".npz"), data)
     else:
         msg = 'Format {fmt} not recognized. Choose "mat" (default), "npz" or "npy".'
-        raise Exception(msg)
+        raise ValueError(msg)
 
 
 def load_mat(mat_path: str, key: str | None = None) -> Any:
@@ -191,6 +198,7 @@ def load_mat(mat_path: str, key: str | None = None) -> Any:
 
     Args:
         mat_path: Path to the .mat file
+        key: Optional key for npz/npy loads
 
     """
     supported_formats = [".mat", ".npz", ".npy"]
@@ -321,7 +329,7 @@ class DotDict(Mapping[K, V]):
         """Initialize DotDict with a dictionary.
 
         Args:
-            dictionary: Dictionary to convert to DotDict
+            data: Dictionary to convert to DotDict
 
         """
         self._data = {}
@@ -336,8 +344,8 @@ class DotDict(Mapping[K, V]):
         """Enable dot notation access to dictionary items."""
         try:
             return self._data[key]
-        except KeyError:
-            raise AttributeError(key)
+        except KeyError as err:
+            raise AttributeError(key) from err
 
     def __setattr__(self: Any, key: str, value: Any) -> None:
         """Enable dot notation assignment with property support.
@@ -479,7 +487,13 @@ class PrintIfVerbose:
 
     """
 
-    def __init__(self: Any, verbose: bool) -> None:
+    def __init__(self: Any, *, verbose: bool) -> None:
+        """Store verbosity flag.
+
+        Args:
+            verbose: Print messages when True.
+
+        """
         self.verbose = verbose
 
     def __call__(self: Any, message: str) -> None:
@@ -493,7 +507,7 @@ class PrintIfVerbose:
             print(message)
 
 
-def zip(folder_path: str) -> str:
+def zip_folder(folder_path: str) -> str:
     """Create zip archive of folder contents.
 
     This function creates a zip archive containing all files and subdirectories in the
@@ -518,6 +532,11 @@ def zip(folder_path: str) -> str:
         for file_path, rel_path in tqdm(all_files, desc="Compressing", unit="file"):
             zipf.write(file_path, rel_path)
     return zip_path
+
+
+def zip(folder_path: str) -> str:  # noqa: A001
+    """Backward-compatible wrapper around `zip_folder`."""
+    return zip_folder(folder_path)
 
 
 def unzip(path_to_zip: str) -> str:
@@ -549,11 +568,11 @@ def cartesian_to_spherical(cartesian_coords: np.ndarray) -> np.ndarray:
     """Convert Cartesian coordinates to spherical coordinates.
 
     Args:
-        cartesian_coords: Array of shape [n_points, 3] containing Cartesian coordinates (x, y, z)
+        cartesian_coords: Array [n_points, 3] of Cartesian coordinates (x, y, z)
 
     Returns:
-        Array of shape [n_points, 3] containing spherical coordinates (r, azimuth, elevation) in radians
-        where r is the magnitude (distance from origin)
+        Array [n_points, 3] of spherical coordinates (r, azimuth, elevation) in radians.
+        r is the magnitude (distance from origin).
 
     """
     spherical_coords = np.zeros((cartesian_coords.shape[0], 3))
@@ -568,18 +587,14 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     """Convert spherical coordinates to Cartesian coordinates.
 
     Args:
-        spherical_coords: Array containing spherical coordinates (r, elevation, azimuth) in radians
-            where r is the magnitude (distance from origin). Can have any number of leading dimensions,
-            but the last dimension must be 3.
+        spherical_coords: Array with spherical coordinates (r, elevation, azimuth) in radians.
+            r is the magnitude (distance from origin). Leading dimensions allowed; last
+            dimension must be 3.
             Reference: https://en.wikipedia.org/wiki/Spherical_coordinate_system
-            Note: before calling this function, we need to transform the DeepMIMO coordinate
-            system into the one used in Sionna/Wikipedia.
-            DeepMIMO uses the elevation angle from the xy plane, not the z axis.
-            Sionna/Wikipedia uses the elevation angle from the z axis.
-            Therefore, we need to...
+            Note: DeepMIMO uses elevation from the xy plane, while Sionna/Wikipedia use z-axis.
 
     Returns:
-        Array of same shape as input containing Cartesian coordinates (x, y, z)
+        Array of same shape containing Cartesian coordinates (x, y, z).
 
     """
     cartesian_coords = np.zeros_like(spherical_coords)
@@ -674,4 +689,5 @@ def load_pickle(filename: str) -> Any:
 
     """
     with Path(filename).open("rb") as file:
-        return pickle.load(file)
+        # Trusted internal data only; external inputs should avoid pickle for safety.
+        return pickle.load(file)  # noqa: S301

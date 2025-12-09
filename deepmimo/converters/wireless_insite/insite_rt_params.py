@@ -38,6 +38,7 @@ def _get_gps_bbox(
     pad: float = BBOX_PAD,
 ) -> tuple[float, float, float, float]:
     """Get the GPS bounding box of a Wireless Insite simulation.
+
     This is an approximated method that considers the earth round.
     For a typical scenario, the error in latitude should be < 20 micro degress,
     and the error in longitude should be < 10 micro degress, which corresponds to
@@ -48,6 +49,7 @@ def _get_gps_bbox(
         origin_lat (float): Latitude of the origin
         origin_lon (float): Longitude of the origin
         studyarea_vertices (np.ndarray): Vertices of the study area
+        pad (float): Padding for the bounding box in degrees
 
     Returns:
         Tuple[float, float, float, float]: Bounding box of the study area
@@ -105,7 +107,8 @@ class InsiteRayTracingParameters(RayTracingParameters):
         diffuse_reflections (int): Reflections allowed in paths with diffuse scattering
         diffuse_diffractions (int): Diffractions allowed in paths with diffuse scattering
         diffuse_transmissions (int): Transmissions allowed in paths with diffuse scattering
-        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering at final interaction
+        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering
+            at the final interaction
         diffuse_random_phases (bool): Whether to use random phases for diffuse scattering
         terrain_reflection (bool): Whether to allow reflections on terrain
         terrain_diffraction (bool): Whether to allow diffractions on terrain

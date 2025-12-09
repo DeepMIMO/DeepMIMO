@@ -35,7 +35,7 @@ RE_END_NODE = re.compile("end_<(?P<node_name>\\S*)>")
 RE_INT = re.compile("^-?\\d+$")
 RE_FLOAT = re.compile("^-?\\d+[.]\\d+$")
 RE_LABEL = re.compile("\\S+")
-NL_TOKEN = "\n"
+NL_TOKEN = "\n"  # noqa: S105 (not a password)
 
 
 def tokenize_file(path: str) -> str:
@@ -63,13 +63,15 @@ def tokenize_file(path: str) -> str:
             yield NL_TOKEN
 
 
-class peekable:
+class Peekable:
     """Makes it possible to peek at the next value of an iterator."""
 
     def __init__(self: Any, iterator: Any) -> None:
+        """Initialize with underlying iterator."""
         self._iterator = iterator
         self._sentinel = object()
         self._next = self._sentinel
+
 
     def peek(self: Any) -> Any:
         """Peeks at the next value of the iterator, if any."""
@@ -94,6 +96,9 @@ class peekable:
             self._next = self._sentinel
             return next_value
         return next(self._iterator)
+
+# Backward compatibility alias
+peekable = Peekable
 
 
 @dataclass
@@ -165,7 +170,7 @@ class Node:
 
 
 def eat(tokens: Any, expected: Any) -> None:
-    """Ensures the next token is what's expected."""
+    """Ensure the next token matches the expected value."""
     if (tok := next(tokens)) != expected:
         msg = f"Expected token {expected!r}, got {tok!r}."
         raise RuntimeError(msg)
@@ -184,8 +189,8 @@ def parse_document(tokens: Any) -> dict[str, Node]:
         RuntimeError: If document structure is invalid or contains duplicate nodes
 
     """
-    if not isinstance(tokens, peekable):
-        tokens = peekable(tokens)
+    if not isinstance(tokens, Peekable):
+        tokens = Peekable(tokens)
     document = {}
     while tokens.has_values():
         tok = tokens.peek()

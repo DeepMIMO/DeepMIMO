@@ -76,8 +76,8 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
     """
     # Read file
     print(f"Reading p2m paths file: {Path(file).name}...")
-    with Path(file).open() as file:
-        lines = file.readlines()
+    with Path(file).open() as file_handle:
+        lines = file_handle.readlines()
 
     n_rxs = int(lines[LINE_START - 1])
 
@@ -194,9 +194,7 @@ def extract_tx_pos(filename: str) -> np.ndarray:
             print("Tx pos found!")
             break
 
-    try:
-        pass
-    except:
+    if "tx_pos" not in locals():
         print(
             "Not found tx_pos. This is likely because there are no paths. \n"
             "Using hack of searching for tx pos in pl file...",
@@ -225,8 +223,8 @@ def extract_tx_pos(filename: str) -> np.ndarray:
             if tx_pos is not None and len(tx_pos) == 0:
                 print(f"TX position not found in pl file {pl_filename}")
                 tx_pos = None
-        except Exception as e:
-            print(f"\nWarning: Could not extract TX position from {new_filename}: {e}")
+        except (OSError, ValueError, IndexError) as err:
+            print(f"\nWarning: Could not extract TX position from {new_filename}: {err}")
             tx_pos = None
 
     return tx_pos
@@ -245,8 +243,12 @@ def read_pl_p2m_file(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]
         - path_loss: Array of path losses with shape (n_points, 1)
 
     """
-    assert filename.endswith(".p2m")  # should be a .p2m file
-    assert ".pl." in filename  # should be the pathloss p2m
+    if not filename.endswith(".p2m"):
+        msg = "Expected a .p2m file"
+        raise ValueError(msg)
+    if ".pl." not in filename:
+        msg = "Expected pathloss .p2m file containing '.pl.'"
+        raise ValueError(msg)
 
     # Initialize empty lists for matrices
     xyz_list = []
@@ -276,6 +278,9 @@ def read_pl_p2m_file(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]
 
 if __name__ == "__main__":
     file = "./P2Ms/ASU_campus_just_p2m/study_area_asu5/asu_campus.paths.t001_01.r004.p2m"
-    file = "./P2Ms/simple_street_canyon/study_rays=0.25_res=2m_3ghz/simple_street_canyon_test.paths.t001_01.r002.p2m"
+    file = (
+        "./P2Ms/simple_street_canyon/study_rays=0.25_res=2m_3ghz/"
+        "simple_street_canyon_test.paths.t001_01.r002.p2m"
+    )
     data = paths_parser(file)
     print(data)

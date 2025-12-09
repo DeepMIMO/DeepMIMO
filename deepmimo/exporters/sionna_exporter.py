@@ -42,9 +42,9 @@ except ImportError:
         "Sionna ray tracing functionality requires additional dependencies. "
         "Please install them using: pip install 'deepmimo[sionna1]' or 'deepmimo[sionna019]'"
     )
-    raise ImportError(
-        msg,
-    )
+    raise ImportError(msg) from None
+
+COORD_DIM = 3
 
 
 def _get_scene_objects(scene: Scene) -> dict[str, Any]:
@@ -53,7 +53,7 @@ def _get_scene_objects(scene: Scene) -> dict[str, Any]:
 
 
 def _paths_to_dict(paths: Paths) -> list[dict]:
-    """Exports paths to a filtered dictionary with only selected keys."""
+    """Export paths to a filtered dictionary with only selected keys."""
     members_names = dir(paths)
     members_objects = [getattr(paths, attr) for attr in members_names]
     return {
@@ -98,7 +98,7 @@ def export_paths(path_list: Paths | list[Paths]) -> list[dict[str, Any]]:
     ]
     relevant_keys += ["interactions"] if sionna_v1 else ["types"]
 
-    path_list = [path_list] if type(path_list) != list else path_list
+    path_list = [path_list] if not isinstance(path_list, list) else path_list
     paths_dict_list = []
     for path_obj in path_list:
         path_dict = _paths_to_dict(path_obj)
@@ -148,7 +148,7 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
             rel_perm = material.relative_permeability.numpy()
         else:
             rel_perm = 1.0
-        # Safely access scattering_pattern attributes; not all patterns have alpha_r, alpha_i, lambda_
+        # Safely access scattering_pattern attributes; not all patterns have alpha_r/alpha_i/lambda_
         alpha_r = getattr(
             material.scattering_pattern,
             "alpha_r",
@@ -299,8 +299,8 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
     scene_objects = _get_scene_objects(scene)
     for obj_name, obj in scene_objects.items():
         # Get vertices
-        n_v = obj._mi_shape.vertex_count()
-        obj_vertices = np.array(obj._mi_shape.vertex_position(np.arange(n_v)))
+        n_v = obj._mi_shape.vertex_count()  # noqa: SLF001
+        obj_vertices = np.array(obj._mi_shape.vertex_position(np.arange(n_v)))  # noqa: SLF001
         if sionna_v1:
             obj_vertices = obj_vertices.T
 
@@ -311,11 +311,11 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
         if obj_vertices.ndim == 1:
             obj_vertices = obj_vertices.reshape(1, -1)
         # If more than 3 columns, take only first 3 (x, y, z)
-        if obj_vertices.shape[1] > 3:
-            obj_vertices = obj_vertices[:, :3]
+        if obj_vertices.shape[1] > COORD_DIM:
+            obj_vertices = obj_vertices[:, :COORD_DIM]
         # If less than 3 columns, pad with zeros
-        if obj_vertices.shape[1] < 3:
-            pad_width = 3 - obj_vertices.shape[1]
+        if obj_vertices.shape[1] < COORD_DIM:
+            pad_width = COORD_DIM - obj_vertices.shape[1]
             obj_vertices = np.pad(obj_vertices, ((0, 0), (0, pad_width)), "constant")
         # Now shape is (N, 3)
 
@@ -369,12 +369,12 @@ def sionna_exporter(
         raise ValueError(
             msg,
         )
-    paths_dict_list = path_list if type(path_list[0]) == dict else export_paths(path_list)
+    paths_dict_list = path_list if isinstance(path_list[0], dict) else export_paths(path_list)
     materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
 
-    os.makedirs(save_folder, exist_ok=True)
+    os.makedirs(save_folder, exist_ok=True)  # noqa: PTH103
 
     save_vars_dict = {
         # filename: variable_to_save

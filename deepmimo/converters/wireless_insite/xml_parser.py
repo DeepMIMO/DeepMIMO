@@ -1,3 +1,5 @@
+"""Utilities for parsing Wireless InSite XML outputs."""
+
 # %%
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -11,7 +13,7 @@ I_STRING = "remcom_rxapi_String"
 I_POLARIZATION = "remcom_rxapi_PolarizationEnum"
 
 
-def xml_to_dict(element: ET.Element) -> dict[str, Any] | str | None:
+def xml_to_dict(element: ET.Element) -> dict[str, Any] | str | None:  # noqa: C901, PLR0911, PLR0912
     """Convert XML to a dictionary structure."""
     result: dict[str, Any] = {}
 
@@ -66,7 +68,7 @@ def parse_insite_xml(xml_file: str) -> dict[str, Any]:
     content = content.replace("::", "_")
 
     # Parse XML and convert to dict
-    root = ET.fromstring(content)
+    root = ET.fromstring(content)  # noqa: S314 (Wireless InSite output is trusted input)
     # Include root element in result
     return {root.tag: xml_to_dict(root)}
 
@@ -87,9 +89,9 @@ def _get_ray_tracing_params(xml_file: str) -> dict[str, Any]:
     # So we should use the .setup file to get the parameters, and the .xml
     # file to get the txrx data. For now, we'll keep it like that (changes in beta.)
 
-    from deepmimo.config import config
-    from deepmimo.consts import RAYTRACER_NAME_WIRELESS_INSITE
-    from deepmimo.rt_params import RayTracingParameters
+    from deepmimo.config import config  # noqa: PLC0415
+    from deepmimo.consts import RAYTRACER_NAME_WIRELESS_INSITE  # noqa: PLC0415
+    from deepmimo.rt_params import RayTracingParameters  # noqa: PLC0415
 
     # Parse XML and get data
     data = parse_insite_xml(xml_file)
