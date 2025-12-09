@@ -34,6 +34,7 @@ def test_node_class() -> None:
 
 def test_parse_line_value() -> None:
     """Parse individual values and coerce to expected types."""
+
     # Helper to create iterator
     def make_iter(lst):
         return iter(lst)

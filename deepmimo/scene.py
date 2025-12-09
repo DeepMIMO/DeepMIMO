@@ -34,6 +34,7 @@ CAT_FLOORPLANS: str = "floorplans"
 CAT_OBJECTS: str = "objects"
 ELEMENT_CATEGORIES = [CAT_BUILDINGS, CAT_TERRAIN, CAT_VEGETATION, CAT_FLOORPLANS, CAT_OBJECTS]
 
+
 @dataclass
 class BoundingBox:
     """Represents a 3D bounding box with min/max coordinates."""
@@ -108,6 +109,7 @@ class BoundingBox:
             ],
         )
 
+
 class Face:
     """Represents a single face (surface) of a physical object.
 
@@ -130,7 +132,7 @@ class Face:
     def __init__(
         self: Any,
         vertices: list[tuple[float, float, float]] | np.ndarray,
-        material_idx: int | np.integer=0,
+        material_idx: int | np.integer = 0,
     ) -> None:
         """Initialize a face from its vertices.
 
@@ -199,6 +201,7 @@ class Face:
             self._centroid = np.mean(self.vertices, axis=0)
         return self._centroid
 
+
 class PhysicalElement:
     """Base class for physical objects in the wireless environment."""
 
@@ -213,10 +216,10 @@ class PhysicalElement:
     def __init__(
         self: Any,
         faces: list[Face],
-        object_id: int=-1,
-        label: str=CAT_OBJECTS,
-        color: str="",
-        name: str="",
+        object_id: int = -1,
+        label: str = CAT_OBJECTS,
+        color: str = "",
+        name: str = "",
     ) -> None:
         """Initialize a physical object from its faces.
 
@@ -370,10 +373,10 @@ class PhysicalElement:
 
     def plot(
         self: Any,
-        ax: plt.Axes | None=None,
-        mode: Literal["faces", "tri_faces"]="faces",
-        alpha: float=0.8,
-        color: str | None=None,
+        ax: plt.Axes | None = None,
+        mode: Literal["faces", "tri_faces"] = "faces",
+        alpha: float = 0.8,
+        color: str | None = None,
     ) -> tuple[plt.Figure, plt.Axes]:
         """Plot the object using the specified visualization mode.
 
@@ -439,6 +442,7 @@ class PhysicalElement:
             f"faces={len(self._faces)}, dims={dims})"
         )
 
+
 class PhysicalElementGroup:
     """Represents a group of physical objects that can be queried and manipulated together."""
 
@@ -470,8 +474,8 @@ class PhysicalElementGroup:
 
     def get_objects(
         self: Any,
-        label: str | None=None,
-        material: int | None=None,
+        label: str | None = None,
+        material: int | None = None,
     ) -> "PhysicalElementGroup":
         """Get objects filtered by label and/or material.
 
@@ -510,6 +514,7 @@ class PhysicalElementGroup:
                 z_max=global_max[2],
             )
         return self._bounding_box
+
 
 class Scene:
     """Represents a physical scene with various objects affecting wireless propagation."""
@@ -595,8 +600,8 @@ class Scene:
 
     def get_objects(
         self: Any,
-        label: str | None=None,
-        material: int | None=None,
+        label: str | None = None,
+        material: int | None = None,
     ) -> PhysicalElementGroup:
         """Get objects filtered by label and/or material.
 
@@ -637,7 +642,7 @@ class Scene:
             obj_metadata = obj.to_dict(vertex_map)
             objects_metadata.append(obj_metadata)
         all_vertices = [None] * len(vertex_map)
-        for (vertex, idx) in vertex_map.items():
+        for vertex, idx in vertex_map.items():
             all_vertices[idx] = vertex
         vertices = np.array(all_vertices)
         save_mat(vertices, "vertices", f"{base_folder}/vertices.mat")
@@ -680,13 +685,13 @@ class Scene:
     def plot(  # noqa: PLR0912, PLR0913, C901
         self: Any,
         *,
-        title: bool=True,
-        mode: Literal["faces", "tri_faces"]="faces",
-        ax: plt.Axes | None=None,
-        proj_3d: bool=True,
-        figsize: tuple=(10, 10),
-        dpi: int=100,
-        legend: bool=False,
+        title: bool = True,
+        mode: Literal["faces", "tri_faces"] = "faces",
+        ax: plt.Axes | None = None,
+        proj_3d: bool = True,
+        figsize: tuple = (10, 10),
+        dpi: int = 100,
+        legend: bool = False,
         **kwargs: Any,
     ) -> plt.Axes:
         """Create a visualization of the scene.
@@ -743,14 +748,14 @@ class Scene:
                 label_groups[obj.label] = []
             label_groups[obj.label].append(obj)
         default_vis_settings = {"z_order": 3, "alpha": 0.8, "color": None}
-        for (label, objects) in label_groups.items():
+        for label, objects in label_groups.items():
             vis_settings = self.visualization_settings.get(label, default_vis_settings)
             n_objects = len(objects)
             if vis_settings["color"] is None:
                 colors = plt.cm.rainbow(np.linspace(0, 1, n_objects))
             else:
                 colors = [vis_settings["color"]] * n_objects
-            for (obj_idx, obj) in enumerate(objects):
+            for obj_idx, obj in enumerate(objects):
                 color = obj.color or colors[obj_idx]
                 if proj_3d:
                     obj.plot(ax, mode=mode, alpha=vis_settings["alpha"], color=color)
@@ -781,7 +786,7 @@ class Scene:
             ax.legend()
         return ax
 
-    def _set_axes_lims_to_scale(self: Any, ax: Any, zoom: float=1.3) -> None:
+    def _set_axes_lims_to_scale(self: Any, ax: Any, zoom: float = 1.3) -> None:
         """Set axis limits based on scene bounding box with equal scaling.
 
         Args:
@@ -810,7 +815,7 @@ class Scene:
         for obj in self.objects:
             label_counts[obj.label] = label_counts.get(obj.label, 0) + 1
         counts = []
-        for (label, count) in label_counts.items():
+        for label, count in label_counts.items():
             label_name = label.capitalize()
             if count == 1 and label_name.endswith("s"):
                 label_name = label_name[:-1]
@@ -844,6 +849,7 @@ class Scene:
         counts_str = ", ".join(counts)
         return f"Scene({len(self.objects)} objects [{counts_str}], dims = {dims})"
 
+
 def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float, float]]]:
     """Generate faces using convex hull approach (fast but simplified).
 
@@ -876,6 +882,7 @@ def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float
         side_faces.append(side)
     return [bottom_face, top_face, *side_faces]
 
+
 def _calculate_angle_deviation(p1: Any, p2: Any, p3: Any) -> Any:
     """Calculate the deviation from a straight line at point p2.
 
@@ -892,13 +899,16 @@ def _calculate_angle_deviation(p1: Any, p2: Any, p3: Any) -> Any:
     dot_product = np.clip(np.dot(v1_norm, v2_norm), -1.0, 1.0)
     return np.degrees(np.arccos(dot_product))
 
+
 def _ccw(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> bool:
     """Check if points are in counter-clockwise order."""
     return (c[1] - a[1]) * (b[0] - a[0]) > (b[1] - a[1]) * (c[0] - a[0])
 
+
 def _segments_intersect(p1: np.ndarray, p2: np.ndarray, q1: np.ndarray, q2: np.ndarray) -> bool:
     """Check if two line segments intersect."""
     return _ccw(p1, q1, q2) != _ccw(p2, q1, q2) and _ccw(p1, p2, q1) != _ccw(p1, p2, q2)
+
 
 def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int]]:  # noqa: PLR0912, C901
     """Held-Karp TSP with angle penalty + intersection check.
@@ -965,9 +975,10 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
         res.append((final_cost, [*path, 0]))
     return min(res) if res else (float("inf"), [])
 
+
 def _detect_endpoints(
     points_2d: np.ndarray,
-    min_distance: float=2.0,
+    min_distance: float = 2.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Detect endpoints of a road by finding pairs of points that are furthest apart.
 
@@ -1000,6 +1011,7 @@ def _detect_endpoints(
     distances_masked[:, j1] = -np.inf
     (i2, j2) = np.unravel_index(np.argmax(distances_masked), distances_masked.shape)
     return [kept_indices[i] for i in [i1, i2, j1, j2]]
+
 
 def _signed_distance_to_curve(
     point: np.ndarray,
@@ -1039,7 +1051,7 @@ def _signed_distance_to_curve(
 def _trim_points_protected(
     points: np.ndarray,
     protected_indices: list[int],
-    max_points: int=14,
+    max_points: int = 14,
 ) -> list[int]:
     """Trims points while preserving protected indices and maintaining road shape.
 
@@ -1098,7 +1110,8 @@ def _trim_points_protected(
                 break
     return sorted(kept_indices)
 
-def _compress_path(points: np.ndarray, path: list[int], angle_threshold: float=1.0) -> list[int]:
+
+def _compress_path(points: np.ndarray, path: list[int], angle_threshold: float = 1.0) -> list[int]:
     """Compress a path by removing points that are nearly collinear with their neighbors.
 
     Args:
@@ -1124,13 +1137,14 @@ def _compress_path(points: np.ndarray, path: list[int], angle_threshold: float=1
     compressed.append(path[-1])
     return compressed
 
+
 def _get_2d_face(
     vertices: np.ndarray,
-    z_tolerance: float=0.1,
-    max_points: int=10,
+    z_tolerance: float = 0.1,
+    max_points: int = 10,
     *,
-    compress: bool=True,
-    angle_threshold: float=1.0,
+    compress: bool = True,
+    angle_threshold: float = 1.0,
 ) -> list[tuple[float, float, float]]:
     """Generate a 2D face from a set of vertices.
 
@@ -1167,10 +1181,11 @@ def _get_2d_face(
         final_points = points_filtered[best_path[:-1]]
     return [final_points]
 
+
 def get_object_faces(
     vertices: list[tuple[float, float, float]],
     *,
-    fast: bool=True,
+    fast: bool = True,
 ) -> list[list[tuple[float, float, float]]]:
     """Generate faces for a physical object from its vertices.
 
@@ -1198,17 +1213,19 @@ def get_object_faces(
     if len(vertices) < min_vertices_for_face:
         return None
     return _get_faces_convex_hull(vertices) if fast else _get_2d_face(vertices)
+
+
 if __name__ == "__main__":
     points = np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
     path = [0, 1, 2, 3]
     compressed = _compress_path(points, path)
     print(compressed)
 
-    def plot_points(points: Any, path: Any=None, title: Any="") -> None:
+    def plot_points(points: Any, path: Any = None, title: Any = "") -> None:
         """Visualize a set of points and optionally connect them."""
         plt.figure(figsize=(8, 6))
         plt.scatter(points[:, 0], points[:, 1], color="blue")
-        for (i, (x, y)) in enumerate(points):
+        for i, (x, y) in enumerate(points):
             plt.text(x + 1, y + 1, str(i), fontsize=9)
         if path:
             for i in range(len(path) - 1):

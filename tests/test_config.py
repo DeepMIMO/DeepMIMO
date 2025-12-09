@@ -13,6 +13,7 @@ def reset_config() -> None:
     yield
     config.reset()
 
+
 pytestmark = pytest.mark.usefixtures("reset_config")
 
 

@@ -1,2 +1,1 @@
 """AODT converter test package."""
-

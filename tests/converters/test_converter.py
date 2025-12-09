@@ -42,6 +42,7 @@ def test_convert_root(mock_find, tmp_path) -> None:
 @patch("deepmimo.converters.converter.find_converter_from_dir")
 def test_convert_subdir(mock_find, tmp_path) -> None:
     """Walk subdirectories when converter not found at root."""
+
     # Mock finding only in subdir
     def side_effect(path):
         if path == str(tmp_path):

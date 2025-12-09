@@ -24,6 +24,7 @@ Usage:
     deepmimo.config(use_gpu=True)  # Set using keyword
     deepmimo.config()  # Print all configs
 """
+
 from typing import Any
 
 from .consts import (
@@ -52,7 +53,15 @@ class DeepMIMOConfig:
 
     def _initialize(self: Any) -> None:
         """Initialize the configuration with default values."""
-        self._config = {"wireless_insite_version": RAYTRACER_VERSION_WIRELESS_INSITE, "sionna_version": RAYTRACER_VERSION_SIONNA, "aodt_version": RAYTRACER_VERSION_AODT, "use_gpu": False, "gpu_device_id": 0, "scenarios_folder": SCENARIOS_FOLDER, "rt_sources_folder": RT_SOURCES_FOLDER}
+        self._config = {
+            "wireless_insite_version": RAYTRACER_VERSION_WIRELESS_INSITE,
+            "sionna_version": RAYTRACER_VERSION_SIONNA,
+            "aodt_version": RAYTRACER_VERSION_AODT,
+            "use_gpu": False,
+            "gpu_device_id": 0,
+            "scenarios_folder": SCENARIOS_FOLDER,
+            "rt_sources_folder": RT_SOURCES_FOLDER,
+        }
 
     def set(self: Any, key: str, value: Any) -> None:
         """Set a configuration value.
@@ -68,7 +77,7 @@ class DeepMIMOConfig:
             print(f"Warning: Configuration key '{key}' does not exist. Adding as new key.")
             self._config[key] = value
 
-    def get(self: Any, key: str, default: Any=None) -> Any:
+    def get(self: Any, key: str, default: Any = None) -> Any:
         """Get a configuration value.
 
         Args:
@@ -89,7 +98,7 @@ class DeepMIMOConfig:
         """Return a string representation of the configuration."""
         result = "\nDeepMIMO Configuration:\n"
         result += "-" * 50 + "\n"
-        for (key, value) in self._config.items():
+        for key, value in self._config.items():
             result += f"{key}: {value}\n"
         result += "-" * 50
         return result
@@ -130,7 +139,7 @@ class DeepMIMOConfig:
             self.print_config()
             return None
         if not args and kwargs:
-            for (key, value) in kwargs.items():
+            for key, value in kwargs.items():
                 self.set(key, value)
             return None
         if len(args) == 1 and (not kwargs):
@@ -146,5 +155,7 @@ class DeepMIMOConfig:
     def __repr__(self: Any) -> str:
         """Return a string representation of the configuration."""
         return self.get_config_str()
+
+
 config = DeepMIMOConfig()
 __all__ = ["config"]

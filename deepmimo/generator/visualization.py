@@ -8,6 +8,7 @@ This module provides visualization utilities for the DeepMIMO dataset, including
 
 The module uses matplotlib for generating plots and supports both 2D and 3D visualizations.
 """
+
 import csv
 from pathlib import Path
 from typing import Any
@@ -21,7 +22,14 @@ from matplotlib.figure import Figure
 from tqdm import tqdm
 
 
-def _create_colorbar(scatter_plot: plt.scatter, cov_map: np.ndarray, cmap: str, cbar_title: str="", cat_labels: list[str] | None=None, ax: Axes | None=None) -> Colorbar:
+def _create_colorbar(
+    scatter_plot: plt.scatter,
+    cov_map: np.ndarray,
+    cmap: str,
+    cbar_title: str = "",
+    cat_labels: list[str] | None = None,
+    ax: Axes | None = None,
+) -> Colorbar:
     """Create a colorbar for the coverage plot, handling both continuous and categorical data.
 
     Args:
@@ -56,7 +64,14 @@ def _create_colorbar(scatter_plot: plt.scatter, cov_map: np.ndarray, cmap: str, 
             scatter_plot.set_cmap(cmap)
         tick_locs = np.arange(n_cats)
         scatter_plot.set_clim(-0.5, n_cats - 0.5)
-        cbar = fig.colorbar(scatter_plot, ax=ax, label=cbar_title, ticks=tick_locs, boundaries=np.arange(-0.5, n_cats + 0.5), values=np.arange(n_cats))
+        cbar = fig.colorbar(
+            scatter_plot,
+            ax=ax,
+            label=cbar_title,
+            ticks=tick_locs,
+            boundaries=np.arange(-0.5, n_cats + 0.5),
+            values=np.arange(n_cats),
+        )
         val_range = np.max(unique_vals) - np.min(unique_vals)
         str_labels = [str(int(val)) if val_range > 100 else str(val) for val in unique_vals]
         cbar.set_ticklabels(cat_labels if cat_labels else str_labels)
@@ -64,7 +79,26 @@ def _create_colorbar(scatter_plot: plt.scatter, cov_map: np.ndarray, cmap: str, 
         cbar = fig.colorbar(scatter_plot, ax=ax, label=cbar_title)
     return cbar
 
-def plot_coverage(rxs: np.ndarray, cov_map: tuple[float, ...] | list[float] | np.ndarray, dpi: int=100, figsize: tuple=(6, 4), cbar_title: str="", title: bool | str=False, scat_sz: float=0.5, bs_pos: np.ndarray | None=None, bs_ori: np.ndarray | None=None, legend: bool=False, lims: tuple[float, float] | None=None, proj_3D: bool=False, equal_aspect: bool=False, tight: bool=True, cmap: str | list="viridis", cbar_labels: list[str] | None=None, ax: Axes | None=None) -> tuple[Figure, Axes, Colorbar]:
+
+def plot_coverage(
+    rxs: np.ndarray,
+    cov_map: tuple[float, ...] | list[float] | np.ndarray,
+    dpi: int = 100,
+    figsize: tuple = (6, 4),
+    cbar_title: str = "",
+    title: bool | str = False,
+    scat_sz: float = 0.5,
+    bs_pos: np.ndarray | None = None,
+    bs_ori: np.ndarray | None = None,
+    legend: bool = False,
+    lims: tuple[float, float] | None = None,
+    proj_3D: bool = False,
+    equal_aspect: bool = False,
+    tight: bool = True,
+    cmap: str | list = "viridis",
+    cbar_labels: list[str] | None = None,
+    ax: Axes | None = None,
+) -> tuple[Figure, Axes, Colorbar]:
     """Generate coverage map visualization for user positions.
 
     This function creates a customizable plot showing user positions colored by
@@ -104,7 +138,9 @@ def plot_coverage(rxs: np.ndarray, cov_map: tuple[float, ...] | list[float] | np
     xyz_arg_names = ["x" if n == 2 else "xs", "y" if n == 2 else "ys", "zs"]
     xyz = {s: rxs[:, i] for (s, i) in zip(xyz_arg_names, range(n), strict=False)}
     if not ax:
-        (_, ax) = plt.subplots(dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3D else {})
+        (_, ax) = plt.subplots(
+            dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3D else {}
+        )
     cov_map = np.array(cov_map) if isinstance(cov_map, list) else cov_map
     im = ax.scatter(**xyz, c=cov_map, s=scat_sz, marker="s", **plt_params)
     cbar = _create_colorbar(im, cov_map, cmap, cbar_title, cbar_labels, ax)
@@ -138,7 +174,10 @@ def plot_coverage(rxs: np.ndarray, cov_map: tuple[float, ...] | list[float] | np
         ax.set_aspect("equal")
     return (ax, cbar)
 
-def transform_coordinates(coords: Any, lon_max: Any, lon_min: Any, lat_min: Any, lat_max: Any) -> Any:
+
+def transform_coordinates(
+    coords: Any, lon_max: Any, lon_min: Any, lat_min: Any, lat_max: Any
+) -> Any:
     """Transform Cartesian coordinates to geographical coordinates.
 
     This function converts x,y coordinates from a local Cartesian coordinate system
@@ -159,12 +198,22 @@ def transform_coordinates(coords: Any, lon_max: Any, lon_min: Any, lat_min: Any,
     lons = []
     (x_min, y_min) = np.min(coords, axis=0)[:2]
     (x_max, y_max) = np.max(coords, axis=0)[:2]
-    for (x, y) in zip(coords[:, 0], coords[:, 1], strict=False):
+    for x, y in zip(coords[:, 0], coords[:, 1], strict=False):
         lons += [lon_min + (x - x_min) / (x_max - x_min) * (lon_max - lon_min)]
         lats += [lat_min + (y - y_min) / (y_max - y_min) * (lat_max - lat_min)]
     return (lats, lons)
 
-def export_xyz_csv(data: dict[str, Any], z_var: np.ndarray, outfile: str="", google_earth: bool=False, lat_min: float=33.418081, lat_max: float=33.420961, lon_min: float=-111.932875, lon_max: float=-111.928567) -> None:
+
+def export_xyz_csv(
+    data: dict[str, Any],
+    z_var: np.ndarray,
+    outfile: str = "",
+    google_earth: bool = False,
+    lat_min: float = 33.418081,
+    lat_max: float = 33.420961,
+    lon_min: float = -111.932875,
+    lon_max: float = -111.928567,
+) -> None:
     """Export user locations and values to CSV format.
 
     This function generates a CSV file containing x,y,z coordinates that can be
@@ -188,10 +237,16 @@ def export_xyz_csv(data: dict[str, Any], z_var: np.ndarray, outfile: str="", goo
     user_idxs = np.where(data["user"]["LoS"] != -1)[0]
     locs = data["user"]["location"][user_idxs]
     if google_earth:
-        (lats, lons) = transform_coordinates(locs, lon_min=lon_min, lon_max=lon_max, lat_min=lat_min, lat_max=lat_max)
+        (lats, lons) = transform_coordinates(
+            locs, lon_min=lon_min, lon_max=lon_max, lat_min=lat_min, lat_max=lat_max
+        )
     else:
         (lats, lons) = (locs[:, 0], locs[:, 1])
-    data_dict = {"latitude" if google_earth else "x": lats if google_earth else locs[:, 0], "longitude" if google_earth else "y": lons if google_earth else locs[:, 1], "z": z_var[user_idxs]}
+    data_dict = {
+        "latitude" if google_earth else "x": lats if google_earth else locs[:, 0],
+        "longitude" if google_earth else "y": lons if google_earth else locs[:, 1],
+        "z": z_var[user_idxs],
+    }
     if not outfile:
         outfile = "test.csv"
     with Path(outfile).open(mode="w", newline="") as file:
@@ -199,7 +254,24 @@ def export_xyz_csv(data: dict[str, Any], z_var: np.ndarray, outfile: str="", goo
         writer.writerow(data_dict.keys())
         writer.writerows(zip(*data_dict.values(), strict=False))
 
-def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, inter: np.ndarray, figsize: tuple=(10, 8), dpi: int=100, proj_3D: bool=True, color_by_type: bool=True, inter_objects: np.ndarray | None=None, inter_obj_labels: list[str] | None=None, color_rays_by_pwr: bool=False, powers: np.ndarray | None=None, show_cbar: bool=False, limits: tuple[float, float] | None=None, ax: Axes | None=None) -> tuple[Figure, Axes]:
+
+def plot_rays(
+    rx_loc: np.ndarray,
+    tx_loc: np.ndarray,
+    inter_pos: np.ndarray,
+    inter: np.ndarray,
+    figsize: tuple = (10, 8),
+    dpi: int = 100,
+    proj_3D: bool = True,
+    color_by_type: bool = True,
+    inter_objects: np.ndarray | None = None,
+    inter_obj_labels: list[str] | None = None,
+    color_rays_by_pwr: bool = False,
+    powers: np.ndarray | None = None,
+    show_cbar: bool = False,
+    limits: tuple[float, float] | None = None,
+    ax: Axes | None = None,
+) -> tuple[Figure, Axes]:
     """Plot ray paths between transmitter and receiver with interaction points.
 
     For a given user, plots all ray paths connecting TX and RX through their
@@ -237,7 +309,9 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
 
     """
     if not ax:
-        (_, ax) = plt.subplots(dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3D else {})
+        (_, ax) = plt.subplots(
+            dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3D else {}
+        )
     rx_loc = np.asarray(rx_loc)
     tx_loc = np.asarray(tx_loc)
     inter_pos = np.asarray(inter_pos)
@@ -251,8 +325,16 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
     def plot_point(point: Any, **kwargs: Any) -> None:
         coords = point[:3] if proj_3D else point[:2]
         ax.scatter(*coords, **kwargs)
+
     interaction_colors = {0: "green", 1: "red", 2: "orange", 3: "blue", 4: "purple", -1: "gray"}
-    interaction_names = {0: "Line-of-sight", 1: "Reflection", 2: "Diffraction", 3: "Scattering", 4: "Transmission", -1: "Unknown"}
+    interaction_names = {
+        0: "Line-of-sight",
+        1: "Reflection",
+        2: "Diffraction",
+        3: "Scattering",
+        4: "Transmission",
+        -1: "Unknown",
+    }
     if inter_objects is not None:
         unique_objs = np.unique(inter_objects)
         inter_obj_colors = {obj_id: f"C{i}" for (i, obj_id) in enumerate(unique_objs)}
@@ -283,14 +365,24 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
             path_types = [int(d) for d in str(path_type_int)]
         is_los = len(path_interactions) == 0
         ray_color = cmap(norm(powers[path_idx])) if color_rays_by_pwr else "g" if is_los else "r"
-        ray_plt_args = {"color": ray_color, "alpha": 1 if is_los else 0.5, "zorder": 2 if is_los else 1, "linewidth": 2 if is_los else 1}
+        ray_plt_args = {
+            "color": ray_color,
+            "alpha": 1 if is_los else 0.5,
+            "zorder": 2 if is_los else 1,
+            "linewidth": 2 if is_los else 1,
+        }
         if is_los:
-            plot_line(path_points[0], path_points[1], **ray_plt_args, label="LoS" if not color_rays_by_pwr else None)
+            plot_line(
+                path_points[0],
+                path_points[1],
+                **ray_plt_args,
+                label="LoS" if not color_rays_by_pwr else None,
+            )
             continue
         for i in range(len(path_points) - 1):
             plot_line(path_points[i], path_points[i + 1], **ray_plt_args)
         if len(path_interactions) > 0:
-            for (i, pos) in enumerate(path_interactions):
+            for i, pos in enumerate(path_interactions):
                 if color_by_type and i < len(path_types) and (inter_objects is None):
                     point_color = interaction_colors.get(path_types[i], "gray")
                     point_label = interaction_names.get(path_types[i], "Unknown")
@@ -320,7 +412,8 @@ def plot_rays(rx_loc: np.ndarray, tx_loc: np.ndarray, inter_pos: np.ndarray, int
     ax.grid()
     return ax
 
-def plot_power_discarding(dataset: Any, trim_delay: float | None=None) -> tuple[Figure, Axes]:
+
+def plot_power_discarding(dataset: Any, trim_delay: float | None = None) -> tuple[Figure, Axes]:
     """Analyze and visualize power discarding due to path delays.
 
     This function analyzes what percentage of power would be discarded for each user

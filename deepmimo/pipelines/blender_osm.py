@@ -1,10 +1,11 @@
-"""Blender Script: Convert OSM Data to PLY Files (Folder Naming Based on Bounding Box)
+"""Blender Script: Convert OSM Data to PLY Files (Folder Naming Based on Bounding Box).
+
 Each scenario's output is stored in a folder named after its bounding box.
 """
 
 from pathlib import Path
 
-import bpy  # type: ignore
+import bpy  # type: ignore[import-not-found]
 
 from .utils.blender_utils import (
     add_materials_to_objs,
@@ -26,7 +27,7 @@ from .utils.blender_utils import (
 )
 
 
-def fetch_osm_scene(
+def fetch_osm_scene(  # noqa: PLR0913 - signature follows Blender/OSM requirements
     minlat: float,
     minlon: float,
     maxlat: float,
@@ -61,9 +62,9 @@ def fetch_osm_scene(
     logger = log_local_setup(log_file)
     set_logger(logger)  # So the inner functions can log
 
-    logger.info(f"📍 Processing Scenario: [{minlat}, {minlon}] to [{maxlat}, {maxlon}]")
-    logger.info(f"📂 Saving output to: {output_folder}")
-    logger.info(f"📊 Output formats: {output_formats}")
+    logger.info("📍 Processing Scenario: [%s, %s] to [%s, %s]", minlat, minlon, maxlat, maxlon)
+    logger.info("📂 Saving output to: %s", output_folder)
+    logger.info("📊 Output formats: %s", output_formats)
 
     # Clear existing objects in Blender
     clear_blender()
@@ -87,13 +88,13 @@ def fetch_osm_scene(
     # Initialize scene
     setup_world_lighting()
 
-    BUILDING_MATERIAL = "itu_concrete"
-    ROAD_MATERIAL = "itu_brick"
+    building_material_name = "itu_concrete"
+    road_material_name = "itu_brick"
 
     # Create materials (for lighting/coloring and downstream processing)
-    building_material = bpy.data.materials.new(name=BUILDING_MATERIAL)
+    building_material = bpy.data.materials.new(name=building_material_name)
     building_material.diffuse_color = (0.75, 0.40, 0.16, 1)  # Beige
-    road_material = bpy.data.materials.new(name=ROAD_MATERIAL)
+    road_material = bpy.data.materials.new(name=road_material_name)
     road_material.diffuse_color = (0.29, 0.25, 0.21, 1)  # Dark grey
 
     # Convert all to meshes

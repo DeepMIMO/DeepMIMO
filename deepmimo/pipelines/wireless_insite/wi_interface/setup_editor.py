@@ -271,9 +271,7 @@ class SetupEditor:
                 continue
 
             if line.startswith("max_reflections"):
-                self.setup_file[i] = (
-                    f"max_reflections {self.ray_tracing_param.max_reflections}\n"
-                )
+                self.setup_file[i] = f"max_reflections {self.ray_tracing_param.max_reflections}\n"
                 continue
 
             if line.startswith("max_transmissions"):

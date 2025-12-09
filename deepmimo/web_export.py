@@ -338,6 +338,7 @@ def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:  # noqa: C901,
         save_binary_array(vegetation_array, file_path)
         print(f"Saved vegetation to {file_path}")
 
+
 # Public aliases for external callers and tests.
 save_binary_array = _save_binary_array
 process_single_dataset_to_binary = _process_single_dataset_to_binary

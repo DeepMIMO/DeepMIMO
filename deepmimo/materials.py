@@ -4,7 +4,10 @@ This module provides the base class for representing materials and their propert
 including electromagnetic and scattering characteristics.
 """
 
+from collections.abc import Iterator
+from contextlib import suppress
 from dataclasses import asdict, astuple, dataclass
+from typing import Any
 
 
 @dataclass
@@ -116,7 +119,7 @@ class MaterialList:
         """Get number of materials."""
         return len(self._materials)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator["Material"]:
         """Iterate over materials."""
         return iter(self._materials)
 
@@ -129,7 +132,7 @@ class MaterialList:
         """
         return f"MaterialList({len(self._materials)} materials, names={self.name})"
 
-    def __getattr__(self, name: str):
+    def __getattr__(self, name: str) -> list[Any]:
         """Propagate attribute access to the underlying materials list.
 
         This allows accessing attributes of the underlying materials directly.
@@ -217,10 +220,8 @@ class MaterialList:
             # Convert string numeric values to float
             for key, value in mat_data.items():
                 if isinstance(value, str) and any(c in value for c in "e+-0123456789."):
-                    try:
+                    with suppress(ValueError):
                         mat_data[key] = float(value)
-                    except ValueError:
-                        pass  # Keep as string if conversion fails
             materials.append(Material(**mat_data))
 
         materials_list.add_materials(materials)

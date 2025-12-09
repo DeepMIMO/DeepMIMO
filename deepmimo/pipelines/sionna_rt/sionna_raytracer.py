@@ -7,6 +7,7 @@ It is a wrapper around the Sionna RT API, and it is used to raytrace the scene.
 Pipeline untested for versions <0.19 and >1.0.2.
 
 """
+
 import os
 from collections.abc import Callable
 from pathlib import Path
@@ -42,6 +43,7 @@ if IS_LEGACY_VERSION:
 else:
     from sionna.rt import PathSolver
 
+
 class _DataLoader:
     """DataLoader class for Sionna RT that returns user indices for raytracing."""
 
@@ -66,6 +68,7 @@ class _DataLoader:
         batch_indices = self.indices[start_idx:end_idx]
         self.current_idx = end_idx
         return self.data[batch_indices]
+
 
 def _compute_paths(
     scene: sionna_rt.Scene,
@@ -99,6 +102,7 @@ def _compute_paths(
         paths = export_paths(paths)[0]
     return paths
 
+
 def raytrace_sionna(  # noqa: PLR0915, PLR0912, C901
     base_folder: str,
     tx_pos: np.ndarray,
@@ -127,7 +131,7 @@ def raytrace_sionna(  # noqa: PLR0915, PLR0912, C901
     if rt_params["scene_edit_func"] is not None:
         rt_params["scene_edit_func"](scene)
     if rt_params["obj_idx"] is not None:
-        for (i, obj_idx) in enumerate(rt_params["obj_idx"]):
+        for i, obj_idx in enumerate(rt_params["obj_idx"]):
             obj = scene.objects[obj_idx]
             if rt_params["obj_pos"] is not None:
                 obj.position = mi.Vector3f(rt_params["obj_pos"][i])
@@ -161,14 +165,11 @@ def raytrace_sionna(  # noqa: PLR0915, PLR0912, C901
 
     def none_or_index(x: Any, i: Any) -> Any:
         return None if x is None else x[i]
+
     num_bs = len(tx_pos)
     for b in range(num_bs):
         pwr_dbm = tf.Variable(0, dtype=tf.float32) if IS_LEGACY_VERSION else 0
-        vel_dict = (
-            {}
-            if IS_LEGACY_VERSION
-            else {"velocity": none_or_index(rt_params["tx_vel"], b)}
-        )
+        vel_dict = {} if IS_LEGACY_VERSION else {"velocity": none_or_index(rt_params["tx_vel"], b)}
         tx = Transmitter(
             name=f"BS_{b}",
             position=tx_pos[b],
@@ -186,9 +187,7 @@ def raytrace_sionna(  # noqa: PLR0915, PLR0912, C901
         print("Ray-tracing BS-BS paths")
         for b in range(num_bs):
             vel_dict = (
-                {}
-                if IS_LEGACY_VERSION
-                else {"velocity": none_or_index(rt_params["tx_vel"], b)}
+                {} if IS_LEGACY_VERSION else {"velocity": none_or_index(rt_params["tx_vel"], b)}
             )
             scene.add(
                 Receiver(
@@ -211,9 +210,7 @@ def raytrace_sionna(  # noqa: PLR0915, PLR0912, C901
     for batch in tqdm(data_loader, desc="Ray-tracing BS-UE paths", unit="batch"):
         for i in batch:
             vel_dict = (
-                {}
-                if IS_LEGACY_VERSION
-                else {"velocity": none_or_index(rt_params["rx_vel"], i)}
+                {} if IS_LEGACY_VERSION else {"velocity": none_or_index(rt_params["rx_vel"], i)}
             )
             scene.add(
                 Receiver(

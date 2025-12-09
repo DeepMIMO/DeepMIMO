@@ -76,8 +76,7 @@ def test_single_dipole() -> None:
             relative_gain = result[0] / max_result[0]
 
             assert abs(relative_gain - expected_rel_gain) < 0.01, (
-                f"Gain mismatch at {theta_val} deg: {relative_gain:.4f} "
-                f"vs {expected_rel_gain}"
+                f"Gain mismatch at {theta_val} deg: {relative_gain:.4f} vs {expected_rel_gain}"
             )
 
 

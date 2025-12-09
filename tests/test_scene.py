@@ -180,8 +180,6 @@ def test_get_object_faces() -> None:
         [0, 1, 1],
     ]
     faces = get_object_faces(vertices, fast=True)
-    assert (
-        len(faces) >= 6
-    )  # Cube has 6 faces; hull count can vary with collinearity
+    assert len(faces) >= 6  # Cube has 6 faces; hull count can vary with collinearity
     # For simple cube, it should return top, bottom + 4 sides = 6.
     assert len(faces) == 6

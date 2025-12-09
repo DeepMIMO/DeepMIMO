@@ -21,6 +21,7 @@ node := BEGIN_TAG TAG_NAME? values END_TAG NL
 values := (node | line_value)*
 line_value := (STR | "yes" | "no" | INT | FLOAT)+ NL
 """
+
 import contextlib
 import re
 from dataclasses import dataclass, field
@@ -35,6 +36,7 @@ RE_INT = re.compile("^-?\\d+$")
 RE_FLOAT = re.compile("^-?\\d+[.]\\d+$")
 RE_LABEL = re.compile("\\S+")
 NL_TOKEN = "\n"
+
 
 def tokenize_file(path: str) -> str:
     """Break a Wireless Insite file into whitespace-separated tokens.
@@ -59,6 +61,7 @@ def tokenize_file(path: str) -> str:
         for line in f:
             yield from line.split()
             yield NL_TOKEN
+
 
 class peekable:
     """Makes it possible to peek at the next value of an iterator."""
@@ -91,6 +94,7 @@ class peekable:
             self._next = self._sentinel
             return next_value
         return next(self._iterator)
+
 
 @dataclass
 class Node:
@@ -159,11 +163,13 @@ class Node:
         """
         return self.values.__delitem__(key)
 
+
 def eat(tokens: Any, expected: Any) -> None:
     """Ensures the next token is what's expected."""
     if (tok := next(tokens)) != expected:
         msg = f"Expected token {expected!r}, got {tok!r}."
         raise RuntimeError(msg)
+
 
 def parse_document(tokens: Any) -> dict[str, Node]:
     """Parse a Wireless Insite setup document into a dictionary of nodes.
@@ -195,6 +201,7 @@ def parse_document(tokens: Any) -> dict[str, Node]:
             raise RuntimeError(msg)
         document[node_name] = node
     return document
+
 
 def parse_node(tokens: Any) -> tuple[str, Node]:
     """Parse a node section from a Wireless Insite setup file.
@@ -233,6 +240,7 @@ def parse_node(tokens: Any) -> tuple[str, Node]:
     eat(tokens, NL_TOKEN)
     return (node_name, node)
 
+
 def parse_values(tokens: Any) -> Any:
     """Parse the lines of values within a node.
 
@@ -248,6 +256,7 @@ def parse_values(tokens: Any) -> Any:
         else:
             lines.append(parse_line_value(tokens))
     return lines
+
 
 def parse_line_value(tokens: Any) -> tuple:
     """Parse a single line value from a Wireless Insite setup file.
@@ -282,6 +291,7 @@ def parse_line_value(tokens: Any) -> tuple:
     eat(tokens, NL_TOKEN)
     return tuple(values)
 
+
 def parse_file(file_path: str) -> dict[str, Node]:
     """Parse a Wireless Insite setup file into a dictionary of nodes.
 
@@ -297,6 +307,8 @@ def parse_file(file_path: str) -> dict[str, Node]:
 
     """
     return parse_document(tokenize_file(file_path))
+
+
 if __name__ == "__main__":
     tokens = tokenize_file("sample.txrx")
     document = parse_document(tokens)

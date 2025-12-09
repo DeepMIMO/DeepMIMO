@@ -1,4 +1,1 @@
 """Wireless InSite interface helpers."""
-
-
-

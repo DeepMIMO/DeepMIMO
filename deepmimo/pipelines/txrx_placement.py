@@ -1,3 +1,5 @@
+"""Helpers to generate transmitter and receiver placement grids."""
+
 from typing import Any
 
 import numpy as np
@@ -34,7 +36,7 @@ def gen_tx_pos(rt_params: dict[str, Any]) -> np.ndarray:
     return np.array(bs_pos)
 
 
-def gen_plane_grid(
+def gen_plane_grid(  # noqa: PLR0913 - explicit params for clarity
     min_coord1: float,
     max_coord1: float,
     min_coord2: float,

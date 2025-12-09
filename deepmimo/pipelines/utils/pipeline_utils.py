@@ -306,10 +306,7 @@ def generate_uniform_positions(
         )
 
     else:
-        msg = (
-            f"Number of BSs {num_bs} not supported. Maximum number of BSs is "
-            f"{square_bs_count}."
-        )
+        msg = f"Number of BSs {num_bs} not supported. Maximum number of BSs is {square_bs_count}."
         raise NotImplementedError(
             msg,
         )

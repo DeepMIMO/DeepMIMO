@@ -4,6 +4,7 @@ This module provides functionality for exporting AODT data to parquet format.
 Note: This functionality requires additional dependencies.
 Install them using: pip install 'deepmimo[aodt]'
 """
+
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -16,9 +17,11 @@ except ImportError:
     msg = "AODT export functionality requires additional dependencies. Please install them using: pip install 'deepmimo[aodt]'"
     raise ImportError(msg)
 
+
 def get_all_databases(client: Client) -> list[str]:
     query = "SHOW DATABASES"
     return [db_name[0] for db_name in client.execute(query)]
+
 
 def get_all_tables(client: Client, database: str) -> list[str]:
     """Get list of all tables in the database."""
@@ -30,9 +33,11 @@ def get_all_tables(client: Client, database: str) -> list[str]:
         raise Exception(msg)
     return [table[0] for table in tables]
 
+
 def get_table_cols(client: Any, database: Any, table: Any) -> Any:
     query = f"DESCRIBE TABLE {database}.{table}"
     return [col[0] for col in client.execute(query)]
+
 
 def load_table_to_df(client: Any, database: Any, table: Any) -> Any:
     query = f"SELECT * FROM {database}.{table}"
@@ -44,7 +49,13 @@ def load_table_to_df(client: Any, database: Any, table: Any) -> Any:
         raise
     return df
 
-def aodt_exporter(client: Client, database: str="", output_dir: str=".", ignore_tables: list[str]=EXCEPT_TABLES) -> str:
+
+def aodt_exporter(
+    client: Client,
+    database: str = "",
+    output_dir: str = ".",
+    ignore_tables: list[str] = EXCEPT_TABLES,
+) -> str:
     """Export a database to parquet files.
 
     Args:
@@ -77,7 +88,7 @@ def aodt_exporter(client: Client, database: str="", output_dir: str=".", ignore_
     direct_tables = ["db_info", "materials", "panels", "patterns", "runs", "scenario"]
     time_idx_tables = ["cirs", "raypaths"]
     TIME_COL = "time_idx"
-    for (time_idx, target_dir) in enumerate(target_dirs):
+    for time_idx, target_dir in enumerate(target_dirs):
         Path(target_dir).mkdir(parents=True, exist_ok=True)
         for table in tables_to_export:
             if table in direct_tables:
@@ -94,4 +105,6 @@ def aodt_exporter(client: Client, database: str="", output_dir: str=".", ignore_
             table_df.to_parquet(output_file, index=False)
             print(f"Exported table {table} ({len(table_df)} rows) to {output_file}")
     return export_dir
+
+
 __all__ = ["aodt_exporter"]

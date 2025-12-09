@@ -4,6 +4,7 @@ This module provides utility functions and classes for handling printing,
 file naming, string ID generation, and dictionary utilities used across
 the DeepMIMO toolkit.
 """
+
 import json
 import os
 import pickle
@@ -25,6 +26,7 @@ K = TypeVar("K", bound=str)
 V = TypeVar("V")
 HEADERS = {"User-Agent": "DeepMIMO-Python/1.0", "Accept": "*/*"}
 
+
 def check_scen_name(scen_name: str) -> None:
     """Check if a scenario name is valid.
 
@@ -36,6 +38,7 @@ def check_scen_name(scen_name: str) -> None:
         msg = f"Invalid scenario name: {scen_name}.\nContains one of the following invalid characters: {c.SCENARIO_NAME_INVALID_CHARS}"
         raise ValueError(msg)
 
+
 def get_scenarios_dir() -> str:
     """Get the absolute path to the scenarios directory.
 
@@ -46,6 +49,7 @@ def get_scenarios_dir() -> str:
 
     """
     return str(Path.cwd() / config.get("scenarios_folder"))
+
 
 def get_scenario_folder(scenario_name: str) -> str:
     """Get the absolute path to a specific scenario folder.
@@ -60,6 +64,7 @@ def get_scenario_folder(scenario_name: str) -> str:
     check_scen_name(scenario_name)
     return str(Path(get_scenarios_dir()) / scenario_name)
 
+
 def get_rt_sources_dir() -> str:
     """Get the absolute path to the ray tracing sources directory.
 
@@ -70,6 +75,7 @@ def get_rt_sources_dir() -> str:
 
     """
     return str(Path.cwd() / config.get("rt_sources_folder"))
+
 
 def get_rt_source_folder(scenario_name: str) -> str:
     """Get the absolute path to a specific RT source folder.
@@ -83,6 +89,7 @@ def get_rt_source_folder(scenario_name: str) -> str:
     """
     check_scen_name(scenario_name)
     return str(Path(get_rt_sources_dir()) / scenario_name)
+
 
 def get_params_path(scenario_name: str) -> str:
     """Get the absolute path to a scenario's params file.
@@ -113,6 +120,7 @@ def get_params_path(scenario_name: str) -> str:
         raise FileNotFoundError(msg)
     return str(path)
 
+
 def get_available_scenarios() -> list:
     """Get a list of all available scenarios in the scenarios directory.
 
@@ -127,7 +135,10 @@ def get_available_scenarios() -> list:
     scenarios = [f.name for f in scenarios_dir_path.iterdir() if f.is_dir()]
     return sorted(scenarios)
 
-def get_mat_filename(key: str, tx_set_idx: int, tx_idx: int, rx_set_idx: int, fmt: str=c.MAT_FMT) -> str:
+
+def get_mat_filename(
+    key: str, tx_set_idx: int, tx_idx: int, rx_set_idx: int, fmt: str = c.MAT_FMT
+) -> str:
     """Generate a .mat filename for storing DeepMIMO data.
 
     Args:
@@ -143,7 +154,8 @@ def get_mat_filename(key: str, tx_set_idx: int, tx_idx: int, rx_set_idx: int, fm
     str_id = f"t{tx_set_idx:03}_tx{tx_idx:03}_r{rx_set_idx:03}"
     return f"{key}_{str_id}.{fmt}"
 
-def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str=c.MAT_FMT) -> None:
+
+def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str = c.MAT_FMT) -> None:
     """Save data to a .mat file with standardized naming.
 
     This function saves data to a .mat file using standardized naming conventions.
@@ -170,7 +182,8 @@ def save_mat(data: np.ndarray, data_key: str, file_path: str, fmt: str=c.MAT_FMT
         msg = 'Format {fmt} not recognized. Choose "mat" (default), "npz" or "npy".'
         raise Exception(msg)
 
-def load_mat(mat_path: str, key: str | None=None) -> Any:
+
+def load_mat(mat_path: str, key: str | None = None) -> Any:
     """Load a .mat file with supported extensions (mat, npz, npy).
 
     This function tries to load a .mat file with supported extensions (mat, npz, npy).
@@ -195,6 +208,7 @@ def load_mat(mat_path: str, key: str | None=None) -> Any:
     print(f"No supported format found for {mat_path}. Supported formats are: {supported_formats}")
     return None
 
+
 def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
     """Save dictionary as JSON, handling NumPy arrays and other non-JSON types.
 
@@ -208,8 +222,10 @@ def save_dict_as_json(output_path: str, data_dict: dict[str, Any]) -> None:
 
     def numpy_handler(x: Any) -> list[Any] | str:
         return x.tolist() if isinstance(x, np.ndarray) else str(x)
+
     with Path(output_path).open("w") as f:
         json.dump(data_dict, f, indent=2, default=numpy_handler)
+
 
 def load_dict_from_json(file_path: str) -> dict[str, Any]:
     """Load dictionary from JSON file.
@@ -223,6 +239,7 @@ def load_dict_from_json(file_path: str) -> dict[str, Any]:
     """
     with Path(file_path).open() as f:
         return json.load(f)
+
 
 def deep_dict_merge(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, Any]:
     """Deep merge two dictionaries, preserving values from dict1 for keys not in dict2.
@@ -251,12 +268,13 @@ def deep_dict_merge(dict1: dict[str, Any], dict2: dict[str, Any]) -> dict[str, A
     if hasattr(dict2, "to_dict"):
         dict2 = dict2.to_dict()
     result = deepcopy(dict1)
-    for (key, value) in dict2.items():
+    for key, value in dict2.items():
         if key in result and isinstance(result[key], dict) and isinstance(value, dict):
             result[key] = deep_dict_merge(result[key], value)
         else:
             result[key] = value
     return result
+
 
 def compare_two_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> bool:
     """Compare two dictionaries for equality.
@@ -273,10 +291,11 @@ def compare_two_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> bool:
 
     """
     additional_keys = dict1.keys() - dict2.keys()
-    for (key, item) in dict1.items():
+    for key, item in dict1.items():
         if isinstance(item, dict) and key in dict2:
             additional_keys = additional_keys | compare_two_dicts(item, dict2[key])
     return additional_keys
+
 
 class DotDict(Mapping[K, V]):
     """A dictionary subclass that supports dot notation access to nested dictionaries.
@@ -298,7 +317,7 @@ class DotDict(Mapping[K, V]):
 
     """
 
-    def __init__(self: Any, data: dict[str, Any] | None=None) -> None:
+    def __init__(self: Any, data: dict[str, Any] | None = None) -> None:
         """Initialize DotDict with a dictionary.
 
         Args:
@@ -307,7 +326,7 @@ class DotDict(Mapping[K, V]):
         """
         self._data = {}
         if data:
-            for (key, value) in data.items():
+            for key, value in data.items():
                 if isinstance(value, dict):
                     self._data[key] = DotDict(value)
                 else:
@@ -354,7 +373,10 @@ class DotDict(Mapping[K, V]):
 
     def update(self: Any, other: dict[str, Any]) -> None:
         """Update the dictionary with elements from another dictionary."""
-        processed = {k: DotDict(v) if isinstance(v, dict) and (not isinstance(v, DotDict)) else v for (k, v) in other.items()}
+        processed = {
+            k: DotDict(v) if isinstance(v, dict) and (not isinstance(v, DotDict)) else v
+            for (k, v) in other.items()
+        }
         self._data.update(processed)
 
     def __len__(self: Any) -> int:
@@ -381,7 +403,7 @@ class DotDict(Mapping[K, V]):
         """Return dictionary items as (key, value) pairs."""
         return self._data.items()
 
-    def get(self: Any, key: str, default: Any=None) -> Any:
+    def get(self: Any, key: str, default: Any = None) -> Any:
         """Get value for key, returning default if key doesn't exist."""
         return self._data.get(key, default)
 
@@ -408,7 +430,7 @@ class DotDict(Mapping[K, V]):
 
         """
         result = {}
-        for (key, value) in self._data.items():
+        for key, value in self._data.items():
             if isinstance(value, DotDict):
                 result[key] = value.to_dict()
             else:
@@ -427,7 +449,7 @@ class DotDict(Mapping[K, V]):
 
         """
         result = {}
-        for (key, value) in self._data.items():
+        for key, value in self._data.items():
             if isinstance(value, DotDict):
                 result[key] = value.deepcopy()
             elif isinstance(value, dict):
@@ -441,6 +463,7 @@ class DotDict(Mapping[K, V]):
     def __repr__(self: Any) -> str:
         """Return string representation of dictionary."""
         return pformat(self._data)
+
 
 class PrintIfVerbose:
     """A callable class that conditionally prints messages based on verbosity setting.
@@ -469,6 +492,7 @@ class PrintIfVerbose:
         if self.verbose:
             print(message)
 
+
 def zip(folder_path: str) -> str:
     """Create zip archive of folder contents.
 
@@ -485,15 +509,16 @@ def zip(folder_path: str) -> str:
     """
     zip_path = folder_path + ".zip"
     all_files = []
-    for (root, _, files) in os.walk(folder_path):
+    for root, _, files in os.walk(folder_path):
         for file in files:
             file_path = Path(root) / file
             rel_path = file_path.relative_to(folder_path)
             all_files.append((str(file_path), str(rel_path)))
     with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
-        for (file_path, rel_path) in tqdm(all_files, desc="Compressing", unit="file"):
+        for file_path, rel_path in tqdm(all_files, desc="Compressing", unit="file"):
             zipf.write(file_path, rel_path)
     return zip_path
+
 
 def unzip(path_to_zip: str) -> str:
     """Extract a zip file to its parent directory.
@@ -519,6 +544,7 @@ def unzip(path_to_zip: str) -> str:
             zip_ref.extract(file, extracted_path)
     return extracted_path
 
+
 def cartesian_to_spherical(cartesian_coords: np.ndarray) -> np.ndarray:
     """Convert Cartesian coordinates to spherical coordinates.
 
@@ -531,11 +557,12 @@ def cartesian_to_spherical(cartesian_coords: np.ndarray) -> np.ndarray:
 
     """
     spherical_coords = np.zeros((cartesian_coords.shape[0], 3))
-    spherical_coords[:, 0] = np.sqrt(np.sum(cartesian_coords ** 2, axis=1))
+    spherical_coords[:, 0] = np.sqrt(np.sum(cartesian_coords**2, axis=1))
     spherical_coords[:, 1] = np.arctan2(cartesian_coords[:, 1], cartesian_coords[:, 0])
     r_xy = np.sqrt(cartesian_coords[:, 0] ** 2 + cartesian_coords[:, 1] ** 2)
     spherical_coords[:, 2] = np.arctan2(cartesian_coords[:, 2], r_xy)
     return spherical_coords
+
 
 def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     """Convert spherical coordinates to Cartesian coordinates.
@@ -564,6 +591,7 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     cartesian_coords[..., 2] = r * np.cos(elevation)
     return cartesian_coords
 
+
 class DelegatingList(list):
     """A list subclass that delegates method calls to each item in the list.
 
@@ -587,6 +615,7 @@ class DelegatingList(list):
             def method(*args: Any, **kwargs: Any) -> DelegatingList:
                 results = [getattr(item, name)(*args, **kwargs) for item in self]
                 return DelegatingList(results)
+
             return method
         results = [getattr(item, name) for item in self]
         return DelegatingList(results)
@@ -603,12 +632,17 @@ class DelegatingList(list):
         if not self:
             msg = f"Empty list has no attribute '{name}'"
             raise AttributeError(msg)
-        if hasattr(value, "__iter__") and (not isinstance(value, (str, bytes))) and (len(value) == len(self)):
-            for (item, val) in __builtins__["zip"](self, value):
+        if (
+            hasattr(value, "__iter__")
+            and (not isinstance(value, (str, bytes)))
+            and (len(value) == len(self))
+        ):
+            for item, val in __builtins__["zip"](self, value):
                 setattr(item, name, val)
         else:
             for item in self:
                 setattr(item, name, value)
+
 
 def save_pickle(obj: Any, filename: str) -> None:
     """Save an object to a pickle file.
@@ -623,6 +657,7 @@ def save_pickle(obj: Any, filename: str) -> None:
     """
     with Path(filename).open("wb") as file:
         pickle.dump(obj, file)
+
 
 def load_pickle(filename: str) -> Any:
     """Load an object from a pickle file.

@@ -15,11 +15,16 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
     @patch("deepmimo.api._dm_upload_api_call")
     def test_upload_flow(self, mock_upload_api, mock_zip) -> None:
         """Test the high-level upload function."""
-        with patch("deepmimo.api.get_params_path") as mock_get_params, patch(
-            "deepmimo.api.get_scenario_folder",
-        ) as mock_get_folder, patch("deepmimo.api.load_dict_from_json") as mock_load_json, patch(
-            "deepmimo.api.make_submission_on_server",
-        ) as mock_make_sub:
+        with (
+            patch("deepmimo.api.get_params_path") as mock_get_params,
+            patch(
+                "deepmimo.api.get_scenario_folder",
+            ) as mock_get_folder,
+            patch("deepmimo.api.load_dict_from_json") as mock_load_json,
+            patch(
+                "deepmimo.api.make_submission_on_server",
+            ) as mock_make_sub,
+        ):
             mock_get_folder.return_value = "scenarios/MyScenario"
             mock_get_params.return_value = "scenarios/MyScenario/params.json"
             mock_load_json.return_value = {"version": "4.0"}
@@ -52,11 +57,16 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
     @patch("deepmimo.api.upload_images")
     def test_make_submission_on_server(self, mock_upl_imgs, mock_plot) -> None:
         """Test making submission on server."""
-        with patch("deepmimo.api._process_params_data") as mock_proc_params, patch(
-            "deepmimo.api._generate_key_components",
-        ) as mock_gen_key, patch("deepmimo.api.summary") as mock_summary, patch(
-            "deepmimo.api.requests.post",
-        ) as mock_post:
+        with (
+            patch("deepmimo.api._process_params_data") as mock_proc_params,
+            patch(
+                "deepmimo.api._generate_key_components",
+            ) as mock_gen_key,
+            patch("deepmimo.api.summary") as mock_summary,
+            patch(
+                "deepmimo.api.requests.post",
+            ) as mock_post,
+        ):
             mock_proc_params.return_value = {"primaryParameters": {}, "advancedParameters": {}}
             mock_gen_key.return_value = {"sections": []}
             mock_post.return_value.status_code = 200
