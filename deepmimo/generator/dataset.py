@@ -48,7 +48,7 @@ from deepmimo.web_export import export_dataset_to_binary
 
 from .ant_patterns import AntennaPattern
 from .array_wrapper import DeepMIMOArray
-from .channel import ChannelGenerationConfig, ChannelParameters, _generate_mimo_channel
+from .channel import ChannelParameters, _generate_mimo_channel
 from .generator_utils import (
     dbw2watt,
     get_grid_idxs,
@@ -253,9 +253,9 @@ class Dataset(DotDict):
             old_ue_rot = old_params.ue_antenna[c.PARAMSET_ANT_ROTATION]
             new_bs_rot = params.bs_antenna[c.PARAMSET_ANT_ROTATION]
             new_ue_rot = params.ue_antenna[c.PARAMSET_ANT_ROTATION]
-            if not np.array_equal(old_bs_rot, new_bs_rot) or not np.array_equal(
-                old_ue_rot, new_ue_rot
-            ):
+            eq_bs_rot = np.array_equal(old_bs_rot, new_bs_rot)
+            eq_ue_rot = np.array_equal(old_ue_rot, new_ue_rot)
+            if not eq_bs_rot or not eq_ue_rot:
                 self._clear_cache_rotated_angles()
         return params
 
@@ -311,17 +311,13 @@ class Dataset(DotDict):
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
         channel = _generate_mimo_channel(
             array_response_product=array_response_product[..., :n_paths],
-            paths={
-                "power": self._power_linear_ant_gain[..., :n_paths],
-                "delay": self.delay[..., :n_paths],
-                "phase": self.phase[..., :n_paths],
-                "doppler": dopplers,
-            },
+            power=self._power_linear_ant_gain[..., :n_paths],
+            delay=self.delay[..., :n_paths],
+            phase=self.phase[..., :n_paths],
+            doppler=dopplers,
             ofdm_params=params.ofdm,
-            config=ChannelGenerationConfig(
-                times=times,
-                freq_domain=params.freq_domain,
-            ),
+            times=times,
+            freq_domain=params.freq_domain,
         )
         self[c.CHANNEL_PARAM_NAME] = channel
         return channel

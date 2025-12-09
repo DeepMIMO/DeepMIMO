@@ -5,7 +5,6 @@ import pytest
 
 from deepmimo import consts as c
 from deepmimo.generator.channel import (
-    ChannelGenerationConfig,
     ChannelParameters,
     _convert_lists_to_arrays,
     _generate_mimo_channel,
@@ -64,14 +63,16 @@ def test_generate_mimo_channel_time_domain() -> None:
     ofdm_params = ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM]
 
     # Generate channel (Time Domain)
-    paths = {
-        "power": powers,
-        "delay": delays,
-        "phase": phases,
-        "doppler": dopplers,
-    }
-    config = ChannelGenerationConfig(freq_domain=False, times=0.0)
-    channel = _generate_mimo_channel(array_response, paths, ofdm_params, config)
+    channel = _generate_mimo_channel(
+        array_response_product=array_response,
+        power=powers,
+        delay=delays,
+        phase=phases,
+        doppler=dopplers,
+        ofdm_params=ofdm_params,
+        times=0.0,
+        freq_domain=False,
+    )
 
     # Expected shape: [n_users, M_rx, M_tx, P_max] (squeezed time)
     assert channel.shape == (n_users, n_rx_ant, n_tx_ant, n_paths)
@@ -98,14 +99,16 @@ def test_generate_mimo_channel_freq_domain() -> None:
     # Set known subcarriers
     ofdm_params[c.PARAMSET_OFDM_SC_SAMP] = np.array([0, 1])  # 2 subcarriers
 
-    paths = {
-        "power": powers,
-        "delay": delays,
-        "phase": phases,
-        "doppler": dopplers,
-    }
-    config = ChannelGenerationConfig(freq_domain=True, times=0.0)
-    channel = _generate_mimo_channel(array_response, paths, ofdm_params, config)
+    channel = _generate_mimo_channel(
+        array_response_product=array_response,
+        power=powers,
+        delay=delays,
+        phase=phases,
+        doppler=dopplers,
+        ofdm_params=ofdm_params,
+        times=0.0,
+        freq_domain=True,
+    )
 
     # Expected shape: [n_users, M_rx, M_tx, K_sel]
     assert channel.shape == (n_users, n_rx_ant, n_tx_ant, 2)
@@ -137,20 +140,16 @@ def test_doppler_progression() -> None:
     ofdm_params = ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM]
     times = np.array([0.0, 0.0025])  # 0 and 1/4 cycle (period = 1/100 = 0.01s)
 
-    paths = {
-        "power": powers,
-        "delay": delays,
-        "phase": phases,
-        "doppler": dopplers,
-    }
-    config = ChannelGenerationConfig(
-        freq_domain=False, times=times, squeeze_time=False
-    )
     channel = _generate_mimo_channel(
-        array_response,
-        paths,
-        ofdm_params,
-        config,
+        array_response_product=array_response,
+        power=powers,
+        delay=delays,
+        phase=phases,
+        doppler=dopplers,
+        ofdm_params=ofdm_params,
+        times=times,
+        freq_domain=False,
+        squeeze_time=False,
     )
 
     # channel shape: [1, 1, 1, 1, 2]

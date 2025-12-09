@@ -10,7 +10,6 @@ based on path information from ray-tracing and antenna configurations.
 """
 
 from copy import deepcopy
-from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import numpy as np
@@ -21,25 +20,6 @@ from deepmimo.general_utils import DotDict, compare_two_dicts, deep_dict_merge
 
 ROT_DIM = 3
 RANGE_DIM = 2
-
-
-@dataclass
-class PathData:
-    """Container for path parameters for a single user."""
-
-    power: np.ndarray
-    delays: np.ndarray
-    phases: np.ndarray
-    dopplers: np.ndarray
-
-
-@dataclass
-class ChannelGenerationConfig:
-    """Configuration for channel generation."""
-
-    freq_domain: bool = True
-    squeeze_time: bool = True
-    times: float | np.ndarray = 0.0
 
 
 def _convert_lists_to_arrays(obj: Any) -> Any:
@@ -447,64 +427,41 @@ def _check_ofdm_compatibility(ofdm_params: dict, delays: np.ndarray) -> None:
     print("-" * 50)
 
 
-def _compute_single_user_freq(
-    array_product: np.ndarray,
-    path_data: PathData,
-    path_gen: OFDMPathGenerator,
-    ts: float,
-    times: np.ndarray,
-) -> np.ndarray:
-    """Compute frequency domain channel for a single user."""
-    # path_gains: [P, K, N_t]
-    path_gains = path_gen.generate(
-        pwr=path_data.power,
-        toa=path_data.delays,
-        phs=path_data.phases,
-        ts=ts,
-        dopplers=path_data.dopplers,
-        times=times,
-    )
-    # Combine with array responses: [M_rx, M_tx, P] x [P, K, N_t] -> [M_rx, M_tx, K, N_t]
-    return np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
-        np.complex64,
-        copy=False,
-    )
-
-
-def _compute_single_user_time(
-    array_product: np.ndarray,
-    path_data: PathData,
-    times: np.ndarray,
-) -> np.ndarray:
-    """Compute time domain channel for a single user."""
-    # Time-domain per-path gains:
-    # a_pt = sqrt(P) * exp(j(phi + 2π fD t))  -> [P, N_t]
-    phase0 = np.deg2rad(path_data.phases)[:, None]  # [P,1]
-    a_pt = np.sqrt(path_data.power)[:, None] * np.exp(
-        1j * (phase0 + 2 * np.pi * path_data.dopplers[:, None] * times[None, :]),
-    )  # [P,N_t]
-    # Combine: [M_rx,M_tx,P] x [P,N_t] -> [M_rx,M_tx,P,N_t]
-    return np.einsum("rtp,pn->r t p n", array_product, a_pt, optimize=True).astype(
-        np.complex64,
-        copy=False,
-    )
-
-
-def _generate_mimo_channel(
+def _generate_mimo_channel(  # noqa: PLR0913 - explicit args preferred over nested containers
     array_response_product: np.ndarray,
-    paths: dict[str, np.ndarray],
+    power: np.ndarray,
+    delay: np.ndarray,
+    phase: np.ndarray,
+    doppler: np.ndarray,
     ofdm_params: dict,
-    config: ChannelGenerationConfig,
+    *,
+    times: float | np.ndarray = 0.0,
+    freq_domain: bool = True,
+    squeeze_time: bool = True,
 ) -> np.ndarray:
-    """Generate MIMO channel matrices in frequency or time domain."""
-    # Extract path parameters
-    powers = paths["power"]
-    delays = paths["delay"]
-    phases = paths["phase"]
-    dopplers = paths["doppler"]
+    """Generate MIMO channel matrices in frequency or time domain.
 
+    Args:
+        array_response_product: [n_users, M_rx, M_tx, P_max] antenna array responses
+        power: [n_users, P_max] path powers (linear scale)
+        delay: [n_users, P_max] path delays (seconds)
+        phase: [n_users, P_max] path phases (degrees)
+        doppler: [n_users, P_max] Doppler frequencies (Hz)
+        ofdm_params: OFDM parameters dictionary
+        times: Time samples (scalar or array, in seconds)
+        freq_domain: If True, generate frequency-domain (OFDM) channel
+        squeeze_time: If True and single time sample, squeeze time dimension
+
+    Returns:
+        Channel matrix with shape depending on domain and time:
+        - Freq domain, single time: [n_users, M_rx, M_tx, K_subcarriers]
+        - Freq domain, multi time: [n_users, M_rx, M_tx, K_subcarriers, N_t]
+        - Time domain, single time: [n_users, M_rx, M_tx, P_max]
+        - Time domain, multi time: [n_users, M_rx, M_tx, P_max, N_t]
+
+    """
     # Time handling
-    times_arr = np.atleast_1d(config.times).astype(float)  # [N_t]
+    times_arr = np.atleast_1d(times).astype(float)  # [N_t]
     n_times = times_arr.shape[0]
 
     ts = 1.0 / ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
@@ -513,23 +470,23 @@ def _generate_mimo_channel(
     path_gen = OFDMPathGenerator(ofdm_params, subcarriers)
 
     # Delay sanity for OFDM mode
-    if config.freq_domain:
-        _check_ofdm_compatibility(ofdm_params, delays)
+    if freq_domain:
+        _check_ofdm_compatibility(ofdm_params, delay)
 
-    n_ues = powers.shape[0]
-    p_max = powers.shape[1]
+    n_ues = power.shape[0]
+    p_max = power.shape[1]
     m_rx, m_tx = array_response_product.shape[1:3]
 
-    last_ch_dim = k_subcarriers if config.freq_domain else p_max
+    last_ch_dim = k_subcarriers if freq_domain else p_max
 
     # Allocate output
-    if n_times == 1 and config.squeeze_time:
+    if n_times == 1 and squeeze_time:
         channel = np.zeros((n_ues, m_rx, m_tx, last_ch_dim), dtype=np.csingle)
     else:
         channel = np.zeros((n_ues, m_rx, m_tx, last_ch_dim, n_times), dtype=np.csingle)
 
     # Masks per user (valid paths)
-    nan_masks = ~np.isnan(powers)  # [n_users, P_max]
+    nan_masks = ~np.isnan(power)  # [n_users, P_max]
     valid_path_counts = np.sum(nan_masks, axis=1)  # [n_users]
 
     for i in tqdm(range(n_ues), desc="Generating channels"):
@@ -540,30 +497,47 @@ def _generate_mimo_channel(
 
         # Slice per-user arrays
         array_product = array_response_product[i][..., non_nan_mask]  # [M_rx, M_tx, P]
-        path_data = PathData(
-            power=powers[i, non_nan_mask],
-            delays=delays[i, non_nan_mask],
-            phases=phases[i, non_nan_mask],
-            dopplers=dopplers[i, non_nan_mask],
-        )
 
-        if config.freq_domain:
-            hi_fk_t = _compute_single_user_freq(
-                array_product,
-                path_data,
-                path_gen,
-                ts,
-                times_arr,
+        # Per-user path data
+        user_power = power[i, non_nan_mask]
+        user_delay = delay[i, non_nan_mask]
+        user_phase = phase[i, non_nan_mask]
+        user_doppler = doppler[i, non_nan_mask]
+
+        if freq_domain:
+            # Compute frequency-domain channel
+            path_gains = path_gen.generate(
+                pwr=user_power,
+                toa=user_delay,
+                phs=user_phase,
+                ts=ts,
+                dopplers=user_doppler,
+                times=times_arr,
             )
-            channel[i] = hi_fk_t[..., 0] if n_times == 1 else hi_fk_t
+            # Combine with array responses: [M_rx, M_tx, P] x [P, K, N_t] -> [M_rx, M_tx, K, N_t]
+            hi_fk_t = np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
+                np.complex64,
+                copy=False,
+            )
+            channel[i] = hi_fk_t[..., 0] if n_times == 1 and squeeze_time else hi_fk_t
         else:
-            hi_pt = _compute_single_user_time(
-                array_product, path_data, times_arr
+            # Time-domain channel
+            phase0 = np.deg2rad(user_phase)[:, None]  # [P,1]
+            a_pt = np.sqrt(user_power)[:, None] * np.exp(
+                1j * (phase0 + 2 * np.pi * user_doppler[:, None] * times_arr[None, :]),
+            )  # [P,N_t]
+            # Combine: [M_rx,M_tx,P] x [P,N_t] -> [M_rx,M_tx,P,N_t]
+            hi_pt = np.einsum("rtp,pn->rtpn", array_product, a_pt, optimize=True).astype(
+                np.complex64,
+                copy=False,
             )
             # Pad zeros for invalid paths to preserve last_ch_dim
-            shape = (m_rx, m_tx, p_max) if n_times == 1 else (m_rx, m_tx, p_max, n_times)
+            if n_times == 1 and squeeze_time:
+                shape = (m_rx, m_tx, p_max)
+            else:
+                shape = (m_rx, m_tx, p_max, n_times)
             out = np.zeros(shape, dtype=np.complex64)
-            if n_times == 1:
+            if n_times == 1 and squeeze_time:
                 out[..., :n_paths] = hi_pt[..., 0]
             else:
                 out[..., :n_paths, :] = hi_pt
