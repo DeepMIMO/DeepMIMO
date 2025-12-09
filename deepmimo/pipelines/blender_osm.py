@@ -43,8 +43,8 @@ def fetch_osm_scene(  # noqa: PLR0913 - signature follows Blender/OSM requiremen
             maxlat (float): Maximum latitude of the bounding box
             maxlon (float): Maximum longitude of the bounding box
             output_folder (str): Path to the output folder
-            output_formats (list[str], optional): List of output formats. Defaults to ["insite"].
-                                                                                      Possible values: "insite", "sionna"
+            output_formats (list[str], optional): List of output formats.
+                Defaults to ["insite"]. Possible values: "insite", "sionna"
 
     """
     # Check if the folder already exists

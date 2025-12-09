@@ -21,8 +21,11 @@ from matplotlib.colors import Colormap, ListedColormap
 from matplotlib.figure import Figure
 from tqdm import tqdm
 
+CAT_LABELS_MAX_UNIQUE = 30
+VAL_RANGE_THRESHOLD = 100
 
-def _create_colorbar(
+
+def _create_colorbar(  # noqa: PLR0913
     scatter_plot: plt.scatter,
     cov_map: np.ndarray,
     cmap: str,
@@ -49,9 +52,12 @@ def _create_colorbar(
     unique_vals = np.sort(np.unique(valid_data))
     n_cats = len(unique_vals)
     if cat_labels is not None and len(cat_labels) != n_cats:
-        msg = f"Number of category labels ({len(cat_labels)}) must match number of unique values ({n_cats})"
+        msg = (
+            "Number of category labels ("
+            f"{len(cat_labels)}) must match number of unique values ({n_cats})"
+        )
         raise ValueError(msg)
-    if n_cats < 30 or cat_labels:
+    if n_cats < CAT_LABELS_MAX_UNIQUE or cat_labels:
         if isinstance(cmap, str):
             base_cmap = plt.colormaps[cmap]
             colors = base_cmap(np.linspace(0, 1, n_cats))
@@ -73,16 +79,20 @@ def _create_colorbar(
             values=np.arange(n_cats),
         )
         val_range = np.max(unique_vals) - np.min(unique_vals)
-        str_labels = [str(int(val)) if val_range > 100 else str(val) for val in unique_vals]
+        str_labels = [
+            str(int(val)) if val_range > VAL_RANGE_THRESHOLD else str(val)
+            for val in unique_vals
+        ]
         cbar.set_ticklabels(cat_labels if cat_labels else str_labels)
     else:
         cbar = fig.colorbar(scatter_plot, ax=ax, label=cbar_title)
     return cbar
 
 
-def plot_coverage(
+def plot_coverage(  # noqa: PLR0913, C901
     rxs: np.ndarray,
     cov_map: tuple[float, ...] | list[float] | np.ndarray,
+    *,
     dpi: int = 100,
     figsize: tuple = (6, 4),
     cbar_title: str = "",
@@ -92,12 +102,13 @@ def plot_coverage(
     bs_ori: np.ndarray | None = None,
     legend: bool = False,
     lims: tuple[float, float] | None = None,
-    proj_3D: bool = False,
+    proj_3d: bool = False,
     equal_aspect: bool = False,
     tight: bool = True,
     cmap: str | list = "viridis",
     cbar_labels: list[str] | None = None,
     ax: Axes | None = None,
+    **kwargs: Any,
 ) -> tuple[Figure, Axes, Colorbar]:
     """Generate coverage map visualization for user positions.
 
@@ -116,12 +127,13 @@ def plot_coverage(
         bs_ori (Optional[np.ndarray]): Base station orientation angles. Defaults to None.
         legend (bool): Whether to show plot legend. Defaults to False.
         lims (Optional[Tuple[float, float]]): Color scale limits (min, max). Defaults to None.
-        proj_3D (bool): Whether to create 3D projection. Defaults to False.
+        proj_3d (bool): Whether to create 3D projection. Defaults to False.
         equal_aspect (bool): Whether to maintain equal axis scaling. Defaults to False.
         tight (bool): Whether to set tight axis limits around data points. Defaults to True.
         cmap (str | list): Matplotlib colormap name or list of colors. Defaults to 'viridis'.
         cbar_labels (Optional[list[str]]): List of labels for the colorbar. Defaults to None.
         ax (Optional[Axes]): Matplotlib Axes object. Defaults to None.
+        **kwargs: Additional keyword-only options; accepts `proj_3D` alias.
 
     Returns:
         Tuple containing:
@@ -130,23 +142,35 @@ def plot_coverage(
         - matplotlib Colorbar object
 
     """
+    if "proj_3D" in kwargs:
+        proj_3d = kwargs.pop("proj_3D")
+    if kwargs:
+        unexpected = ", ".join(kwargs)
+        msg = f"Unexpected keyword arguments: {unexpected}"
+        raise TypeError(msg)
+
     cmap = cmap if isinstance(cmap, (str, Colormap)) else ListedColormap(cmap)
     plt_params = {"cmap": cmap}
     if lims:
         (plt_params["vmin"], plt_params["vmax"]) = (lims[0], lims[1])
-    n = 3 if proj_3D else 2
-    xyz_arg_names = ["x" if n == 2 else "xs", "y" if n == 2 else "ys", "zs"]
+    n = 3 if proj_3d else 2
+    two_d_dim = 2  # dimension count for 2D projections
+    xyz_arg_names = [
+        "x" if n == two_d_dim else "xs",
+        "y" if n == two_d_dim else "ys",
+        "zs",
+    ]
     xyz = {s: rxs[:, i] for (s, i) in zip(xyz_arg_names, range(n), strict=False)}
     if not ax:
         (_, ax) = plt.subplots(
-            dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3D else {}
+            dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3d else {}
         )
     cov_map = np.array(cov_map) if isinstance(cov_map, list) else cov_map
     im = ax.scatter(**xyz, c=cov_map, s=scat_sz, marker="s", **plt_params)
     cbar = _create_colorbar(im, cov_map, cmap, cbar_title, cbar_labels, ax)
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
-    if proj_3D:
+    if proj_3d:
         ax.set_zlabel("z (m)")
     if bs_pos is not None:
         bs_pos = bs_pos.squeeze()
@@ -168,7 +192,7 @@ def plot_coverage(
         (mins, maxs) = (np.min(all_points, axis=0) - s, np.max(all_points, axis=0) + s)
         ax.set_xlim([mins[0], maxs[0]])
         ax.set_ylim([mins[1], maxs[1]])
-        if proj_3D:
+        if proj_3d:
             ax.axes.set_zlim3d([mins[2], maxs[2]])
     if equal_aspect:
         ax.set_aspect("equal")
@@ -204,10 +228,11 @@ def transform_coordinates(
     return (lats, lons)
 
 
-def export_xyz_csv(
+def export_xyz_csv(  # noqa: PLR0913
     data: dict[str, Any],
     z_var: np.ndarray,
     outfile: str = "",
+    *,
     google_earth: bool = False,
     lat_min: float = 33.418081,
     lat_max: float = 33.420961,
@@ -224,7 +249,8 @@ def export_xyz_csv(
         data (Dict[str, Any]): DeepMIMO dataset for one basestation
         z_var (np.ndarray): Values to use for z-coordinate or coloring
         outfile (str): Output CSV file path. Defaults to ''.
-        google_earth (bool): Whether to convert coordinates to geographical format. Defaults to False.
+        google_earth (bool): Whether to convert coordinates to geographical format.
+            Defaults to False.
         lat_min (float): Minimum latitude for coordinate conversion. Defaults to 33.418081.
         lat_max (float): Maximum latitude for coordinate conversion. Defaults to 33.420961.
         lon_min (float): Minimum longitude for coordinate conversion. Defaults to -111.932875.
@@ -255,14 +281,15 @@ def export_xyz_csv(
         writer.writerows(zip(*data_dict.values(), strict=False))
 
 
-def plot_rays(
+def plot_rays(  # noqa: PLR0912, PLR0913, PLR0915, C901
     rx_loc: np.ndarray,
     tx_loc: np.ndarray,
     inter_pos: np.ndarray,
     inter: np.ndarray,
+    *,
     figsize: tuple = (10, 8),
     dpi: int = 100,
-    proj_3D: bool = True,
+    proj_3d: bool = True,
     color_by_type: bool = True,
     inter_objects: np.ndarray | None = None,
     inter_obj_labels: list[str] | None = None,
@@ -271,6 +298,7 @@ def plot_rays(
     show_cbar: bool = False,
     limits: tuple[float, float] | None = None,
     ax: Axes | None = None,
+    **kwargs: Any,
 ) -> tuple[Figure, Axes]:
     """Plot ray paths between transmitter and receiver with interaction points.
 
@@ -288,19 +316,25 @@ def plot_rays(
             (e.g., 211 means type 2 for first bounce, type 1 for second and third)
         figsize (tuple, optional): Figure size in inches. Defaults to (10,8).
         dpi (int, optional): Resolution in dots per inch. Defaults to 300.
-        proj_3D (bool, optional): Whether to create 3D projection. Defaults to True.
-        color_by_type (bool, optional): Whether to color interaction points by their type. Defaults to False.
-        inter_objects (Optional[np.ndarray], optional): Object ids at each interaction point. Defaults to None.
-            If provided, will color the interaction points by the object id, and
-            ignore the interaction type.
-        inter_obj_labels (Optional[list[str]], optional): Labels for the interaction objects. Defaults to None.
-            If provided, will use these labels instead of the object ids.
-        color_rays_by_pwr (bool, optional): Whether to color rays by their power. Defaults to False.
-        powers (Optional[np.ndarray], optional): Power values for each path. Required if color_rays_by_pwr is True.
+        proj_3d (bool, optional): Whether to create 3D projection. Defaults to True.
+        color_by_type (bool, optional): Whether to color interaction points by their
+            type. Defaults to False.
+        inter_objects (Optional[np.ndarray], optional): Object ids at each
+            interaction point. Defaults to None. If provided, will color the
+            interaction points by the object id, and ignore the interaction type.
+        inter_obj_labels (Optional[list[str]], optional): Labels for the interaction
+            objects. Defaults to None. If provided, will use these labels instead of
+            the object ids.
+        color_rays_by_pwr (bool, optional): Whether to color rays by their power.
+            Defaults to False.
+        powers (Optional[np.ndarray], optional): Power values for each path.
+            Required if color_rays_by_pwr is True.
         show_cbar (bool, optional): Whether to show the colorbar. Defaults to False.
-        limits (Optional[Tuple[float, float]], optional): Power limits for coloring (min, max). If None, uses relative scaling.
-        ax (Optional[Axes], optional): Matplotlib Axes object. Defaults to None. When provided,
-            the figure and axes are not created.
+        limits (Optional[Tuple[float, float]], optional): Power limits for coloring
+            (min, max). If None, uses relative scaling.
+        ax (Optional[Axes], optional): Matplotlib Axes object. Defaults to None.
+            When provided, the figure and axes are not created.
+        **kwargs: Additional keyword-only options; accepts `proj_3D` alias.
 
     Returns:
         Tuple containing:
@@ -308,9 +342,16 @@ def plot_rays(
         - matplotlib Axes object
 
     """
+    if "proj_3D" in kwargs:
+        proj_3d = kwargs.pop("proj_3D")
+    if kwargs:
+        unexpected = ", ".join(kwargs)
+        msg = f"Unexpected keyword arguments: {unexpected}"
+        raise TypeError(msg)
+
     if not ax:
         (_, ax) = plt.subplots(
-            dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3D else {}
+            dpi=dpi, figsize=figsize, subplot_kw={"projection": "3d"} if proj_3d else {}
         )
     rx_loc = np.asarray(rx_loc)
     tx_loc = np.asarray(tx_loc)
@@ -319,11 +360,11 @@ def plot_rays(
     n_valid_paths = np.sum(~np.isnan(inter))
 
     def plot_line(start_point: Any, end_point: Any, **kwargs: Any) -> None:
-        coords = [(start_point[i], end_point[i]) for i in range(3 if proj_3D else 2)]
+        coords = [(start_point[i], end_point[i]) for i in range(3 if proj_3d else 2)]
         ax.plot(*coords, **kwargs)
 
     def plot_point(point: Any, **kwargs: Any) -> None:
-        coords = point[:3] if proj_3D else point[:2]
+        coords = point[:3] if proj_3d else point[:2]
         ax.scatter(*coords, **kwargs)
 
     interaction_colors = {0: "green", 1: "red", 2: "orange", 3: "blue", 4: "purple", -1: "gray"}
@@ -359,10 +400,7 @@ def plot_rays(
         path_interactions = inter_pos[path_idx][valid_inters]
         path_points = np.vstack([tx_loc, path_interactions, rx_loc])
         path_type_int = int(inter[path_idx])
-        if path_type_int == 0:
-            path_types = []
-        else:
-            path_types = [int(d) for d in str(path_type_int)]
+        path_types = [] if path_type_int == 0 else [int(d) for d in str(path_type_int)]
         is_los = len(path_interactions) == 0
         ray_color = cmap(norm(powers[path_idx])) if color_rays_by_pwr else "g" if is_los else "r"
         ray_plt_args = {
@@ -398,7 +436,7 @@ def plot_rays(
     plot_point(rx_loc, c="white", marker="v", s=100, label="RX", zorder=3, edgecolors="black")
     ax.set_xlabel("x (m)")
     ax.set_ylabel("y (m)")
-    if proj_3D:
+    if proj_3d:
         ax.set_zlabel("z (m)")
     if color_by_type or inter_objects is not None:
         (handles, labels) = ax.get_legend_handles_labels()
@@ -407,7 +445,7 @@ def plot_rays(
     else:
         legend = ax.legend()
     legend.set_bbox_to_anchor((1, 0.9))
-    if not proj_3D:
+    if not proj_3d:
         ax.set_aspect("equal")
     ax.grid()
     return ax
@@ -479,6 +517,6 @@ def plot_power_discarding(dataset: Any, trim_delay: float | None = None) -> tupl
     ax.set_title("Distribution of Discarded Power")
     ax.set_xlabel("Discarded Power (%)")
     ax.set_ylabel("Number of Users")
-    ax.grid(True)
+    ax.grid(visible=True)
     plt.tight_layout()
     return (fig, ax)

@@ -22,12 +22,37 @@ FUNDAMENTAL_MATRICES_HELP = {
         """
     ),
     # Delay
-    c.DELAY_PARAM_NAME: "Tap delay. Propagation delay for each path in seconds\n\t[num_rx, num_paths]",
+    c.DELAY_PARAM_NAME: dedent(
+        """\
+        Tap delay. Propagation delay for each path in seconds
+        \t[num_rx, num_paths]
+        """
+    ),
     # Angles
-    c.AOA_AZ_PARAM_NAME: "Angle of arrival (azimuth) for each path in degrees\n\t[num_rx, num_paths]",
-    c.AOA_EL_PARAM_NAME: "Angle of arrival (elevation) for each path in degrees\n\t[num_rx, num_paths]",
-    c.AOD_AZ_PARAM_NAME: "Angle of departure (azimuth) for each path in degrees\n\t[num_rx, num_paths]",
-    c.AOD_EL_PARAM_NAME: "Angle of departure (elevation) for each path in degrees\n\t[num_rx, num_paths]",
+    c.AOA_AZ_PARAM_NAME: dedent(
+        """\
+        Angle of arrival (azimuth) for each path in degrees
+        \t[num_rx, num_paths]
+        """
+    ),
+    c.AOA_EL_PARAM_NAME: dedent(
+        """\
+        Angle of arrival (elevation) for each path in degrees
+        \t[num_rx, num_paths]
+        """
+    ),
+    c.AOD_AZ_PARAM_NAME: dedent(
+        """\
+        Angle of departure (azimuth) for each path in degrees
+        \t[num_rx, num_paths]
+        """
+    ),
+    c.AOD_EL_PARAM_NAME: dedent(
+        """\
+        Angle of departure (elevation) for each path in degrees
+        \t[num_rx, num_paths]
+        """
+    ),
     # Interactions
     c.INTERACTIONS_PARAM_NAME: dedent(
         """\
@@ -78,8 +103,18 @@ COMPUTED_MATRICES_HELP = {
         \t[num_rx, num_paths]
         """
     ),
-    c.DOPPLER_PARAM_NAME: "Doppler frequency shifts [Hz] for each user and path\n\t[num_rx, num_paths]",
-    c.INTER_OBJECTS_PARAM_NAME: "Object ids at each interaction point\n\t[num_rx, num_paths, max_interactions]",
+    c.DOPPLER_PARAM_NAME: dedent(
+        """\
+        Doppler frequency shifts [Hz] for each user and path
+        \t[num_rx, num_paths]
+        """
+    ),
+    c.INTER_OBJECTS_PARAM_NAME: dedent(
+        """\
+        Object ids at each interaction point
+        \t[num_rx, num_paths, max_interactions]
+        """
+    ),
 }
 
 # Dictionary of help messages for configuration/other parameters
@@ -105,17 +140,47 @@ CHANNEL_HELP_MESSAGES = {
     ),
     c.PARAMSET_ANT_BS
     + "."
-    + c.PARAMSET_ANT_SPACING: "Spacing between antenna elements\n\t Default: 0.5  |  Type: float  |  Units: wavelengths",
+    + c.PARAMSET_ANT_SPACING: dedent(
+        """\
+        Spacing between antenna elements
+        \t Default: 0.5  |  Type: float  |  Units: wavelengths
+        """
+    ),
     c.PARAMSET_ANT_BS
     + "."
-    + c.PARAMSET_ANT_ROTATION: "Rotation angles [azimuth, elevation, polarization]\n\t Default: [0, 0, 0]  |  Type: list[float]  |  Units: degrees",
+    + c.PARAMSET_ANT_ROTATION: dedent(
+        """\
+        Rotation angles [azimuth, elevation, polarization]
+        \t Default: [0, 0, 0]  |  Type: list[float]  |  Units: degrees
+        """
+    ),
     c.PARAMSET_ANT_BS
     + "."
-    + c.PARAMSET_ANT_RAD_PAT: 'Antenna element radiation pattern\n\t Default: "isotropic"  |  Type: str  |  Options: "isotropic", "halfwave-dipole"',
+    + c.PARAMSET_ANT_RAD_PAT: dedent(
+        """\
+        Antenna element radiation pattern
+        \t Default: "isotropic"  |  Type: str  |  Options: "isotropic", "halfwave-dipole"
+        """
+    ),
     # Channel Configuration
-    c.PARAMSET_DOPPLER_EN: "Enable/disable Doppler effect simulation\n\t Default: False  |  Type: bool",
-    c.PARAMSET_NUM_PATHS: "Maximum number of paths to consider per user\n\t Default: 10  |  Type: int  |  Units: number of paths",
-    c.PARAMSET_FD_CH: "Channel domain\n\t Default: 0  |  Type: int  |  Options: 0 (time domain), 1 (frequency domain/OFDM)",
+    c.PARAMSET_DOPPLER_EN: dedent(
+        """\
+        Enable/disable Doppler effect simulation
+        \t Default: False  |  Type: bool
+        """
+    ),
+    c.PARAMSET_NUM_PATHS: dedent(
+        """\
+        Maximum number of paths to consider per user
+        \t Default: 10  |  Type: int  |  Units: number of paths
+        """
+    ),
+    c.PARAMSET_FD_CH: dedent(
+        """\
+        Channel domain
+        \t Default: 0  |  Type: int  |  Options: 0 (time domain), 1 (frequency domain/OFDM)
+        """
+    ),
     # OFDM Parameters
     c.PARAMSET_OFDM: dedent(
         f"""\
@@ -123,14 +188,34 @@ CHANNEL_HELP_MESSAGES = {
         \t Default: None  |  Type: dict
         """
     ),
-    c.PARAMSET_OFDM + "." + c.PARAMSET_OFDM_BANDWIDTH: "System bandwidth\n\t Default: 10e6  |  Type: float  |  Units: Hz",
-    c.PARAMSET_OFDM + "." + c.PARAMSET_OFDM_SC_NUM: "Total number of OFDM subcarriers\n\t Default: 512  |  Type: int  |  Units: number of subcarriers",
+    c.PARAMSET_OFDM + "." + c.PARAMSET_OFDM_BANDWIDTH: dedent(
+        """\
+        System bandwidth
+        \t Default: 10e6  |  Type: float  |  Units: Hz
+        """
+    ),
+    c.PARAMSET_OFDM + "." + c.PARAMSET_OFDM_SC_NUM: dedent(
+        """\
+        Total number of OFDM subcarriers
+        \t Default: 512  |  Type: int  |  Units: number of subcarriers
+        """
+    ),
     c.PARAMSET_OFDM
     + "."
-    + c.PARAMSET_OFDM_SC_SAMP: "Indices of subcarriers to generate\n\t Default: None (all subcarriers)  |  Type: list[int]  |  Units: subcarrier indices",
+    + c.PARAMSET_OFDM_SC_SAMP: dedent(
+        """\
+        Indices of subcarriers to generate
+        \t Default: None (all subcarriers)  |  Type: list[int]  |  Units: subcarrier indices
+        """
+    ),
     c.PARAMSET_OFDM
     + "."
-    + c.PARAMSET_OFDM_LPF: "Enable/disable receive low-pass filter / ADC filter\n\t Default: False  |  Type: bool",
+    + c.PARAMSET_OFDM_LPF: dedent(
+        """\
+        Enable/disable receive low-pass filter / ADC filter
+        \t Default: False  |  Type: bool
+        """
+    ),
 }
 
 # Combined dictionary for parameter lookups

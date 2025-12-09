@@ -340,7 +340,7 @@ def _load_tx_rx_raydata(
 
 
 # Helper functions
-def _validate_txrx_sets(
+def _validate_txrx_sets(  # noqa: PLR0912
     sets: dict[int, list | str] | list | str,
     txrx_dict: dict[str, Any],
     tx_or_rx: str = "tx",
@@ -352,7 +352,7 @@ def _validate_txrx_sets(
 
     Args:
         sets (dict or list or str): TX/RX set specifications as dict, list, or string
-        rt_params (dict): Raytracing parameters containing valid set information
+        txrx_dict (dict): Raytracing parameters containing valid set information
         tx_or_rx (str): Whether validating TX or RX sets. Defaults to 'tx'
 
     Returns:
@@ -377,7 +377,7 @@ def _validate_txrx_sets(
         for set_id, idxs in sets.items():
             # check the the tx/rx_set indices are valid
             if set_id not in valid_set_ids:
-                raise Exception(
+                raise ValueError(
                     f"{set_str} set {set_id} not in allowed sets {valid_set_ids}\n" + info_str,
                 )
 
@@ -395,14 +395,14 @@ def _validate_txrx_sets(
                     sets[set_id] = all_idxs_available
                 else:
                     msg = f"String '{idxs}' not recognized for tx/rx indices "
-                    raise Exception(msg)
+                    raise ValueError(msg)
             else:
                 msg = "Only <list> of <np.ndarray> allowed as tx/rx indices"
-                raise Exception(msg)
+                raise ValueError(msg)
 
             # check that the specific tx/rx indices inside the sets are valid
             if not set(sets[set_id]).issubset(set(all_idxs_available.tolist())):
-                raise Exception(
+                raise ValueError(
                     f"Some indices of {idxs} are not in {all_idxs_available}. " + info_str,
                 )
 
@@ -412,7 +412,7 @@ def _validate_txrx_sets(
         sets_dict = {}
         for set_id in sets:
             if set_id not in valid_set_ids:
-                raise Exception(
+                raise ValueError(
                     f"{set_str} set {set_id} not in allowed sets {valid_set_ids}\n" + info_str,
                 )
 
@@ -424,7 +424,7 @@ def _validate_txrx_sets(
                 "are 'all' to generate all available sets and indices, "
                 "or 'rx_only' to generate all available rx sets and indices"
             )
-            raise Exception(
+            raise ValueError(
                 msg,
             )
 

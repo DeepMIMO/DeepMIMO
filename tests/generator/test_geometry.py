@@ -7,10 +7,10 @@ from deepmimo.generator.geometry import (
     _ant_indices as ant_indices,
 )
 from deepmimo.generator.geometry import (
-    _apply_FoV as apply_FoV,
+    _apply_fov as apply_fov,
 )
 from deepmimo.generator.geometry import (
-    _apply_FoV_batch as apply_FoV_batch,
+    _apply_fov_batch as apply_fov_batch,
 )
 from deepmimo.generator.geometry import (
     _array_response as array_response,
@@ -114,8 +114,8 @@ def test_array_response_batch_edge_cases() -> None:
 )
 def test_apply_fov_single_vs_batch(fov_deg, theta_rad, phi_rad, expected) -> None:
     """Check FoV masks match between scalar and batch implementations."""
-    mask_single = apply_FoV(fov=fov_deg, theta=theta_rad, phi=phi_rad)
-    mask_batch = apply_FoV_batch(
+    mask_single = apply_fov(fov=fov_deg, theta=theta_rad, phi=phi_rad)
+    mask_batch = apply_fov_batch(
         fov=fov_deg, theta=np.array([[theta_rad]]), phi=np.array([[phi_rad]])
     )
     assert bool(mask_single) == bool(mask_batch[0, 0]) == expected
@@ -132,8 +132,8 @@ def test_apply_fov_batch_equivalence_random() -> None:
     mask_single = np.zeros((n_users, n_paths), dtype=bool)
     for i in range(n_users):
         for j in range(n_paths):
-            mask_single[i, j] = apply_FoV(fov=fov, theta=theta[i, j], phi=phi[i, j])
-    mask_batch = apply_FoV_batch(fov=fov, theta=theta, phi=phi)
+            mask_single[i, j] = apply_fov(fov=fov, theta=theta[i, j], phi=phi[i, j])
+    mask_batch = apply_fov_batch(fov=fov, theta=theta, phi=phi)
 
     assert mask_single.shape == mask_batch.shape
     np.testing.assert_array_equal(mask_single, mask_batch)

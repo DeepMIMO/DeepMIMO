@@ -68,7 +68,9 @@ class SionnaAdapter:
         self.num_rx_ant = first_ds.channels.shape[1]
         self.num_tx_ant = first_ds.channels.shape[2]
 
-        assert not first_ds.ch_params.freq_domain, "Sionna adapter needs time domain channels"
+        if first_ds.ch_params.freq_domain:
+            msg = "Sionna adapter needs time domain channels"
+            raise ValueError(msg)
 
         self.num_paths = first_ds.channels.shape[-1]
         self.num_time_steps = 1  # Time step = 1 for static scenarios

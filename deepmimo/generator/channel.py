@@ -10,7 +10,7 @@ based on path information from ray-tracing and antenna configurations.
 """
 
 from copy import deepcopy
-from typing import Any
+from typing import Any, ClassVar
 
 import numpy as np
 from tqdm import tqdm
@@ -138,7 +138,7 @@ class ChannelParameters(DotDict):
     """
 
     # Default channel generation parameters
-    DEFAULT_PARAMS = {
+    DEFAULT_PARAMS: ClassVar[dict[str, Any]] = {
         # BS Antenna Parameters
         c.PARAMSET_ANT_BS: {
             c.PARAMSET_ANT_SHAPE: np.array([8, 1]),  # Antenna dimensions in X - Y - Z

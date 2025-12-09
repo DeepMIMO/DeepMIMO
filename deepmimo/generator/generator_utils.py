@@ -16,6 +16,8 @@ dataset generation process.
 # Third-party imports
 import numpy as np
 
+TWO_D_DIM = 2
+
 ################################## For User ###################################
 
 
@@ -24,6 +26,7 @@ def get_linear_idxs(
     start_pos: np.ndarray,
     end_pos: np.ndarray,
     n_steps: int,
+    *,
     filter_repeated: bool = True,
 ) -> np.ndarray:
     """Return indices of users along a linear path between two points.
@@ -43,9 +46,9 @@ def get_linear_idxs(
     end_pos = np.array(end_pos)
 
     # Ensure 3D coordinates
-    if start_pos.shape[0] == 2:
+    if start_pos.shape[0] == TWO_D_DIM:
         start_pos = np.concatenate((start_pos, [0]))
-    if end_pos.shape[0] == 2:
+    if end_pos.shape[0] == TWO_D_DIM:
         end_pos = np.concatenate((end_pos, [0]))
 
     xs = np.linspace(start_pos[0], end_pos[0], n_steps).reshape((-1, 1))
@@ -95,9 +98,12 @@ def get_uniform_idxs(n_ue: int, grid_size: np.ndarray, steps: list[int]) -> np.n
         return np.arange(n_ue)
 
     if np.prod(grid_size) != n_ue:
-        print(
-            f"Warning. Grid_size: {grid_size} = {np.prod(grid_size)} users != {n_ue} users in rx_pos",
+        msg = (
+            "Warning. "
+            f"Grid_size: {grid_size} = {np.prod(grid_size)} users "
+            f"!= {n_ue} users in rx_pos"
         )
+        print(msg)
         print("Computing pseudo-uniform indices.")
 
         _grid_size = grid_size
@@ -120,7 +126,8 @@ def get_grid_idxs(
     """Return indices of users in the specified rows or columns, assuming a grid structure.
 
     Args:
-        grid_size: Grid size as [x_size, y_size] where x_size is number of columns and y_size is number of rows
+        grid_size: Grid size as [x_size, y_size] where x_size is number of columns
+            and y_size is number of rows
         axis: Either 'row' or 'col' to specify which indices to get
         idxs: Array of row or column indices to include
 

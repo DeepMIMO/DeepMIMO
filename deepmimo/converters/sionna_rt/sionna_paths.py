@@ -4,6 +4,7 @@ This module handles loading and converting path data from Sionna's format to Dee
 """
 
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 from tqdm import tqdm
@@ -201,8 +202,6 @@ def _process_paths_batch(
 
     return inactive_count
 
-
-from typing import Any
 
 
 def _get_path_key(
