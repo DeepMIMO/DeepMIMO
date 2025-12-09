@@ -5,11 +5,15 @@ from unittest.mock import MagicMock
 import numpy as np
 import pytest
 
+from deepmimo.integrations import sionna_adapter
 from deepmimo.integrations.sionna_adapter import SionnaAdapter
 
 
 class MockDataset:
+    """Lightweight dataset stub for adapter tests."""
+
     def __init__(self, n_ue=2, num_rx_ant=4, num_tx_ant=8, num_paths=5) -> None:
+        """Initialize mock dataset arrays for adapter tests."""
         self.n_ue = n_ue
         self.channels = np.zeros((n_ue, num_rx_ant, num_tx_ant, num_paths))
         # Add some data to verify
@@ -22,6 +26,7 @@ class MockDataset:
 
 
 def test_sionna_adapter_init_single() -> None:
+    """Ensure adapter handles single-dataset input with Dataset patching."""
     # Create a dummy object that passes isinstance(x, Dataset) if we patch Dataset in the module
     # But patching a class in a module where it is imported...
     # from ..generator.dataset import Dataset
@@ -37,9 +42,6 @@ def test_sionna_adapter_init_single() -> None:
 
     # Let's try mocking the module attribute
     with pytest.MonkeyPatch.context() as m:
-        # We need to import the class to mock it
-        from deepmimo.integrations import sionna_adapter
-
         # Create a Fake class
         class FakeDataset:
             pass
@@ -69,6 +71,7 @@ def test_sionna_adapter_init_single() -> None:
 
 
 def test_sionna_adapter_macro() -> None:
+    """Validate adapter behavior for macro dataset lists."""
     # For macro, isinstance(ds, Dataset) must be False.
     # So we pass a list.
 
@@ -104,7 +107,7 @@ def test_sionna_adapter_macro() -> None:
 
     gen = adapter()
     # 1st sample: UE0, BS0
-    a, tau = next(gen)
+    a, _tau = next(gen)
     # Shape: (1, 4, 2, 8, 5, 1) -> num_tx=2
     assert a.shape == (1, 4, 2, 8, 5, 1)
 

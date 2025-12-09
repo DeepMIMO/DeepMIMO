@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, ClassVar
 
 "Physical world representation module.\n\nThis module provides core classes for representing physical objects in a wireless environment,\nincluding buildings, terrain, vegetation, and other structures that affect wireless propagation.\n\nModule Organization:\n1. Constants - Categories and labels for physical elements\n2. Core Classes - Main classes for scene representation:\n   - BoundingBox: 3D bounding box representation\n   - Face: Surface representation with dual face approach\n   - PhysicalElement: Base class for physical objects\n   - PhysicalElementGroup: Group operations on physical elements\n   - Scene: Complete physical environment representation\n3. Object handling: Get faces of objects as lists of vertices\n    - get_object_faces: Generate faces for physical objects\n    - Road object handling:\n        - _get_2d_face: Get 2D face of road objects (calls all functions below)\n        - _detect_endpoints: Detect endpoints (terminations) of road objects\n        - _trim_points_protected: Trim points of road objects\n        - _compress_path: Compress path of road objects\n        - _calculate_angle_deviation: Calculate angle deviation\n          (used in _compress_path and _tsp_held_karp_no_intersections)\n        - _ccw: Check if points are in counter-clockwise order (used in _segments_intersect)\n        - _segments_intersect: Check if two line segments intersect (used in _tsp_held_karp_no_intersections)\n        - _tsp_held_karp_no_intersections: Held-Karp TSP with angle penalty + intersection check\n          (used in _get_2d_face)\n        - _signed_distance_to_curve: Calculate signed distance from point to curve\n          (used in _trim_points_protected to trim along the road)\n\nThe `Scene` class acts as a container for multiple `PhysicalElement` objects,\neach representing a distinct object in the environment. Each `PhysicalElement` is\ncomposed of `Face` objects, which define the surfaces of the element and are associated\nwith materials. The `BoundingBox` class provides spatial boundaries for these elements.\nTogether, these components allow for the representation and manipulation of complex environments,\nwith functionalities for plotting and material management integrated into the scene.\n"
 import itertools
@@ -268,7 +268,13 @@ class PhysicalElement:
             Dict containing object metadata with face vertex and material indices
 
         """
-        obj_metadata = {"name": self.name, "label": self.label, "id": self.object_id, "face_vertex_idxs": [], "face_material_idxs": []}
+        obj_metadata = {
+            "name": self.name,
+            "label": self.label,
+            "id": self.object_id,
+            "face_vertex_idxs": [],
+            "face_material_idxs": [],
+        }
         for face in self.faces:
             face_vertex_indices = []
             for tri_vertices in face.triangular_faces:
@@ -294,7 +300,14 @@ class PhysicalElement:
             PhysicalElement: Created object
 
         """
-        faces = [Face(vertices=vertices[vertex_idxs], material_idx=material_idx) for (vertex_idxs, material_idx) in zip(data["face_vertex_idxs"], data["face_material_idxs"], strict=False)]
+        faces = [
+            Face(vertices=vertices[vertex_idxs], material_idx=material_idx)
+            for (vertex_idxs, material_idx) in zip(
+                data["face_vertex_idxs"],
+                data["face_material_idxs"],
+                strict=False,
+            )
+        ]
         return cls(faces=faces, name=data["name"], object_id=data["id"], label=data["label"])
 
     @property
@@ -302,10 +315,22 @@ class PhysicalElement:
         """Get the center of mass (position) of the object."""
         if self._position is None:
             bb = self.bounding_box
-            self._position = np.array([(bb.x_max + bb.x_min) / 2, (bb.y_max + bb.y_min) / 2, (bb.z_max + bb.z_min) / 2])
+            self._position = np.array(
+                [
+                    (bb.x_max + bb.x_min) / 2,
+                    (bb.y_max + bb.y_min) / 2,
+                    (bb.z_max + bb.z_min) / 2,
+                ],
+            )
         return self._position
 
-    def plot(self: Any, ax: plt.Axes | None=None, mode: Literal["faces", "tri_faces"]="faces", alpha: float=0.8, color: str | None=None) -> tuple[plt.Figure, plt.Axes]:
+    def plot(
+        self: Any,
+        ax: plt.Axes | None=None,
+        mode: Literal["faces", "tri_faces"]="faces",
+        alpha: float=0.8,
+        color: str | None=None,
+    ) -> tuple[plt.Figure, plt.Axes]:
         """Plot the object using the specified visualization mode.
 
         Args:
@@ -348,7 +373,7 @@ class PhysicalElement:
             value: Either a float (magnitude only) or a 3D vector [m/s]
 
         """
-        if type(value) == list or type(value) == tuple:
+        if isinstance(value, (list, tuple)):
             value = np.array(value)
         if value.shape != (3,):
             msg = "Velocity must be a 3D vector (x, y, z) in meters per second"
@@ -364,7 +389,11 @@ class PhysicalElement:
         """
         bb = self.bounding_box
         dims = f"{bb.width:.0f} x {bb.length:.0f} x {bb.height:.0f} m"
-        return f"PhysicalElement(name='{self.name}', id={self.object_id}, label='{self.label}', faces={len(self._faces)}, dims={dims})"
+        return (
+            "PhysicalElement("
+            f"name='{self.name}', id={self.object_id}, label='{self.label}', "
+            f"faces={len(self._faces)}, dims={dims})"
+        )
 
 class PhysicalElementGroup:
     """Represents a group of physical objects that can be queried and manipulated together."""
@@ -395,7 +424,11 @@ class PhysicalElementGroup:
         """Get list of material indices used by objects in this group."""
         return list(set().union(*(obj.materials for obj in self._objects)))
 
-    def get_objects(self: Any, label: str | None=None, material: int | None=None) -> "PhysicalElementGroup":
+    def get_objects(
+        self: Any,
+        label: str | None=None,
+        material: int | None=None,
+    ) -> "PhysicalElementGroup":
         """Get objects filtered by label and/or material.
 
         Args:
@@ -424,13 +457,26 @@ class PhysicalElementGroup:
             boxes = np.array(boxes)
             global_min = np.min(boxes[:, 0], axis=0)
             global_max = np.max(boxes[:, 1], axis=0)
-            self._bounding_box = BoundingBox(x_min=global_min[0], x_max=global_max[0], y_min=global_min[1], y_max=global_max[1], z_min=global_min[2], z_max=global_max[2])
+            self._bounding_box = BoundingBox(
+                x_min=global_min[0],
+                x_max=global_max[0],
+                y_min=global_min[1],
+                y_max=global_max[1],
+                z_min=global_min[2],
+                z_max=global_max[2],
+            )
         return self._bounding_box
 
 class Scene:
     """Represents a physical scene with various objects affecting wireless propagation."""
 
-    DEFAULT_VISUALIZATION_SETTINGS = {CAT_TERRAIN: {"z_order": 1, "alpha": 0.1, "color": "black"}, CAT_VEGETATION: {"z_order": 2, "alpha": 0.8, "color": "green"}, CAT_BUILDINGS: {"z_order": 3, "alpha": 0.6, "color": None}, CAT_FLOORPLANS: {"z_order": 4, "alpha": 0.8, "color": "blue"}, CAT_OBJECTS: {"z_order": 5, "alpha": 0.8, "color": "red"}}
+    DEFAULT_VISUALIZATION_SETTINGS: ClassVar[dict[str, dict[str, Any]]] = {
+        CAT_TERRAIN: {"z_order": 1, "alpha": 0.1, "color": "black"},
+        CAT_VEGETATION: {"z_order": 2, "alpha": 0.8, "color": "green"},
+        CAT_BUILDINGS: {"z_order": 3, "alpha": 0.6, "color": None},
+        CAT_FLOORPLANS: {"z_order": 4, "alpha": 0.8, "color": "blue"},
+        CAT_OBJECTS: {"z_order": 5, "alpha": 0.8, "color": "red"},
+    }
 
     def __init__(self: Any) -> None:
         """Initialize an empty scene."""
@@ -438,7 +484,9 @@ class Scene:
         self.visualization_settings = self.DEFAULT_VISUALIZATION_SETTINGS.copy()
         self.face_indices = []
         self._current_index = 0
-        self._objects_by_category: dict[str, list[PhysicalElement]] = {cat: [] for cat in ELEMENT_CATEGORIES}
+        self._objects_by_category: dict[str, list[PhysicalElement]] = {
+            cat: [] for cat in ELEMENT_CATEGORIES
+        }
         self._objects_by_material: dict[int, list[PhysicalElement]] = {}
         self._materials: MaterialList | None = None
 
@@ -501,7 +549,11 @@ class Scene:
         self._current_index += n_triangles
         return triangle_indices
 
-    def get_objects(self: Any, label: str | None=None, material: int | None=None) -> PhysicalElementGroup:
+    def get_objects(
+        self: Any,
+        label: str | None=None,
+        material: int | None=None,
+    ) -> PhysicalElementGroup:
         """Get objects filtered by label and/or material.
 
         Args:
@@ -546,7 +598,13 @@ class Scene:
         vertices = np.array(all_vertices)
         save_mat(vertices, "vertices", f"{base_folder}/vertices.mat")
         save_dict_as_json(f"{base_folder}/objects.json", objects_metadata)
-        return {SCENE_PARAM_NUMBER_SCENES: 1, "n_objects": len(self.objects), "n_vertices": len(vertices), "n_faces": sum(len(obj.faces) for obj in self.objects), "n_triangular_faces": sum(len(obj_face_idxs) for obj_face_idxs in self.face_indices)}
+        return {
+            SCENE_PARAM_NUMBER_SCENES: 1,
+            "n_objects": len(self.objects),
+            "n_vertices": len(vertices),
+            "n_faces": sum(len(obj.faces) for obj in self.objects),
+            "n_triangular_faces": sum(len(obj_face_idxs) for obj_face_idxs in self.face_indices),
+        }
 
     @classmethod
     def from_data(cls: Any, base_folder: str) -> "Scene":
@@ -561,23 +619,37 @@ class Scene:
             vertices = load_mat(f"{base_folder}/vertices.{MAT_FMT}", "vertices")
             objects_metadata = load_dict_from_json(f"{base_folder}/objects.json")
         except FileNotFoundError:
-            print(f"FileNotFoundError: {base_folder}/vertices.mat or {base_folder}/objects.json not found")
+            print(
+                "FileNotFoundError: "
+                f"{base_folder}/vertices.mat or {base_folder}/objects.json not found",
+            )
             vertices = np.array([])
             objects_metadata = []
         except Exception as e:
             msg = f"Error loading scene from {base_folder}: {e}"
-            raise Exception(msg)
+            raise RuntimeError(msg) from e
         for object_data in objects_metadata:
             obj = PhysicalElement.from_dict(object_data, vertices)
             scene.add_object(obj)
         return scene
 
-    def plot(self: Any, title: bool=True, mode: Literal["faces", "tri_faces"]="faces", ax: plt.Axes | None=None, proj_3D: bool=True, figsize: tuple=(10, 10), dpi: int=100, legend: bool=False) -> plt.Axes:
+    def plot(  # noqa: PLR0912, PLR0913, C901
+        self: Any,
+        *,
+        title: bool=True,
+        mode: Literal["faces", "tri_faces"]="faces",
+        ax: plt.Axes | None=None,
+        proj_3d: bool=True,
+        proj_3D: bool | None=None,
+        figsize: tuple=(10, 10),
+        dpi: int=100,
+        legend: bool=False,
+    ) -> plt.Axes:
         """Create a visualization of the scene.
 
         The scene can be visualized in either 2D (top-down view) or 3D mode:
 
-        3D Mode (proj_3D=True):
+        3D Mode (proj_3d=True):
             Two representation options:
             1. 'faces' (default) - Uses the primary convex hull representation
             - More efficient for visualization
@@ -589,7 +661,7 @@ class Scene:
             - Better for debugging geometric issues
             - More accurate representation of complex shapes
 
-        2D Mode (proj_3D=False):
+        2D Mode (proj_3d=False):
             Creates a top-down view showing object footprints:
             - Projects all objects onto x-y plane
             - Uses convex hulls for efficient visualization
@@ -600,7 +672,7 @@ class Scene:
             title: Whether to display the title (default: True)
             mode: Visualization mode for 3D - either 'faces' or 'tri_faces' (default: 'faces')
             ax: Matplotlib axes to plot on (if None, creates new figure)
-            proj_3D: Whether to create 3D projection (default: True)
+            proj_3d: Whether to create 3D projection (default: True)
             figsize: Figure dimensions (width, height) in inches (default: (10, 10))
             dpi: Plot resolution in dots per inch (default: 100)
             legend: Whether to show legend for objects/materials (default: False)
@@ -609,11 +681,17 @@ class Scene:
             matplotlib Axes object
 
         """
+        if proj_3D is not None:
+            proj_3d = proj_3D
         if len(self.objects) == 0:
             print("No objects in scene - skipping plot")
             return ax
         if ax is None:
-            (_, ax) = plt.subplots(figsize=figsize, dpi=dpi, subplot_kw={"projection": "3d" if proj_3D else None})
+            (_, ax) = plt.subplots(
+                figsize=figsize,
+                dpi=dpi,
+                subplot_kw={"projection": "3d" if proj_3d else None},
+            )
         label_groups = {}
         for obj in self.objects:
             if obj.label not in label_groups:
@@ -629,25 +707,31 @@ class Scene:
                 colors = [vis_settings["color"]] * n_objects
             for (obj_idx, obj) in enumerate(objects):
                 color = obj.color or colors[obj_idx]
-                if proj_3D:
+                if proj_3d:
                     obj.plot(ax, mode=mode, alpha=vis_settings["alpha"], color=color)
                 else:
                     vertices_2d = obj.vertices[:, :2]
                     hull = ConvexHull(vertices_2d)
                     hull_vertices = vertices_2d[hull.vertices]
-                    ax.fill(hull_vertices[:, 0], hull_vertices[:, 1], alpha=vis_settings["alpha"], color=color, label=label if obj_idx == 0 else "")
+                    ax.fill(
+                        hull_vertices[:, 0],
+                        hull_vertices[:, 1],
+                        alpha=vis_settings["alpha"],
+                        color=color,
+                        label=label if obj_idx == 0 else "",
+                    )
         ax.set_xlabel("X (m)")
         ax.set_ylabel("Y (m)")
-        if proj_3D:
+        if proj_3d:
             ax.set_zlabel("Z (m)")
         if title:
             ax.set_title(self._get_title_with_counts())
-        if proj_3D:
+        if proj_3d:
             ax.view_init(elev=40, azim=-45)
             self._set_axes_lims_to_scale(ax)
         else:
             ax.set_aspect("equal")
-            ax.grid(True, alpha=0.3)
+            ax.grid(visible=True, alpha=0.3)
         if len(label_groups) > 1 and legend:
             ax.legend()
         return ax
@@ -733,7 +817,8 @@ def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float
         hull = ConvexHull(points_2d)
         base_shape = points_2d[hull.vertices]
     except Exception:
-        if np.linalg.matrix_rank(points_2d - points_2d[0]) < 2:
+        rank_threshold = 2
+        if np.linalg.matrix_rank(points_2d - points_2d[0]) < rank_threshold:
             print("Convex hull failed - collinear vertices")
             return None
         raise
@@ -748,6 +833,7 @@ def _get_faces_convex_hull(vertices: np.ndarray) -> list[list[tuple[float, float
 
 def _calculate_angle_deviation(p1: Any, p2: Any, p3: Any) -> Any:
     """Calculate the deviation from a straight line at point p2.
+
     Returns angle in degrees, where:
     - 0° means the path p1->p2->p3 forms a straight line
     - 180° means the path doubles back on itself.
@@ -769,7 +855,7 @@ def _segments_intersect(p1: np.ndarray, p2: np.ndarray, q1: np.ndarray, q2: np.n
     """Check if two line segments intersect."""
     return _ccw(p1, q1, q2) != _ccw(p2, q1, q2) and _ccw(p1, p2, q1) != _ccw(p1, p2, q2)
 
-def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int]]:
+def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int]]:  # noqa: PLR0912, C901
     """Held-Karp TSP with angle penalty + intersection check.
 
     Returns:
@@ -777,10 +863,10 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
 
     """
     n = len(points)
-    C = {}
+    cost_cache: dict[tuple[int, int], tuple[float, list[int]]] = {}
     for k in range(1, n):
         dist = np.linalg.norm(points[0] - points[k])
-        C[1 << k, k] = (dist, [0, k])
+        cost_cache[1 << k, k] = (dist, [0, k])
     for subset_size in range(2, n):
         for subset in itertools.combinations(range(1, n), subset_size):
             bits = sum(1 << x for x in subset)
@@ -790,7 +876,7 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
                 for m in subset:
                     if m == k:
                         continue
-                    (prev_cost, prev_path) = C.get((prev_bits, m), (float("inf"), []))
+                    (prev_cost, prev_path) = cost_cache.get((prev_bits, m), (float("inf"), []))
                     if not prev_path:
                         continue
                     new_seg = (points[m], points[k])
@@ -802,17 +888,24 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
                             break
                     if intersects:
                         continue
-                    angle_cost = _calculate_angle_deviation(points[prev_path[-2]], points[m], points[k]) if len(prev_path) > 1 else 0
+                    if len(prev_path) > 1:
+                        angle_cost = _calculate_angle_deviation(
+                            points[prev_path[-2]],
+                            points[m],
+                            points[k],
+                        )
+                    else:
+                        angle_cost = 0
                     cost = prev_cost + np.linalg.norm(points[m] - points[k]) + angle_cost
                     res.append((cost, [*prev_path, k]))
                 if res:
-                    C[bits, k] = min(res)
+                    cost_cache[bits, k] = min(res)
     bits = (1 << n) - 2
     res = []
     for k in range(1, n):
-        if (bits, k) not in C:
+        if (bits, k) not in cost_cache:
             continue
-        (cost, path) = C[bits, k]
+        (cost, path) = cost_cache[bits, k]
         new_seg = (points[k], points[0])
         intersects = False
         for i in range(len(path) - 2):
@@ -827,17 +920,20 @@ def _tsp_held_karp_no_intersections(points: np.ndarray) -> tuple[float, list[int
         res.append((final_cost, [*path, 0]))
     return min(res) if res else (float("inf"), [])
 
-def _detect_endpoints(points_2d: np.ndarray, min_distance: float=2.0) -> tuple[np.ndarray, np.ndarray]:
-    """Detect the endpoints of a road by finding pairs of points that are furthest from each other.
-    Points that are closer than min_distance to each other are considered duplicates and only one is kept.
+def _detect_endpoints(
+    points_2d: np.ndarray,
+    min_distance: float=2.0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Detect endpoints of a road by finding pairs of points that are furthest apart.
+
+    Points closer than min_distance are considered duplicates and only one is kept.
 
     Args:
         points_2d: Array of 2D points (N x 2)
         min_distance: Minimum distance between points to consider them distinct
 
     Returns:
-        List of indices for the endpoints, alternating between pairs
-        (first point of pair 1, first point of pair 2, second point of pair 1, second point of pair 2)
+        List of endpoint indices alternating between the two detected pairs.
 
     """
     kept_indices = []
@@ -860,8 +956,13 @@ def _detect_endpoints(points_2d: np.ndarray, min_distance: float=2.0) -> tuple[n
     (i2, j2) = np.unravel_index(np.argmax(distances_masked), distances_masked.shape)
     return [kept_indices[i] for i in [i1, i2, j1, j2]]
 
-def _signed_distance_to_curve(point: np.ndarray, curve_fit: np.poly1d, x_range: tuple[float, float]) -> tuple[float, np.ndarray]:
+def _signed_distance_to_curve(
+    point: np.ndarray,
+    curve_fit: np.poly1d,
+    x_range: tuple[float, float],
+) -> tuple[float, np.ndarray]:
     """Calculate signed perpendicular distance from point to curve.
+
     Positive distance means point is on one side, negative on the other.
 
     Args:
@@ -889,8 +990,14 @@ def _signed_distance_to_curve(point: np.ndarray, curve_fit: np.poly1d, x_range: 
     signed_dist = np.dot(vec_to_point, normal)
     return (signed_dist, closest_point)
 
-def _trim_points_protected(points: np.ndarray, protected_indices: list[int], max_points: int=14) -> list[int]:
+
+def _trim_points_protected(
+    points: np.ndarray,
+    protected_indices: list[int],
+    max_points: int=14,
+) -> list[int]:
     """Trims points while preserving protected indices and maintaining road shape.
+
     Uses reference points along the curve to select closest points above and below.
     Assumes endpoints are included in protected_indices.
 
@@ -905,14 +1012,20 @@ def _trim_points_protected(points: np.ndarray, protected_indices: list[int], max
 
     """
     protected_indices = set(protected_indices)
-    assert max_points >= len(protected_indices), "max_points must be >= number of protected points"
-    assert len(points) >= len(protected_indices), "len(points) must be >= max_points"
+    if max_points < len(protected_indices):
+        msg = "max_points must be >= number of protected points"
+        raise ValueError(msg)
+    if len(points) < len(protected_indices):
+        msg = "len(points) must be >= max_points"
+        raise ValueError(msg)
     x = points[:, 0]
     y = points[:, 1]
     z = np.polyfit(x, y, 3)
     curve_fit = np.poly1d(z)
     x_range = (x.min(), x.max())
-    distances_and_closest = [_signed_distance_to_curve(points[i], curve_fit, x_range) for i in range(len(points))]
+    distances_and_closest = [
+        _signed_distance_to_curve(points[i], curve_fit, x_range) for i in range(len(points))
+    ]
     distances = np.array([d for (d, _) in distances_and_closest])
     ref_positions = [0.25, 0.5, 0.75]
     x_refs = x_range[0] + (x_range[1] - x_range[0]) * np.array(ref_positions)
@@ -922,8 +1035,12 @@ def _trim_points_protected(points: np.ndarray, protected_indices: list[int], max
         dists_to_ref = np.linalg.norm(points - ref_point, axis=1)
         above_curve = distances > 0
         below_curve = distances < 0
-        above_indices = [i for i in range(len(points)) if above_curve[i] and i not in protected_indices]
-        below_indices = [i for i in range(len(points)) if below_curve[i] and i not in protected_indices]
+        above_indices = [
+            i for i in range(len(points)) if above_curve[i] and i not in protected_indices
+        ]
+        below_indices = [
+            i for i in range(len(points)) if below_curve[i] and i not in protected_indices
+        ]
         above_indices = sorted(above_indices, key=lambda i: dists_to_ref[i])
         below_indices = sorted(below_indices, key=lambda i: dists_to_ref[i])
         for idx in above_indices:
@@ -948,7 +1065,8 @@ def _compress_path(points: np.ndarray, path: list[int], angle_threshold: float=1
         List of indices forming the compressed path
 
     """
-    if len(path) <= 3:
+    min_path_len = 3
+    if len(path) <= min_path_len:
         return path
     compressed = [path[0]]
     for i in range(1, len(path) - 1):
@@ -961,13 +1079,21 @@ def _compress_path(points: np.ndarray, path: list[int], angle_threshold: float=1
     compressed.append(path[-1])
     return compressed
 
-def _get_2d_face(vertices: np.ndarray, z_tolerance: float=0.1, max_points: int=10, compress: bool=True, angle_threshold: float=1.0) -> list[tuple[float, float, float]]:
+def _get_2d_face(
+    vertices: np.ndarray,
+    z_tolerance: float=0.1,
+    max_points: int=10,
+    *,
+    compress: bool=True,
+    angle_threshold: float=1.0,
+) -> list[tuple[float, float, float]]:
     """Generate a 2D face from a set of vertices.
 
     Args:
         vertices: Array of vertex coordinates (shape: N x 3)
         z_tolerance: Tolerance for z-coordinate variation - targetted for roads
         max_points: Maximum number of points to consider
+        compress: Whether to compress the final path
         angle_threshold: Angle threshold for collinearity
 
     Returns:
@@ -978,17 +1104,29 @@ def _get_2d_face(vertices: np.ndarray, z_tolerance: float=0.1, max_points: int=1
         msg = "Vertices are not 2D"
         raise ValueError(msg)
     endpoints = _detect_endpoints(vertices[:, :2])
-    kept_indices = _trim_points_protected(vertices[:, :2], protected_indices=endpoints, max_points=max_points)
+    kept_indices = _trim_points_protected(
+        vertices[:, :2],
+        protected_indices=endpoints,
+        max_points=max_points,
+    )
     points_filtered = vertices[kept_indices]
     (_, best_path) = _tsp_held_karp_no_intersections(points_filtered[:, :2])
     if compress:
-        compressed_path = _compress_path(points_filtered, best_path, angle_threshold=angle_threshold)
+        compressed_path = _compress_path(
+            points_filtered,
+            best_path,
+            angle_threshold=angle_threshold,
+        )
         final_points = points_filtered[compressed_path[:-1]]
     else:
         final_points = points_filtered[best_path[:-1]]
     return [final_points]
 
-def get_object_faces(vertices: list[tuple[float, float, float]], fast: bool=True) -> list[list[tuple[float, float, float]]]:
+def get_object_faces(
+    vertices: list[tuple[float, float, float]],
+    *,
+    fast: bool=True,
+) -> list[list[tuple[float, float, float]]]:
     """Generate faces for a physical object from its vertices.
 
     This function supports two modes:
@@ -1004,14 +1142,15 @@ def get_object_faces(vertices: list[tuple[float, float, float]], fast: bool=True
 
     Args:
         vertices: List of (x,y,z) vertex coordinates for the object
-        fast: Whether to use fast mode (default: True)
+        fast: Whether to use fast convex-hull mode or detailed coplanar detection
 
     Returns:
         List of faces, where each face is a list of (x,y,z) vertex coordinates
 
     """
+    min_vertices_for_face = 3
     vertices = np.array(vertices)
-    if len(vertices) < 3:
+    if len(vertices) < min_vertices_for_face:
         return None
     return _get_faces_convex_hull(vertices) if fast else _get_2d_face(vertices)
 if __name__ == "__main__":
@@ -1021,6 +1160,7 @@ if __name__ == "__main__":
     print(compressed)
 
     def plot_points(points: Any, path: Any=None, title: Any="") -> None:
+        """Visualize a set of points and optionally connect them."""
         plt.figure(figsize=(8, 6))
         plt.scatter(points[:, 0], points[:, 1], color="blue")
         for (i, (x, y)) in enumerate(points):
@@ -1031,5 +1171,5 @@ if __name__ == "__main__":
                 plt.plot([p1[0], p2[0]], [p1[1], p2[1]], "r-")
         plt.title(title)
         plt.axis("equal")
-        plt.grid(True)
+        plt.grid(visible=True)
         plt.show()

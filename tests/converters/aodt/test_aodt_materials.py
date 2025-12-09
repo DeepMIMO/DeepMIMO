@@ -1,3 +1,5 @@
+"""Tests for AODT material handling."""
+
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -6,6 +8,7 @@ from deepmimo.materials import Material
 
 
 def test_aodt_material_conversion() -> None:
+    """Convert AODTMaterial to DeepMIMO Material."""
     aodt_mat = aodt_materials.AODTMaterial(
         id=0,
         label="Brick",
@@ -32,6 +35,7 @@ def test_aodt_material_conversion() -> None:
 @patch("deepmimo.converters.aodt.aodt_materials.pd")
 @patch.object(Path, "exists")
 def test_read_materials(mock_exists, mock_pd) -> None:
+    """Read AODT material parquet and convert rows to dict."""
     mock_exists.return_value = True
 
     # Mock DataFrame

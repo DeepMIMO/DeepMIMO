@@ -7,6 +7,7 @@ from deepmimo.scene import CAT_BUILDINGS
 
 
 def test_extract_objects() -> None:
+    """Extract connected faces into physical objects."""
     content = """
     begin_<face>
       0.0 0.0 0.0
@@ -27,6 +28,7 @@ def test_extract_objects() -> None:
 @patch("pathlib.Path.open")
 @patch("deepmimo.converters.wireless_insite.insite_scene.get_object_faces")
 def test_physical_object_parser(mock_get_faces, mock_path_open) -> None:
+    """Parse a single CITY file into physical objects."""
     mock_file = MagicMock()
     mock_file.read.return_value = "dummy content"
     mock_path_open.return_value.__enter__.return_value = mock_file
@@ -47,6 +49,7 @@ def test_physical_object_parser(mock_get_faces, mock_path_open) -> None:
 
 @patch("deepmimo.converters.wireless_insite.insite_scene.PhysicalObjectParser")
 def test_read_scene(mock_parser_cls, tmp_path) -> None:
+    """Read a scene directory and aggregate parsed objects."""
     # Create dummy files
     (tmp_path / "test.city").touch()
 

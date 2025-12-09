@@ -6,6 +6,7 @@ from deepmimo.converters.sionna_rt import sionna_txrx
 
 
 def test_read_txrx() -> None:
+    """Read TX/RX definitions from raw Sionna parameters."""
     raw_params = {
         "tx_array_num_ant": 4,
         "tx_array_ant_pos": np.zeros((4, 3)),

@@ -108,7 +108,7 @@ class DeepMIMOArray(np.ndarray):
             data = self[:, path_idx, interaction_idx]
         else:
             msg = (
-                f"Cannot plot array with shape {self.shape}. "
+                f"Invalid array shape {self.shape}. "
                 "Only the following shapes are supported:\n"
                 "- 1D arrays [num_rx]\n"
                 "- 2D arrays [num_rx, num_paths]\n"

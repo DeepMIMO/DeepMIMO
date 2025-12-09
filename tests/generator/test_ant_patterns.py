@@ -76,7 +76,8 @@ def test_single_dipole() -> None:
             relative_gain = result[0] / max_result[0]
 
             assert abs(relative_gain - expected_rel_gain) < 0.01, (
-                f"Unexpected gain at {theta_val} degrees. Got {relative_gain:.4f}, expected {expected_rel_gain}"
+                f"Gain mismatch at {theta_val} deg: {relative_gain:.4f} "
+                f"vs {expected_rel_gain}"
             )
 
 
@@ -124,8 +125,9 @@ def test_performance() -> None:
     n_samples = 1000
 
     # Generate test data
-    power = np.random.rand(n_samples)
-    angles = np.random.rand(n_samples) * 180  # Random angles between 0 and 180
+    rng = np.random.default_rng()
+    power = rng.random(n_samples)
+    angles = rng.random(n_samples) * 180  # Random angles between 0 and 180
 
     # Time single processing
     start_time = time.time()
@@ -141,10 +143,10 @@ def test_performance() -> None:
     )
     batch_time = time.time() - start_time
 
-    # Batch processing should be faster or comparable (might not be for small n_samples due to overhead)
-    # But for 10000 samples it should be.
-    # Reducing sample size to 1000 for faster tests, assertion might be flaky if too small
-    # Just asserting it runs for now, or use a loose check
+    # Batch processing should be faster or comparable (might not be for small
+    # n_samples due to overhead). For 10000 samples it should be.
+    # Reducing sample size to 1000 for faster tests; assertion might be flaky if
+    # too small, so just assert it runs.
     assert batch_time is not None
 
 

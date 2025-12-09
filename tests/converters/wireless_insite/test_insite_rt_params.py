@@ -9,12 +9,13 @@ from deepmimo.converters.wireless_insite import insite_rt_params
 
 
 def test_get_gps_bbox() -> None:
+    """Compute GPS bounding boxes from study area vertices."""
     # Test simple case
     origin_lat = 40.0
     origin_lon = -74.0
     vertices = np.array([[0, 0, 0], [100, 100, 0]])
 
-    bbox = insite_rt_params._get_gps_bbox(origin_lat, origin_lon, vertices)
+    bbox = insite_rt_params.get_gps_bbox(origin_lat, origin_lon, vertices)
 
     assert len(bbox) == 4
     # Check bounds are somewhat reasonable (near origin)
@@ -22,12 +23,13 @@ def test_get_gps_bbox() -> None:
     assert np.isclose(bbox[1], -74.0, atol=0.01)  # min_lon
 
     # Test default case (0,0 origin)
-    bbox_zero = insite_rt_params._get_gps_bbox(0, 0, vertices)
+    bbox_zero = insite_rt_params.get_gps_bbox(0, 0, vertices)
     assert bbox_zero == (0, 0, 0, 0)
 
 
 @patch("deepmimo.converters.wireless_insite.insite_rt_params.parse_file")
 def test_read_rt_params(mock_parse, tmp_path) -> None:
+    """Read RT params from mocked setup file structure."""
     # Mock .setup file parsing
     mock_setup_folder = tmp_path / "sim_folder"
     mock_setup_folder.mkdir()

@@ -262,7 +262,7 @@ class ChannelParameters(DotDict):
                         sc_sel = sc_sel.astype(int, copy=False)
                         self[c.PARAMSET_OFDM][c.PARAMSET_OFDM_SC_SAMP] = sc_sel
                     except Exception:
-                        msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices"
+                        msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices (invalid values provided)"
                         raise ValueError(
                             msg,
                         )

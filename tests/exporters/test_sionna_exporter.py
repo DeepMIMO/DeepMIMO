@@ -13,13 +13,14 @@ mock_sionna.rt.Scene = MagicMock
 sys.modules["sionna"] = mock_sionna
 sys.modules["sionna.rt"] = mock_sionna.rt
 
-from deepmimo.exporters import sionna_exporter
+from deepmimo.exporters import sionna_exporter  # noqa: E402
 
 
 @pytest.fixture
 def mock_scene():
+    """Create a mocked Sionna scene object with arrays populated."""
     scene = MagicMock()
-    scene._scene_objects = {}
+    scene.scene_objects = {}
 
     # Mock arrays
     rx_array = MagicMock()
@@ -42,6 +43,7 @@ def mock_scene():
 
 @pytest.fixture
 def mock_paths():
+    """Create mocked path attributes for Sionna exporter."""
     paths = MagicMock()
     # Mock attributes expected by _paths_to_dict
     paths.tau.numpy.return_value = np.array([1.0])
@@ -65,6 +67,7 @@ def mock_paths():
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
 @patch("deepmimo.exporters.sionna_exporter._paths_to_dict")
 def test_export_paths(mock_p2d, mock_v1, mock_paths) -> None:
+    """Export Sionna paths to dictionaries."""
     mock_v1.return_value = False
     # Setup _paths_to_dict return
     mock_p2d.return_value = {
@@ -88,6 +91,7 @@ def test_export_paths(mock_p2d, mock_v1, mock_paths) -> None:
 
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
 def test_export_scene_materials(mock_v1, mock_scene) -> None:
+    """Export scene materials and indices."""
     mock_v1.return_value = False
     # Create mock material
     mat = MagicMock()
@@ -100,7 +104,7 @@ def test_export_scene_materials(mock_v1, mock_scene) -> None:
 
     obj = MagicMock()
     obj.radio_material = mat
-    mock_scene._scene_objects = {"obj1": obj}
+    mock_scene.scene_objects = {"obj1": obj}
 
     mats_list, indices = sionna_exporter.export_scene_materials(mock_scene)
     assert len(mats_list) == 1
@@ -111,6 +115,7 @@ def test_export_scene_materials(mock_v1, mock_scene) -> None:
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
 @patch("deepmimo.exporters.sionna_exporter.get_sionna_version")
 def test_export_scene_rt_params(mock_ver, mock_v1, mock_scene) -> None:
+    """Export Sionna scene parameters and verify metadata."""
     mock_v1.return_value = False
     mock_ver.return_value = "0.19.1"
     # Mock _scene_to_dict via patch or setting attributes on mock_scene
@@ -128,21 +133,20 @@ def test_export_scene_rt_params(mock_ver, mock_v1, mock_scene) -> None:
         assert params["samples_per_src"] == 100
 
 
-@patch("deepmimo.exporters.sionna_exporter.get_sionna_version")
 @patch("deepmimo.exporters.sionna_exporter.save_pickle")
-@patch("os.makedirs")
 @patch("deepmimo.exporters.sionna_exporter.is_sionna_v1")
-def test_sionna_exporter_flow(
-    mock_v1, mock_makedirs, mock_save, mock_ver, mock_scene, mock_paths
-) -> None:
+def test_sionna_exporter_flow(mock_v1, mock_save, mock_scene, mock_paths) -> None:
+    """End-to-end export flow for Sionna exporter."""
     mock_v1.return_value = False
-    mock_ver.return_value = "0.19.1"
     with (
+        patch("deepmimo.exporters.sionna_exporter.get_sionna_version") as mock_ver,
+        patch("os.makedirs") as mock_makedirs,
         patch("deepmimo.exporters.sionna_exporter.export_paths") as mock_ep,
         patch("deepmimo.exporters.sionna_exporter.export_scene_materials") as mock_esm,
         patch("deepmimo.exporters.sionna_exporter.export_scene_rt_params") as mock_esrp,
         patch("deepmimo.exporters.sionna_exporter.export_scene_buildings") as mock_esb,
     ):
+        mock_ver.return_value = "0.19.1"
         mock_ep.return_value = [{"path": 1}]
         mock_esm.return_value = ([{"mat": 1}], [0])
         mock_esrp.return_value = {"param": 1}
@@ -151,3 +155,4 @@ def test_sionna_exporter_flow(
         sionna_exporter.sionna_exporter(mock_scene, mock_paths, {}, "out_dir")
 
         assert mock_save.call_count == 6
+        mock_makedirs.assert_called()

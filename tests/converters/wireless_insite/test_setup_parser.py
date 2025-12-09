@@ -9,6 +9,7 @@ from deepmimo.converters.wireless_insite import setup_parser
 
 
 def test_tokenize_file() -> None:
+    """Tokenize a setup file while handling header lines."""
     file_content = "begin_<test>\nparam 1.0\nend_<test>\n"
     with patch.object(Path, "open", mock_open(read_data=file_content)):
         tokens = list(setup_parser.tokenize_file("dummy"))
@@ -22,6 +23,7 @@ def test_tokenize_file() -> None:
 
 
 def test_node_class() -> None:
+    """Verify Node mapping behaviors for set/get/delete."""
     node = setup_parser.Node(name="test", kind="type")
     node["key"] = "value"
     assert node["key"] == "value"
@@ -31,6 +33,7 @@ def test_node_class() -> None:
 
 
 def test_parse_line_value() -> None:
+    """Parse individual values and coerce to expected types."""
     # Helper to create iterator
     def make_iter(lst):
         return iter(lst)
@@ -57,6 +60,7 @@ def test_parse_line_value() -> None:
 
 
 def test_parse_node() -> None:
+    """Parse nodes, labels, and nested children into structures."""
     # Node with name and params
     tokens = setup_parser.peekable(
         iter(["begin_<node>", "my_node", "\n", "param", "10", "\n", "end_<node>", "\n"])
@@ -107,6 +111,7 @@ def test_parse_node() -> None:
 
 
 def test_parse_document() -> None:
+    """Parse a simple document structure with multiple nodes."""
     tokens = setup_parser.peekable(
         iter(
             [

@@ -9,6 +9,7 @@ from deepmimo.txrx import TxRxSet
 
 
 def test_insite_txrx_set_grid() -> None:
+    """Parse grid configuration from InSite TxRxSet data."""
     data = {
         "ConformToTerrain": {"remcom_rxapi_Boolean": True},
         "OutputID": {"remcom_rxapi_Integer": 1},
@@ -40,6 +41,7 @@ def test_insite_txrx_set_grid() -> None:
 
 
 def test_convert_sets_to_deepmimo() -> None:
+    """Convert InSite TxRx sets into DeepMIMO Tx/Rx objects."""
     # Mock InSiteTxRxSet
     iset = MagicMock(spec=insite_txrx.InSiteTxRxSet)
     iset.data = {}  # Explicitly add data attribute as dict
@@ -162,7 +164,9 @@ def test_read_txrx(mock_path, mock_parse_xml) -> None:
                                                 "Antenna": {
                                                     "remcom_rxapi_Isotropic": {
                                                         "Polarization": {
-                                                            "remcom_rxapi_PolarizationEnum": "Vertical"
+                                                            "remcom_rxapi_PolarizationEnum": (
+                                                                "Vertical"
+                                                            )
                                                         },
                                                         "PowerThreshold": {
                                                             "remcom_rxapi_Double": -250

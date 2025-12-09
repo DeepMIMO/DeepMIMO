@@ -26,6 +26,7 @@ Main Entry Point:
 """
 
 # Standard library imports
+import os
 import shutil
 from pathlib import Path
 
@@ -100,7 +101,7 @@ def insite_rt_converter(
     # Create output folder
     if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
-    Path(temp_folder).mkdir(parents=True)
+    os.makedirs(temp_folder, exist_ok=True)
 
     # Read ray tracing parameters
     rt_params = read_rt_params(rt_folder)

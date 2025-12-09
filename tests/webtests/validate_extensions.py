@@ -1,3 +1,5 @@
+"""Validation utilities for uploaded ZIP archives in web tests."""
+
 import json
 import sys
 import zipfile
@@ -8,6 +10,7 @@ MAX_FILES = 20
 
 
 def validate_zip_contents(zip_path):
+    """Check ZIP file contents for allowed count and file extensions."""
     try:
         with zipfile.ZipFile(zip_path, "r") as zip_ref:
             # Get all file names in zip
@@ -43,7 +46,7 @@ def validate_zip_contents(zip_path):
             "valid": False,
             "error": "Invalid zip file",
         }
-    except Exception as e:
+    except (OSError, zipfile.LargeZipFile) as e:
         return {
             "valid": False,
             "error": str(e),

@@ -12,9 +12,12 @@ from deepmimo.summary import plot_summary, summary
 
 
 class TestSummary(unittest.TestCase):
+    """Unit tests for dataset summary reporting."""
+
     @patch("deepmimo.summary.load_dict_from_json")
     @patch("deepmimo.summary.get_params_path")
     def test_summary(self, mock_get_path, mock_load_json) -> None:
+        """Render textual summary from mocked params."""
         mock_get_path.return_value = "params.json"
 
         # Mock params dictionary
@@ -91,6 +94,7 @@ class TestSummary(unittest.TestCase):
     @patch("deepmimo.summary.plt")
     @patch("pathlib.Path.mkdir")
     def test_plot_summary(self, mock_mkdir, mock_plt) -> None:
+        """Render summary plots and ensure images are saved."""
         # Mock dataset
         mock_ds = MagicMock()
         mock_ds.scene.plot = MagicMock()
@@ -116,3 +120,4 @@ class TestSummary(unittest.TestCase):
         assert len(res) == 2  # 2 images
         mock_ds.scene.plot.assert_called()
         mock_plt.savefig.assert_called()
+        mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)

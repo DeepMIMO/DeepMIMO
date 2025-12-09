@@ -13,10 +13,13 @@ from deepmimo.generator import visualization
 
 
 class TestVisualization(unittest.TestCase):
+    """Visualization plotting routines under test."""
+
     def test_plot_coverage_realistic(self) -> None:
         """Test plot_coverage with real data (Agg backend)."""
-        ue_pos = np.random.rand(100, 3) * 100  # 100 UEs in 100x100 grid
-        los = np.random.choice([0, 1], size=(100,))  # Random LoS/NLoS
+        rng = np.random.default_rng()
+        ue_pos = rng.random((100, 3)) * 100  # 100 UEs in 100x100 grid
+        los = rng.choice([0, 1], size=100)  # Random LoS/NLoS
 
         # Basic plot - should create figure without errors
         visualization.plot_coverage(ue_pos, los)
@@ -33,8 +36,10 @@ class TestVisualization(unittest.TestCase):
 
     @patch("deepmimo.generator.visualization.plt")
     def test_plot_coverage(self, mock_plt) -> None:
-        ue_pos = np.random.rand(10, 3) * 100
-        los = np.random.choice([0, 1], size=(10,))
+        """Plot coverage with mocked matplotlib handles."""
+        rng = np.random.default_rng()
+        ue_pos = rng.random((10, 3)) * 100
+        los = rng.choice([0, 1], size=10)
 
         # Mock subplots return value
         mock_fig = MagicMock()
@@ -79,6 +84,7 @@ class TestVisualization(unittest.TestCase):
 
     @patch("deepmimo.generator.visualization.plt")
     def test_plot_rays(self, mock_plt) -> None:
+        """Plot rays with mocked matplotlib objects."""
         # Mock data
         tx_loc = np.array([0, 0, 10])
         rx_loc = np.array([10, 0, 1.5])
@@ -108,6 +114,7 @@ class TestVisualization(unittest.TestCase):
 
     @patch("deepmimo.generator.visualization.plt")
     def test_plot_power_discarding(self, mock_plt) -> None:
+        """Visualize discarded power fractions for delays."""
         # Mock dataset
         ds = MagicMock()
         # 2 users, 2 paths

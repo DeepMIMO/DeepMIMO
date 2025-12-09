@@ -1,3 +1,5 @@
+"""Smoke tests for importing core DeepMIMO modules."""
+
 import importlib
 
 import pytest
@@ -55,6 +57,7 @@ MODULES = [
 
 @pytest.mark.parametrize("module_name", MODULES)
 def test_import_module(module_name: str) -> None:
+    """Import a module and skip if optional dependencies are missing."""
     try:
         importlib.import_module(module_name)
     except ImportError as e:

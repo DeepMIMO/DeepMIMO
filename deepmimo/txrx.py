@@ -53,7 +53,7 @@ class TxRxSet:
         return asdict(self)
 
     def __repr__(self) -> str:
-        """String representation of TxRxSet."""
+        """Return string representation of TxRxSet."""
         role = "TX" if self.is_tx else ""
         role += "RX" if self.is_rx else ""
         role = role if role else "Unknown"
@@ -74,7 +74,7 @@ class TxRxPair:
     tx_idx: int = 0
 
     def __repr__(self) -> str:
-        """String representation of TxRxPair."""
+        """Return string representation of TxRxPair."""
         return f"TxRxPair(tx={self.tx.name}[{self.tx_idx}], rx={self.rx.name})"
 
     def get_ids(self) -> tuple[int, int]:
@@ -146,11 +146,11 @@ def get_txrx_pairs(txrx_sets: list[TxRxSet]) -> list[TxRxPair]:
 
     # For each TX set
     for tx_set in tx_sets:
-        # For each individual TX point in the set
-        for tx_idx in range(tx_set.num_points):
-            # Pair this TX with all RX sets
-            for rx_set in rx_sets:
-                pairs.append(TxRxPair(tx=tx_set, rx=rx_set, tx_idx=tx_idx))
+        pairs.extend(
+            TxRxPair(tx=tx_set, rx=rx_set, tx_idx=tx_idx)
+            for tx_idx in range(tx_set.num_points)
+            for rx_set in rx_sets
+        )
 
     return pairs
 

@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 """# Getting Started with DeepMIMO.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/1_getting_started.py)
@@ -8,8 +9,9 @@
 
 **Tutorial Overview:**
 - **Part 1**: Hello World - Load a simple scenario, generate channels
-- **Part 2**: Deep Dive - Explore complex scenarios with multiple base stations
-- **Part 3**: Discovery - Learn how to discover more using `dm.info()`, aliases, and implicit computations
+ - **Part 2**: Deep Dive - Explore complex scenarios with multiple base stations
+ - **Part 3**: Discovery - Learn how to discover more using `dm.info()`,
+   aliases, and implicit computations
 
 **Related Video:** [Getting Started Video](https://youtu.be/LDG6IPEHY54)
 
@@ -19,7 +21,8 @@
 # %% [markdown]
 # ## Part 1: Hello World
 #
-# Let's start with the absolute basics: installing DeepMIMO, loading a simple scenario, and generating channels.
+# Let's start with the absolute basics: installing DeepMIMO, loading a simple
+# scenario, and generating channels.
 
 # %%
 # Install DeepMIMO (if not already installed)
@@ -85,7 +88,8 @@ print(f"Average pathloss: {np.mean(pathloss[pathloss > -np.inf]):.2f} dB")
 #
 # ## Part 2: Deep Dive with Complex Scenarios
 #
-# Now let's explore a more complex scenario with multiple base stations and dive deeper into the dataset structure.
+# Now let's explore a more complex scenario with multiple base stations and
+# dive deeper into the dataset structure.
 
 # %%
 # Load a city scenario with multiple base stations
@@ -147,7 +151,8 @@ dm.summary(city_scen)
 #
 # ## Part 3: Discovery - Learning More
 #
-# DeepMIMO provides powerful tools to help you discover and understand the available functions and parameters.
+# DeepMIMO provides powerful tools to help you discover and understand the
+# available functions and parameters.
 
 # %% [markdown]
 # ### Using `dm.info()` for Parameter Documentation
@@ -230,7 +235,8 @@ print("Use dm.info(dm.download) to view the docstring of any function")
 #
 # Now that you understand the basics, explore these tutorials:
 #
-# - **Tutorial 2: Visualization and Scene** - Learn how to visualize coverage maps, rays, and 3D scenes
+# - **Tutorial 2: Visualization and Scene** - Learn how to visualize coverage maps,
+#   rays, and 3D scenes
 # - **Tutorial 3: Detailed Channel Generation** - Deep dive into channel generation parameters
 # - **Tutorial 4: User Selection and Dataset Manipulation** - Learn how to filter and sample users
 # - **Tutorial 5: Doppler and Mobility** - Add time-varying effects to your channels

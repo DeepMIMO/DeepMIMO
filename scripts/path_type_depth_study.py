@@ -1,6 +1,10 @@
+"""Study different path-type and depth combinations and plot coverage results."""
+
 # %%
+from collections import defaultdict
 from pathlib import Path
 
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -100,8 +104,10 @@ path_combinations = [
 ]
 
 # Process each combination
+SKIP_INITIAL_COMBINATIONS = 62
+
 for combo_idx, (path_types, max_depth) in enumerate(path_combinations):
-    if combo_idx < 62:
+    if combo_idx < SKIP_INITIAL_COMBINATIONS:
         continue
     # Start with original dataset
     trimmed_dataset = dataset
@@ -151,14 +157,6 @@ for combo_idx, (path_types, max_depth) in enumerate(path_combinations):
     # FUN FACT: trimming by depth is much faster than trimming by type.
 
 
-# %%
-
-from collections import defaultdict
-
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
-import numpy as np
-
 IMG_SIZE = (1200, 800)
 
 # Define specific columns and rows for the montage
@@ -167,6 +165,7 @@ desired_depths = ["1", "2", "3", "4", "5", "6"]
 
 # Build a structured map of images
 image_grid = defaultdict(dict)
+MIN_FILENAME_PARTS = 5
 
 # Parse files from extracted folder
 for fname in [p.name for p in Path(save_dir).iterdir()]:
@@ -176,7 +175,7 @@ for fname in [p.name for p in Path(save_dir).iterdir()]:
     # Parse filename
     # Format: pwr_exp_[index]_[type]_[depth].png
     parts = fname.split("_")
-    if len(parts) < 5:  # we expect at least 5 parts
+    if len(parts) < MIN_FILENAME_PARTS:  # we expect at least 5 parts
         continue
 
     type_str = parts[3]  # The type is in the 4th position
@@ -276,12 +275,11 @@ sim_type_mapping = {
 missing_combinations = []
 for depth in desired_depths:
     for type_key in desired_types:
-        if depth != "all-depths":  # Skip all-depths for now as it's special
-            if not image_grid.get(depth, {}).get(type_key):
-                # Convert display format to simulation parameters
-                path_types = sim_type_mapping[type_key]
-                max_depth = int(depth)
-                missing_combinations.append((path_types, max_depth))
+        if depth != "all-depths" and not image_grid.get(depth, {}).get(type_key):
+            # Convert display format to simulation parameters
+            path_types = sim_type_mapping[type_key]
+            max_depth = int(depth)
+            missing_combinations.append((path_types, max_depth))
 
 print("\nMissing combinations that need to be simulated:")
 for path_types, max_depth in missing_combinations:

@@ -82,6 +82,10 @@ def _transform_interaction_types(types: np.ndarray) -> float:
     return float("".join(mapped))
 
 
+# Public alias for external callers and tests.
+transform_interaction_types = _transform_interaction_types
+
+
 def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> dict:
     """Pre-allocate data for path conversion.
 

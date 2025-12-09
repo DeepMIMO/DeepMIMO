@@ -42,6 +42,10 @@ def _find_converter_from_dir(directory: str) -> Callable | None:
     return None
 
 
+# Public alias for tests and external callers.
+find_converter_from_dir = _find_converter_from_dir
+
+
 def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any | None:
     """Create a standardized scenario from raytracing data.
 
@@ -63,7 +67,7 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any 
     print("Determining converter...")
 
     # First try the root directory
-    rt_converter = _find_converter_from_dir(path_to_rt_folder)
+    rt_converter = find_converter_from_dir(path_to_rt_folder)
 
     # If not found in root, try immediate subdirectories
     if rt_converter is not None:
@@ -76,7 +80,7 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any 
             [str(rt_path / d.name) for d in rt_path.iterdir() if d.is_dir()],
         )
         if len(subdirs) > 0:
-            rt_converter = _find_converter_from_dir(subdirs[0])
+            rt_converter = find_converter_from_dir(subdirs[0])
         else:
             print("No subdirectories found")
             return None

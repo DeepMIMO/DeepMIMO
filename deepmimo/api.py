@@ -205,6 +205,11 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:
         return None
 
 
+def dm_upload_api_call(file: str, key: str) -> str | None:
+    """Public wrapper around `_dm_upload_api_call`."""
+    return _dm_upload_api_call(file, key)
+
+
 def _process_params_data(params_dict: dict, extra_metadata: dict | None = None) -> dict:
     """Process params.mat data into submission format - used in DeepMIMO database.
 
@@ -304,6 +309,11 @@ def _process_params_data(params_dict: dict, extra_metadata: dict | None = None) 
     }
 
 
+def process_params_data(params_dict: dict, extra_metadata: dict | None = None) -> dict:
+    """Public wrapper around `_process_params_data`."""
+    return _process_params_data(params_dict, extra_metadata)
+
+
 def _generate_key_components(summary_str: str) -> dict:
     """Generate key components sections from summary string.
 
@@ -340,6 +350,11 @@ def _generate_key_components(summary_str: str) -> dict:
         html_dict["sections"].append(_format_section(current_section, current_lines))
 
     return html_dict
+
+
+def generate_key_components(summary_str: str) -> dict:
+    """Public wrapper around `_generate_key_components`."""
+    return _generate_key_components(summary_str)
 
 
 def _format_section(name: str, lines: list) -> dict:
@@ -390,6 +405,11 @@ def _format_section(name: str, lines: list) -> dict:
             </div>
         """,
     }
+
+
+def format_section(name: str, lines: list) -> dict:
+    """Public wrapper around `_format_section` for external callers."""
+    return _format_section(name, lines)
 
 
 def upload_images(scenario_name: str, img_paths: list[str], key: str) -> list[dict]:
@@ -612,6 +632,25 @@ def _make_submission_on_server(
     return submission_scenario_name
 
 
+def make_submission_on_server(
+    submission_scenario_name: str,
+    key: str,
+    params_dict: dict,
+    details: list[str],
+    extra_metadata: dict,
+    include_images: bool = True,
+) -> str:
+    """Public wrapper for `_make_submission_on_server`."""
+    return _make_submission_on_server(
+        submission_scenario_name,
+        key,
+        params_dict,
+        details,
+        extra_metadata,
+        include_images,
+    )
+
+
 def upload(
     scenario_name: str,
     key: str,
@@ -670,7 +709,7 @@ def upload(
     else:
         submission_scenario_name = scenario_name
 
-    _make_submission_on_server(
+    make_submission_on_server(
         submission_scenario_name,
         key,
         params_dict,
@@ -806,6 +845,11 @@ def _download_url(scenario_name: str, rt_source: bool = False) -> str:
     # Return the secure download endpoint URL with the filename as a parameter
     rt_param = "&rt_source=true" if rt_source else ""
     return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}{rt_param}"
+
+
+def download_url(scenario_name: str, rt_source: bool = False) -> str:
+    """Public wrapper around `_download_url`."""
+    return _download_url(scenario_name, rt_source)
 
 
 def download(
@@ -947,8 +991,8 @@ def download(
             shutil.rmtree(tmp_path)
             print(f"✓ Flattened nested directory '{scenario_name}'")
 
-        Path(scenarios_dir).mkdir(parents=True, exist_ok=True)
-        Path(unzipped_folder).rename(unzipped_folder_without_suffix)
+            Path(scenarios_dir).mkdir(parents=True, exist_ok=True)
+            shutil.move(str(Path(unzipped_folder)), unzipped_folder_without_suffix)
         shutil.move(unzipped_folder_without_suffix, scenario_folder)
         print(f"✓ Unzipped and moved to {scenarios_dir}")
         print(f"✓ Scenario '{scenario_name}' ready to use!")

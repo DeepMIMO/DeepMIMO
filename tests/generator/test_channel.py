@@ -1,3 +1,5 @@
+"""Channel generation tests for DeepMIMO."""
+
 import numpy as np
 import pytest
 
@@ -31,7 +33,7 @@ def test_channel_parameters_validation() -> None:
     # Reset and test another invalid case
     params = ChannelParameters()
     params[c.PARAMSET_OFDM][c.PARAMSET_OFDM_SC_SAMP] = "invalid"  # Not an array/list of ints
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="invalid"):
         params.validate(n_ues=10)
 
 

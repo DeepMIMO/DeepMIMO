@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 """# Beamforming.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/6_beamforming.py)
@@ -122,7 +123,7 @@ plt.plot(angles, 20 * np.log10(array_factor / np.max(array_factor)))
 plt.xlabel("Angle (degrees)")
 plt.ylabel("Array Factor (dB)")
 plt.title("Beamforming Array Factor Pattern")
-plt.grid(True)
+plt.grid(visible=True)
 plt.ylim([-40, 0])
 plt.show()
 
@@ -137,7 +138,7 @@ ax.plot(angles_rad, array_factor)
 ax.set_theta_zero_location("N")
 ax.set_theta_direction(-1)
 ax.set_title("Beam Pattern (Polar)")
-ax.grid(True)
+ax.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -194,7 +195,7 @@ plt.colorbar(label="Best Beam Angle (degrees)")
 plt.xlabel("X (m)")
 plt.ylabel("Y (m)")
 plt.title("Best Beam Angle per User Position")
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -216,7 +217,7 @@ plt.colorbar(label="Max Received Power (dBW)")
 plt.xlabel("X (m)")
 plt.ylabel("Y (m)")
 plt.title("Maximum Received Power with Beamforming")
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -225,7 +226,8 @@ plt.show()
 # %%
 # Zero-forcing beamforming for multiple users
 num_selected_users = min(num_antennas - 1, num_users)
-selected_users = np.random.choice(num_users, num_selected_users, replace=False)
+rng = np.random.default_rng()
+selected_users = rng.choice(num_users, num_selected_users, replace=False)
 
 # Channel matrix for selected users
 H = np.array([channels[u, 0, :, 0] for u in selected_users]).T
@@ -275,7 +277,7 @@ plt.xlabel("Received Power (dBW)")
 plt.ylabel("Count")
 plt.title("Beamforming Gain Comparison")
 plt.legend()
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]

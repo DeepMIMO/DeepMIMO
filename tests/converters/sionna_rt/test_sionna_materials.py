@@ -7,6 +7,7 @@ from deepmimo.converters.sionna_rt import sionna_materials
 
 @patch("deepmimo.converters.sionna_rt.sionna_materials.load_pickle")
 def test_read_materials(mock_load) -> None:
+    """Read Sionna material pickles and map to DeepMIMO structures."""
     # Mock materials
     mock_materials = [
         {

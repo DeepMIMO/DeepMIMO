@@ -86,5 +86,5 @@ def test_plot_invalid_dim() -> None:
     data = np.zeros((2, 2, 2, 2))
     dm_array = DeepMIMOArray(data, mock_dataset, "test")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid"):
         dm_array.plot()

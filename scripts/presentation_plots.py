@@ -1,6 +1,11 @@
+"""Presentation plotting utilities for DeepMIMO demos."""
+
 # %% Base Imports
 
+import shutil
+import subprocess
 from pathlib import Path
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -92,7 +97,11 @@ plt.savefig("dm_scene_doppler_static.png")
 # %% Doppler Sequence (Dynamic - with moving terrain)
 
 
-def modify_terrain(terrain, center_xy=None, size_xy=None) -> None:
+def modify_terrain(
+    terrain: Any,
+    center_xy: tuple[float, float] | None = None,
+    size_xy: tuple[float, float] | None = None,
+) -> None:
     """Modify a terrain object's position and/or size.
 
     Args:
@@ -121,17 +130,17 @@ def modify_terrain(terrain, center_xy=None, size_xy=None) -> None:
     )
 
     # Update the terrain
-    terrain._faces = [dm.scene.Face(vertices=vertices, material_idx=terrain.faces[0].material_idx)]
+    terrain._faces = [dm.scene.Face(vertices=vertices, material_idx=terrain.faces[0].material_idx)]  # noqa: SLF001
     terrain.vertices = vertices
-    terrain._compute_bounding_box()
+    terrain._compute_bounding_box()  # noqa: SLF001
 
 
 plt.rcdefaults()
 plt.rcParams["xtick.color"] = "white"
 plt.rcParams["ytick.color"] = "white"
 plt.rcParams["axes.labelcolor"] = "white"
-proj_3D = True
-folder = f"dm_scene_doppler_dynamic2_{'3D' if proj_3D else '2D'}"
+proj_3d = True
+folder = f"dm_scene_doppler_dynamic2_{'3D' if proj_3d else '2D'}"
 Path(folder).mkdir(parents=True, exist_ok=True)
 
 s = 200  # terrain size in meters (width and length)
@@ -157,12 +166,12 @@ for i, usr_idx in enumerate(seq_idxs[::4]):
 
     s2 = 20
 
-    def is_in_range(b):
-        return (min_x - s2 < b.position[0] < max_x + s2) and (
-            min_y - s2 < b.position[1] < max_y + s2
-        )
-
-    bldgs_in_range = [b for b in orig_bldgs if is_in_range(b)]
+    bldgs_in_range = [
+        b
+        for b in orig_bldgs
+        if (min_x - s2 < b.position[0] < max_x + s2)
+        and (min_y - s2 < b.position[1] < max_y + s2)
+    ]
 
     # Select interaction buildings (if outside of range)
     # u_inter = np.unique(dataset.inter_obj[usr_idx])
@@ -180,15 +189,15 @@ for i, usr_idx in enumerate(seq_idxs[::4]):
     # - change plot_point rx/tx to white
     #
     # Faster
-    _, ax = dataset.plot_rays(usr_idx, proj_3D=proj_3D)
-    dataset.scene.plot(dpi=300, proj_3D=proj_3D, title="", ax=ax)
+    _, ax = dataset.plot_rays(usr_idx, proj_3D=proj_3d)
+    dataset.scene.plot(dpi=300, proj_3D=proj_3d, title="", ax=ax)
 
     # Slower
     # ax = dataset.scene.plot(dpi=300, proj_3D=proj_3D, title='')
     # dataset.plot_rays(usr_idx, ax=ax, proj_3D=proj_3D)
 
     # Add coverage map (Matplotlib has issues with 3D plots)
-    if not proj_3D:
+    if not proj_3d:
         idxs_in_range = dm.get_idxs_with_limits(
             dataset.rx_pos,
             x_min=min_x,
@@ -197,12 +206,12 @@ for i, usr_idx in enumerate(seq_idxs[::4]):
             y_max=max_y,
         )
         dataset_t = dataset.subset(idxs_in_range)
-        dataset_t.power.plot(ax=ax, proj_3D=proj_3D, lims=(min_pwr, max_pwr))
+        dataset_t.power.plot(ax=ax, proj_3D=proj_3d, lims=(min_pwr, max_pwr))
 
     ax.legend().set_visible(False)
     ax.set_xlim((min_x, max_x))
     ax.set_ylim((min_y, max_y))
-    if proj_3D:
+    if proj_3d:
         ax.set_zlim((-20, 100))
     plt.savefig(f"{folder}/{i}.png", transparent=True)
     plt.close()
@@ -217,8 +226,8 @@ plt.rcdefaults()
 plt.rcParams["xtick.color"] = "white"
 plt.rcParams["ytick.color"] = "white"
 plt.rcParams["axes.labelcolor"] = "white"
-proj_3D = True
-folder = f"dm_scene_doppler_dynamic_static_{'3D' if proj_3D else '2D'}"
+proj_3d = True
+folder = f"dm_scene_doppler_dynamic_static_{'3D' if proj_3d else '2D'}"
 Path(folder).mkdir(parents=True, exist_ok=True)
 
 s = 200  # terrain size in meters (width and length)
@@ -239,8 +248,11 @@ max_y = 250
 s2 = 20
 
 
-def is_in_range(b):
-    return (min_x - s2 < b.position[0] < max_x + s2) and (min_y - s2 < b.position[1] < max_y + s2)
+def is_in_range(b: Any) -> bool:
+    """Check if a building's position lies within padded bounds."""
+    return (min_x - s2 < b.position[0] < max_x + s2) and (
+        min_y - s2 < b.position[1] < max_y + s2
+    )
 
 
 bldgs_in_range = [b for b in orig_bldgs if is_in_range(b)]
@@ -258,11 +270,11 @@ dataset.scene.objects = [*bldgs_in_range, terrain]
 for i, usr_idx in enumerate(seq_idxs[::4]):
     usr_pos = dataset.rx_pos[usr_idx]
 
-    _, ax = dataset.plot_rays(usr_idx, proj_3D=proj_3D, dpi=300)
-    dataset.scene.plot(proj_3D=proj_3D, title="", ax=ax)
+    _, ax = dataset.plot_rays(usr_idx, proj_3D=proj_3d, dpi=300)
+    dataset.scene.plot(proj_3D=proj_3d, title="", ax=ax)
 
     # Add coverage map (Matplotlib has issues with 3D plots)
-    if not proj_3D:
+    if not proj_3d:
         idxs_in_range = dm.get_idxs_with_limits(
             dataset.rx_pos,
             x_min=min_x,
@@ -271,12 +283,12 @@ for i, usr_idx in enumerate(seq_idxs[::4]):
             y_max=max_y,
         )
         dataset_t = dataset.subset(idxs_in_range)
-        dataset_t.power.plot(ax=ax, proj_3D=proj_3D, lims=(min_pwr, max_pwr))
+        dataset_t.power.plot(ax=ax, proj_3D=proj_3d, lims=(min_pwr, max_pwr))
 
     ax.legend().set_visible(False)
     ax.set_xlim((min_x, max_x))
     ax.set_ylim((min_y, max_y))
-    if proj_3D:
+    if proj_3d:
         ax.set_zlim((-20, 100))
     plt.savefig(f"{folder}/{i}.png", transparent=True)
     plt.close()
@@ -285,13 +297,14 @@ for i, usr_idx in enumerate(seq_idxs[::4]):
     # break
 
 
-# %% Save Dynamic Video
+ffmpeg_cmd = shutil.which("ffmpeg")
+if ffmpeg_cmd is None:
+    msg = "ffmpeg executable not found on PATH"
+    raise RuntimeError(msg)
 
-import subprocess
-
-subprocess.run(
+subprocess.run(  # noqa: S603
     [
-        "ffmpeg",
+        ffmpeg_cmd,
         "-y",  # overwrite if file exists
         "-framerate",
         "10",
@@ -371,7 +384,7 @@ for i in range(n_scenes):
     )
 
     ax.legend().set_visible(False)
-    ax.grid(False)
+    ax.grid(visible=False)
 
     if save:
         plt.savefig(f"{folder}/{i}.png", transparent=True)

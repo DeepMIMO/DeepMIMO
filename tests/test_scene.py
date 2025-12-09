@@ -20,6 +20,7 @@ from deepmimo.scene import (
 
 # --- BoundingBox Tests ---
 def test_bounding_box() -> None:
+    """Validate bounding box dimensions and derived properties."""
     bb = BoundingBox(0, 10, 0, 20, 0, 5)
     assert bb.x_min == 0
     assert bb.x_max == 10
@@ -31,6 +32,7 @@ def test_bounding_box() -> None:
 
 # --- Face Tests ---
 def test_face_properties() -> None:
+    """Ensure face normals, areas, and centroids are computed correctly."""
     # Defined counter-clockwise in xy plane
     vertices = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]])
     face = Face(vertices)
@@ -53,6 +55,7 @@ def test_face_properties() -> None:
 
 # --- PhysicalElement Tests ---
 def test_physical_element() -> None:
+    """Check PhysicalElement properties and validation logic."""
     # Create a simple cube
     # Bottom face
     f1 = Face([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]])
@@ -76,12 +79,13 @@ def test_physical_element() -> None:
     obj.vel = [1, 2, 3]
     np.testing.assert_array_equal(obj.vel, [1, 2, 3])
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Velocity must be a 3D vector"):
         obj.vel = [1, 2]  # Wrong shape
 
 
 # --- PhysicalElementGroup Tests ---
 def test_physical_element_group() -> None:
+    """Group physical elements and query filtered results."""
     obj1 = PhysicalElement([Face([[0, 0, 0], [1, 0, 0], [0, 1, 0]])], label=CAT_BUILDINGS)
     obj2 = PhysicalElement([Face([[2, 0, 0], [3, 0, 0], [2, 1, 0]])], label=CAT_TERRAIN)
 
@@ -102,6 +106,7 @@ def test_physical_element_group() -> None:
 
 # --- Scene Tests ---
 def test_scene_management() -> None:
+    """Add objects to a scene and track counts/bounding boxes."""
     scene = Scene()
     obj = PhysicalElement([Face([[0, 0, 0], [1, 0, 0], [0, 1, 0]])], label=CAT_OBJECTS)
 
@@ -118,6 +123,7 @@ def test_scene_management() -> None:
 
 
 def test_scene_export_import(tmp_path) -> None:
+    """Round-trip a scene via export/import and validate contents."""
     scene = Scene()
     # Add a simple object
     obj = PhysicalElement([Face([[0, 0, 0], [1, 0, 0], [0, 1, 0]])], name="Tri", label=CAT_OBJECTS)
@@ -160,6 +166,7 @@ def test_scene_plot(mock_subplots) -> None:
 
 
 def test_get_object_faces() -> None:
+    """Compute face list for a simple cube in fast mode."""
     # Test fast mode (convex hull)
     # Cube vertices
     vertices = [
@@ -175,6 +182,6 @@ def test_get_object_faces() -> None:
     faces = get_object_faces(vertices, fast=True)
     assert (
         len(faces) >= 6
-    )  # Cube has 6 faces, but convex hull generator might return more or less depending on collinearity
+    )  # Cube has 6 faces; hull count can vary with collinearity
     # For simple cube, it should return top, bottom + 4 sides = 6.
     assert len(faces) == 6

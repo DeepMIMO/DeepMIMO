@@ -8,6 +8,7 @@ from deepmimo.converters.wireless_insite import insite_paths
 
 
 def test_update_txrx_points() -> None:
+    """Update tx/rx set counts based on parsed path loss data."""
     txrx_dict = {"txrx_set_1": {"id_orig": 10, "num_points": 0, "num_active_points": 0}}
     rx_pos = np.zeros((5, 3))
     path_loss = np.array([100, 250, 100, 250, 100])  # 2 inactive (250 dB)
@@ -23,6 +24,7 @@ def test_update_txrx_points() -> None:
 @patch("deepmimo.converters.wireless_insite.insite_paths.save_mat")
 @patch("deepmimo.converters.wireless_insite.insite_paths.extract_tx_pos")
 def test_read_paths(mock_extract, mock_save, mock_read_pl, mock_parser, tmp_path) -> None:
+    """Read path files, parse, and persist outputs via mocks."""
     # Setup mocks
     p2m_dir = tmp_path / "p2m"
     p2m_dir.mkdir()

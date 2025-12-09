@@ -9,12 +9,14 @@ from deepmimo.converters import converter_utils as cu
 
 
 def test_ext_in_list() -> None:
+    """Filter filenames by extension."""
     files = ["a.txt", "b.py", "c.txt"]
     assert cu.ext_in_list(".txt", files) == ["a.txt", "c.txt"]
     assert cu.ext_in_list(".py", files) == ["b.py"]
 
 
 def test_check_scenario_exists(tmp_path) -> None:
+    """Ensure scenario existence check responds to directory presence."""
     scen_dir = tmp_path / "scenarios"
     scen_dir.mkdir()
 
@@ -34,12 +36,14 @@ def test_check_scenario_exists(tmp_path) -> None:
 
 
 def test_comp_next_pwr_10() -> None:
+    """Round numbers up to the next power-of-ten boundary."""
     arr = np.array([0, 1, 10, 99, 100])
     res = cu.comp_next_pwr_10(arr)
     np.testing.assert_array_equal(res, [0, 1, 2, 2, 3])
 
 
 def test_get_max_paths() -> None:
+    """Compute maximum valid path count across arrays."""
     data = {c.AOA_AZ_PARAM_NAME: np.array([[1, 2, np.nan], [3, np.nan, np.nan]])}
     # Col 0: [1, 3] -> valid
     # Col 1: [2, nan] -> valid (not all nan)
@@ -48,6 +52,7 @@ def test_get_max_paths() -> None:
 
 
 def test_compress_path_data() -> None:
+    """Compress per-user path data and remove padding."""
     # Mock data: 2 users, 5 paths allocated, but only 2 used.
     # And interactions codes up to 2 digits (e.g. 11).
 

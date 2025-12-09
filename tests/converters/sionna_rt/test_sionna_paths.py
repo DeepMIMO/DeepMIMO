@@ -8,25 +8,16 @@ from deepmimo.converters.sionna_rt import sionna_paths
 
 
 def test_get_sionna_interaction_types() -> None:
-    # Mock paths object
-    # Using a complex mock structure to simulate Sionna paths data
-    # Since _get_sionna_interaction_types logic was fixed, we test it here.
-
-    # Case 1: Simple valid types
-    # types array structure depends on implementation details
-    # Assuming input is (n_paths, n_inter) or similar?
-    # Wait, the function signature is not standard public API but internal logic?
-    # Let's check sionna_paths.py again.
-    # It seems `read_paths` processes paths.
-    pass
+    """Placeholder test for interaction types (not yet implemented)."""
 
 
 @patch("deepmimo.converters.sionna_rt.sionna_paths.load_pickle")
 def test_read_paths(mock_load) -> None:
+    """Load paths and ensure expected arrays are saved."""
     # Create mock paths data structure
     # Match expected shape for Sionna < 1.0
     # a has time dimension (7D) because it's sliced with [..., 0]
-    # others don't have time dimension (6D) because they are sliced with [...] (which keeps trailing dims)
+    # others remain 6D because ellipsis preserves trailing dims
     path_data = {
         "sources": np.zeros((1, 3)),
         "targets": np.zeros((5, 3)),  # 5 RX

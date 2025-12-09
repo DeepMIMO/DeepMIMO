@@ -8,11 +8,16 @@ binary files with proper naming conventions.
 import json
 import struct
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
 
-def export_dataset_to_binary(dataset: Any, dataset_name: str, output_dir: str = "./datasets") -> None:
+def export_dataset_to_binary(
+    dataset: Any,
+    dataset_name: str,
+    output_dir: str = "./datasets",
+) -> None:
     """Export DeepMIMO dataset to binary format for web visualizer.
 
     This function handles both single datasets and MacroDatasets with multiple TX/RX sets.
@@ -32,11 +37,11 @@ def export_dataset_to_binary(dataset: Any, dataset_name: str, output_dir: str = 
     # Check if this is a MacroDataset (has multiple datasets)
     if hasattr(dataset, "datasets"):
         print(f"Processing MacroDataset with {len(dataset.datasets)} TX/RX sets")
-        tx_rx_sets_info = _process_macro_dataset(dataset, base_dir)
+        tx_rx_sets_info = process_macro_dataset(dataset, base_dir)
     else:
         # Handle single Dataset
         print("Processing single Dataset")
-        set_info = _process_single_dataset_to_binary(dataset, base_dir, 1, 1)
+        set_info = process_single_dataset_to_binary(dataset, base_dir, 1, 1)
         tx_rx_sets_info.append(set_info)
 
     # Save metadata
@@ -58,18 +63,17 @@ def _process_macro_dataset(dataset: Any, base_dir: Path) -> list:
     print("Extracting TX/RX set IDs from datasets...")
 
     for i, single_dataset in enumerate(dataset.datasets):
-        if not hasattr(single_dataset, "rx_pos") or len(single_dataset.rx_pos) == 0:
-            continue
-
         # Get TX/RX set IDs from the dataset's txrx attribute
         tx_set_id = single_dataset["txrx"]["tx_set_id"]
         rx_set_id = single_dataset["txrx"]["rx_set_id"]
 
         print(
-            f"Dataset {i}: TX set {tx_set_id}, RX set {rx_set_id} (rx_count={len(single_dataset.rx_pos)})",
+            "Dataset "
+            f"{i}: TX set {tx_set_id}, RX set {rx_set_id} "
+            f"(rx_count={len(single_dataset.rx_pos)})",
         )
 
-        set_info = _process_single_dataset_to_binary(single_dataset, base_dir, tx_set_id, rx_set_id)
+        set_info = process_single_dataset_to_binary(single_dataset, base_dir, tx_set_id, rx_set_id)
         tx_rx_sets_info.append(set_info)
 
     return tx_rx_sets_info
@@ -110,6 +114,44 @@ def _save_binary_array(arr: np.ndarray, file_path: str | Path) -> None:
         raise
 
 
+def _trim_interactions(
+    inter: Any,
+    inter_pos: Any,
+    max_paths: int,
+    min_inter_dims: int,
+) -> tuple[Any, Any]:
+    """Trim interaction arrays to a maximum number of paths."""
+    trimmed_inter = inter
+    trimmed_inter_pos = inter_pos
+
+    if inter is not None and hasattr(inter, "ndim") and inter.ndim >= min_inter_dims:
+        trimmed_inter = inter[:, :max_paths]
+
+    if inter_pos is not None and hasattr(inter_pos, "ndim") and inter_pos.ndim >= min_inter_dims:
+        trimmed_inter_pos = inter_pos[:, :max_paths]
+
+    return trimmed_inter, trimmed_inter_pos
+
+
+def _persist_properties(
+    properties: dict[str, Any],
+    base_dir: Path,
+    tx_set_id: int,
+    rx_set_id: int,
+) -> None:
+    """Save non-empty dataset properties to disk."""
+    for name, data in properties.items():
+        if data is None or not hasattr(data, "dtype"):
+            continue
+
+        try:
+            file_path = base_dir / f"{name}_tx_{tx_set_id}_rx_{rx_set_id}.bin"
+            save_binary_array(data, file_path)
+            print(f"Saved {name} for RX set {rx_set_id}, TX set {tx_set_id} to {file_path}")
+        except (OSError, ValueError) as e:
+            print(f"Error saving {name} for RX set {rx_set_id}, TX set {tx_set_id}: {e}")
+
+
 def _process_single_dataset_to_binary(
     dataset: Any,
     base_dir: Path,
@@ -128,7 +170,8 @@ def _process_single_dataset_to_binary(
         dict: TX/RX set information
 
     """
-    MAX_PATHS = 5  # Limit number of paths stored
+    max_paths = 5  # Limit number of paths stored
+    min_inter_dims = 2
 
     # Validation: Check if dataset has basic required data
     if not hasattr(dataset, "rx_pos") or len(dataset.rx_pos) == 0:
@@ -175,11 +218,7 @@ def _process_single_dataset_to_binary(
     inter = dataset.inter if hasattr(dataset, "inter") else None
     inter_pos = dataset.inter_pos if hasattr(dataset, "inter_pos") else None
 
-    if inter is not None and hasattr(inter, "ndim") and inter.ndim >= 2:
-        inter = inter[:, :MAX_PATHS]
-
-    if inter_pos is not None and hasattr(inter_pos, "ndim") and inter_pos.ndim >= 2:
-        inter_pos = inter_pos[:, :MAX_PATHS]
+    inter, inter_pos = _trim_interactions(inter, inter_pos, max_paths, min_inter_dims)
 
     # Collect all properties to save
     properties = {
@@ -197,26 +236,19 @@ def _process_single_dataset_to_binary(
     }
 
     # Save each property as a binary file with TX/RX set identifier
-    for name, data in properties.items():
-        if data is not None:
-            try:
-                file_path = base_dir / f"{name}_tx_{tx_set_id}_rx_{rx_set_id}.bin"
-                _save_binary_array(data, file_path)
-                print(f"Saved {name} for RX set {rx_set_id}, TX set {tx_set_id} to {file_path}")
-            except Exception as e:
-                print(f"Error saving {name} for RX set {rx_set_id}, TX set {tx_set_id}: {e}")
+    _persist_properties(properties, base_dir, tx_set_id, rx_set_id)
 
     # Process scene data if available
     if hasattr(dataset, "scene") and dataset.scene is not None:
         try:
-            _process_scene_to_binary(dataset.scene, base_dir)
-        except Exception as e:
+            process_scene_to_binary(dataset.scene, base_dir)
+        except (OSError, RuntimeError) as e:
             print(f"Error processing scene data: {e}")
 
     return set_info
 
 
-def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:
+def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:  # noqa: C901, PLR0912
     """Process scene data to binary format.
 
     Args:
@@ -253,7 +285,7 @@ def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:
 
         buildings_array = np.array(buildings, dtype=np.float32)
         file_path = base_dir / "buildings.bin"
-        _save_binary_array(buildings_array, file_path)
+        save_binary_array(buildings_array, file_path)
         print(f"Saved buildings to {file_path}")
 
     # Process terrain objects
@@ -278,7 +310,7 @@ def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:
 
         terrain_array = np.array(terrain, dtype=np.float32)
         file_path = base_dir / "terrain.bin"
-        _save_binary_array(terrain_array, file_path)
+        save_binary_array(terrain_array, file_path)
         print(f"Saved terrain to {file_path}")
 
     # Process vegetation objects
@@ -303,5 +335,11 @@ def _process_scene_to_binary(scene: Any, base_dir: Path) -> None:
 
         vegetation_array = np.array(vegetation, dtype=np.float32)
         file_path = base_dir / "vegetation.bin"
-        _save_binary_array(vegetation_array, file_path)
+        save_binary_array(vegetation_array, file_path)
         print(f"Saved vegetation to {file_path}")
+
+# Public aliases for external callers and tests.
+save_binary_array = _save_binary_array
+process_single_dataset_to_binary = _process_single_dataset_to_binary
+process_macro_dataset = _process_macro_dataset
+process_scene_to_binary = _process_scene_to_binary

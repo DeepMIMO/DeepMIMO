@@ -1,4 +1,5 @@
 # %% Imports
+"""Batch convert or upload DeepMIMO scenarios and collect timing/errors."""
 
 import json
 import os

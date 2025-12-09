@@ -5,6 +5,7 @@ import numpy as np
 from deepmimo import Dataset
 from deepmimo import consts as c
 from deepmimo.generator.channel import ChannelParameters
+from deepmimo.generator.dataset import DynamicDataset
 
 
 def test_full_generation_flow() -> None:
@@ -92,8 +93,6 @@ def test_dynamic_dataset_flow() -> None:
 
     ds1.scene = type("Scene", (), {"objects": MockObjectList()})()
     ds2.scene = type("Scene", (), {"objects": MockObjectList()})()
-
-    from deepmimo.generator.dataset import DynamicDataset
 
     dyn = DynamicDataset([ds1, ds2], name="dyn_test")
 

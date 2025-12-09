@@ -1,10 +1,13 @@
 # %%
+"""Utilities for zooming and saving ray-tracing images."""
+
 from pathlib import Path
 
 from PIL import Image
 
 
 def process_image(input_path: str, output_path: str, zoom_factor: float = 1.5) -> None:
+    """Resize, zoom, and crop an image before saving to a new path."""
     # Open the image
     img = Image.open(input_path)
 
@@ -36,28 +39,28 @@ def process_image(input_path: str, output_path: str, zoom_factor: float = 1.5) -
 # %%
 if __name__ == "__main__":
     # Example usage
-    folder = "M:/AutoRayTracingSionna/all_runs_sionna/run_04-07-2025_18H13M23S/city_1_losangeles_3p5_s/figs/"
-    fold_name = Path(str(Path(str(Path(folder).parent).parent).name))
-    input_image = folder + f"{fold_name}_processed.png"  # Replace with your input image path
-    output_image = (
-        folder + f"{fold_name}_processed_zoomed.png"
-    )  # Replace with your desired output path
+    base_run = Path("M:/AutoRayTracingSionna/all_runs_sionna/run_04-07-2025_18H13M23S")
+    folder = base_run / "city_1_losangeles_3p5_s" / "figs"
+    fold_name = folder.parent.name
+    # Replace with your input/output image paths as needed
+    input_image = folder / f"{fold_name}_processed.png"
+    output_image = folder / f"{fold_name}_processed_zoomed.png"
 
     try:
         process_image(input_image, output_image)
         print(f"Image processed successfully! Saved as {output_image}")
-    except Exception as e:
+    except (OSError, ValueError) as e:
         print(f"An error occurred: {e!s}")
 
     # %%
 
-    main_folder = "M:/AutoRayTracingSionna/all_runs_sionna/run_04-07-2025_18H13M23S/"
-    for folder in [p.name for p in Path(main_folder).iterdir()]:
+    main_folder = base_run
+    for folder in [p.name for p in main_folder.iterdir()]:
         if folder.startswith("._") or not folder.startswith("city_"):
             continue
         print(f"running: {folder}")
-        input_image = main_folder + folder + f"/figs/{folder}_processed.png"
-        output_image = main_folder + folder + f"/figs/{folder}_processed_zoomed.png"
-        process_image(input_image, output_image)
+        input_image = main_folder / folder / "figs" / f"{folder}_processed.png"
+        output_image = main_folder / folder / "figs" / f"{folder}_processed_zoomed.png"
+        process_image(str(input_image), str(output_image))
 
 # %%

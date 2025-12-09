@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 """# Visualization and Scene.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/2_visualization.py)

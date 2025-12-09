@@ -82,6 +82,10 @@ def _get_gps_bbox(
     return min_lat, min_lon, max_lat, max_lon
 
 
+# Public alias for tests and external callers.
+get_gps_bbox = _get_gps_bbox
+
+
 @dataclass
 class InsiteRayTracingParameters(RayTracingParameters):
     """Wireless Insite ray tracing parameter representation.

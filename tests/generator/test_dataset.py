@@ -1,3 +1,5 @@
+"""Dataset tests for DeepMIMO generator."""
+
 import numpy as np
 import pytest
 
@@ -21,8 +23,9 @@ def sample_dataset():
 
     # Initialize required arrays with mock data
     ds.los = np.ones(5, dtype=bool)
-    ds.power = np.random.rand(5, 1) * -80
-    ds.path_loss = np.random.rand(5) * 100
+    rng = np.random.default_rng()
+    ds.power = rng.random((5, 1)) * -80
+    ds.path_loss = rng.random(5) * 100
 
     # Mock channel params
     class MockChannelParams:
@@ -31,14 +34,14 @@ def sample_dataset():
             self.ue_antenna = {c.PARAMSET_ANT_ROTATION: np.zeros((5, 3))}
             self.freq_domain = False
             self.ofdm_params = None
-            self.validate = lambda x: None
+            self.validate = lambda _value: None
             self.deepcopy = lambda: self
 
         def __getitem__(self, key):
             return getattr(self, key, None)
 
     ds.ch_params = MockChannelParams()
-    ds._clear_cache_rotated_angles = lambda: None
+    ds.clear_cache_rotated_angles()
 
     return ds
 
@@ -46,7 +49,8 @@ def sample_dataset():
 def test_dataset_initialization() -> None:
     """Test dataset initialization defaults."""
     ds = Dataset()
-    # Accessing properties on empty dataset should raise KeyError because they depend on missing data
+    # Accessing properties on empty dataset should raise KeyError because
+    # they depend on missing data
     with pytest.raises(KeyError):
         _ = ds.n_ue
     with pytest.raises(KeyError):
@@ -196,7 +200,7 @@ def test_compute_num_interactions() -> None:
         [[0, 1, 9, 10, 99, 100, 999, 1000], [np.nan, 0, 0, 0, 0, 0, 0, 0]], dtype=float
     )
 
-    n_inter = ds._compute_num_interactions()
+    n_inter = ds.compute_num_interactions()
     expected_u0 = [0, 1, 1, 2, 2, 3, 3, 4]
     np.testing.assert_array_equal(n_inter[0], expected_u0)
     assert np.isnan(n_inter[1, 0])
@@ -227,5 +231,5 @@ def test_get_idxs(sample_dataset) -> None:
     assert len(idxs) == 2
 
     # Invalid mode
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unknown mode"):
         ds.get_idxs("invalid_mode")

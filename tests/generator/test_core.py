@@ -12,12 +12,14 @@ from deepmimo.generator import core
 
 @pytest.fixture
 def mock_dataset_cls():
+    """Fixture mocking Dataset class within generator.core."""
     with patch("deepmimo.generator.core.Dataset") as mock:
         yield mock
 
 
 @pytest.fixture
 def mock_utils():
+    """Fixture providing patched core helpers and filesystem checks."""
     with (
         patch("deepmimo.generator.core.load_dict_from_json") as load_json,
         patch("deepmimo.generator.core.load_mat") as load_mat,
@@ -105,21 +107,21 @@ def test_validate_txrx_sets() -> None:
     }
 
     # Test "all"
-    sets = core._validate_txrx_sets("all", txrx_dict, "tx")
+    sets = core.validate_txrx_sets("all", txrx_dict, "tx")
     assert 0 in sets
     assert len(sets[0]) == 5
 
-    sets = core._validate_txrx_sets("all", txrx_dict, "rx")
+    sets = core.validate_txrx_sets("all", txrx_dict, "rx")
     assert 1 in sets
     assert len(sets[1]) == 10
 
     # Test list of IDs
-    sets = core._validate_txrx_sets([0], txrx_dict, "tx")
+    sets = core.validate_txrx_sets([0], txrx_dict, "tx")
     assert 0 in sets
     assert len(sets[0]) == 5
 
     # Test dict
-    sets = core._validate_txrx_sets({0: [0, 1]}, txrx_dict, "tx")
+    sets = core.validate_txrx_sets({0: [0, 1]}, txrx_dict, "tx")
     assert 0 in sets
     assert len(sets[0]) == 2
     assert sets[0][0] == 0

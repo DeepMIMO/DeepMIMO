@@ -1,9 +1,12 @@
 # %%
+"""Utility to move InSite folders out of scenario directories."""
+
 import shutil
 from pathlib import Path
 
 
-def move_insite_folder_out(folder, safe_mode=True) -> None:
+def move_insite_folder_out(folder: str | Path, *, safe_mode: bool = True) -> None:
+    """Move contents of an 'insite' subfolder up one level."""
     insite_path = str(Path(folder) / "insite")
 
     if Path(insite_path).is_dir():

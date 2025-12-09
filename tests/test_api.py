@@ -10,6 +10,8 @@ from deepmimo import api
 
 
 class TestDeepMIMOAPI(unittest.TestCase):
+    """API unit tests for uploads, downloads, and helpers."""
+
     @patch("deepmimo.api.requests.get")
     def test_dm_upload_api_call_auth_fail(self, mock_get) -> None:
         """Test upload authorization failure."""
@@ -23,7 +25,7 @@ class TestDeepMIMOAPI(unittest.TestCase):
             f.write("dummy content")
 
         try:
-            result = api._dm_upload_api_call("test_file.zip", "fake_key")
+            result = api.dm_upload_api_call("test_file.zip", "fake_key")
             assert result is None
         finally:
             test_file = Path("test_file.zip")
@@ -54,7 +56,7 @@ class TestDeepMIMOAPI(unittest.TestCase):
             f.write("dummy content")
 
         try:
-            result = api._dm_upload_api_call("test_file.zip", "fake_key")
+            result = api.dm_upload_api_call("test_file.zip", "fake_key")
             assert result == "test_file.zip"
         finally:
             test_file = Path("test_file.zip")
@@ -72,7 +74,7 @@ class TestDeepMIMOAPI(unittest.TestCase):
             },
         }
 
-        result = api._process_params_data(params_dict)
+        result = api.process_params_data(params_dict)
 
         primary = result["primaryParameters"]
         assert primary["bands"]["mmW"] is True
@@ -92,7 +94,7 @@ Title line
 - Item 1
 - Item 2
 """
-        result = api._generate_key_components(summary_str)
+        result = api.generate_key_components(summary_str)
         assert len(result["sections"]) == 2
         assert result["sections"][0]["name"] == "Section 1"
         assert result["sections"][1]["name"] == "Section 2"
@@ -133,11 +135,11 @@ Title line
 
     def test_download_url(self) -> None:
         """Test download URL generation."""
-        url = api._download_url("test_scen", rt_source=False)
+        url = api.download_url("test_scen", rt_source=False)
         assert "filename=test_scen.zip" in url
         assert "rt_source=true" not in url
 
-        url_rt = api._download_url("test_scen", rt_source=True)
+        url_rt = api.download_url("test_scen", rt_source=True)
         assert "rt_source=true" in url_rt
 
     @patch("deepmimo.api.requests.post")

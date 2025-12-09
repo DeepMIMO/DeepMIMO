@@ -19,8 +19,8 @@ static_dir = str(Path("docs") / "_static")
 Path(static_dir).mkdir(parents=True, exist_ok=True)
 
 
-def save_fig(name, tight=True, dpi=300) -> None:
-    """Helper to save figures with consistent settings."""
+def save_fig(name: str, *, tight: bool = True, dpi: int = 300) -> None:
+    """Save a figure with consistent settings."""
     if tight:
         plt.tight_layout()
     plt.savefig(str(Path(static_dir) / f"{name}.png"), dpi=dpi, bbox_inches="tight")

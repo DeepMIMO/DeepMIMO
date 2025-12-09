@@ -6,6 +6,7 @@ from deepmimo.converters.wireless_insite import xml_parser
 
 
 def test_xml_to_dict() -> None:
+    """Convert XML tree to dict and verify nested values."""
     xml = """
     <root>
         <remcom::rxapi::Child Value="10" />
@@ -15,13 +16,14 @@ def test_xml_to_dict() -> None:
         </remcom::rxapi::List>
     </root>
     """
-    root = ET.fromstring(xml.replace("::", "_"))  # Simulate clean XML
+    root = ET.fromstring(xml.replace("::", "_"))  # Simulate clean XML  # noqa: S314
     d = xml_parser.xml_to_dict(root)
     assert d["remcom_rxapi_Child"] == 10
     assert d["remcom_rxapi_List"]["Item"] == ["A", "B"]
 
 
 def test_parse_insite_xml(tmp_path) -> None:
+    """Parse a small InSite XML file from disk and validate keys."""
     xml_content = """<remcom::rxapi::Job>
         <remcom::rxapi::Scene>
             <remcom::rxapi::TxRxSetList>

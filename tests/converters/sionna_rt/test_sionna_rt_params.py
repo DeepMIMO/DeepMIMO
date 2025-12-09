@@ -8,6 +8,7 @@ from deepmimo.converters.sionna_rt import sionna_rt_params
 
 @patch("deepmimo.converters.sionna_rt.sionna_rt_params.load_pickle")
 def test_read_rt_params(mock_load) -> None:
+    """Load RT parameters from Sionna pickles and validate mapping."""
     raw_params = {
         "los": True,
         "tx_array_size": 1,

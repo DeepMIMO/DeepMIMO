@@ -449,6 +449,10 @@ class Dataset(DotDict):
         for k in rotated_angles_keys & self.keys():
             super().__delitem__(k)
 
+    def clear_cache_rotated_angles(self: Any) -> None:
+        """Public wrapper around `_clear_cache_rotated_angles`."""
+        self._clear_cache_rotated_angles()
+
     def _compute_single_array_response(self: Any, ant_params: dict, theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
         """Internal method to compute array response for a single antenna array.
 
@@ -555,6 +559,10 @@ class Dataset(DotDict):
         result[non_zero] = np.floor(np.log10(self.inter[non_zero])) + 1
         return result
 
+    def compute_num_interactions(self: Any) -> np.ndarray:
+        """Public wrapper around `_compute_num_interactions`."""
+        return self._compute_num_interactions()
+
     def _compute_inter_int(self: Any) -> np.ndarray:
         """Compute the interaction integer, with NaN values replaced by -1.
 
@@ -624,6 +632,10 @@ class Dataset(DotDict):
         grid_size = np.array([len(x_positions), len(y_positions)])
         grid_spacing = np.array([np.mean(np.diff(x_positions)) if len(x_positions) > 1 else 0, np.mean(np.diff(y_positions)) if len(y_positions) > 1 else 0])
         return {"grid_size": grid_size, "grid_spacing": grid_spacing}
+
+    def compute_grid_info(self: Any) -> dict[str, np.ndarray]:
+        """Public wrapper around `_compute_grid_info`."""
+        return self._compute_grid_info()
 
     def has_valid_grid(self: Any) -> bool:
         """Check if the dataset has a valid grid structure.
@@ -817,6 +829,10 @@ class Dataset(DotDict):
             path_mask = np.logical_and(path_mask, rx_mask)
         return self._trim_by_path(path_mask)
 
+    def trim_by_fov(self: Any, bs_fov: np.ndarray | list | tuple | None=None, ue_fov: np.ndarray | list | tuple | None=None) -> Dataset:
+        """Public wrapper around `_trim_by_fov`."""
+        return self._trim_by_fov(bs_fov=bs_fov, ue_fov=ue_fov)
+
     def _trim_by_path_depth(self: Any, path_depth: int) -> Dataset:
         """Trim the dataset to keep only paths with at most the specified number of interactions.
 
@@ -831,6 +847,10 @@ class Dataset(DotDict):
         n_interactions = self._compute_num_interactions()
         path_mask = n_interactions <= path_depth
         return self._trim_by_path(path_mask)
+
+    def trim_by_path_depth(self: Any, path_depth: int) -> Dataset:
+        """Public wrapper around `_trim_by_path_depth`."""
+        return self._trim_by_path_depth(path_depth)
 
     def _trim_by_path_type(self: Any, allowed_types: list[str]) -> Dataset:
         """Trim the dataset to keep only paths with allowed interaction types.
@@ -858,6 +878,10 @@ class Dataset(DotDict):
                 is_valid = all(int(digit) in allowed_codes for digit in inter_str)
                 path_mask[user_idx, path_idx] = is_valid
         return self._trim_by_path(path_mask)
+
+    def trim_by_path_type(self: Any, allowed_types: list[str]) -> Dataset:
+        """Public wrapper around `_trim_by_path_type`."""
+        return self._trim_by_path_type(allowed_types)
 
     def trim(self: Any, *, idxs: np.ndarray | None=None, bs_fov: np.ndarray | list | tuple | None=None, ue_fov: np.ndarray | list | tuple | None=None, path_depth: int | None=None, path_types: list[str] | None=None) -> Dataset:
         """Return a new dataset after applying multiple trims in optimal order.

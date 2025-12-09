@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 """# Doppler and Mobility.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/5_doppler_mobility.py)
@@ -126,7 +127,7 @@ if hasattr(dataset, "doppler") and dataset.doppler is not None:
     plt.xlabel("Doppler Shift (Hz)")
     plt.ylabel("Count")
     plt.title("Doppler Spectrum Distribution")
-    plt.grid(True)
+    plt.grid(visible=True)
     plt.show()
 
 # %% [markdown]
@@ -149,7 +150,7 @@ plt.plot(positions_over_time[:, 0], positions_over_time[:, 1], "o-")
 plt.xlabel("X (m)")
 plt.ylabel("Y (m)")
 plt.title("Linear Motion Trajectory")
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -179,7 +180,7 @@ plt.xlabel("X (m)")
 plt.ylabel("Y (m)")
 plt.title("Circular Motion Trajectory")
 plt.axis("equal")
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]

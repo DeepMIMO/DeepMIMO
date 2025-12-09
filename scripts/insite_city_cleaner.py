@@ -1,12 +1,14 @@
 # %%
+"""Utilities for cleaning InSite-generated city folders."""
+
 import shutil
 from pathlib import Path
 
 import pandas as pd
 
 
-def safe_delete(path, safe_mode=True) -> None:
-    """Helper function to delete files or directories with safe mode support."""
+def safe_delete(path: str | Path, *, safe_mode: bool = True) -> None:
+    """Delete a file or directory unless running in safe mode."""
     print(f"{'[SAFE MODE] ' if safe_mode else ''}Would delete: {path}")
     if not safe_mode:
         if Path(path).is_dir():
@@ -15,7 +17,13 @@ def safe_delete(path, safe_mode=True) -> None:
             Path(path).unlink()
 
 
-def clean_city_folders(csv_path, base_folder, safe_mode=True) -> None:
+def clean_city_folders(
+    csv_path: str | Path,
+    base_folder: str | Path,
+    *,
+    safe_mode: bool = True,
+) -> None:
+    """Clean generated city folders using CSV mapping and optional safe mode."""
     print(f"{'[SAFE MODE] ' if safe_mode else ''}Starting folder processing...")
 
     # Read the CSV file
@@ -36,9 +44,8 @@ def clean_city_folders(csv_path, base_folder, safe_mode=True) -> None:
 
         if matching_folders:
             bbox_folder = matching_folders[0]  # Take the first matching folder
-            print(
-                f"{'[SAFE MODE] ' if safe_mode else ''}Found matching folder for coordinates {bbox_str}",
-            )
+            prefix = "[SAFE MODE] " if safe_mode else ""
+            print(f"{prefix}Found matching folder for coordinates {bbox_str}")
 
             # First, handle the osm folder and other root level files
             print(f"\n{'[SAFE MODE] ' if safe_mode else ''}Cleaning root directory...")
@@ -58,13 +65,13 @@ def clean_city_folders(csv_path, base_folder, safe_mode=True) -> None:
             else:
                 process_folder_contents(bbox_folder, safe_mode)
         else:
-            print(
-                f"{'[SAFE MODE] ' if safe_mode else ''}WARNING: No matching folder found for coordinates {bbox_str}",
-            )
+            prefix = "[SAFE MODE] " if safe_mode else ""
+            print(f"{prefix}WARNING: No matching folder found for coordinates {bbox_str}")
             continue
 
 
-def process_folder_contents(folder_path, safe_mode=True) -> None:
+def process_folder_contents(folder_path: str | Path, *, safe_mode: bool = True) -> None:
+    """Inspect folder for InSite artifacts and optionally remove them."""
     # Find the insite folder
     insite_folder = None
     for item in [p.name for p in Path(folder_path).iterdir()]:
@@ -85,9 +92,8 @@ def process_folder_contents(folder_path, safe_mode=True) -> None:
 
         if not safe_mode:
             Path(insite_folder).rmdir()
-        print(
-            f"{'[SAFE MODE] ' if safe_mode else ''}Would remove empty insite folder: {insite_folder}",
-        )
+        prefix = "[SAFE MODE] " if safe_mode else ""
+        print(f"{prefix}Would remove empty insite folder: {insite_folder}")
 
     # Delete specific folders and files
     items_to_delete = ["intermediate_files", "study_area_mat", "parameters.txt"]
@@ -101,7 +107,8 @@ def process_folder_contents(folder_path, safe_mode=True) -> None:
 if __name__ == "__main__":
     # Replace these paths with your actual paths
     csv_path = r"F:\deepmimo_loop_ready\base.csv"  # Path to your CSV file
-    base_folder = r"F:\city_1m_3r_diff+scat_28"  # Current directory or specify the path where bbox folders are
+    base_folder = r"F:\city_1m_3r_diff+scat_28"
+    # Current directory or specify the path where bbox folders are
 
     # Run in safe mode by default (True). Set to False to actually perform the operations
     safe_mode = False

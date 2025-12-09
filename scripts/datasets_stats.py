@@ -1,4 +1,8 @@
+"""Compute basic statistics for DeepMIMO city scenarios."""
+
 import deepmimo as dm
+
+CITY_INDEX_THRESHOLD = 20
 
 scen_list = dm.get_available_scenarios()
 
@@ -8,7 +12,7 @@ n_active_list = []
 for scen in scen_list:
     if "city_" in scen:
         city_idx = int(scen.split("_")[1])
-        if city_idx > 20:
+        if city_idx > CITY_INDEX_THRESHOLD:
             print(scen)
             dataset = dm.load(scen)[0]
             n_ue_list.append(dataset.n_ue)

@@ -21,6 +21,7 @@ sionna_exporter(scene, path_list, my_compute_path_params, save_folder)
 
 """
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -44,6 +45,11 @@ except ImportError:
     raise ImportError(
         msg,
     )
+
+
+def _get_scene_objects(scene: Scene) -> dict[str, Any]:
+    """Return scene objects dictionary, supporting legacy private attribute."""
+    return getattr(scene, "scene_objects", getattr(scene, "_scene_objects", {}))
 
 
 def _paths_to_dict(paths: Paths) -> list[dict]:
@@ -124,12 +130,13 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
         index per object.
 
     """
+    scene_objects = _get_scene_objects(scene)
     obj_materials = []
-    for obj in scene._scene_objects.values():
+    for obj in scene_objects.values():
         obj_materials += [obj.radio_material]
     unique_materials = set(obj_materials)
     unique_mat_names = [mat.name for mat in unique_materials]
-    n_objs = len(scene._scene_objects)
+    n_objs = len(scene_objects)
     obj_mat_indices = np.zeros(n_objs, dtype=int)
     for obj_idx, obj_mat in enumerate(obj_materials):
         obj_mat_indices[obj_idx] = unique_mat_names.index(obj_mat.name)
@@ -289,7 +296,8 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
     vertex_offset = 0
 
     sionna_v1 = is_sionna_v1()
-    for obj_name, obj in scene._scene_objects.items():
+    scene_objects = _get_scene_objects(scene)
+    for obj_name, obj in scene_objects.items():
         # Get vertices
         n_v = obj._mi_shape.vertex_count()
         obj_vertices = np.array(obj._mi_shape.vertex_position(np.arange(n_v)))
@@ -366,7 +374,7 @@ def sionna_exporter(
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
     vertice_matrix, obj_index_map = export_scene_buildings(scene)
 
-    Path(save_folder).mkdir(parents=True, exist_ok=True)
+    os.makedirs(save_folder, exist_ok=True)
 
     save_vars_dict = {
         # filename: variable_to_save

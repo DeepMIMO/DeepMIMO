@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 """# Detailed Channel Generation.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/3_channel_generation.py)
@@ -83,7 +84,7 @@ plt.stem(np.abs(cir))
 plt.xlabel("Path Index")
 plt.ylabel("|h|")
 plt.title(f"Channel Impulse Response - User {user_idx}")
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -115,7 +116,7 @@ plt.plot(np.abs(freq_response))
 plt.xlabel("Subcarrier Index")
 plt.ylabel("|H[k]|")
 plt.title(f"Channel Frequency Response - User {user_idx}")
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]

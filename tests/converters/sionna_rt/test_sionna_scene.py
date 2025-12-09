@@ -10,6 +10,7 @@ from deepmimo.converters.sionna_rt import sionna_scene
 @patch("deepmimo.converters.sionna_rt.sionna_scene.load_pickle")
 @patch("deepmimo.converters.sionna_rt.sionna_scene.get_object_faces")
 def test_read_scene(mock_get_faces, mock_load) -> None:
+    """Read Sionna scene pickles and build DeepMIMO scene objects."""
     # Mock vertices: 4 vertices forming a quad
     mock_vertices = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]])
     mock_objects = {"floor": (0, 4)}  # name -> range

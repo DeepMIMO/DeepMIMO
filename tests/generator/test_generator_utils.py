@@ -6,6 +6,7 @@ from deepmimo.generator import generator_utils as gu
 
 
 def test_get_linear_idxs() -> None:
+    """Return linear indices along a line between two points."""
     # 2D case
     rx_pos = np.array([[0, 0], [1, 1], [2, 2], [3, 3]], dtype=float)
     start = [0, 0]
@@ -19,12 +20,14 @@ def test_get_linear_idxs() -> None:
 
 
 def test_dbw2watt() -> None:
+    """Convert decibel-watts values to watts."""
     assert gu.dbw2watt(0) == 1.0
     assert gu.dbw2watt(10) == 10.0
     assert gu.dbw2watt(20) == 100.0
 
 
 def test_get_uniform_idxs() -> None:
+    """Select uniformly spaced user indices across a grid."""
     # Grid 10x10 = 100 users.
     n_ue = 100
     grid_size = np.array([10, 10])
@@ -50,6 +53,7 @@ def test_get_uniform_idxs() -> None:
 
 
 def test_get_grid_idxs() -> None:
+    """Map linear user index to 2D grid coordinates."""
     grid_size = np.array([10, 5])  # 10 cols, 5 rows
     # Row 0: 0..9
     idxs = gu.get_grid_idxs(grid_size, "row", 0)
@@ -61,6 +65,7 @@ def test_get_grid_idxs() -> None:
 
 
 def test_get_idxs_with_limits() -> None:
+    """Filter indices based on coordinate limits."""
     pos = np.array([[0, 0, 0], [1, 1, 1], [2, 2, 2]])
     # x < 1.5 -> indices 0, 1
     idxs = gu.get_idxs_with_limits(pos, x_max=1.5)

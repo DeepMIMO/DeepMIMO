@@ -10,17 +10,18 @@ from deepmimo.converters.aodt import aodt_paths
 
 
 def test_transform_interaction_types() -> None:
+    """Transform AODT interaction labels to DeepMIMO codes."""
     # LoS: only emission and reception
     types_los = np.array(["emission", "reception"], dtype=object)
-    assert aodt_paths._transform_interaction_types(types_los) == c.INTERACTION_LOS
+    assert aodt_paths.transform_interaction_types(types_los) == c.INTERACTION_LOS
 
     # Reflection
     types_ref = np.array(["emission", "reflection", "reception"], dtype=object)
-    assert aodt_paths._transform_interaction_types(types_ref) == 1.0
+    assert aodt_paths.transform_interaction_types(types_ref) == 1.0
 
     # Ref + Diff
     types_mixed = np.array(["emission", "reflection", "diffraction", "reception"], dtype=object)
-    assert aodt_paths._transform_interaction_types(types_mixed) == 12.0
+    assert aodt_paths.transform_interaction_types(types_mixed) == 12.0
 
 
 @patch("deepmimo.converters.aodt.aodt_paths.pd")
@@ -100,3 +101,4 @@ def test_read_paths(mock_save_mat, mock_mkdir, mock_exists, mock_pd) -> None:
 
     # Verify save_mat called
     assert mock_save_mat.called
+    mock_mkdir.assert_called()

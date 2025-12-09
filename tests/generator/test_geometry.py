@@ -1,3 +1,5 @@
+"""Tests for geometry helpers used in visualization and array processing."""
+
 import numpy as np
 import pytest
 
@@ -28,6 +30,7 @@ from deepmimo.generator.geometry import (
 
 
 def test_array_response_batch_matches_single() -> None:
+    """Compare batch array response output to single-element calculations."""
     # Parameters
     panel_size = (4, 2)  # 8 antennas
     kd = 2 * np.pi * 0.5
@@ -67,6 +70,7 @@ def test_array_response_batch_matches_single() -> None:
 
 
 def test_array_response_batch_edge_cases() -> None:
+    """Handle NaN angles in batch array response calculation."""
     panel_size = (2, 2)
     kd = 2 * np.pi * 0.5
     ant_ind = ant_indices(panel_size)
@@ -109,6 +113,7 @@ def test_array_response_batch_edge_cases() -> None:
     ],
 )
 def test_apply_fov_single_vs_batch(fov_deg, theta_rad, phi_rad, expected) -> None:
+    """Check FoV masks match between scalar and batch implementations."""
     mask_single = apply_FoV(fov=fov_deg, theta=theta_rad, phi=phi_rad)
     mask_batch = apply_FoV_batch(
         fov=fov_deg, theta=np.array([[theta_rad]]), phi=np.array([[phi_rad]])
@@ -117,6 +122,7 @@ def test_apply_fov_single_vs_batch(fov_deg, theta_rad, phi_rad, expected) -> Non
 
 
 def test_apply_fov_batch_equivalence_random() -> None:
+    """Apply FOV filter to random batches and compare vectorized vs scalar."""
     rng = np.random.default_rng(0)
     n_users, n_paths = 50, 7
     theta = rng.uniform(0, np.pi, (n_users, n_paths))
@@ -134,6 +140,7 @@ def test_apply_fov_batch_equivalence_random() -> None:
 
 
 def test_rotate_angles_zero_rotation() -> None:
+    """Rotation by zero should leave angles unchanged."""
     theta_single = np.array([45.0])  # degrees
     phi_single = np.array([90.0])  # degrees
     rotation_zero = np.array([0.0, 0.0, 0.0])  # degrees
@@ -151,6 +158,7 @@ def test_rotate_angles_zero_rotation() -> None:
 
 
 def test_rotate_angles_batch_equivalence() -> None:
+    """Batch and single angle rotations should yield same results."""
     rng = np.random.default_rng(1)
     n_users, n_paths = 20, 4
     theta = rng.uniform(0, 180, (n_users, n_paths))  # degrees
@@ -182,10 +190,11 @@ def test_rotate_angles_batch_equivalence() -> None:
 
 
 def test_steering_vec_properties() -> None:
+    """Ensure steering vector shapes match expected panel dimensions."""
     panel_size = (4, 2)
-    N = panel_size[0] * panel_size[1]
+    n_elements = panel_size[0] * panel_size[1]
     vec = steering_vec(panel_size, phi=30.0, theta=20.0, spacing=0.5)
-    assert vec.shape in ((N, 1), (N,))
+    assert vec.shape in ((n_elements, 1), (n_elements,))
     if vec.ndim == 2:
         vec = vec.ravel()
     np.testing.assert_allclose(np.linalg.norm(vec), 1.0, rtol=1e-12, atol=1e-12)

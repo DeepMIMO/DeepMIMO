@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 """# User Selection and Dataset Manipulation.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/4_dataset_manipulation.py)
@@ -78,7 +79,7 @@ plt.xlabel("X (m)")
 plt.ylabel("Y (m)")
 plt.title("Uniform User Sampling")
 plt.legend()
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -125,7 +126,7 @@ plt.xlabel("X (m)")
 plt.ylabel("Y (m)")
 plt.title("Linear Path Sampling")
 plt.legend()
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -164,7 +165,7 @@ plt.xlabel("X (m)")
 plt.ylabel("Y (m)")
 plt.title("Rectangular Zone Filtering")
 plt.legend()
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -199,7 +200,7 @@ plt.xlabel("X (m)")
 plt.ylabel("Y (m)")
 plt.title("LOS vs NLOS Users")
 plt.legend()
-plt.grid(True)
+plt.grid(visible=True)
 plt.show()
 
 # %% [markdown]
@@ -239,7 +240,7 @@ if hasattr(dataset, "interactions"):
     plt.ylabel("Y (m)")
     plt.title("Users with Single-Bounce Paths")
     plt.legend()
-    plt.grid(True)
+    plt.grid(visible=True)
     plt.show()
 else:
     print("Interaction data not available")
@@ -302,7 +303,7 @@ if len(combined_idxs) > 0:
     plt.ylabel("Y (m)")
     plt.title("Combined Filtering: Active + Zone + LOS")
     plt.legend()
-    plt.grid(True)
+    plt.grid(visible=True)
     plt.show()
 else:
     print("Skipping visualization as no users match all criteria")

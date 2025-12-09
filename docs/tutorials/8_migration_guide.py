@@ -1,3 +1,4 @@
+# ruff: noqa: N999
 """# Migration Guide: DeepMIMO v3 to v4.
 
 [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/8_migration_guide.py)
@@ -17,6 +18,10 @@
 
 ---
 """
+
+import numpy as np  # noqa: F401
+
+import deepmimo as dm
 
 # %%
 
@@ -63,7 +68,6 @@ print(v3_example)
 
 # %%
 # DeepMIMO v4 workflow:
-import deepmimo as dm
 
 # Download and load scenario
 scen_name = "asu_campus_3p5"

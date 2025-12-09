@@ -49,7 +49,7 @@ from .general_utils import (
 )
 
 
-def summary(scen_name: str, print_summary: bool = True) -> str | None:
+def summary(scen_name: str, *, print_summary: bool = True) -> str | None:  # noqa: PLR0915
     """Print a summary of the dataset."""
     # Initialize empty string to collect output
     summary_str = ""
@@ -180,8 +180,9 @@ def summary(scen_name: str, print_summary: bool = True) -> str | None:
     return summary_str
 
 
-def plot_summary(
+def plot_summary(  # noqa: PLR0912, PLR0915, C901
     scenario_name: str | None = None,
+    *,
     save_imgs: bool = False,
     dataset: Any = None,
     plot_idx: int | list[int] | None = None,
@@ -199,7 +200,7 @@ def plot_summary(
 
     """
     # Import load function here to avoid circular import
-    from .generator.core import load
+    from .generator.core import load  # noqa: PLC0415
 
     # Create figures directory if it doesn't exist
     temp_dir = "./figures"
@@ -234,7 +235,7 @@ def plot_summary(
             else:
                 plt.show()
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             print(f"Error generating image 1: {e!s}")
 
     # Image 2: Scenario summary (2D view)
@@ -281,7 +282,8 @@ def plot_summary(
                 rx_grid_dataset = dataset
 
             # Select users to plot
-            if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > 5000:
+            max_users_for_grid = 5000
+            if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > max_users_for_grid:
                 idxs = rx_grid_dataset.get_uniform_idxs([8, 8])
             else:
                 idxs = np.arange(rx_grid_dataset.n_ue)
@@ -304,9 +306,11 @@ def plot_summary(
                 "bbox_to_anchor": (0.5, 1.0),
                 "fontsize": 15,
             }
-            if n_bs == 3:
+            three_bs = 3
+            two_bs = 2
+            if n_bs == three_bs:
                 order = [2, 0, 3, 1, 4, 5]
-            elif n_bs == 2:
+            elif n_bs == two_bs:
                 order = [2, 0, 3, 1, 4]
             else:
                 order = [0, 1, 2, 3]
@@ -328,7 +332,7 @@ def plot_summary(
             else:
                 plt.show()
 
-        except Exception as e:
+        except (OSError, RuntimeError, ValueError) as e:
             print(f"Error generating images 2: {e!s}")
 
     # ISSUE: LoS is BS specific. Are we going to show the LoS for each BS?

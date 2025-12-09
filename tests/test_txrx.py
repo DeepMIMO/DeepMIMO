@@ -51,8 +51,11 @@ def test_get_txrx_sets(mock_get_path, mock_load_json) -> None:
         }
     }
     mock_load_json.return_value = mock_params
+    mock_get_path.return_value = "params.json"
 
     sets = get_txrx_sets("test_scen")
+    mock_get_path.assert_called_once_with("test_scen")
+    mock_load_json.assert_called_once_with("params.json")
     assert len(sets) == 2
     assert sets[0].name == "BS"
     assert sets[1].name == "UE"

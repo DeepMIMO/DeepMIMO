@@ -439,3 +439,12 @@ def _validate_txrx_sets(
             sets_dict[set_id] = np.arange(set_dict["num_points"])
 
     return sets_dict
+
+
+def validate_txrx_sets(
+    sets: dict[int, list | str] | list | str,
+    txrx_dict: dict[str, Any],
+    tx_or_rx: str = "tx",
+) -> dict[int, list]:
+    """Public wrapper around `_validate_txrx_sets`."""
+    return _validate_txrx_sets(sets, txrx_dict, tx_or_rx)

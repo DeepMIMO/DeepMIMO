@@ -12,33 +12,38 @@ sys.modules["pandas"] = mock_pandas
 sys.modules["pyarrow"] = MagicMock()
 
 
-from deepmimo.exporters import aodt_exporter
+from deepmimo.exporters import aodt_exporter  # noqa: E402
 
 
 @pytest.fixture
 def mock_client():
+    """Provide a mocked database client."""
     return MagicMock()
 
 
 def test_get_all_databases(mock_client) -> None:
+    """List all databases via mocked client query."""
     mock_client.execute.return_value = [("db1",), ("db2",)]
     dbs = aodt_exporter.get_all_databases(mock_client)
     assert dbs == ["db1", "db2"]
 
 
 def test_get_all_tables(mock_client) -> None:
+    """List all tables for a database via mocked client query."""
     mock_client.execute.return_value = [("table1",), ("table2",)]
     tables = aodt_exporter.get_all_tables(mock_client, "db")
     assert tables == ["table1", "table2"]
 
 
 def test_get_table_cols(mock_client) -> None:
+    """Fetch table columns via mocked client."""
     mock_client.execute.return_value = [("col1", "type"), ("col2", "type")]
     cols = aodt_exporter.get_table_cols(mock_client, "db", "table")
     assert cols == ["col1", "col2"]
 
 
 def test_load_table_to_df(mock_client) -> None:
+    """Load table rows into a DataFrame using mocked client and pandas."""
     mock_client.execute.side_effect = [
         [("col1", "type"), ("col2", "type")],  # get_table_cols
         [(1, "a"), (2, "b")],  # select *
@@ -61,12 +66,13 @@ def test_load_table_to_df(mock_client) -> None:
     mock_pandas.DataFrame = DummyDF
 
     df = aodt_exporter.load_table_to_df(mock_client, "db", "table")
-    # assert isinstance(df, pd.DataFrame) # pd.DataFrame is the mock class, df is instance of MagicMock, not strictly instance of pd.DataFrame unless we configure it.
+    # pd.DataFrame is mocked; df is a MagicMock-backed instance unless configured otherwise.
     assert df.columns == ["col1", "col2"]
     assert len(df) == 2
 
 
 def test_aodt_exporter_flow(mock_client, tmp_path) -> None:
+    """End-to-end flow for AODT exporter with mock tables."""
     # Setup mocks
     # ... (existing setup) ...
 
@@ -98,7 +104,7 @@ def test_aodt_exporter_flow(mock_client, tmp_path) -> None:
         # Spy on to_parquet
         table_df.to_parquet = MagicMock()
 
-        def load_side_effect(client, db, table):
+        def load_side_effect(_client, _db, table):
             if table == "time_info":
                 return time_df
             return table_df

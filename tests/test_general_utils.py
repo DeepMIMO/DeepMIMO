@@ -1,5 +1,6 @@
 """Tests for DeepMIMO general utilities."""
 
+import contextlib
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,10 +20,10 @@ def test_check_scen_name() -> None:
     """Test scenario name validation."""
     general_utils.check_scen_name("valid_name")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid scenario name"):
         general_utils.check_scen_name("invalid/name")
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Invalid scenario name"):
         general_utils.check_scen_name("invalid\\name")
 
 
@@ -30,14 +31,16 @@ def test_get_dirs(temp_dir) -> None:
     """Test directory getter functions."""
     # Mock config to return a path inside temp_dir
     # Patch deepmimo.general_utils.config
-    with patch("deepmimo.general_utils.config.get", return_value="scenarios"):
-        with patch("deepmimo.general_utils.os.getcwd", return_value=str(temp_dir)):
-            assert general_utils.get_scenarios_dir() == str(Path(temp_dir) / "scenarios")
+    with (
+        patch("deepmimo.general_utils.config.get", return_value="scenarios"),
+        patch("deepmimo.general_utils.os.getcwd", return_value=str(temp_dir)),
+    ):
+        assert general_utils.get_scenarios_dir() == str(Path(temp_dir) / "scenarios")
 
-            # Test get_scenario_folder
-            assert general_utils.get_scenario_folder("my_scen") == str(
-                Path(temp_dir) / "scenarios" / "my_scen"
-            )
+        # Test get_scenario_folder
+        assert general_utils.get_scenario_folder("my_scen") == str(
+            Path(temp_dir) / "scenarios" / "my_scen"
+        )
 
 
 def test_get_mat_filename() -> None:
@@ -146,21 +149,14 @@ def test_coordinate_conversion() -> None:
     assert np.isclose(sph[2, 2], np.pi / 2)
 
     # Test spherical to cartesian (inverse)
-    # NOTE: spherical_to_cartesian expects inclination (from z-axis) but cartesian_to_spherical
-    # returns elevation (from xy-plane). We need to convert before testing inverse.
+    # NOTE: spherical_to_cartesian expects inclination (from z-axis) but
+    # cartesian_to_spherical returns elevation (from xy-plane). Convert before testing inverse.
     sph_for_inverse = sph.copy()
     sph_for_inverse[..., 1] = (
         np.pi / 2 - sph[..., 2]
     )  # Inclination = pi/2 - Elevation (if Elevation is from horizon)
-    # Wait, cartesian_to_spherical returns (r, az, el).
-    # spherical_to_cartesian takes (r, inc, az). Note order change too!
-    # Let's check spherical_to_cartesian signature: (r, elevation, azimuth) where elevation is FROM Z AXIS?
-    # Actually, let's look at the implementation of spherical_to_cartesian in general_utils:
-    # cartesian_coords[..., 0] = r * np.sin(elevation) * np.cos(azimuth)  # x
-    # This implies 'elevation' param IS inclination (theta).
-    # And the order is (..., 1) -> elevation/inc, (..., 2) -> azimuth.
-    # cartesian_to_spherical returns: (..., 1) -> az, (..., 2) -> el.
-    # So we need to swap indices 1 and 2, AND convert el to inc.
+    # cartesian_to_spherical returns (r, az, el); spherical_to_cartesian expects (r, inc, az).
+    # Implementation treats "elevation" as inclination, so swap indices and convert el->inc.
 
     sph_input = np.zeros_like(sph)
     sph_input[..., 0] = sph[..., 0]  # r
@@ -325,9 +321,11 @@ def test_get_params_path_subdirectory(temp_dir) -> None:
 
 def test_get_params_path_not_found(temp_dir) -> None:
     """Test params file not found raises error."""
-    with patch("deepmimo.general_utils.get_scenario_folder", return_value=str(temp_dir)):
-        with pytest.raises(FileNotFoundError, match="Params file not found"):
-            general_utils.get_params_path("my_scenario")
+    with (
+        patch("deepmimo.general_utils.get_scenario_folder", return_value=str(temp_dir)),
+        pytest.raises(FileNotFoundError, match="Params file not found"),
+    ):
+        general_utils.get_params_path("my_scenario")
 
 
 def test_save_mat_error_cases(temp_dir) -> None:
@@ -340,11 +338,9 @@ def test_save_mat_error_cases(temp_dir) -> None:
 
     # For NPZ, errors should be raised or handled gracefully
     # (NPZ format is generally robust, but we can test invalid paths)
-    try:
+    with contextlib.suppress(OSError, IsADirectoryError):
         # Try to save to a path that's actually a directory
         general_utils.save_mat(data, "key", str(read_only_dir), fmt="npz")
-    except (OSError, IsADirectoryError):
-        pass  # Expected
 
 
 def test_load_mat_file_not_found() -> None:
@@ -403,7 +399,8 @@ def test_coordinate_conversion_edge_cases() -> None:
     assert sph_neg[0, 0] > 0  # r is always positive
 
     # Large batch
-    cart_batch = np.random.randn(100, 3)
+    rng = np.random.default_rng()
+    cart_batch = rng.standard_normal((100, 3))
     sph_batch = general_utils.cartesian_to_spherical(cart_batch)
     assert sph_batch.shape == (100, 3)
 

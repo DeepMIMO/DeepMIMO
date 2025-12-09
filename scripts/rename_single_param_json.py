@@ -1,3 +1,5 @@
+"""Utility to rename txrx keys to txrx_sets in params.json files."""
+
 # %%
 from pathlib import Path
 

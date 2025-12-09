@@ -10,10 +10,13 @@ from deepmimo import web_export
 
 
 class TestWebExport(unittest.TestCase):
+    """Unit tests for web export helper functions."""
+
     @patch("deepmimo.web_export.Path")
     @patch("deepmimo.web_export.json.dump")
-    @patch("deepmimo.web_export._process_single_dataset_to_binary")
+    @patch("deepmimo.web_export.process_single_dataset_to_binary")
     def test_export_dataset_to_binary_single(self, mock_process, mock_json, mock_path) -> None:
+        """Ensure single datasets are processed and saved once."""
         dataset = MagicMock()
         # Simulate single dataset by removing 'datasets' attribute
         if hasattr(dataset, "datasets"):
@@ -25,11 +28,15 @@ class TestWebExport(unittest.TestCase):
 
         mock_process.assert_called_once()
         mock_json.assert_called_once()
+        base_dir = mock_path.return_value.__truediv__.return_value
+        base_dir.mkdir.assert_called_with(parents=True, exist_ok=True)
+        mock_path.return_value.open.assert_called_with("w")
 
     @patch("deepmimo.web_export.Path")
     @patch("deepmimo.web_export.json.dump")
-    @patch("deepmimo.web_export._process_macro_dataset")
+    @patch("deepmimo.web_export.process_macro_dataset")
     def test_export_dataset_to_binary_macro(self, mock_process, mock_json, mock_path) -> None:
+        """Ensure macro datasets dispatch processing for each sub-dataset."""
         dataset = MagicMock()
         dataset.datasets = [MagicMock()]
 
@@ -39,10 +46,14 @@ class TestWebExport(unittest.TestCase):
 
         mock_process.assert_called_once()
         mock_json.assert_called_once()
+        base_dir = mock_path.return_value.__truediv__.return_value
+        base_dir.mkdir.assert_called_with(parents=True, exist_ok=True)
+        mock_path.return_value.open.assert_called_with("w")
 
-    @patch("deepmimo.web_export._save_binary_array")
-    @patch("deepmimo.web_export._process_scene_to_binary")
+    @patch("deepmimo.web_export.save_binary_array")
+    @patch("deepmimo.web_export.process_scene_to_binary")
     def test_process_single_dataset(self, mock_scene_proc, mock_save) -> None:
+        """Process a single dataset and persist key arrays."""
         dataset = MagicMock()
         dataset.rx_pos = np.zeros((10, 3))
         dataset.tx_pos = np.zeros((1, 3))
@@ -50,14 +61,15 @@ class TestWebExport(unittest.TestCase):
         dataset.inter_pos = np.zeros((10, 2, 1, 3))
 
         # Test processing
-        res = web_export._process_single_dataset_to_binary(dataset, Path(), 1, 1)
+        res = web_export.process_single_dataset_to_binary(dataset, Path(), 1, 1)
 
         assert res["totalUsers"] == 10
         mock_save.assert_called()  # Should save rx_pos, tx_pos, etc.
         mock_scene_proc.assert_called()
 
-    @patch("deepmimo.web_export._save_binary_array")
+    @patch("deepmimo.web_export.save_binary_array")
     def test_process_scene(self, mock_save) -> None:
+        """Process scene objects into padded binary structures."""
         scene = MagicMock()
 
         # Mock objects
@@ -68,16 +80,17 @@ class TestWebExport(unittest.TestCase):
 
         scene.get_objects.return_value = [mock_obj]
 
-        web_export._process_scene_to_binary(scene, Path())
+        web_export.process_scene_to_binary(scene, Path())
 
         # Should call save for buildings, terrain, vegetation
         # Since get_objects returns list for all calls (mock default), it saves all.
         assert mock_save.call_count >= 1
 
     def test_save_binary_array(self) -> None:
+        """Write a small array to disk with expected binary metadata."""
         arr = np.array([1.0, 2.0], dtype=np.float32)
         with patch.object(Path, "open", mock_open()) as mock_file:
-            web_export._save_binary_array(arr, "test.bin")
+            web_export.save_binary_array(arr, "test.bin")
             mock_file.assert_called_with("wb")
             # Check writes: dtype, shape dims, shape values, data
             handle = mock_file()

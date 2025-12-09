@@ -1,21 +1,29 @@
+"""Clean up InSite-derived source files and report potential deletions."""
+
 import os
 import re
 import shutil
 from pathlib import Path
 
+from deepmimo import consts as c
 
-def find_files_to_delete(
-    base_path,
-    safe_mode=True,
-    delete_extra_deepmimo=True,
-    delete_extra_p2m=True,
-    delete_extra_objs=True,
+
+def find_files_to_delete(  # noqa: PLR0915, C901, PLR0912
+    base_path: str | Path,
+    *,
+    safe_mode: bool = True,
+    delete_extra_deepmimo: bool = True,
+    delete_extra_p2m: bool = True,
+    delete_extra_objs: bool = True,
 ) -> None:
     """Loop through subfolders and find files/folders to potentially delete.
 
     Args:
         base_path (str): Base directory to start search
         safe_mode (bool): If True, only print what would be deleted
+        delete_extra_deepmimo (bool): Remove DeepMIMO conversion folders if present
+        delete_extra_p2m (bool): Remove extra P2M exports when found
+        delete_extra_objs (bool): Remove unreferenced geometry/object files
 
     """
     # Ensure base path exists
@@ -85,25 +93,27 @@ def find_files_to_delete(
 
             try:
                 with Path(xml_file).open() as file:
-                    for line in file:
-                        line = line.strip()
-                        if any(line.endswith(end) for end in xml_line_endings):
-                            # Extract value between quotes after Value=
-                            if match := re.search(r'Value="./([^"]*)"', line):
-                                xml_referenced_files.append(match.group(1))
+                    for raw_line in file:
+                        line = raw_line.strip()
+                        if any(line.endswith(end) for end in xml_line_endings) and (
+                            match := re.search(r'Value="./([^"]*)"', line)
+                        ):
+                            xml_referenced_files.append(match.group(1))
 
                 # Now check all files in the folder
                 for file in os.scandir(subfolder):
-                    if file.is_file():
-                        if any(file.name.endswith(ext) for ext in exts):
-                            if file.name not in xml_referenced_files:
-                                if safe_mode:
-                                    print(f"Would delete file: {file.path}")
-                                else:
-                                    print(f"Deleting file: {file.path}")
-                                    Path(file.path).unlink()
+                    if (
+                        file.is_file()
+                        and any(file.name.endswith(ext) for ext in exts)
+                        and file.name not in xml_referenced_files
+                    ):
+                        if safe_mode:
+                            print(f"Would delete file: {file.path}")
+                        else:
+                            print(f"Deleting file: {file.path}")
+                            Path(file.path).unlink()
 
-            except Exception as e:
+            except OSError as e:
                 print(f"Error processing files: {e}")
 
         if delete_extra_p2m:
@@ -112,13 +122,12 @@ def find_files_to_delete(
 
             # Find files to delete (those NOT containing .paths. or .pl.)
             for file in os.scandir(target_folder):
-                if file.is_file():
-                    if ".paths." not in file.name and ".pl." not in file.name:
-                        if safe_mode:
-                            print(f"Would delete file: {file.path}")
-                        else:
-                            print(f"Deleting file: {file.path}")
-                            Path(file.path).unlink()
+                if file.is_file() and ".paths." not in file.name and ".pl." not in file.name:
+                    if safe_mode:
+                        print(f"Would delete file: {file.path}")
+                    else:
+                        print(f"Deleting file: {file.path}")
+                        Path(file.path).unlink()
         break
 
 
