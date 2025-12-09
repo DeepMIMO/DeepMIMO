@@ -18,6 +18,9 @@ from tqdm import tqdm
 from deepmimo import consts as c
 from deepmimo.general_utils import DotDict, compare_two_dicts, deep_dict_merge
 
+ROT_DIM = 3
+RANGE_DIM = 2
+
 
 def _convert_lists_to_arrays(obj: Any) -> Any:
     """Recursively convert lists to numpy arrays in nested dictionaries.
@@ -61,9 +64,11 @@ def _validate_ant_rot(rotation: np.ndarray, n_ues: int | None = None) -> np.ndar
         return np.array([0, 0, 0])
 
     rotation_shape = rotation.shape
-    cond_1 = len(rotation_shape) == 1 and rotation_shape[0] == 3  # Fixed 3D vector
+    cond_1 = len(rotation_shape) == 1 and rotation_shape[0] == ROT_DIM  # Fixed 3D vector
     cond_2 = (
-        len(rotation_shape) == 2 and rotation_shape[0] == 3 and rotation_shape[1] == 2
+        len(rotation_shape) == RANGE_DIM
+        and rotation_shape[0] == ROT_DIM
+        and rotation_shape[1] == RANGE_DIM
     )  # Random ranges
     cond_3 = n_ues is not None and rotation_shape[0] == n_ues  # Per-user rotations
 
@@ -74,7 +79,8 @@ def _validate_ant_rot(rotation: np.ndarray, n_ues: int | None = None) -> np.ndar
     if n_ues is not None:
         assert_str += " or an n_ues x 3 matrix for per-user values"
 
-    assert cond_1 or cond_2 or (n_ues is not None and cond_3), assert_str
+    if not (cond_1 or cond_2 or (n_ues is not None and cond_3)):
+        raise ValueError(assert_str)
 
     return rotation
 
@@ -99,7 +105,8 @@ def _validate_ant_rad_pat(pattern: str | None = None) -> str:
         "The antenna radiation pattern must have one of the "
         f"following values: {c.PARAMSET_ANT_RAD_PAT_VALS!s}"
     )
-    assert pattern in c.PARAMSET_ANT_RAD_PAT_VALS, assert_str
+    if pattern not in c.PARAMSET_ANT_RAD_PAT_VALS:
+        raise ValueError(assert_str)
 
     return pattern
 
@@ -132,7 +139,7 @@ class ChannelParameters(DotDict):
         **Nested parameters** (lists are converted to numpy arrays during validation)
 
         ```python
-        params = ChannelParameters(bs_antenna={"shape": [4, 4]})  # Other bs_antenna fields preserved
+        params = ChannelParameters(bs_antenna={"shape": [4, 4]})
         ```
 
     """
@@ -172,9 +179,9 @@ class ChannelParameters(DotDict):
             data: Optional dictionary containing channel parameters to override defaults
             **kwargs: Additional parameters to override defaults.
                 These will be merged with data if provided.
-                For nested parameters, provide them as dictionaries (e.g. bs_antenna={'shape': [4,4]})
-                Only specified fields will be overridden, other fields will keep their default values.
-                Lists will be automatically converted to numpy arrays during validation.
+                For nested parameters, provide as dicts (e.g. bs_antenna={'shape': [4,4]}).
+                Only specified fields are overridden; other fields keep default values.
+                Lists are converted to numpy arrays during validation.
 
         """
         # Initialize with deep copy of defaults
@@ -188,7 +195,7 @@ class ChannelParameters(DotDict):
         if kwargs:
             self.update(deep_dict_merge(self, kwargs))
 
-    def validate(self, n_ues: int) -> "ChannelParameters":
+    def validate(self, n_ues: int) -> "ChannelParameters":  # noqa: C901, PLR0912
         """Validate channel generation parameters.
 
         This method checks that channel generation parameters are valid and
@@ -205,50 +212,54 @@ class ChannelParameters(DotDict):
 
         """
         # Convert lists to arrays before validation
-        self = _convert_lists_to_arrays(self)
+        self_converted = _convert_lists_to_arrays(self)
 
         # Notify the user if some keyword is not used (likely set incorrectly)
-        additional_keys = compare_two_dicts(self, ChannelParameters())
+        additional_keys = compare_two_dicts(self_converted, ChannelParameters())
         if len(additional_keys):
             print("The following parameters seem unnecessary:")
             print(additional_keys)
 
         # BS Antenna Rotation
-        if c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_BS]:
-            self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
-                self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION],
+        if c.PARAMSET_ANT_ROTATION in self_converted[c.PARAMSET_ANT_BS]:
+            self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
+                self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION],
             )
         else:
-            self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
+            self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
 
         # UE Antenna Rotation
-        if c.PARAMSET_ANT_ROTATION in self[c.PARAMSET_ANT_UE]:
-            self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
-                self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION],
+        if c.PARAMSET_ANT_ROTATION in self_converted[c.PARAMSET_ANT_UE]:
+            self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = _validate_ant_rot(
+                self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION],
                 n_ues,
             )
         else:
-            self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
+            self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = np.array([0, 0, 0])
 
         # BS Antenna Radiation Pattern
-        if c.PARAMSET_ANT_RAD_PAT in self[c.PARAMSET_ANT_BS]:
-            self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
-                self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT],
+        if c.PARAMSET_ANT_RAD_PAT in self_converted[c.PARAMSET_ANT_BS]:
+            self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
+                self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT],
             )
         else:
-            self[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[0]
+            self_converted[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[
+                0
+            ]
 
         # UE Antenna Radiation Pattern
-        if c.PARAMSET_ANT_RAD_PAT in self[c.PARAMSET_ANT_UE]:
-            self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
-                self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT],
+        if c.PARAMSET_ANT_RAD_PAT in self_converted[c.PARAMSET_ANT_UE]:
+            self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = _validate_ant_rad_pat(
+                self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT],
             )
         else:
-            self[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[0]
+            self_converted[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_RAD_PAT] = c.PARAMSET_ANT_RAD_PAT_VALS[
+                0
+            ]
 
         # OFDM selected subcarriers validation (indices within [0, N_sc-1])
-        if c.PARAMSET_OFDM in self.keys():
-            ofdm_params = self[c.PARAMSET_OFDM]
+        if c.PARAMSET_OFDM in self_converted:
+            ofdm_params = self_converted[c.PARAMSET_OFDM]
             if c.PARAMSET_OFDM_SC_SAMP in ofdm_params and c.PARAMSET_OFDM_SC_NUM in ofdm_params:
                 sc_sel = np.asarray(ofdm_params[c.PARAMSET_OFDM_SC_SAMP])
                 if sc_sel.ndim > 1:
@@ -260,12 +271,13 @@ class ChannelParameters(DotDict):
                 if not np.issubdtype(sc_sel.dtype, np.integer):
                     try:
                         sc_sel = sc_sel.astype(int, copy=False)
-                        self[c.PARAMSET_OFDM][c.PARAMSET_OFDM_SC_SAMP] = sc_sel
-                    except Exception:
-                        msg = f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices (invalid values provided)"
-                        raise ValueError(
-                            msg,
+                        self_converted[c.PARAMSET_OFDM][c.PARAMSET_OFDM_SC_SAMP] = sc_sel
+                    except Exception as err:
+                        msg = (
+                            f"'{c.PARAMSET_OFDM_SC_SAMP}' must contain integer indices "
+                            "(invalid values provided)"
                         )
+                        raise ValueError(msg) from err
                 n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]
                 if np.any(sc_sel < 0) or np.any(sc_sel >= n_sc):
                     error_msg = (
@@ -275,10 +287,10 @@ class ChannelParameters(DotDict):
                     error_msg += f"Adjust ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_SAMP} or "
                     error_msg += f"ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_NUM}."
                     raise ValueError(error_msg)
-        return self
+        return self_converted
 
 
-class OFDM_PathGenerator:
+class OFDM_PathGenerator:  # noqa: N801
     """Class for generating OFDM paths with specified parameters.
 
     This class handles the generation of OFDM paths including optional
@@ -311,12 +323,12 @@ class OFDM_PathGenerator:
             -1j * 2 * np.pi / self.total_subcarriers * np.outer(self.delay_d, self.subcarriers),
         )
 
-    def generate(
+    def generate(  # noqa: PLR0913
         self,
         pwr: np.ndarray,
         toa: np.ndarray,
         phs: np.ndarray,
-        Ts: float,
+        ts: float,
         dopplers: np.ndarray,
         times: float | np.ndarray,
     ) -> np.ndarray:
@@ -326,7 +338,7 @@ class OFDM_PathGenerator:
             pwr       : [P]       linear powers per path
             toa       : [P]       times of arrival (seconds)
             phs       : [P]       initial phases (degrees)
-            Ts        : scalar    sampling period (seconds)
+            ts        : scalar    sampling period (seconds)
             dopplers  : [P]       Doppler frequencies (Hz)
             times     : scalar or [N_t] times (seconds) at which to sample
 
@@ -342,28 +354,27 @@ class OFDM_PathGenerator:
         dopplers = np.asarray(dopplers)
 
         times = np.atleast_1d(times).astype(float)  # [N_t]
-        times.shape[0]
-        len(self.subcarriers)
-        pwr.shape[0]
 
         # Base dimensions
         power = pwr[:, None]  # [P, 1]
-        delay_n = (toa / Ts)[:, None]  # [P, 1] (sample units)
+        delay_n = (toa / ts)[:, None]  # [P, 1] (sample units)
         phase0 = np.deg2rad(phs)[:, None]  # [P, 1] (radians)
-        fD = dopplers[:, None]  # [P, 1] (Hz)
+        fd = dopplers[:, None]  # [P, 1] (Hz)
 
         # Ignore paths over FFT (clip to zero)
         over = delay_n >= self.OFDM_params[c.PARAMSET_OFDM_SC_NUM]
         if np.any(over):
             power[over] = 0.0
             delay_n[over] = self.OFDM_params[c.PARAMSET_OFDM_SC_NUM]
-            fD[over] = 0.0
+            fd[over] = 0.0
 
         # Doppler-induced phase over time: [P, N_t]
-        thetaD = 2 * np.pi * fD * times[None, :]  # [P, N_t]
+        theta_d = 2 * np.pi * fd * times[None, :]  # [P, N_t]
 
         # Per-path complex amplitude vs time (before frequency shaping): [P, N_t]
-        a_pt = np.sqrt(power / self.total_subcarriers) * np.exp(1j * (phase0 + thetaD))  # [P, N_t]
+        a_pt = np.sqrt(power / self.total_subcarriers) * np.exp(
+            1j * (phase0 + theta_d),
+        )  # [P, N_t]
 
         if self.OFDM_params[c.PARAMSET_OFDM_LPF]:
             # LPF delay shaping: lpf [P, N] then project to selected subcarriers [N, K] -> [P, K]
@@ -383,7 +394,7 @@ class OFDM_PathGenerator:
         return h_pkn.astype(np.complex64, copy=False)
 
 
-def _generate_MIMO_channel(
+def _generate_MIMO_channel(  # noqa: N802, PLR0913, PLR0915
     array_response_product: np.ndarray,
     powers: np.ndarray,
     delays: np.ndarray,
@@ -391,41 +402,23 @@ def _generate_MIMO_channel(
     dopplers: np.ndarray,
     ofdm_params: dict,
     times: float | np.ndarray = 0.0,
+    *,
     freq_domain: bool = True,
     squeeze_time: bool = True,
 ) -> np.ndarray:
-    """Generate MIMO channel matrices with a vectorized time dimension (correct Doppler progression).
-
-    Inputs:
-        array_response_product : [n_users, M_rx, M_tx, P_max]
-        powers                 : [n_users, P_max]       (linear, antenna gains applied)
-        delays                 : [n_users, P_max]       (seconds)
-        phases                 : [n_users, P_max]       (degrees)
-        dopplers               : [n_users, P_max]       (Hz)
-        ofdm_params            : dict
-        times                  : scalar or [N_t] in seconds
-        freq_domain            : bool; if True -> per-subcarrier CFR, else time-domain per-path
-        squeeze_time           : if True and N_t == 1, drop the time dim for backward compatibility
-
-    Returns:
-        If freq_domain:
-            [n_users, M_rx, M_tx, K_sel, N_t]  (or [n_users, M_rx, M_tx, K_sel] if squeezed)
-        Else (time-domain per-path gains):
-            [n_users, M_rx, M_tx, P_max, N_t]  (or [n_users, M_rx, M_tx, P_max] if squeezed)
-
-    """
+    """Generate MIMO channel matrices in frequency or time domain."""
     # Time handling
     times = np.atleast_1d(times).astype(float)  # [N_t]
-    Nt = times.shape[0]
+    n_times = times.shape[0]
 
-    Ts = 1.0 / ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
+    ts = 1.0 / ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
     subcarriers = ofdm_params[c.PARAMSET_OFDM_SC_SAMP]
-    K = len(subcarriers)
+    k_subcarriers = len(subcarriers)
     path_gen = OFDM_PathGenerator(ofdm_params, subcarriers)
 
     # Delay sanity for OFDM mode
     if freq_domain:
-        ofdm_symbol_duration = ofdm_params[c.PARAMSET_OFDM_SC_NUM] * Ts
+        ofdm_symbol_duration = ofdm_params[c.PARAMSET_OFDM_SC_NUM] * ts
         subcarrier_spacing = (
             ofdm_params[c.PARAMSET_OFDM_BANDWIDTH] / ofdm_params[c.PARAMSET_OFDM_SC_NUM]
         )  # Hz
@@ -446,21 +439,22 @@ def _generate_MIMO_channel(
             print("1. Increase the number of subcarriers (N)")
             print("2. Decrease the bandwidth (B)")
             print(
-                f"3. Switch to time-domain channel generation (set ch_params['{c.PARAMSET_FD_CH}'] = 0)",
+                "3. Switch to time-domain channel generation "
+                f"(set ch_params['{c.PARAMSET_FD_CH}'] = 0)",
             )
             print("-" * 50)
 
     n_ues = powers.shape[0]
-    P_max = powers.shape[1]
-    M_rx, M_tx = array_response_product.shape[1:3]
+    p_max = powers.shape[1]
+    m_rx, m_tx = array_response_product.shape[1:3]
 
-    last_ch_dim = K if freq_domain else P_max
+    last_ch_dim = k_subcarriers if freq_domain else p_max
 
     # Allocate output
-    if Nt == 1 and squeeze_time:
-        channel = np.zeros((n_ues, M_rx, M_tx, last_ch_dim), dtype=np.csingle)
+    if n_times == 1 and squeeze_time:
+        channel = np.zeros((n_ues, m_rx, m_tx, last_ch_dim), dtype=np.csingle)
     else:
-        channel = np.zeros((n_ues, M_rx, M_tx, last_ch_dim, Nt), dtype=np.csingle)
+        channel = np.zeros((n_ues, m_rx, m_tx, last_ch_dim, n_times), dtype=np.csingle)
 
     # Masks per user (valid paths)
     nan_masks = ~np.isnan(powers)  # [n_users, P_max]
@@ -477,7 +471,7 @@ def _generate_MIMO_channel(
         power_u = powers[i, non_nan_mask]
         delays_u = delays[i, non_nan_mask]
         phases_u = phases[i, non_nan_mask]
-        fD_u = dopplers[i, non_nan_mask]
+        fd_u = dopplers[i, non_nan_mask]
 
         if freq_domain:
             # path_gains: [P, K, N_t]
@@ -485,35 +479,35 @@ def _generate_MIMO_channel(
                 pwr=power_u,
                 toa=delays_u,
                 phs=phases_u,
-                Ts=Ts,
-                dopplers=fD_u,
+                ts=ts,
+                dopplers=fd_u,
                 times=times,
             )  # complex64
             # Combine with array responses: [M_rx, M_tx, P] x [P, K, N_t] -> [M_rx, M_tx, K, N_t]
-            Hi_fk_t = np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
+            hi_fk_t = np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
                 np.complex64,
                 copy=False,
             )
-            channel[i] = Hi_fk_t[..., 0] if Nt == 1 else Hi_fk_t
+            channel[i] = hi_fk_t[..., 0] if n_times == 1 else hi_fk_t
         else:
             # Time-domain per-path gains:
             # a_pt = sqrt(P) * exp(j(phi + 2π fD t))  -> [P, N_t]
             phase0 = np.deg2rad(phases_u)[:, None]  # [P,1]
             a_pt = np.sqrt(power_u)[:, None] * np.exp(
-                1j * (phase0 + 2 * np.pi * fD_u[:, None] * times[None, :]),
+                1j * (phase0 + 2 * np.pi * fd_u[:, None] * times[None, :]),
             )  # [P,N_t]
             # Combine: [M_rx,M_tx,P] x [P,N_t] -> [M_rx,M_tx,P,N_t]
-            Hi_pt = np.einsum("rtp,pn->r t p n", array_product, a_pt, optimize=True).astype(
+            hi_pt = np.einsum("rtp,pn->r t p n", array_product, a_pt, optimize=True).astype(
                 np.complex64,
                 copy=False,
             )
             # Pad zeros for invalid paths to preserve last_ch_dim
-            shape = (M_rx, M_tx, P_max) if Nt == 1 else (M_rx, M_tx, P_max, Nt)
+            shape = (m_rx, m_tx, p_max) if n_times == 1 else (m_rx, m_tx, p_max, n_times)
             out = np.zeros(shape, dtype=np.complex64)
-            if Nt == 1:
-                out[..., :n_paths] = Hi_pt[..., 0]
+            if n_times == 1:
+                out[..., :n_paths] = hi_pt[..., 0]
             else:
-                out[..., :n_paths, :] = Hi_pt
+                out[..., :n_paths, :] = hi_pt
             channel[i] = out
 
     return channel

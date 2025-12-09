@@ -1,6 +1,7 @@
 """Array wrapper module for DeepMIMO.
 
-This module provides a custom array class that wraps numpy arrays and adds plotting functionality.
+This module provides a custom array class that wraps numpy arrays and adds plotting
+functionality.
 """
 
 from typing import TYPE_CHECKING, Any
@@ -29,11 +30,14 @@ COLORBAR_TITLES = {
     "inter_int": "Interaction Integer\n-1: no path, 0: LOS, 1:R, 2:D, 3:S, 4:T",
 }
 
+DIM_TWO = 2
+DIM_THREE = 3
+
 
 class DeepMIMOArray(np.ndarray):
     """A wrapper around numpy.ndarray that adds plotting functionality.
 
-    This class is used to wrap arrays in the DeepMIMO dataset that have num_rx in the first dimension.
+    This class wraps arrays in the DeepMIMO dataset where num_rx is the first dimension.
     It adds a plot() method that uses plot_coverage to visualize the data.
 
     The plot() method handles different array shapes:
@@ -51,6 +55,7 @@ class DeepMIMOArray(np.ndarray):
         Args:
             input_array: The numpy array to wrap
             dataset: The DeepMIMO dataset this array belongs to
+            name: Name of the array attribute
 
         Returns:
             A new DeepMIMOArray instance
@@ -82,12 +87,12 @@ class DeepMIMOArray(np.ndarray):
         self.dataset = getattr(obj, "dataset", None)
         self.name = getattr(obj, "name", None)
 
-    def plot(self, path_idx: int = 0, interaction_idx: int = 0, **kwargs) -> None:
+    def plot(self, path_idx: int = 0, interaction_idx: int = 0, **kwargs: Any) -> None:
         """Plot the array using plot_coverage.
 
         Args:
             path_idx: Index of the path to plot for 2D/3D arrays. Ignored for 1D arrays.
-            interaction_idx: Index of the interaction to plot for 3D arrays. Ignored for 1D/2D arrays.
+            interaction_idx: Interaction index for 3D arrays. Ignored for 1D/2D arrays.
             **kwargs: Additional arguments to pass to plot_coverage
 
         Raises:
@@ -100,10 +105,10 @@ class DeepMIMOArray(np.ndarray):
         if self.ndim == 1:
             # 1D array [num_rx] - plot directly
             data = self
-        elif self.ndim == 2:
+        elif self.ndim == DIM_TWO:
             # 2D array [num_rx, num_paths] - plot specified path
             data = self[:, path_idx]
-        elif self.ndim == 3:
+        elif self.ndim == DIM_THREE:
             # 3D array [num_rx, num_paths, max_interactions] - plot specified path and interaction
             data = self[:, path_idx, interaction_idx]
         else:

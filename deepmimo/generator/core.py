@@ -188,7 +188,7 @@ def _load_dataset(folder: str, params: dict, load_params: dict) -> Dataset | Mac
     return dataset
 
 
-def _load_raytracing_scene(
+def _load_raytracing_scene(  # noqa: PLR0913
     scene_folder: str,
     txrx_dict: dict,
     max_paths: int = c.MAX_PATHS,
@@ -220,7 +220,9 @@ def _load_raytracing_scene(
             for tx_idx in tx_idxs:
                 dataset_list.append({})
                 print(
-                    f"Loading TXRX PAIR: TXset {tx_set_id} (tx_idx {tx_idx}) & RXset {rx_set_id} (rx_idxs {len(rx_idxs)})",
+                    "Loading TXRX PAIR: "
+                    f"TXset {tx_set_id} (tx_idx {tx_idx}) & RXset {rx_set_id} "
+                    f"(rx_idxs {len(rx_idxs)})",
                 )
                 dataset_list[bs_idx] = _load_tx_rx_raydata(
                     scene_folder,
@@ -256,7 +258,7 @@ def _load_raytracing_scene(
     return final_dataset
 
 
-def _load_tx_rx_raydata(
+def _load_tx_rx_raydata(  # noqa: PLR0913
     rayfolder: str,
     tx_set_id: int,
     rx_set_id: int,
@@ -264,6 +266,7 @@ def _load_tx_rx_raydata(
     rx_idxs: np.ndarray | list,
     max_paths: int,
     matrices_to_load: list[str] | str = "all",
+    *,
     verbose: bool = False,
 ) -> dict[str, Any]:
     """Load raytracing data for a transmitter-receiver pair.
@@ -279,6 +282,7 @@ def _load_tx_rx_raydata(
         rx_idxs (numpy.ndarray or list): Indices of receivers to load
         max_paths (int): Maximum number of paths to load
         matrices_to_load (list of str, optional): List of matrix names to load.
+        verbose: Whether to print detailed info while loading.
 
     Returns:
         dict: Dictionary containing loaded raytracing data
@@ -311,7 +315,7 @@ def _load_tx_rx_raydata(
             msg = f"Invalid matrix names: {invalid}. Valid names are: {valid_matrices}"
             raise ValueError(msg)
 
-    for key in tx_dict:
+    for key, _value in list(tx_dict.items()):
         if key not in matrices_to_load:
             continue
 
@@ -340,7 +344,7 @@ def _load_tx_rx_raydata(
 
 
 # Helper functions
-def _validate_txrx_sets(  # noqa: PLR0912
+def _validate_txrx_sets(  # noqa: PLR0912, C901
     sets: dict[int, list | str] | list | str,
     txrx_dict: dict[str, Any],
     tx_or_rx: str = "tx",
