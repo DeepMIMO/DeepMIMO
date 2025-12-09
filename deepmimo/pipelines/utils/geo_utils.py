@@ -31,6 +31,8 @@ import utm
 # Constants
 EARTH_RADIUS = 6371000  # meters
 DEGREE_TO_METER = 111320  # approx. meters per degree at equator
+HTTP_OK = 200
+STATIC_MAP_URL = "https://maps.googleapis.com/maps/api/staticmap"
 
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -111,7 +113,7 @@ def xy_from_latlong(
     return x, y
 
 
-def convert_GpsBBox2CartesianBBox(
+def convert_GpsBBox2CartesianBBox(  # noqa: PLR0913, N802
     minlat: float,
     minlon: float,
     maxlat: float,
@@ -158,7 +160,7 @@ def convert_GpsBBox2CartesianBBox(
     return xmin - pad, ymin - pad, xmax + pad, ymax + pad
 
 
-def convert_Gps2RelativeCartesian(
+def convert_Gps2RelativeCartesian(  # noqa: N802
     lat: float | np.ndarray,
     lon: float | np.ndarray,
     origin_lat: float,
@@ -221,9 +223,9 @@ def get_city_name(lat: float, lon: float, api_key: str) -> str:
         "latlng": f"{lat},{lon}",
         "key": api_key,
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=30)
 
-    if response.status_code == 200:
+    if response.status_code == HTTP_OK:
         data = response.json()
         if data["status"] == "OK":
             # Look for the city in the address components
@@ -238,7 +240,7 @@ def get_city_name(lat: float, lon: float, api_key: str) -> str:
     return "unknown"
 
 
-def fetch_satellite_view(
+def fetch_satellite_view(  # noqa: PLR0913
     minlat: float,
     minlon: float,
     maxlat: float,
@@ -285,14 +287,11 @@ def fetch_satellite_view(
         "key": api_key,
     }
 
-    # API endpoint
-    STATIC_MAP_URL = "https://maps.googleapis.com/maps/api/staticmap"
-
     # Make the request
-    response = requests.get(STATIC_MAP_URL, params=params)
+    response = requests.get(STATIC_MAP_URL, params=params, timeout=30)
 
     # Save the image in the specified directory
-    if response.status_code == 200:
+    if response.status_code == HTTP_OK:
         image_path = str(Path(save_dir) / "satellite_view.png")
         with Path(image_path).open("wb") as f:
             f.write(response.content)

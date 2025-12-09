@@ -16,7 +16,6 @@ The utilities here are designed to be reusable across different pipeline stages
 and provide consistent handling of coordinates, parameters, and system operations.
 """
 
-import random
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -47,7 +46,7 @@ def run_command(command: list[str], description: str) -> None:
     """
     print(f"\n🚀 Starting: {description}...\n")
     print("\t Running: ", " ".join(command))
-    process = subprocess.Popen(
+    process = subprocess.Popen(  # noqa: S603
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -94,7 +93,7 @@ def get_origin_coords(osm_folder: str) -> tuple[float, float]:
 
 def _split_coords(x: str) -> np.ndarray:
     """Split comma-separated coordinates into float array."""
-    return np.array(x.split(",") if type(x) == str else [x]).astype(np.float32)
+    return np.array(x.split(",") if isinstance(x, str) else [x]).astype(np.float32)
 
 
 def load_params_from_row(row: Any, params_dict: dict[str, Any]) -> None:
@@ -160,7 +159,7 @@ class ScenarioBboxInfo:
 ###############################################################################
 
 
-def validate_and_adjust_point(
+def validate_and_adjust_point(  # noqa: C901
     lat: float,
     lon: float,
     buildings: list,
@@ -267,12 +266,16 @@ def generate_uniform_positions(
     min_lon = city_lon - lon_range / 2
 
     positions = []
+    single_bs_count = 1
+    diagonal_bs_count = 2
+    triangle_bs_count = 3
+    square_bs_count = 4
 
-    if num_bs == 1:
+    if num_bs == single_bs_count:
         # Center position
         positions.append((city_lat, city_lon))
 
-    elif num_bs == 2:
+    elif num_bs == diagonal_bs_count:
         # Diagonal corners
         positions.extend(
             [
@@ -281,7 +284,7 @@ def generate_uniform_positions(
             ],
         )
 
-    elif num_bs == 3:
+    elif num_bs == triangle_bs_count:
         # Triangle formation
         positions.extend(
             [
@@ -291,7 +294,7 @@ def generate_uniform_positions(
             ],
         )
 
-    elif num_bs == 4:
+    elif num_bs == square_bs_count:
         # Square formation
         positions.extend(
             [
@@ -303,7 +306,10 @@ def generate_uniform_positions(
         )
 
     else:
-        msg = f"Number of BSs {num_bs} not supported. Maximum number of BSs is 4."
+        msg = (
+            f"Number of BSs {num_bs} not supported. Maximum number of BSs is "
+            f"{square_bs_count}."
+        )
         raise NotImplementedError(
             msg,
         )
@@ -311,7 +317,7 @@ def generate_uniform_positions(
     return positions
 
 
-def generate_bs_positions(
+def generate_bs_positions(  # noqa: PLR0913
     city_lat: float,
     city_lon: float,
     num_bs: int,
@@ -329,8 +335,10 @@ def generate_bs_positions(
         city_lon (float): City center longitude
         num_bs (int): Number of base stations to generate
         buildings (List): List of building polygons in the area
-        algorithm (str, optional): BS positioning algorithm ('uniform' or 'random'). Defaults to 'uniform'.
-        placement (str, optional): BS placement strategy ('outside' or 'on_top'). Defaults to 'outside'.
+        algorithm (str, optional): BS positioning algorithm ('uniform' or 'random').
+            Defaults to 'uniform'.
+        placement (str, optional): BS placement strategy ('outside' or 'on_top').
+            Defaults to 'outside'.
         default_height (float): Default height for BS placement in meters
         delta_lat (float): Latitude span of bounding box
         delta_lon (float): Longitude span of bounding box
@@ -343,9 +351,10 @@ def generate_bs_positions(
 
     if algorithm == "random":
         # Random positioning
+        rng = np.random.default_rng()
         for _ in range(num_bs):
-            offset_lat = random.uniform(-delta_lat / 4, delta_lat / 4)
-            offset_lon = random.uniform(-delta_lon / 4, delta_lon / 4)
+            offset_lat = rng.uniform(-delta_lat / 4, delta_lat / 4)
+            offset_lon = rng.uniform(-delta_lon / 4, delta_lon / 4)
             test_lat = city_lat + offset_lat
             test_lon = city_lon + offset_lon
 
@@ -420,7 +429,7 @@ def plot_scenario(bbox_info: dict[str, str]) -> None:
     plt.ylabel("Latitude")
     plt.title(f"Scenario: {bbox_info['name']}\n{len(bs_lats)} Base Stations")
     plt.legend()
-    plt.grid(True)
+    plt.grid(visible=True)
 
     # Show plot
     plt.show()

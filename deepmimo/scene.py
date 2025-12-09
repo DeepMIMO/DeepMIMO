@@ -1,10 +1,14 @@
-from typing import Any, ClassVar
+"""Physical world representation module.
 
-"Physical world representation module.\n\nThis module provides core classes for representing physical objects in a wireless environment,\nincluding buildings, terrain, vegetation, and other structures that affect wireless propagation.\n\nModule Organization:\n1. Constants - Categories and labels for physical elements\n2. Core Classes - Main classes for scene representation:\n   - BoundingBox: 3D bounding box representation\n   - Face: Surface representation with dual face approach\n   - PhysicalElement: Base class for physical objects\n   - PhysicalElementGroup: Group operations on physical elements\n   - Scene: Complete physical environment representation\n3. Object handling: Get faces of objects as lists of vertices\n    - get_object_faces: Generate faces for physical objects\n    - Road object handling:\n        - _get_2d_face: Get 2D face of road objects (calls all functions below)\n        - _detect_endpoints: Detect endpoints (terminations) of road objects\n        - _trim_points_protected: Trim points of road objects\n        - _compress_path: Compress path of road objects\n        - _calculate_angle_deviation: Calculate angle deviation\n          (used in _compress_path and _tsp_held_karp_no_intersections)\n        - _ccw: Check if points are in counter-clockwise order (used in _segments_intersect)\n        - _segments_intersect: Check if two line segments intersect (used in _tsp_held_karp_no_intersections)\n        - _tsp_held_karp_no_intersections: Held-Karp TSP with angle penalty + intersection check\n          (used in _get_2d_face)\n        - _signed_distance_to_curve: Calculate signed distance from point to curve\n          (used in _trim_points_protected to trim along the road)\n\nThe `Scene` class acts as a container for multiple `PhysicalElement` objects,\neach representing a distinct object in the environment. Each `PhysicalElement` is\ncomposed of `Face` objects, which define the surfaces of the element and are associated\nwith materials. The `BoundingBox` class provides spatial boundaries for these elements.\nTogether, these components allow for the representation and manipulation of complex environments,\nwith functionalities for plotting and material management integrated into the scene.\n"
+Provides geometry classes (BoundingBox, Face, PhysicalElement, PhysicalElementGroup, Scene)
+and helper routines for road/mesh handling (2D face generation, endpoint detection, trimming,
+path compression, angle deviation, intersection checks, and TSP path ordering).
+"""
+
 import itertools
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -22,6 +26,7 @@ from .general_utils import (
 
 if TYPE_CHECKING:
     from .materials import MaterialList
+
 CAT_BUILDINGS: str = "buildings"
 CAT_TERRAIN: str = "terrain"
 CAT_VEGETATION: str = "vegetation"
@@ -35,7 +40,15 @@ class BoundingBox:
 
     bounds: np.ndarray
 
-    def __init__(self: Any, x_min: float, x_max: float, y_min: float, y_max: float, z_min: float, z_max: float) -> None:
+    def __init__(  # noqa: PLR0913
+        self: Any,
+        x_min: float,
+        x_max: float,
+        y_min: float,
+        y_max: float,
+        z_min: float,
+        z_max: float,
+    ) -> None:
         """Initialize bounding box with min/max coordinates."""
         self.bounds = np.array([[x_min, y_min, z_min], [x_max, y_max, z_max]])
 
@@ -87,7 +100,13 @@ class BoundingBox:
     @property
     def center(self: Any) -> np.ndarray:
         """Get the center of the bounding box."""
-        return np.array([(self.x_max + self.x_min) / 2, (self.y_max + self.y_min) / 2, (self.z_max + self.z_min) / 2])
+        return np.array(
+            [
+                (self.x_max + self.x_min) / 2,
+                (self.y_max + self.y_min) / 2,
+                (self.z_max + self.z_min) / 2,
+            ],
+        )
 
 class Face:
     """Represents a single face (surface) of a physical object.
@@ -108,7 +127,11 @@ class Face:
     the ability to represent detailed geometry when required.
     """
 
-    def __init__(self: Any, vertices: list[tuple[float, float, float]] | np.ndarray, material_idx: int | np.integer=0) -> None:
+    def __init__(
+        self: Any,
+        vertices: list[tuple[float, float, float]] | np.ndarray,
+        material_idx: int | np.integer=0,
+    ) -> None:
         """Initialize a face from its vertices.
 
         Args:
@@ -138,7 +161,8 @@ class Face:
     def triangular_faces(self: Any) -> list[np.ndarray]:
         """Get the triangular faces that make up this face."""
         if self._triangular_faces is None:
-            if len(self.vertices) == 3:
+            tri_vertex_count = 3
+            if len(self.vertices) == tri_vertex_count:
                 self._triangular_faces = [self.vertices]
             else:
                 triangles = []
@@ -178,9 +202,22 @@ class Face:
 class PhysicalElement:
     """Base class for physical objects in the wireless environment."""
 
-    DEFAULT_LABELS = {CAT_BUILDINGS, CAT_TERRAIN, CAT_VEGETATION, CAT_FLOORPLANS, CAT_OBJECTS}
+    DEFAULT_LABELS: ClassVar[set[str]] = {
+        CAT_BUILDINGS,
+        CAT_TERRAIN,
+        CAT_VEGETATION,
+        CAT_FLOORPLANS,
+        CAT_OBJECTS,
+    }
 
-    def __init__(self: Any, faces: list[Face], object_id: int=-1, label: str=CAT_OBJECTS, color: str="", name: str="") -> None:
+    def __init__(
+        self: Any,
+        faces: list[Face],
+        object_id: int=-1,
+        label: str=CAT_OBJECTS,
+        color: str="",
+        name: str="",
+    ) -> None:
         """Initialize a physical object from its faces.
 
         Args:
@@ -212,7 +249,14 @@ class PhysicalElement:
         """Compute the object's bounding box."""
         mins = np.min(self.vertices, axis=0)
         maxs = np.max(self.vertices, axis=0)
-        self.bounding_box = BoundingBox(x_min=mins[0], x_max=maxs[0], y_min=mins[1], y_max=maxs[1], z_min=mins[2], z_max=maxs[2])
+        self.bounding_box = BoundingBox(
+            x_min=mins[0],
+            x_max=maxs[0],
+            y_min=mins[1],
+            y_max=maxs[1],
+            z_min=mins[2],
+            z_max=maxs[2],
+        )
 
     @property
     def height(self: Any) -> float:
@@ -640,10 +684,10 @@ class Scene:
         mode: Literal["faces", "tri_faces"]="faces",
         ax: plt.Axes | None=None,
         proj_3d: bool=True,
-        proj_3D: bool | None=None,
         figsize: tuple=(10, 10),
         dpi: int=100,
         legend: bool=False,
+        **kwargs: Any,
     ) -> plt.Axes:
         """Create a visualization of the scene.
 
@@ -673,6 +717,7 @@ class Scene:
             mode: Visualization mode for 3D - either 'faces' or 'tri_faces' (default: 'faces')
             ax: Matplotlib axes to plot on (if None, creates new figure)
             proj_3d: Whether to create 3D projection (default: True)
+            **kwargs: Additional keyword-only options; accepts `proj_3D` alias.
             figsize: Figure dimensions (width, height) in inches (default: (10, 10))
             dpi: Plot resolution in dots per inch (default: 100)
             legend: Whether to show legend for objects/materials (default: False)
@@ -681,8 +726,8 @@ class Scene:
             matplotlib Axes object
 
         """
-        if proj_3D is not None:
-            proj_3d = proj_3D
+        if "proj_3D" in kwargs:
+            proj_3d = kwargs.pop("proj_3D")
         if len(self.objects) == 0:
             print("No objects in scene - skipping plot")
             return ax

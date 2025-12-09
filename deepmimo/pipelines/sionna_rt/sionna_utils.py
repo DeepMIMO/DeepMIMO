@@ -3,6 +3,8 @@
 This module contains utility functions for Sionna.
 """
 
+import sionna
+import sionna.rt as sionna_rt
 from sionna.rt import (
     BackscatteringPattern,
     PlanarArray,
@@ -15,15 +17,11 @@ from sionna.rt import (
 def get_sionna_version() -> str | None:
     """Try to get Sionna or Sionna RT version string, or return None if not found."""
     try:
-        import sionna
-
         if hasattr(sionna, "__version__"):
             return sionna.__version__
-        import sionna.rt
-
-        if hasattr(sionna.rt, "__version__"):
-            return sionna.rt.__version__
-    except Exception:
+        if hasattr(sionna_rt, "__version__"):
+            return sionna_rt.__version__
+    except (ImportError, AttributeError):
         pass
     return None
 

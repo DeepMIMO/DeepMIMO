@@ -16,26 +16,27 @@ The text files are useful for debugging and verification in the Wireless InSite 
 
 # Standard library imports
 from dataclasses import fields
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 # Third-party imports
 import numpy as np
 
-from ...config import config
-from ...consts import BBOX_PAD
+from deepmimo.config import config
+from deepmimo.consts import BBOX_PAD
 
 # Project-specific imports
-from ..utils.geo_utils import convert_GpsBBox2CartesianBBox
-from ..utils.pipeline_utils import run_command
-from .convert_ply2city import convert_to_city_file
-from .WI_interface.SetupEditor import RayTracingParam, SetupEditor
-from .WI_interface.TerrainEditor import TerrainEditor
-from .WI_interface.TxRxEditor import TxRxEditor
-
-# Local application imports
-from .WI_interface.XmlGenerator import XmlGenerator
+from deepmimo.pipelines.utils.geo_utils import convert_GpsBBox2CartesianBBox
+from deepmimo.pipelines.utils.pipeline_utils import run_command
+from deepmimo.pipelines.wireless_insite.convert_ply2city import convert_to_city_file
+from deepmimo.pipelines.wireless_insite.WI_interface.setup_editor import (
+    RayTracingParam,
+    SetupEditor,
+)
+from deepmimo.pipelines.wireless_insite.WI_interface.terrain_editor import TerrainEditor
+from deepmimo.pipelines.wireless_insite.WI_interface.txrx_editor import TxRxEditor
+from deepmimo.pipelines.wireless_insite.WI_interface.xml_generator import XmlGenerator
 
 TERRAIN_TEMPLATE = "newTerrain.ter"
 
@@ -44,11 +45,11 @@ def create_directory_structure(osm_folder: str, rt_params: dict[str, Any]) -> tu
     """Create folders for the scenario generations with a names based on parameters.
 
     Args:
-        base_path (str): Base path for the scenario
-        rt_params (Dict[str, Any]): Ray tracing parameters
+        osm_folder: Base folder containing the OSM-derived inputs.
+        rt_params: Ray tracing parameters.
 
     Returns:
-        Tuple[str, str]: Paths to the insite directory and study area directory
+        Tuple[str, str]: Paths to the insite directory and study area directory.
 
     """
     # Format folder name with key parameters
@@ -59,7 +60,7 @@ def create_directory_structure(osm_folder: str, rt_params: dict[str, Any]) -> tu
     )
     insite_path = str(Path(osm_folder) / folder_name)
     if Path(insite_path).exists():
-        dt = datetime.now()
+        dt = datetime.now(UTC)
         insite_path += "_" + dt.strftime("%Y%m%d_%H%M%S")
 
     study_area_path = str(Path(insite_path) / "study_area")
@@ -114,7 +115,7 @@ def raytrace_insite(
                 - ds_max_reflections (int): Maximum number of diffuse reflections
                 - ds_max_transmissions (int): Maximum number of diffuse transmissions
                 - ds_max_diffractions (int): Maximum number of diffuse diffractions
-                - ds_final_interaction_only (bool): Whether to only apply diffuse scattering at final interaction
+                - ds_final_interaction_only (bool): Apply diffuse scattering only at final step
 
     Returns:
         str: Path to the insite directory containing all generated files
@@ -207,7 +208,7 @@ def raytrace_insite(
 
     # Create setup file (.setup)
     scenario = SetupEditor(insite_path)
-    scenario.set_carrierFreq(rt_params["carrier_freq"])
+    scenario.set_carrier_freq(rt_params["carrier_freq"])
     scenario.set_bandwidth(rt_params["bandwidth"])
     scenario.set_study_area(zmin=-3, zmax=40, all_vertex=study_area_vertex)
     mean_lat = (rt_params["min_lat"] + rt_params["max_lat"]) / 2
@@ -220,7 +221,7 @@ def raytrace_insite(
         scenario.add_feature(bldgs_city, "city")
     else:
         msg = "No buildings found. Check Blender Export to ply."
-        raise Exception(msg)
+        raise RuntimeError(msg)
     if roads_city:
         scenario.add_feature(roads_city, "road")
     scenario.save("insite")  # insite.setup
@@ -232,7 +233,10 @@ def raytrace_insite(
     xml_path = str(Path(insite_path) / "insite.study_area.xml")
     xml_generator.save(xml_path)
 
-    license_info = ["-set_licenses", rt_params["wi_lic"]] if wi_major_version >= 4 else []
+    min_license_version = 4
+    license_info = (
+        ["-set_licenses", rt_params["wi_lic"]] if wi_major_version >= min_license_version else []
+    )
 
     # Run Wireless InSite using the XML file
     command = [

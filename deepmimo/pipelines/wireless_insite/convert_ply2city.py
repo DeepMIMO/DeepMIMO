@@ -5,9 +5,9 @@ city files used in electromagnetic simulations, including material properties.
 """
 
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
-from plyfile import PlyData  # type: ignore
+from plyfile import PlyData  # type: ignore[import]
 
 
 def convert_ply2city(
@@ -79,7 +79,7 @@ def write_material_sec(f: Any, material_sec: list[str]) -> None:
     return f.writelines(material_sec)
 
 
-def write_face_sec(f, ply_data: PlyData) -> None:
+def write_face_sec(f: TextIO, ply_data: PlyData) -> None:
     """Write the face section to the city file.
 
     Args:
@@ -96,7 +96,7 @@ def write_face_sec(f, ply_data: PlyData) -> None:
         num_vertex = vertex_idx.size
         f.write("begin_<face> \n")
         f.write("Material 1\n")
-        f.write("nVertices %d\n" % num_vertex)
+        f.write(f"nVertices {num_vertex}\n")
         for v in vertex_idx:
             x = ply_data["vertex"][v][0]
             y = ply_data["vertex"][v][1]
@@ -117,7 +117,7 @@ def convert_to_city_file(
     feature_name: str,
     material_path: str,
 ) -> str | None:
-    """Helper function to convert a PLY file to a city feature file.
+    """Convert a PLY file to a city feature file.
 
     Args:
         ply_root (str): Root directory containing PLY files
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
     (num_vertex, num_faces) = convert_ply2city(ply_path, material_path, save_path)
 
-    print("Converted %d vertexes and %d faces" % (num_vertex, num_faces))
+    print(f"Converted {num_vertex} vertexes and {num_faces} faces")
 
     ply_path = "scenario/city_models/scenario_0/gwc_road.ply"
     material_path = "resources/material/Asphalt_1GHz.mtl"
@@ -155,4 +155,4 @@ if __name__ == "__main__":
 
     (num_vertex, num_faces) = convert_ply2city(ply_path, material_path, save_path)
 
-    print("Converted %d vertexes and %d faces" % (num_vertex, num_faces))
+    print(f"Converted {num_vertex} vertexes and {num_faces} faces")

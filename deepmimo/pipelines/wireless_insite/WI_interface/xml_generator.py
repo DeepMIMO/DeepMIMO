@@ -9,9 +9,9 @@ from pathlib import Path
 
 from lxml import etree
 
-from .Material import Material
-from .SetupEditor import SetupEditor
-from .TxRxEditor import TxRxEditor
+from .material import Material
+from .setup_editor import SetupEditor
+from .txrx_editor import TxRxEditor
 
 # XML parser
 XML_PARSER = etree.XMLParser(recover=True)
@@ -59,6 +59,7 @@ class XmlGenerator:
         Args:
             scenario_path (str): Path to the scenario directory
             setup (SetupEditor): SetupEditor instance
+            txrx (TxRxEditor): Tx/Rx editor with positions and configs
             version (int, optional): Version of the XML format. Defaults to 3.
 
         """

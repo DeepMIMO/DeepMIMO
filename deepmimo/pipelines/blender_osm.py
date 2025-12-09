@@ -21,7 +21,7 @@ from .utils.blender_utils import (
     process_roads,
     save_bbox_metadata,
     save_osm_origin,
-    set_LOGGER,
+    set_logger,
     setup_world_lighting,
 )
 
@@ -59,7 +59,7 @@ def fetch_osm_scene(
     # Setup logging to both console and file (great for debugging)
     log_file = str(Path(output_folder) / "logging_blender_osm.txt")
     logger = log_local_setup(log_file)
-    set_LOGGER(logger)  # So the inner functions can log
+    set_logger(logger)  # So the inner functions can log
 
     logger.info(f"📍 Processing Scenario: [{minlat}, {minlon}] to [{maxlat}, {maxlon}]")
     logger.info(f"📂 Saving output to: {output_folder}")
