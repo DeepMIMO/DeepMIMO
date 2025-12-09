@@ -11,18 +11,18 @@ from deepmimo import api
 class TestDeepMIMOAPIAdvanced(unittest.TestCase):
     """Advanced API behaviors for uploads and downloads."""
 
-    @patch("deepmimo.api.zip")
-    @patch("deepmimo.api._dm_upload_api_call")
+    @patch("deepmimo.api.upload.zip")
+    @patch("deepmimo.api.upload._dm_upload_api_call")
     def test_upload_flow(self, mock_upload_api, mock_zip) -> None:
         """Test the high-level upload function."""
         with (
-            patch("deepmimo.api.get_params_path") as mock_get_params,
+            patch("deepmimo.api.upload.get_params_path") as mock_get_params,
             patch(
-                "deepmimo.api.get_scenario_folder",
+                "deepmimo.api.upload.get_scenario_folder",
             ) as mock_get_folder,
-            patch("deepmimo.api.load_dict_from_json") as mock_load_json,
+            patch("deepmimo.api.upload.load_dict_from_json") as mock_load_json,
             patch(
-                "deepmimo.api.make_submission_on_server",
+                "deepmimo.api.upload.make_submission_on_server",
             ) as mock_make_sub,
         ):
             mock_get_folder.return_value = "scenarios/MyScenario"
@@ -53,18 +53,18 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
             with pytest.raises(RuntimeError):
                 api.upload("MyScenario", "key")
 
-    @patch("deepmimo.api.plot_summary")
-    @patch("deepmimo.api.upload_images")
+    @patch("deepmimo.api.upload.plot_summary")
+    @patch("deepmimo.api.upload.upload_images")
     def test_make_submission_on_server(self, mock_upl_imgs, mock_plot) -> None:
         """Test making submission on server."""
         with (
-            patch("deepmimo.api._process_params_data") as mock_proc_params,
+            patch("deepmimo.api.upload._process_params_data") as mock_proc_params,
             patch(
-                "deepmimo.api._generate_key_components",
+                "deepmimo.api.upload._generate_key_components",
             ) as mock_gen_key,
-            patch("deepmimo.api.summary") as mock_summary,
+            patch("deepmimo.api.upload.summary") as mock_summary,
             patch(
-                "deepmimo.api.requests.post",
+                "deepmimo.api.upload.requests.post",
             ) as mock_post,
         ):
             mock_proc_params.return_value = {"primaryParameters": {}, "advancedParameters": {}}
@@ -98,11 +98,11 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
             with pytest.raises(RuntimeError):
                 api.make_submission_on_server("MyScenario", "key", config)
 
-    @patch("deepmimo.api.get_scenarios_dir", return_value="scenarios")
-    @patch("deepmimo.api.get_scenario_folder", return_value="scenarios/myscenario")
-    @patch("deepmimo.api.unzip")
-    @patch("deepmimo.api.shutil.move")
-    @patch("deepmimo.api.Path")
+    @patch("deepmimo.api.download.get_scenarios_dir", return_value="scenarios")
+    @patch("deepmimo.api.download.get_scenario_folder", return_value="scenarios/myscenario")
+    @patch("deepmimo.api.download.unzip")
+    @patch("deepmimo.api.download.shutil.move")
+    @patch("deepmimo.api.download.Path")
     def test_download_scenario_existing(
         self,
         mock_path,
@@ -149,11 +149,11 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
         mock_get_scenarios_dir.assert_called()
         mock_get_folder.assert_called()
 
-    @patch("deepmimo.api.get_scenarios_dir", return_value="scenarios")
-    @patch("deepmimo.api.get_scenario_folder", return_value="scenarios/myscenario")
-    @patch("deepmimo.api.unzip")
-    @patch("deepmimo.api.shutil.move")
-    @patch("deepmimo.api.Path")
+    @patch("deepmimo.api.download.get_scenarios_dir", return_value="scenarios")
+    @patch("deepmimo.api.download.get_scenario_folder", return_value="scenarios/myscenario")
+    @patch("deepmimo.api.download.unzip")
+    @patch("deepmimo.api.download.shutil.move")
+    @patch("deepmimo.api.download.Path")
     def test_download_scenario_downloads(
         self,
         mock_path,
@@ -202,7 +202,7 @@ class TestDeepMIMOAPIAdvanced(unittest.TestCase):
         mock_resp.headers.get.return_value = "100"
         mock_resp.iter_content.return_value = [b"data"]
 
-        with patch("deepmimo.api.requests.get", return_value=mock_resp):
+        with patch("deepmimo.api.download.requests.get", return_value=mock_resp):
             mock_unzip.return_value = "myscenario_downloaded"
 
             with patch("builtins.open", mock_open()):

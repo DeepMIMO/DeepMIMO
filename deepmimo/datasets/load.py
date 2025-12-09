@@ -17,8 +17,8 @@ import numpy as np
 
 # Local imports
 from deepmimo import consts as c
-from deepmimo.core.scene import Scene
 from deepmimo.core.materials import MaterialList
+from deepmimo.core.scene import Scene
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
 from deepmimo.general_utils import (
     DotDict,
@@ -78,7 +78,9 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
         print("Scenario not found. Would you like to download it? [Y/n]")
         response = input().lower()
         if response in ["", "y", "yes"]:
-            from deepmimo.api import download  # Lazy import to avoid circular dependency  # noqa: PLC0415
+            # Lazy import to avoid circular dependency
+            from deepmimo.api import download  # noqa: PLC0415
+
             download(scen_name)
         else:
             msg = f"Scenario {scen_name} not found"

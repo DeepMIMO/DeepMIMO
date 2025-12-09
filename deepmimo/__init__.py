@@ -37,6 +37,9 @@ from .core.txrx import (
 from .datasets.dataset import Dataset, DynamicDataset, MacroDataset
 from .datasets.generate import generate
 from .datasets.load import load
+
+# Summary (moved to datasets/)
+from .datasets.summary import plot_summary, summary
 from .datasets.visualization import (
     plot_coverage,
     plot_power_discarding,
@@ -62,24 +65,23 @@ from .generator.geometry import steering_vec
 # Info
 from .info import info
 
-# Integrations
-from .integrations.web import export_dataset_to_binary
-
-# Summary (moved to datasets/)
-from .datasets.summary import plot_summary, summary
-
 # Backward compatibility - re-export web_export
 from .integrations import web as web_export
 
+# Integrations
+from .integrations.web import export_dataset_to_binary
+
 __all__ = [
+    # Bounding Box
+    "BoundingBox",
     # Channel Parameters
     "ChannelParameters",
     # Datasets
     "Dataset",
     "DynamicDataset",
-    "MacroDataset",
     # Physical world representation
     "Face",
+    "MacroDataset",
     # Materials
     "Material",
     "MaterialList",
@@ -88,8 +90,6 @@ __all__ = [
     # Ray Tracing Parameters
     "RayTracingParameters",
     "Scene",
-    # Bounding Box
-    "BoundingBox",
     # TX/RX handling
     "TxRxPair",
     "TxRxSet",

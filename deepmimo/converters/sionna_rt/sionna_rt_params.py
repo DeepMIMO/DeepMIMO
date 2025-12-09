@@ -17,8 +17,8 @@ from pathlib import Path
 
 from deepmimo.config import config
 from deepmimo.consts import RAYTRACER_NAME_SIONNA
-from deepmimo.general_utils import load_pickle
 from deepmimo.core.rt_params import RayTracingParameters
+from deepmimo.general_utils import load_pickle
 
 
 def read_rt_params(load_folder: str) -> dict:

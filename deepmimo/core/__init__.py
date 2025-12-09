@@ -19,16 +19,16 @@ from .scene import (
 from .txrx import TxRxPair, TxRxSet, get_txrx_pairs, get_txrx_sets, print_available_txrx_pair_ids
 
 __all__ = [
-    # Materials
-    "Material",
-    "MaterialList",
-    # Ray Tracing Parameters
-    "RayTracingParameters",
     # Scene
     "BoundingBox",
     "Face",
+    # Materials
+    "Material",
+    "MaterialList",
     "PhysicalElement",
     "PhysicalElementGroup",
+    # Ray Tracing Parameters
+    "RayTracingParameters",
     "Scene",
     # TX/RX
     "TxRxPair",

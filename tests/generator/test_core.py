@@ -7,8 +7,8 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
-from deepmimo.datasets import load as load_func
 from deepmimo.datasets import generate as generate_func
+from deepmimo.datasets import load as load_func
 from deepmimo.datasets.load import validate_txrx_sets
 
 

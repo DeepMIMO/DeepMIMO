@@ -4,8 +4,8 @@ import numpy as np
 
 from deepmimo import Dataset
 from deepmimo import consts as c
-from deepmimo.generator.channel import ChannelParameters
 from deepmimo.datasets.dataset import DynamicDataset
+from deepmimo.generator.channel import ChannelParameters
 
 
 def test_full_generation_flow() -> None:

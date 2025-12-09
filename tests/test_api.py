@@ -12,7 +12,7 @@ from deepmimo import api
 class TestDeepMIMOAPI(unittest.TestCase):
     """API unit tests for uploads, downloads, and helpers."""
 
-    @patch("deepmimo.api.requests.get")
+    @patch("deepmimo.api.upload.requests.get")
     def test_dm_upload_api_call_auth_fail(self, mock_get) -> None:
         """Test upload authorization failure."""
         mock_response = MagicMock()
@@ -32,8 +32,8 @@ class TestDeepMIMOAPI(unittest.TestCase):
             if test_file.exists():
                 test_file.unlink()
 
-    @patch("deepmimo.api.requests.get")
-    @patch("deepmimo.api.requests.put")
+    @patch("deepmimo.api.upload.requests.get")
+    @patch("deepmimo.api.upload.requests.put")
     def test_dm_upload_api_call_success(self, mock_put, mock_get) -> None:
         """Test successful upload."""
         # Mock auth response
@@ -99,7 +99,7 @@ Title line
         assert result["sections"][0]["name"] == "Section 1"
         assert result["sections"][1]["name"] == "Section 2"
 
-    @patch("deepmimo.api.requests.post")
+    @patch("deepmimo.api.search.requests.post")
     def test_search_success(self, mock_post) -> None:
         """Test search functionality."""
         mock_response = MagicMock()
@@ -115,7 +115,7 @@ Title line
         _args, kwargs = mock_post.call_args
         assert kwargs["json"] == query
 
-    @patch("deepmimo.api.requests.post")
+    @patch("deepmimo.api.search.requests.post")
     def test_search_failure(self, mock_post) -> None:
         """Test search failure."""
         mock_response = MagicMock()
@@ -126,7 +126,7 @@ Title line
         result = api.search({})
         assert result is None
 
-    @patch("deepmimo.api.requests.post")
+    @patch("deepmimo.api.search.requests.post")
     def test_search_connection_error(self, mock_post) -> None:
         """Test search connection error."""
         mock_post.side_effect = requests.exceptions.ConnectionError("Connection failed")
@@ -142,7 +142,7 @@ Title line
         url_rt = api.download_url("test_scen", rt_source=True)
         assert "rt_source=true" in url_rt
 
-    @patch("deepmimo.api.requests.post")
+    @patch("deepmimo.api.search.requests.post")
     def test_upload_images(self, mock_post) -> None:
         """Test image upload."""
         # Create dummy image
@@ -163,8 +163,8 @@ Title line
             if test_img.exists():
                 test_img.unlink()
 
-    @patch("deepmimo.api.requests.get")
-    @patch("deepmimo.api.requests.put")
+    @patch("deepmimo.api.upload.requests.get")
+    @patch("deepmimo.api.upload.requests.put")
     def test_upload_rt_source(self, mock_put, mock_get) -> None:
         """Test RT source upload."""
         # Create dummy zip

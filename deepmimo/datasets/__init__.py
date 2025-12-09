@@ -25,26 +25,26 @@ from .visualization import plot_coverage, plot_power_discarding, plot_rays
 __all__ = [
     # Core dataset classes
     "Dataset",
-    "MacroDataset",
+    # Array wrapper
+    "DeepMIMOArray",
     "DynamicDataset",
+    "MacroDataset",
+    "dbw2watt",
     # Dataset operations
     "generate",
+    "get_grid_idxs",
+    "get_idxs_with_limits",
+    # Sampling utilities
+    "get_linear_idxs",
+    "get_uniform_idxs",
     "load",
     # Visualization
     "plot_coverage",
     "plot_power_discarding",
     "plot_rays",
+    "plot_summary",
     # Summary
     "summary",
-    "plot_summary",
-    # Sampling utilities
-    "get_linear_idxs",
-    "get_uniform_idxs",
-    "get_grid_idxs",
-    "get_idxs_with_limits",
-    "dbw2watt",
-    # Array wrapper
-    "DeepMIMOArray",
     # Validation
     "validate_txrx_sets",
 ]
