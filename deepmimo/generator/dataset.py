@@ -124,7 +124,7 @@ class Dataset(DotDict):
         (See aliases dictionary for complete mapping)
     """
 
-    def __init__(self: Any, data: dict[str, Any] | None = None) -> None:
+    def __init__(self, data: dict[str, Any] | None = None) -> None:
         """Initialize dataset with optional data.
 
         Args:
@@ -154,7 +154,7 @@ class Dataset(DotDict):
         "inter_int",
     ]
 
-    def _wrap_array(self: Any, key: str, value: Any) -> Any:
+    def _wrap_array(self, key: str, value: Any) -> Any:
         """Wrap numpy arrays with DeepMIMOArray if appropriate.
 
         Args:
@@ -172,7 +172,7 @@ class Dataset(DotDict):
                 return DeepMIMOArray(value, self, key)
         return value
 
-    def __getitem__(self: Any, key: str) -> Any:
+    def __getitem__(self, key: str) -> Any:
         """Get an item from the dataset, computing it if necessary and wrapping if appropriate."""
         try:
             value = super().__getitem__(key)
@@ -180,7 +180,7 @@ class Dataset(DotDict):
             (value, key) = self._resolve_key(key)
         return self._wrap_array(key, value)
 
-    def __getattr__(self: Any, key: str) -> Any:
+    def __getattr__(self, key: str) -> Any:
         """Enable dot notation access with array wrapping."""
         try:
             value = super().__getitem__(key)
@@ -188,7 +188,7 @@ class Dataset(DotDict):
             (value, key) = self._resolve_key(key)
         return self._wrap_array(key, value)
 
-    def _resolve_key(self: Any, key: str) -> Any:
+    def _resolve_key(self, key: str) -> Any:
         """Resolve a key through the lookup chain.
 
         Order of operations:
@@ -224,7 +224,7 @@ class Dataset(DotDict):
             return (value, key)
         raise KeyError(key)
 
-    def __dir__(self: Any) -> Any:
+    def __dir__(self) -> Any:
         """Return list of valid attributes including computed ones."""
         return list(
             set(
@@ -234,7 +234,7 @@ class Dataset(DotDict):
             )
         )
 
-    def set_channel_params(self: Any, params: ChannelParameters | None = None) -> None:
+    def set_channel_params(self, params: ChannelParameters | None = None) -> None:
         """Set channel generation parameters.
 
         Args:
@@ -260,7 +260,7 @@ class Dataset(DotDict):
         return params
 
     def compute_channels(
-        self: Any,
+        self,
         params: ChannelParameters | None = None,
         *,
         times: float | np.ndarray | None = None,
@@ -323,7 +323,7 @@ class Dataset(DotDict):
         return channel
 
     @property
-    def tx_ori(self: Any) -> np.ndarray:
+    def tx_ori(self) -> np.ndarray:
         """Compute the orientation of the transmitter.
 
         Returns:
@@ -333,7 +333,7 @@ class Dataset(DotDict):
         return self.ch_params["bs_antenna"]["rotation"] * np.pi / 180
 
     @property
-    def bs_ori(self: Any) -> np.ndarray:
+    def bs_ori(self) -> np.ndarray:
         """Alias for tx_ori - computes the orientation of the transmitter/basestation.
 
         Returns:
@@ -343,7 +343,7 @@ class Dataset(DotDict):
         return self.tx_ori
 
     @property
-    def rx_ori(self: Any) -> np.ndarray:
+    def rx_ori(self) -> np.ndarray:
         """Compute the orientation of the receivers.
 
         Returns:
@@ -353,7 +353,7 @@ class Dataset(DotDict):
         return self.ch_params["ue_antenna"]["rotation"] * np.pi / 180
 
     @property
-    def ue_ori(self: Any) -> np.ndarray:
+    def ue_ori(self) -> np.ndarray:
         """Alias for rx_ori - computes the orientation of the receivers/users.
 
         Returns:
@@ -363,7 +363,7 @@ class Dataset(DotDict):
         return self.rx_ori
 
     def _look_at(
-        self: Any, from_pos: np.ndarray, to_pos: np.ndarray
+        self, from_pos: np.ndarray, to_pos: np.ndarray
     ) -> tuple[np.ndarray, np.ndarray]:
         """Calculate azimuth and elevation angles for position pairs.
 
@@ -390,7 +390,7 @@ class Dataset(DotDict):
         elevation_deg = elevation_rad * 180.0 / np.pi
         return (azimuth_deg, elevation_deg)
 
-    def bs_look_at(self: Any, look_pos: np.ndarray | list | tuple) -> None:
+    def bs_look_at(self, look_pos: np.ndarray | list | tuple) -> None:
         """Set the orientation of the basestation to look at a given position in 3D.
 
         Similar to Sionna RT's Camera.look_at() function, this method automatically
@@ -419,7 +419,7 @@ class Dataset(DotDict):
         )
         self._clear_cache_rotated_angles()
 
-    def ue_look_at(self: Any, look_pos: np.ndarray | list | tuple) -> None:
+    def ue_look_at(self, look_pos: np.ndarray | list | tuple) -> None:
         """Set the orientation of user equipment antennas to look at given position(s) in 3D.
 
         Similar to bs_look_at() function, this method automatically calculates and sets
@@ -479,7 +479,7 @@ class Dataset(DotDict):
         self._clear_cache_rotated_angles()
 
     def _compute_rotated_angles(
-        self: Any,
+        self,
         tx_ant_params: dict[str, Any] | None = None,
         rx_ant_params: dict[str, Any] | None = None,
     ) -> dict[str, np.ndarray]:
@@ -535,7 +535,7 @@ class Dataset(DotDict):
             c.AOA_AZ_ROT_PARAM_NAME: aoa_phi_rot,
         }
 
-    def _clear_cache_rotated_angles(self: Any) -> None:
+    def _clear_cache_rotated_angles(self) -> None:
         """Clear all cached attributes that depend on rotated angles.
 
         This includes:
@@ -554,12 +554,12 @@ class Dataset(DotDict):
         for k in rotated_angles_keys & self.keys():
             super().__delitem__(k)
 
-    def clear_cache_rotated_angles(self: Any) -> None:
+    def clear_cache_rotated_angles(self) -> None:
         """Public wrapper around `_clear_cache_rotated_angles`."""
         self._clear_cache_rotated_angles()
 
     def _compute_single_array_response(
-        self: Any, ant_params: dict, theta: np.ndarray, phi: np.ndarray
+        self, ant_params: dict, theta: np.ndarray, phi: np.ndarray
     ) -> np.ndarray:
         """Compute array response for a single antenna array.
 
@@ -576,7 +576,7 @@ class Dataset(DotDict):
         ant_ind = _ant_indices(ant_params[c.PARAMSET_ANT_SHAPE])
         return _array_response_batch(ant_ind=ant_ind, theta=theta, phi=phi, kd=kd)
 
-    def _compute_array_response_product(self: Any) -> np.ndarray:
+    def _compute_array_response_product(self) -> np.ndarray:
         """Compute product of TX and RX array responses.
 
         Returns:
@@ -593,7 +593,7 @@ class Dataset(DotDict):
         )
         return array_response_rx[:, :, None, :] * array_response_tx[:, None, :, :]
 
-    def _is_full_fov(self: Any, fov: np.ndarray) -> bool:
+    def _is_full_fov(self, fov: np.ndarray) -> bool:
         """Check if a FoV parameter represents a full sphere view.
 
         Args:
@@ -605,7 +605,7 @@ class Dataset(DotDict):
         """
         return fov[0] >= FULL_FOV_AZ and fov[1] >= FULL_FOV_EL
 
-    def compute_pathloss(self: Any, *, coherent: bool = True) -> np.ndarray:
+    def compute_pathloss(self, *, coherent: bool = True) -> np.ndarray:
         """Compute path loss in dB, assuming 0 dBm transmitted power.
 
         Args:
@@ -627,7 +627,7 @@ class Dataset(DotDict):
         self[c.PATHLOSS_PARAM_NAME] = pathloss
         return pathloss
 
-    def _compute_los(self: Any) -> np.ndarray:
+    def _compute_los(self) -> np.ndarray:
         """Calculate Line of Sight status (1: LoS, 0: NLoS, -1: No paths) for each receiver.
 
         Uses the interaction codes defined in consts.py:
@@ -649,20 +649,20 @@ class Dataset(DotDict):
         los_status[los_mask & has_paths] = 1
         return los_status
 
-    def _compute_num_paths(self: Any) -> np.ndarray:
+    def _compute_num_paths(self) -> np.ndarray:
         """Compute number of valid paths for each user (NaNs indicate removed paths)."""
         aoa = self[c.AOA_AZ_PARAM_NAME]
         return (~np.isnan(aoa)).sum(axis=1)
 
-    def _compute_max_paths(self: Any) -> int:
+    def _compute_max_paths(self) -> int:
         """Compute the maximum number of paths for any user."""
         return int(np.nanmax(self.num_paths))
 
-    def _compute_max_interactions(self: Any) -> int:
+    def _compute_max_interactions(self) -> int:
         """Compute the maximum number of interactions for any path of any user."""
         return np.nanmax(self.num_interactions).astype(int)
 
-    def _compute_num_interactions(self: Any) -> np.ndarray:
+    def _compute_num_interactions(self) -> np.ndarray:
         """Compute number of interactions for each path of each user."""
         result = np.zeros_like(self.inter)
         result[np.isnan(self.inter)] = np.nan
@@ -670,11 +670,11 @@ class Dataset(DotDict):
         result[non_zero] = np.floor(np.log10(self.inter[non_zero])) + 1
         return result
 
-    def compute_num_interactions(self: Any) -> np.ndarray:
+    def compute_num_interactions(self) -> np.ndarray:
         """Public wrapper around `_compute_num_interactions`."""
         return self._compute_num_interactions()
 
-    def _compute_inter_int(self: Any) -> np.ndarray:
+    def _compute_inter_int(self) -> np.ndarray:
         """Compute the interaction integer, with NaN values replaced by -1.
 
         Returns:
@@ -685,7 +685,7 @@ class Dataset(DotDict):
         inter_int[np.isnan(inter_int)] = -1
         return inter_int.astype(int)
 
-    def _compute_inter_str(self: Any) -> np.ndarray:
+    def _compute_inter_str(self) -> np.ndarray:
         """Compute the interaction string.
 
         Returns:
@@ -700,16 +700,16 @@ class Dataset(DotDict):
 
         return np.vectorize(translate_code)(inter_raw_str)
 
-    def _compute_n_ue(self: Any) -> int:
+    def _compute_n_ue(self) -> int:
         """Return the number of UEs/receivers in the dataset."""
         return self.rx_pos.shape[0]
 
-    def _compute_distances(self: Any) -> np.ndarray:
+    def _compute_distances(self) -> np.ndarray:
         """Compute Euclidean distances between receivers and transmitter."""
         return np.linalg.norm(self.rx_pos - self.tx_pos, axis=1)
 
     def _compute_power_linear_ant_gain(
-        self: Any,
+        self,
         tx_ant_params: dict[str, Any] | None = None,
         rx_ant_params: dict[str, Any] | None = None,
     ) -> np.ndarray:
@@ -741,11 +741,11 @@ class Dataset(DotDict):
             aod_phi=self[c.AOD_AZ_ROT_PARAM_NAME],
         )
 
-    def _compute_power_linear(self: Any) -> np.ndarray:
+    def _compute_power_linear(self) -> np.ndarray:
         """Compute linear power from power in dBm."""
         return dbw2watt(self.power)
 
-    def _compute_grid_info(self: Any) -> dict[str, np.ndarray]:
+    def _compute_grid_info(self) -> dict[str, np.ndarray]:
         """Compute grid size and spacing information from receiver positions.
 
         Returns:
@@ -765,11 +765,11 @@ class Dataset(DotDict):
         )
         return {"grid_size": grid_size, "grid_spacing": grid_spacing}
 
-    def compute_grid_info(self: Any) -> dict[str, np.ndarray]:
+    def compute_grid_info(self) -> dict[str, np.ndarray]:
         """Public wrapper around `_compute_grid_info`."""
         return self._compute_grid_info()
 
-    def has_valid_grid(self: Any) -> bool:
+    def has_valid_grid(self) -> bool:
         """Check if the dataset has a valid grid structure.
 
         A valid grid means that:
@@ -783,7 +783,7 @@ class Dataset(DotDict):
         grid_points = np.prod(self.grid_size)
         return grid_points == self.n_ue
 
-    def _get_active_idxs(self: Any) -> np.ndarray:
+    def _get_active_idxs(self) -> np.ndarray:
         """Return indices of users that have at least one valid path.
 
         Returns:
@@ -794,7 +794,7 @@ class Dataset(DotDict):
         return np.where(self.num_paths > 0)[0]
 
     def _get_linear_idxs(
-        self: Any,
+        self,
         start_pos: np.ndarray,
         end_pos: np.ndarray,
         n_steps: int,
@@ -818,7 +818,7 @@ class Dataset(DotDict):
             self.rx_pos, start_pos, end_pos, n_steps, filter_repeated=filter_repeated
         )
 
-    def _get_uniform_idxs(self: Any, steps: list[int]) -> np.ndarray:
+    def _get_uniform_idxs(self, steps: list[int]) -> np.ndarray:
         """Uniformly sample users over the receiver grid.
 
         Args:
@@ -830,7 +830,7 @@ class Dataset(DotDict):
         """
         return get_uniform_idxs(self.n_ue, self.grid_size, steps)
 
-    def _get_row_idxs(self: Any, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
+    def _get_row_idxs(self, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
         """Return indices of users in the specified grid rows.
 
         Args:
@@ -842,7 +842,7 @@ class Dataset(DotDict):
         """
         return get_grid_idxs(self.grid_size, "row", row_idxs)
 
-    def _get_col_idxs(self: Any, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
+    def _get_col_idxs(self, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
         """Return indices of users in the specified grid columns.
 
         Args:
@@ -854,7 +854,7 @@ class Dataset(DotDict):
         """
         return get_grid_idxs(self.grid_size, "col", col_idxs)
 
-    def get_idxs(self: Any, mode: str, **kwargs: Any) -> np.ndarray:
+    def get_idxs(self, mode: str, **kwargs: Any) -> np.ndarray:
         """Unified dispatcher for user index selection.
 
         Modes:
@@ -890,7 +890,7 @@ class Dataset(DotDict):
         msg = f"Unknown mode: {mode}"
         raise ValueError(msg)
 
-    def _trim_by_path(self: Any, path_mask: np.ndarray) -> Dataset:
+    def _trim_by_path(self, path_mask: np.ndarray) -> Dataset:
         """Trim paths based on a boolean mask.
 
         Args:
@@ -933,7 +933,7 @@ class Dataset(DotDict):
         aux_dataset.clear_all_caches()
         return aux_dataset
 
-    def _trim_by_index(self: Any, idxs: np.ndarray) -> Dataset:
+    def _trim_by_index(self, idxs: np.ndarray) -> Dataset:
         """Create a new dataset containing only the selected indices.
 
         Args:
@@ -964,7 +964,7 @@ class Dataset(DotDict):
         return new_dataset
 
     def _trim_by_fov(
-        self: Any,
+        self,
         bs_fov: np.ndarray | list | tuple | None = None,
         ue_fov: np.ndarray | list | tuple | None = None,
     ) -> Dataset:
@@ -1002,14 +1002,14 @@ class Dataset(DotDict):
         return self._trim_by_path(path_mask)
 
     def trim_by_fov(
-        self: Any,
+        self,
         bs_fov: np.ndarray | list | tuple | None = None,
         ue_fov: np.ndarray | list | tuple | None = None,
     ) -> Dataset:
         """Public wrapper around `_trim_by_fov`."""
         return self._trim_by_fov(bs_fov=bs_fov, ue_fov=ue_fov)
 
-    def _trim_by_path_depth(self: Any, path_depth: int) -> Dataset:
+    def _trim_by_path_depth(self, path_depth: int) -> Dataset:
         """Trim the dataset to keep only paths with at most the specified number of interactions.
 
         Args:
@@ -1024,11 +1024,11 @@ class Dataset(DotDict):
         path_mask = n_interactions <= path_depth
         return self._trim_by_path(path_mask)
 
-    def trim_by_path_depth(self: Any, path_depth: int) -> Dataset:
+    def trim_by_path_depth(self, path_depth: int) -> Dataset:
         """Public wrapper around `_trim_by_path_depth`."""
         return self._trim_by_path_depth(path_depth)
 
-    def _trim_by_path_type(self: Any, allowed_types: list[str]) -> Dataset:
+    def _trim_by_path_type(self, allowed_types: list[str]) -> Dataset:
         """Trim the dataset to keep only paths with allowed interaction types.
 
         Args:
@@ -1061,12 +1061,12 @@ class Dataset(DotDict):
                 path_mask[user_idx, path_idx] = is_valid
         return self._trim_by_path(path_mask)
 
-    def trim_by_path_type(self: Any, allowed_types: list[str]) -> Dataset:
+    def trim_by_path_type(self, allowed_types: list[str]) -> Dataset:
         """Public wrapper around `_trim_by_path_type`."""
         return self._trim_by_path_type(allowed_types)
 
     def trim(
-        self: Any,
+        self,
         *,
         idxs: np.ndarray | None = None,
         bs_fov: np.ndarray | list | tuple | None = None,
@@ -1104,7 +1104,7 @@ class Dataset(DotDict):
             ds = ds.trim_by_path_type(path_types)
         return ds
 
-    def plot_coverage(self: Any, cov_map: Any, **kwargs: Any) -> Any:
+    def plot_coverage(self, cov_map: Any, **kwargs: Any) -> Any:
         """Plot the coverage of the dataset.
 
         Args:
@@ -1116,7 +1116,7 @@ class Dataset(DotDict):
             self.rx_pos, cov_map, bs_pos=self.tx_pos.T, bs_ori=self.tx_ori, **kwargs
         )
 
-    def plot_rays(self: Any, idx: int, color_strat: str = "none", **kwargs: Any) -> Any:
+    def plot_rays(self, idx: int, color_strat: str = "none", **kwargs: Any) -> Any:
         """Plot the rays of the dataset.
 
         Args:
@@ -1153,12 +1153,12 @@ class Dataset(DotDict):
             self.rx_pos[idx], self.tx_pos[0], self.inter_pos[idx], self.inter[idx], **default_kwargs
         )
 
-    def plot_summary(self: Any, **kwargs: Any) -> Any:
+    def plot_summary(self, **kwargs: Any) -> Any:
         """Plot the summary of the dataset."""
         return plot_summary(dataset=self, **kwargs)
 
     @property
-    def rx_vel(self: Any) -> np.ndarray:
+    def rx_vel(self) -> np.ndarray:
         """Get the velocities of the users.
 
         Returns:
@@ -1170,7 +1170,7 @@ class Dataset(DotDict):
         return self._rx_vel
 
     @rx_vel.setter
-    def rx_vel(self: Any, velocities: np.ndarray | list | tuple) -> None:
+    def rx_vel(self, velocities: np.ndarray | list | tuple) -> None:
         """Set the velocities of the users.
 
         Args:
@@ -1198,7 +1198,7 @@ class Dataset(DotDict):
             self._rx_vel = velocities
 
     def print_rx(  # noqa: C901
-        self: Any, idx: int, path_idxs: np.ndarray | list[int] | None = None
+        self, idx: int, path_idxs: np.ndarray | list[int] | None = None
     ) -> None:
         """Print detailed information about a specific user.
 
@@ -1257,7 +1257,7 @@ class Dataset(DotDict):
                     print(f"    {p_idx + 1}: {self.inter_objects[idx][path_idx][p_idx]}")
 
     @property
-    def tx_vel(self: Any) -> np.ndarray:
+    def tx_vel(self) -> np.ndarray:
         """Get the velocities of the base stations.
 
         Returns:
@@ -1269,7 +1269,7 @@ class Dataset(DotDict):
         return self._tx_vel
 
     @tx_vel.setter
-    def tx_vel(self: Any, velocities: np.ndarray | list | tuple) -> np.ndarray:
+    def tx_vel(self, velocities: np.ndarray | list | tuple) -> np.ndarray:
         """Set the velocities of the base stations.
 
         Args:
@@ -1288,7 +1288,7 @@ class Dataset(DotDict):
         self._tx_vel = velocities
         return
 
-    def set_doppler(self: Any, doppler: float | list[float] | np.ndarray) -> None:
+    def set_doppler(self, doppler: float | list[float] | np.ndarray) -> None:
         """Set the doppler frequency shifts.
 
         Args:
@@ -1318,7 +1318,7 @@ class Dataset(DotDict):
         self.doppler = doppler
 
     def set_obj_vel(
-        self: Any, obj_idx: int | list[int], vel: list[float] | list[list[float]] | np.ndarray
+        self, obj_idx: int | list[int], vel: list[float] | list[list[float]] | np.ndarray
     ) -> None:
         """Update the velocity of an object.
 
@@ -1343,12 +1343,12 @@ class Dataset(DotDict):
             self.scene.objects[obj_id].vel = vel[idx]
         self._clear_cache_doppler()
 
-    def _clear_cache_doppler(self: Any) -> None:
+    def _clear_cache_doppler(self) -> None:
         """Clear all cached attributes that depend on doppler computation."""
         with contextlib.suppress(KeyError):
             super().__delitem__(c.DOPPLER_PARAM_NAME)
 
-    def _compute_doppler(self: Any) -> np.ndarray:
+    def _compute_doppler(self) -> np.ndarray:
         """Compute the doppler frequency shifts.
 
         Returns:
@@ -1393,7 +1393,7 @@ class Dataset(DotDict):
                 doppler[ue_i, path_i] = tx_doppler - rx_doppler + np.sum(path_dopplers)
         return doppler
 
-    def _compute_inter_angles(self: Any) -> np.ndarray:
+    def _compute_inter_angles(self) -> np.ndarray:
         """Compute the outgoing angles for all users and paths.
 
         For each path, computes N-1 angles where N is the number of interactions.
@@ -1421,7 +1421,7 @@ class Dataset(DotDict):
                     inter_angles[ue_i, path_i, i + 1] = vec / np.linalg.norm(vec)
         return inter_angles
 
-    def _compute_inter_objects(self: Any) -> np.ndarray:
+    def _compute_inter_objects(self) -> np.ndarray:
         """Compute the objects that interact with each path of each user.
 
         For each path, computes N-1 objects where N is the number of interactions.
@@ -1458,17 +1458,17 @@ class Dataset(DotDict):
                     inter_obj_ids[ue_i, path_i, i] = obj_ids[obj_idx]
         return inter_obj_ids
 
-    def clear_all_caches(self: Any) -> None:
+    def clear_all_caches(self) -> None:
         """Clear all caches exposed via public API."""
         self._clear_all_caches()
 
-    def _clear_all_caches(self: Any) -> None:
+    def _clear_all_caches(self) -> None:
         """Clear all caches."""
         self._clear_cache_core()
         self._clear_cache_rotated_angles()
         self._clear_cache_doppler()
 
-    def _clear_cache_core(self: Any) -> None:
+    def _clear_cache_core(self) -> None:
         """Clear all cached attributes that don't have dedicated clearing functions.
 
         This includes:
@@ -1495,7 +1495,7 @@ class Dataset(DotDict):
         for k in cache_keys & self.keys():
             super().__delitem__(k)
 
-    def _get_txrx_sets(self: Any) -> list[TxRxSet]:
+    def _get_txrx_sets(self) -> list[TxRxSet]:
         """Get the txrx sets for the dataset.
 
         Returns:
@@ -1504,7 +1504,7 @@ class Dataset(DotDict):
         """
         return get_txrx_sets(self.get("parent_name", self.name))
 
-    def info(self: Any, param_name: str | None = None) -> None:
+    def info(self, param_name: str | None = None) -> None:
         """Display help information about DeepMIMO dataset parameters.
 
         Args:
@@ -1519,7 +1519,7 @@ class Dataset(DotDict):
             param_name = resolved_name
         info(param_name)
 
-    def to_binary(self: Any, output_dir: str = "./datasets") -> None:
+    def to_binary(self, output_dir: str = "./datasets") -> None:
         """Export dataset to binary format for web visualizer.
 
         This method exports the dataset to a binary format suitable for the DeepMIMO
@@ -1576,7 +1576,7 @@ class MacroDataset:
         if not name.startswith("__")
     }
 
-    def __init__(self: Any, datasets: list[Dataset] | None = None) -> None:
+    def __init__(self, datasets: list[Dataset] | None = None) -> None:
         """Initialize with optional list of Dataset instances.
 
         Args:
@@ -1585,7 +1585,7 @@ class MacroDataset:
         """
         self.datasets = datasets if datasets is not None else []
 
-    def _get_single(self: Any, key: str) -> Any:
+    def _get_single(self, key: str) -> Any:
         """Get a single value from the first dataset for shared parameters.
 
         Args:
@@ -1601,7 +1601,7 @@ class MacroDataset:
             raise IndexError(msg)
         return self.datasets[0][key]
 
-    def __getattr__(self: Any, name: Any) -> Any:
+    def __getattr__(self, name: Any) -> Any:
         """Propagate any attribute/method access to all datasets.
 
         If the attribute is a method in PROPAGATE_METHODS, call it on all children.
@@ -1627,7 +1627,7 @@ class MacroDataset:
         results = [getattr(dataset, name) for dataset in self.datasets]
         return results[0] if len(results) == 1 else results
 
-    def __getitem__(self: Any, idx: Any) -> Any:
+    def __getitem__(self, idx: Any) -> Any:
         """Get dataset at specified index if idx is integer, otherwise propagate to all datasets.
 
         Args:
@@ -1647,7 +1647,7 @@ class MacroDataset:
         results = [dataset[idx] for dataset in self.datasets]
         return results[0] if len(results) == 1 else results
 
-    def __setitem__(self: Any, key: Any, value: Any) -> None:
+    def __setitem__(self, key: Any, value: Any) -> None:
         """Set item on all contained datasets.
 
         Args:
@@ -1658,11 +1658,11 @@ class MacroDataset:
         for dataset in self.datasets:
             dataset[key] = value
 
-    def __len__(self: Any) -> int:
+    def __len__(self) -> int:
         """Return number of contained datasets."""
         return len(self.datasets)
 
-    def append(self: Any, dataset: Dataset | MacroDataset) -> None:
+    def append(self, dataset: Dataset | MacroDataset) -> None:
         """Add a dataset to the collection.
 
         Args:
@@ -1671,7 +1671,7 @@ class MacroDataset:
         """
         self.datasets.append(dataset)
 
-    def to_binary(self: Any, output_dir: str = "./datasets") -> None:
+    def to_binary(self, output_dir: str = "./datasets") -> None:
         """Export all datasets to binary format for web visualizer.
 
         This method exports all contained datasets to binary format suitable for the
@@ -1688,7 +1688,7 @@ class MacroDataset:
 class DynamicDataset(MacroDataset):
     """Dataset composed of multiple (macro)datasets, each a time snapshot."""
 
-    def __init__(self: Any, datasets: list[MacroDataset], name: str) -> None:
+    def __init__(self, datasets: list[MacroDataset], name: str) -> None:
         """Initialize a dynamic dataset.
 
         Args:
@@ -1703,7 +1703,7 @@ class DynamicDataset(MacroDataset):
         for dataset in datasets:
             dataset.parent_name = name
 
-    def _get_single(self: Any, key: str) -> Any:
+    def _get_single(self, key: str) -> Any:
         """Override _get_single to handle scene differently from other shared parameters.
 
         For scene, return a DelegatingList of scenes from all datasets.
@@ -1713,13 +1713,13 @@ class DynamicDataset(MacroDataset):
             return DelegatingList([dataset.scene for dataset in self.datasets])
         return super()._get_single(key)
 
-    def __getattr__(self: Any, name: Any) -> Any:
+    def __getattr__(self, name: Any) -> Any:
         """Override __getattr__ to handle txrx_sets specially."""
         if name == "txrx_sets":
             return get_txrx_sets(self.name)
         return super().__getattr__(name)
 
-    def set_timestamps(self: Any, timestamps: float | list[int | float] | np.ndarray) -> None:
+    def set_timestamps(self, timestamps: float | list[int | float] | np.ndarray) -> None:
         """Set the timestamps for the dataset.
 
         Args:
@@ -1742,7 +1742,7 @@ class DynamicDataset(MacroDataset):
             raise ValueError(msg)
         self._compute_speeds()
 
-    def _compute_speeds(self: Any) -> None:
+    def _compute_speeds(self) -> None:
         """Compute the speeds of each scene based on the position and time differences."""
         for i in range(1, self.n_scenes):
             time_diff = self.timestamps[i] - self.timestamps[i - 1]

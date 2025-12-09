@@ -66,31 +66,31 @@ def tokenize_file(path: str) -> str:
 class Peekable:
     """Makes it possible to peek at the next value of an iterator."""
 
-    def __init__(self: Any, iterator: Any) -> None:
+    def __init__(self, iterator: Any) -> None:
         """Initialize with underlying iterator."""
         self._iterator = iterator
         self._sentinel = object()
         self._next = self._sentinel
 
 
-    def peek(self: Any) -> Any:
+    def peek(self) -> Any:
         """Peeks at the next value of the iterator, if any."""
         if self._next is self._sentinel:
             self._next = next(self._iterator)
         return self._next
 
-    def has_values(self: Any) -> Any:
+    def has_values(self) -> Any:
         """Check if the iterator has any values left."""
         if self._next is self._sentinel:
             with contextlib.suppress(StopIteration):
                 self._next = next(self._iterator)
         return self._next is not self._sentinel
 
-    def __iter__(self: Any) -> Any:
+    def __iter__(self) -> Any:
         """Implement the iterator protocol for `peekable`."""
         return self
 
-    def __next__(self: Any) -> Any:
+    def __next__(self) -> Any:
         """Implement the iterator protocol for `peekable`."""
         if (next_value := self._next) is not self._sentinel:
             self._next = self._sentinel
@@ -131,7 +131,7 @@ class Node:
     labels: list = field(default_factory=list)
     data: list = field(default_factory=list)
 
-    def __getitem__(self: Any, key: str) -> Any:
+    def __getitem__(self, key: str) -> Any:
         """Access node values using dictionary notation.
 
         Args:
@@ -146,7 +146,7 @@ class Node:
         """
         return self.values.__getitem__(key)
 
-    def __setitem__(self: Any, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: Any) -> None:
         """Set node values using dictionary notation.
 
         Args:
@@ -156,7 +156,7 @@ class Node:
         """
         return self.values.__setitem__(key, value)
 
-    def __delitem__(self: Any, key: str) -> None:
+    def __delitem__(self, key: str) -> None:
         """Delete node values using dictionary notation.
 
         Args:

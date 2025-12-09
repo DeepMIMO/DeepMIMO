@@ -42,7 +42,7 @@ class BoundingBox:
     bounds: np.ndarray
 
     def __init__(  # noqa: PLR0913
-        self: Any,
+        self,
         x_min: float,
         x_max: float,
         y_min: float,
@@ -54,52 +54,52 @@ class BoundingBox:
         self.bounds = np.array([[x_min, y_min, z_min], [x_max, y_max, z_max]])
 
     @property
-    def x_min(self: Any) -> float:
+    def x_min(self) -> float:
         """Get minimum x coordinate."""
         return self.bounds[0, 0]
 
     @property
-    def x_max(self: Any) -> float:
+    def x_max(self) -> float:
         """Get maximum x coordinate."""
         return self.bounds[1, 0]
 
     @property
-    def y_min(self: Any) -> float:
+    def y_min(self) -> float:
         """Get minimum y coordinate."""
         return self.bounds[0, 1]
 
     @property
-    def y_max(self: Any) -> float:
+    def y_max(self) -> float:
         """Get maximum y coordinate."""
         return self.bounds[1, 1]
 
     @property
-    def z_min(self: Any) -> float:
+    def z_min(self) -> float:
         """Get minimum z coordinate."""
         return self.bounds[0, 2]
 
     @property
-    def z_max(self: Any) -> float:
+    def z_max(self) -> float:
         """Get maximum z coordinate."""
         return self.bounds[1, 2]
 
     @property
-    def width(self: Any) -> float:
+    def width(self) -> float:
         """Get the width (X dimension) of the bounding box."""
         return self.x_max - self.x_min
 
     @property
-    def length(self: Any) -> float:
+    def length(self) -> float:
         """Get the length (Y dimension) of the bounding box."""
         return self.y_max - self.y_min
 
     @property
-    def height(self: Any) -> float:
+    def height(self) -> float:
         """Get the height (Z dimension) of the bounding box."""
         return self.z_max - self.z_min
 
     @property
-    def center(self: Any) -> np.ndarray:
+    def center(self) -> np.ndarray:
         """Get the center of the bounding box."""
         return np.array(
             [
@@ -130,7 +130,7 @@ class Face:
     """
 
     def __init__(
-        self: Any,
+        self,
         vertices: list[tuple[float, float, float]] | np.ndarray,
         material_idx: int | np.integer = 0,
     ) -> None:
@@ -150,7 +150,7 @@ class Face:
         self._triangular_faces: list[np.ndarray] | None = None
 
     @property
-    def normal(self: Any) -> np.ndarray:
+    def normal(self) -> np.ndarray:
         """Get the normal vector of the face."""
         if self._normal is None:
             v1 = self.vertices[1] - self.vertices[0]
@@ -160,7 +160,7 @@ class Face:
         return self._normal
 
     @property
-    def triangular_faces(self: Any) -> list[np.ndarray]:
+    def triangular_faces(self) -> list[np.ndarray]:
         """Get the triangular faces that make up this face."""
         if self._triangular_faces is None:
             tri_vertex_count = 3
@@ -175,12 +175,12 @@ class Face:
         return self._triangular_faces
 
     @property
-    def num_triangular_faces(self: Any) -> int:
+    def num_triangular_faces(self) -> int:
         """Get the number of triangular faces."""
         return len(self.triangular_faces)
 
     @property
-    def area(self: Any) -> float:
+    def area(self) -> float:
         """Get the area of the face."""
         if self._area is None:
             n = self.normal
@@ -195,7 +195,7 @@ class Face:
         return self._area
 
     @property
-    def centroid(self: Any) -> np.ndarray:
+    def centroid(self) -> np.ndarray:
         """Get the centroid of the face."""
         if self._centroid is None:
             self._centroid = np.mean(self.vertices, axis=0)
@@ -214,7 +214,7 @@ class PhysicalElement:
     }
 
     def __init__(
-        self: Any,
+        self,
         faces: list[Face],
         object_id: int = -1,
         label: str = CAT_OBJECTS,
@@ -248,7 +248,7 @@ class PhysicalElement:
         self._materials: set[int] | None = None
         self._compute_bounding_box()
 
-    def _compute_bounding_box(self: Any) -> None:
+    def _compute_bounding_box(self) -> None:
         """Compute the object's bounding box."""
         mins = np.min(self.vertices, axis=0)
         maxs = np.max(self.vertices, axis=0)
@@ -262,38 +262,38 @@ class PhysicalElement:
         )
 
     @property
-    def height(self: Any) -> float:
+    def height(self) -> float:
         """Get the height of the object."""
         return self.bounding_box.height
 
     @property
-    def faces(self: Any) -> list[Face]:
+    def faces(self) -> list[Face]:
         """Get the faces of the object."""
         return self._faces
 
     @property
-    def hull(self: Any) -> ConvexHull:
+    def hull(self) -> ConvexHull:
         """Get the convex hull of the object."""
         if self._hull is None:
             self._hull = ConvexHull(self.vertices)
         return self._hull
 
     @property
-    def hull_volume(self: Any) -> float:
+    def hull_volume(self) -> float:
         """Get the volume of the object using its convex hull."""
         if self._hull_volume is None:
             self._hull_volume = self.hull.volume
         return self._hull_volume
 
     @property
-    def hull_surface_area(self: Any) -> float:
+    def hull_surface_area(self) -> float:
         """Get the surface area of the object using its convex hull."""
         if self._hull_surface_area is None:
             self._hull_surface_area = self.hull.area
         return self._hull_surface_area
 
     @property
-    def footprint_area(self: Any) -> float:
+    def footprint_area(self) -> float:
         """Get the area of the object's footprint using 2D convex hull."""
         if self._footprint_area is None:
             points_2d = self.vertices[:, :2]
@@ -301,11 +301,11 @@ class PhysicalElement:
         return self._footprint_area
 
     @property
-    def volume(self: Any) -> float:
+    def volume(self) -> float:
         """Get the volume of the object using its convex hull."""
         return self.hull_volume
 
-    def to_dict(self: Any, vertex_map: dict[tuple[float, ...], int]) -> dict:
+    def to_dict(self, vertex_map: dict[tuple[float, ...], int]) -> dict:
         """Convert physical object to dictionary format.
 
         Args:
@@ -358,7 +358,7 @@ class PhysicalElement:
         return cls(faces=faces, name=data["name"], object_id=data["id"], label=data["label"])
 
     @property
-    def position(self: Any) -> np.ndarray:
+    def position(self) -> np.ndarray:
         """Get the center of mass (position) of the object."""
         if self._position is None:
             bb = self.bounding_box
@@ -372,7 +372,7 @@ class PhysicalElement:
         return self._position
 
     def plot(
-        self: Any,
+        self,
         ax: plt.Axes | None = None,
         mode: Literal["faces", "tri_faces"] = "faces",
         alpha: float = 0.8,
@@ -401,19 +401,19 @@ class PhysicalElement:
         return (ax.get_figure(), ax)
 
     @property
-    def materials(self: Any) -> set[int]:
+    def materials(self) -> set[int]:
         """Get set of material indices used by this object."""
         if self._materials is None:
             self._materials = list({face.material_idx for face in self._faces})
         return self._materials
 
     @property
-    def vel(self: Any) -> np.ndarray:
+    def vel(self) -> np.ndarray:
         """Get the speed vector of the object in Cartesian coordinates [m/s]."""
         return self._vel
 
     @vel.setter
-    def vel(self: Any, value: np.ndarray | list | tuple) -> None:
+    def vel(self, value: np.ndarray | list | tuple) -> None:
         """Set the velocity vector of the object.
 
         Args:
@@ -427,7 +427,7 @@ class PhysicalElement:
             raise ValueError(msg)
         self._vel = value
 
-    def __repr__(self: Any) -> str:
+    def __repr__(self) -> str:
         """Return a concise string representation of the physical element.
 
         Returns:
@@ -446,34 +446,34 @@ class PhysicalElement:
 class PhysicalElementGroup:
     """Represents a group of physical objects that can be queried and manipulated together."""
 
-    def __init__(self: Any, objects: list[PhysicalElement]) -> None:
+    def __init__(self, objects: list[PhysicalElement]) -> None:
         """Initialize a group of physical objects."""
         self._objects = objects
         self._bounding_box: BoundingBox | None = None
 
-    def __len__(self: Any) -> int:
+    def __len__(self) -> int:
         """Get number of objects in group."""
         return len(self._objects)
 
-    def __iter__(self: Any) -> Any:
+    def __iter__(self) -> Any:
         """Iterate over objects in group."""
         return iter(self._objects)
 
-    def __getitem__(self: Any, idx: int) -> PhysicalElement:
+    def __getitem__(self, idx: int) -> PhysicalElement:
         """Get object by index."""
         return self._objects[idx]
 
-    def __repr__(self: Any) -> str:
+    def __repr__(self) -> str:
         """Return a concise string representation of the physical element group."""
         obj_list = "\n".join(f"  {obj}" for obj in self._objects)
         return f"PhysicalElementGroup(objects={len(self._objects)})\nObjects:\n{obj_list}"
 
-    def get_materials(self: Any) -> list[int]:
+    def get_materials(self) -> list[int]:
         """Get list of material indices used by objects in this group."""
         return list(set().union(*(obj.materials for obj in self._objects)))
 
     def get_objects(
-        self: Any,
+        self,
         label: str | None = None,
         material: int | None = None,
     ) -> "PhysicalElementGroup":
@@ -495,7 +495,7 @@ class PhysicalElementGroup:
         return PhysicalElementGroup(objects)
 
     @property
-    def bounding_box(self: Any) -> BoundingBox:
+    def bounding_box(self) -> BoundingBox:
         """Get the bounding box containing all objects."""
         if self._bounding_box is None:
             if not self._objects:
@@ -527,7 +527,7 @@ class Scene:
         CAT_OBJECTS: {"z_order": 5, "alpha": 0.8, "color": "red"},
     }
 
-    def __init__(self: Any) -> None:
+    def __init__(self) -> None:
         """Initialize an empty scene."""
         self.objects = DelegatingList()
         self.visualization_settings = self.DEFAULT_VISUALIZATION_SETTINGS.copy()
@@ -540,15 +540,15 @@ class Scene:
         self._materials: MaterialList | None = None
 
     @property
-    def bounding_box(self: Any) -> BoundingBox:
+    def bounding_box(self) -> BoundingBox:
         """Get the bounding box containing all objects."""
         return self.get_objects().bounding_box
 
-    def set_visualization_settings(self: Any, label: str, settings: dict) -> None:
+    def set_visualization_settings(self, label: str, settings: dict) -> None:
         """Set visualization settings for a specific label."""
         self.visualization_settings[label] = settings
 
-    def add_object(self: Any, obj: PhysicalElement) -> None:
+    def add_object(self, obj: PhysicalElement) -> None:
         """Add a physical object to the scene.
 
         Args:
@@ -573,7 +573,7 @@ class Scene:
         self.objects.append(obj)
         self._bounding_box = None
 
-    def add_objects(self: Any, objects: list[PhysicalElement]) -> None:
+    def add_objects(self, objects: list[PhysicalElement]) -> None:
         """Add multiple physical objects to the scene.
 
         Args:
@@ -583,7 +583,7 @@ class Scene:
         for obj in objects:
             self.add_object(obj)
 
-    def _add_face(self: Any, face: Face) -> list[int]:
+    def _add_face(self, face: Face) -> list[int]:
         """Add a face and return indices of its triangular faces.
 
         Args:
@@ -599,7 +599,7 @@ class Scene:
         return triangle_indices
 
     def get_objects(
-        self: Any,
+        self,
         label: str | None = None,
         material: int | None = None,
     ) -> PhysicalElementGroup:
@@ -622,7 +622,7 @@ class Scene:
         group = PhysicalElementGroup(objects)
         return group.get_objects(material=material) if material else group
 
-    def export_data(self: Any, base_folder: str) -> dict:
+    def export_data(self, base_folder: str) -> dict:
         """Export scene data to files and return metadata dictionary.
 
         Creates matrix files for vertices, faces and materials in the base folder.
@@ -683,7 +683,7 @@ class Scene:
         return scene
 
     def plot(  # noqa: PLR0912, PLR0913, C901
-        self: Any,
+        self,
         *,
         title: bool = True,
         mode: Literal["faces", "tri_faces"] = "faces",
@@ -786,7 +786,7 @@ class Scene:
             ax.legend()
         return ax
 
-    def _set_axes_lims_to_scale(self: Any, ax: Any, zoom: float = 1.3) -> None:
+    def _set_axes_lims_to_scale(self, ax: Any, zoom: float = 1.3) -> None:
         """Set axis limits based on scene bounding box with equal scaling.
 
         Args:
@@ -804,7 +804,7 @@ class Scene:
         ax.set_zlim3d([center_z - max_range, center_z + max_range])
         ax.set_box_aspect([1, 1, 1])
 
-    def _get_title_with_counts(self: Any) -> str:
+    def _get_title_with_counts(self) -> str:
         """Generate a title string with object counts for each label.
 
         Returns:
@@ -822,7 +822,7 @@ class Scene:
             counts.append(f"{label_name}: {count}")
         return ", ".join(counts)
 
-    def count_objects_by_label(self: Any) -> dict[str, int]:
+    def count_objects_by_label(self) -> dict[str, int]:
         """Count the number of objects for each label in the scene.
 
         Returns:
@@ -835,7 +835,7 @@ class Scene:
             label_counts[label] = label_counts.get(label, 0) + 1
         return label_counts
 
-    def __repr__(self: Any) -> str:
+    def __repr__(self) -> str:
         """Return a concise string representation of the scene.
 
         Returns:

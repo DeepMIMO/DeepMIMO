@@ -47,13 +47,13 @@ class DeepMIMOConfig:
 
     _instance = None
 
-    def __new__(cls: Any) -> Any:
+    def __new__(cls: type["DeepMIMOConfig"]) -> "DeepMIMOConfig":
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance._initialize()  # noqa: SLF001
         return cls._instance
 
-    def _initialize(self: Any) -> None:
+    def _initialize(self) -> None:
         """Initialize the configuration with default values."""
         self._config = {
             "wireless_insite_version": RAYTRACER_VERSION_WIRELESS_INSITE,
@@ -65,7 +65,7 @@ class DeepMIMOConfig:
             "rt_sources_folder": RT_SOURCES_FOLDER,
         }
 
-    def set(self: Any, key: str, value: Any) -> None:
+    def set(self, key: str, value: Any) -> None:
         """Set a configuration value.
 
         Args:
@@ -79,7 +79,7 @@ class DeepMIMOConfig:
             print(f"Warning: Configuration key '{key}' does not exist. Adding as new key.")
             self._config[key] = value
 
-    def get(self: Any, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         """Get a configuration value.
 
         Args:
@@ -93,11 +93,11 @@ class DeepMIMOConfig:
         """
         return self._config.get(key, default)
 
-    def reset(self: Any) -> None:
+    def reset(self) -> None:
         """Reset all configuration values to their defaults."""
         self._initialize()
 
-    def get_config_str(self: Any) -> str:
+    def get_config_str(self) -> str:
         """Return a string representation of the configuration."""
         result = "\nDeepMIMO Configuration:\n"
         result += "-" * 50 + "\n"
@@ -106,11 +106,11 @@ class DeepMIMOConfig:
         result += "-" * 50
         return result
 
-    def print_config(self: Any) -> None:
+    def print_config(self) -> None:
         """Print all current configuration values."""
         print(self.get_config_str())
 
-    def get_all(self: Any) -> dict[str, Any]:
+    def get_all(self) -> dict[str, Any]:
         """Get all configuration values.
 
         Returns:
@@ -119,7 +119,7 @@ class DeepMIMOConfig:
         """
         return self._config.copy()
 
-    def __call__(self: Any, *args: Any, **kwargs: Any) -> Any:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """Function-like interface for the configuration.
 
         If no arguments are provided, print all current configuration values.
@@ -154,7 +154,7 @@ class DeepMIMOConfig:
             raise ValueError(msg)
         return None
 
-    def __repr__(self: Any) -> str:
+    def __repr__(self) -> str:
         """Return a string representation of the configuration."""
         return self.get_config_str()
 

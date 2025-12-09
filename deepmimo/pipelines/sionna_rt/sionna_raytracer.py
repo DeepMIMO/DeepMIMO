@@ -47,20 +47,20 @@ else:
 class _DataLoader:
     """DataLoader class for Sionna RT that returns user indices for raytracing."""
 
-    def __init__(self: Any, data: Any, batch_size: Any) -> None:
+    def __init__(self, data: Any, batch_size: Any) -> None:
         self.data = np.array(data)
         self.batch_size = batch_size
         self.num_samples = len(data)
         self.indices = np.arange(self.num_samples)
 
-    def __len__(self: Any) -> int:
+    def __len__(self) -> int:
         return int(np.ceil(self.num_samples / self.batch_size))
 
-    def __iter__(self: Any) -> Any:
+    def __iter__(self) -> Any:
         self.current_idx = 0
         return self
 
-    def __next__(self: Any) -> Any:
+    def __next__(self) -> Any:
         if self.current_idx >= self.num_samples:
             raise StopIteration
         start_idx = self.current_idx

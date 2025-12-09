@@ -325,7 +325,7 @@ class DotDict(Mapping[K, V]):
 
     """
 
-    def __init__(self: Any, data: dict[str, Any] | None = None) -> None:
+    def __init__(self, data: dict[str, Any] | None = None) -> None:
         """Initialize DotDict with a dictionary.
 
         Args:
@@ -340,14 +340,14 @@ class DotDict(Mapping[K, V]):
                 else:
                     self._data[key] = value
 
-    def __getattr__(self: Any, key: str) -> Any:
+    def __getattr__(self, key: str) -> Any:
         """Enable dot notation access to dictionary items."""
         try:
             return self._data[key]
         except KeyError as err:
             raise AttributeError(key) from err
 
-    def __setattr__(self: Any, key: str, value: Any) -> None:
+    def __setattr__(self, key: str, value: Any) -> None:
         """Enable dot notation assignment with property support.
 
         This method first checks if the attribute is a property with a setter.
@@ -365,21 +365,21 @@ class DotDict(Mapping[K, V]):
                 value = DotDict(value)
             self._data[key] = value
 
-    def __getitem__(self: Any, key: str) -> Any:
+    def __getitem__(self, key: str) -> Any:
         """Enable dictionary-style access."""
         return self._data[key]
 
-    def __setitem__(self: Any, key: str, value: Any) -> None:
+    def __setitem__(self, key: str, value: Any) -> None:
         """Enable dictionary-style assignment."""
         if isinstance(value, dict) and (not isinstance(value, DotDict)):
             value = DotDict(value)
         self._data[key] = value
 
-    def __delitem__(self: Any, key: str) -> None:
+    def __delitem__(self, key: str) -> None:
         """Enable dictionary-style deletion."""
         del self._data[key]
 
-    def update(self: Any, other: dict[str, Any]) -> None:
+    def update(self, other: dict[str, Any]) -> None:
         """Update the dictionary with elements from another dictionary."""
         processed = {
             k: DotDict(v) if isinstance(v, dict) and (not isinstance(v, DotDict)) else v
@@ -387,35 +387,35 @@ class DotDict(Mapping[K, V]):
         }
         self._data.update(processed)
 
-    def __len__(self: Any) -> int:
+    def __len__(self) -> int:
         """Return the length of the underlying data dictionary."""
         return len(self._data)
 
-    def __iter__(self: Any) -> Any:
+    def __iter__(self) -> Any:
         """Return an iterator over the data dictionary keys."""
         return iter(self._data)
 
-    def __dir__(self: Any) -> Any:
+    def __dir__(self) -> Any:
         """Return list of valid attributes."""
         return list(set(list(super().__dir__()) + list(self._data.keys())))
 
-    def keys(self: Any) -> Any:
+    def keys(self) -> Any:
         """Return dictionary keys."""
         return self._data.keys()
 
-    def values(self: Any) -> Any:
+    def values(self) -> Any:
         """Return dictionary values."""
         return self._data.values()
 
-    def items(self: Any) -> Any:
+    def items(self) -> Any:
         """Return dictionary items as (key, value) pairs."""
         return self._data.items()
 
-    def get(self: Any, key: str, default: Any = None) -> Any:
+    def get(self, key: str, default: Any = None) -> Any:
         """Get value for key, returning default if key doesn't exist."""
         return self._data.get(key, default)
 
-    def hasattr(self: Any, key: str) -> bool:
+    def hasattr(self, key: str) -> bool:
         """Safely check if a key exists in the dictionary.
 
         This method provides a safe way to check for attribute existence
@@ -430,7 +430,7 @@ class DotDict(Mapping[K, V]):
         """
         return key in self._data
 
-    def to_dict(self: Any) -> dict:
+    def to_dict(self) -> dict:
         """Convert DotDict back to a regular dictionary.
 
         Returns:
@@ -445,7 +445,7 @@ class DotDict(Mapping[K, V]):
                 result[key] = value
         return result
 
-    def deepcopy(self: Any) -> "DotDict":
+    def deepcopy(self) -> "DotDict":
         """Create a deep copy of the DotDict instance.
 
         This method creates a completely independent copy of the DotDict,
@@ -468,7 +468,7 @@ class DotDict(Mapping[K, V]):
                 result[key] = value
         return type(self)(result)
 
-    def __repr__(self: Any) -> str:
+    def __repr__(self) -> str:
         """Return string representation of dictionary."""
         return pformat(self._data)
 
@@ -487,7 +487,7 @@ class PrintIfVerbose:
 
     """
 
-    def __init__(self: Any, *, verbose: bool) -> None:
+    def __init__(self, *, verbose: bool) -> None:
         """Store verbosity flag.
 
         Args:
@@ -496,7 +496,7 @@ class PrintIfVerbose:
         """
         self.verbose = verbose
 
-    def __call__(self: Any, message: str) -> None:
+    def __call__(self, message: str) -> None:
         """Print the message if verbose mode is enabled.
 
         Args:
@@ -614,7 +614,7 @@ class DelegatingList(list):
     and the results will be returned as a list.
     """
 
-    def __getattr__(self: Any, name: Any) -> Any:
+    def __getattr__(self, name: Any) -> Any:
         """Delegate attribute access to each item in the list.
 
         If the attribute is a method, it will be called on each item and results returned as a list.
@@ -635,7 +635,7 @@ class DelegatingList(list):
         results = [getattr(item, name) for item in self]
         return DelegatingList(results)
 
-    def __setattr__(self: Any, name: Any, value: Any) -> None:
+    def __setattr__(self, name: Any, value: Any) -> None:
         """Delegate attribute assignment to each item in the list.
 
         If value is a list/iterable, each item in the list gets the corresponding value.

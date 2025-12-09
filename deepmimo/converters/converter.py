@@ -46,7 +46,7 @@ def _find_converter_from_dir(directory: str) -> Callable | None:
 find_converter_from_dir = _find_converter_from_dir
 
 
-def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any | None:
+def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> str | None:
     """Create a standardized scenario from raytracing data.
 
     This function automatically detects the raytracing data format based on file
