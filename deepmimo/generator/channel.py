@@ -427,7 +427,81 @@ def _check_ofdm_compatibility(ofdm_params: dict, delays: np.ndarray) -> None:
     print("-" * 50)
 
 
-def _generate_mimo_channel(  # noqa: PLR0913 - explicit args preferred over nested containers
+def _compute_user_freq_channel(  # noqa: PLR0913 - all params needed for OFDM generation
+    array_product: np.ndarray,
+    user_power: np.ndarray,
+    user_delay: np.ndarray,
+    user_phase: np.ndarray,
+    user_doppler: np.ndarray,
+    path_gen: OFDMPathGenerator,
+    ts: float,
+    times_arr: np.ndarray,
+) -> np.ndarray:
+    """Compute frequency-domain channel for a single user.
+
+    Args:
+        array_product: [M_rx, M_tx, P] antenna array responses for valid paths
+        user_power: [P] path powers (linear scale)
+        user_delay: [P] path delays (seconds)
+        user_phase: [P] path phases (degrees)
+        user_doppler: [P] Doppler frequencies (Hz)
+        path_gen: OFDM path generator
+        ts: Sampling period (seconds)
+        times_arr: [N_t] time samples
+
+    Returns:
+        [M_rx, M_tx, K, N_t] frequency-domain channel
+
+    """
+    # Compute per-path, per-subcarrier, per-time path gains
+    path_gains = path_gen.generate(
+        pwr=user_power,
+        toa=user_delay,
+        phs=user_phase,
+        ts=ts,
+        dopplers=user_doppler,
+        times=times_arr,
+    )
+    # Combine with array responses: [M_rx, M_tx, P] x [P, K, N_t] -> [M_rx, M_tx, K, N_t]
+    return np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
+        np.complex64,
+        copy=False,
+    )
+
+
+def _compute_user_time_channel(
+    array_product: np.ndarray,
+    user_power: np.ndarray,
+    user_phase: np.ndarray,
+    user_doppler: np.ndarray,
+    times_arr: np.ndarray,
+) -> np.ndarray:
+    """Compute time-domain channel for a single user.
+
+    Args:
+        array_product: [M_rx, M_tx, P] antenna array responses for valid paths
+        user_power: [P] path powers (linear scale)
+        user_phase: [P] path phases (degrees)
+        user_doppler: [P] Doppler frequencies (Hz)
+        times_arr: [N_t] time samples
+
+    Returns:
+        [M_rx, M_tx, P, N_t] time-domain channel
+
+    """
+    # Time-domain per-path gains: a_pt = sqrt(P) * exp(j(phi + 2π fD t))
+    phase0 = np.deg2rad(user_phase)[:, None]  # [P, 1]
+    a_pt = np.sqrt(user_power)[:, None] * np.exp(
+        1j * (phase0 + 2 * np.pi * user_doppler[:, None] * times_arr[None, :]),
+    )  # [P, N_t]
+    # Combine: [M_rx, M_tx, P] x [P, N_t] -> [M_rx, M_tx, P, N_t]
+    return np.einsum("rtp,pn->rtpn", array_product, a_pt, optimize=True).astype(
+        np.complex64,
+        copy=False,
+    )
+
+
+def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred for clarity
     array_response_product: np.ndarray,
     power: np.ndarray,
     delay: np.ndarray,
@@ -506,30 +580,25 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit args preferred over nest
 
         if freq_domain:
             # Compute frequency-domain channel
-            path_gains = path_gen.generate(
-                pwr=user_power,
-                toa=user_delay,
-                phs=user_phase,
-                ts=ts,
-                dopplers=user_doppler,
-                times=times_arr,
-            )
-            # Combine with array responses: [M_rx, M_tx, P] x [P, K, N_t] -> [M_rx, M_tx, K, N_t]
-            hi_fk_t = np.einsum("rtp,pkn->rtkn", array_product, path_gains, optimize=True).astype(
-                np.complex64,
-                copy=False,
+            hi_fk_t = _compute_user_freq_channel(
+                array_product,
+                user_power,
+                user_delay,
+                user_phase,
+                user_doppler,
+                path_gen,
+                ts,
+                times_arr,
             )
             channel[i] = hi_fk_t[..., 0] if n_times == 1 and squeeze_time else hi_fk_t
         else:
-            # Time-domain channel
-            phase0 = np.deg2rad(user_phase)[:, None]  # [P,1]
-            a_pt = np.sqrt(user_power)[:, None] * np.exp(
-                1j * (phase0 + 2 * np.pi * user_doppler[:, None] * times_arr[None, :]),
-            )  # [P,N_t]
-            # Combine: [M_rx,M_tx,P] x [P,N_t] -> [M_rx,M_tx,P,N_t]
-            hi_pt = np.einsum("rtp,pn->rtpn", array_product, a_pt, optimize=True).astype(
-                np.complex64,
-                copy=False,
+            # Compute time-domain channel
+            hi_pt = _compute_user_time_channel(
+                array_product,
+                user_power,
+                user_phase,
+                user_doppler,
+                times_arr,
             )
             # Pad zeros for invalid paths to preserve last_ch_dim
             if n_times == 1 and squeeze_time:
