@@ -111,6 +111,15 @@ class _ProgressFileReader:
         self.file_object.close()
 
 
+def _compute_sha1(file_path: Path) -> str:
+    """Compute SHA1 hash of a file."""
+    sha1 = hashlib.sha1()  # noqa: S324 (SHA1 is required by the server)
+    with file_path.open("rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            sha1.update(chunk)
+    return sha1.hexdigest()
+
+
 def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR0911, PLR0912
     """Upload a file to the DeepMIMO API server.
 
@@ -162,11 +171,7 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901, PLR09
             return None
 
         # Calculate file hash
-        sha1 = hashlib.sha1()  # noqa: S324  (SHA1 is required)
-        with file_path.open("rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                sha1.update(chunk)
-        file_hash = sha1.hexdigest()
+        file_hash = _compute_sha1(file_path)
 
         # Upload file to DB
         print(f"Uploading {authorized_filename} to DB...")
@@ -759,7 +764,7 @@ def upload(  # noqa: PLR0913
     return submission_scenario_name
 
 
-def upload_rt_source(  # noqa: C901, PLR0911, PLR0915
+def upload_rt_source(  # noqa: C901, PLR0911
     scenario_name: str, rt_zip_path: str, key: str
 ) -> bool:
     """Upload a Ray Tracing (RT) source file to the database.
@@ -818,11 +823,7 @@ def upload_rt_source(  # noqa: C901, PLR0911, PLR0915
         print(f"✓ Authorization granted. Uploading to RT database as '{authorized_filename}'...")
 
         # 2. Calculate file hash (using the local rt_zip_path file)
-        sha1 = hashlib.sha1()  # noqa: S324  (SHA1 is required)
-        with rt_zip_path_obj.open("rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                sha1.update(chunk)
-        file_hash = sha1.hexdigest()
+        file_hash = _compute_sha1(rt_zip_path_obj)
 
         # 3. Upload file to the RT database using the presigned URL
         pbar = tqdm(total=file_size, unit="B", unit_scale=True, desc="Uploading RT Source")
