@@ -120,7 +120,92 @@ def _compute_sha1(file_path: Path) -> str:
     return sha1.hexdigest()
 
 
-def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901
+def _get_upload_authorization(
+    file_path: Path, key: str
+) -> tuple[dict[str, Any], str] | tuple[None, None]:
+    """Get upload authorization from server.
+
+    Args:
+        file_path: Path to file to upload
+        key: API authentication key
+
+    Returns:
+        Tuple of (auth_data, authorized_filename) if successful, (None, None) otherwise
+
+    """
+    filename = file_path.name
+    file_size = file_path.stat().st_size
+
+    if file_size > FILE_SIZE_LIMIT:
+        print(f"Error: File size limit of {FILE_SIZE_LIMIT / 1024**3} GB exceeded.")
+        return None, None
+
+    # Get presigned upload URL
+    auth_response = requests.get(
+        f"{API_BASE_URL}/api/b2/authorize-upload",
+        params={"filename": filename},
+        headers={"Authorization": f"Bearer {key}"},
+        timeout=REQUEST_TIMEOUT,
+    )
+    auth_response.raise_for_status()
+    auth_data = auth_response.json()
+
+    if not auth_data.get("presignedUrl"):
+        print("Error: Invalid authorization response")
+        return None, None
+
+    # Verify filename match
+    authorized_filename = auth_data.get("filename")
+    if authorized_filename and authorized_filename != filename:
+        msg = (
+            "Error: Filename mismatch. "
+            f"Server authorized '{authorized_filename}' but trying to upload '{filename}'"
+        )
+        print(msg)
+        return None, None
+
+    return auth_data, authorized_filename or filename
+
+
+def _perform_file_upload(
+    file: str, file_size: int, auth_data: dict[str, Any], file_hash: str
+) -> bool:
+    """Perform the actual file upload with progress bar.
+
+    Args:
+        file: Path to file
+        file_size: Size of file in bytes
+        auth_data: Authorization data from server
+        file_hash: SHA1 hash of file
+
+    Returns:
+        True if upload successful, False otherwise
+
+    """
+    authorized_filename = auth_data.get("filename", Path(file).name)
+    print(f"Uploading {authorized_filename} to DB...")
+    pbar = tqdm(total=file_size, unit="B", unit_scale=True, desc="Uploading")
+
+    try:
+        progress_reader = _ProgressFileReader(file, pbar)
+        upload_response = requests.put(
+            auth_data["presignedUrl"],
+            headers={
+                "Content-Type": auth_data.get("contentType", "application/zip"),
+                "Content-Length": str(file_size),
+                "X-Bz-Content-sha1": file_hash,
+            },
+            data=progress_reader,
+            timeout=REQUEST_TIMEOUT,
+        )
+        upload_response.raise_for_status()
+        return upload_response.status_code == HTTP_OK
+    finally:
+        progress_reader.close()
+        pbar.close()
+
+
+def _dm_upload_api_call(file: str, key: str) -> str | None:
     """Upload a file to the DeepMIMO API server.
 
     Args:
@@ -138,85 +223,32 @@ def _dm_upload_api_call(file: str, key: str) -> str | None:  # noqa: C901
     """
     result = None
     try:
-        # Get file info
         file_path = Path(file)
-        filename = file_path.name
+
+        # Get authorization
+        auth_data, authorized_filename = _get_upload_authorization(file_path, key)
+        if not auth_data:
+            return result
+
+        # Calculate file hash and perform upload
+        file_hash = _compute_sha1(file_path)
         file_size = file_path.stat().st_size
 
-        if file_size > FILE_SIZE_LIMIT:
-            print(f"Error: File size limit of {FILE_SIZE_LIMIT / 1024**3} GB exceeded.")
-            return result
+        if _perform_file_upload(file, file_size, auth_data, file_hash):
+            result = authorized_filename
 
-        # Get presigned upload URL with filename validation built-in
-        auth_response = requests.get(
-            f"{API_BASE_URL}/api/b2/authorize-upload",
-            params={"filename": filename},  # Use the actual filename from the file
-            headers={"Authorization": f"Bearer {key}"},
-            timeout=REQUEST_TIMEOUT,
-        )
-        auth_response.raise_for_status()
-        auth_data = auth_response.json()
-
-        if not auth_data.get("presignedUrl"):
-            print("Error: Invalid authorization response")
-            return result
-
-        # Verify the authorized filename matches our source filename
-        authorized_filename = auth_data.get("filename")
-        if authorized_filename and authorized_filename != filename:
-            msg = (
-                "Error: Filename mismatch. "
-                f"Server authorized '{authorized_filename}' but trying to upload '{filename}'"
-            )
-            print(msg)
-            return result
-
-        # Calculate file hash
-        file_hash = _compute_sha1(file_path)
-
-        # Upload file to DB
-        print(f"Uploading {authorized_filename} to DB...")
-        pbar = tqdm(total=file_size, unit="B", unit_scale=True, desc="Uploading")
-
-        try:
-            progress_reader = _ProgressFileReader(file, pbar)
-
-            # Use the presigned URL for upload
-            upload_response = requests.put(
-                auth_data["presignedUrl"],
-                headers={
-                    "Content-Type": auth_data.get("contentType", "application/zip"),
-                    "Content-Length": str(file_size),
-                    "X-Bz-Content-sha1": file_hash,
-                },
-                data=progress_reader,
-                timeout=REQUEST_TIMEOUT,
-            )
-            upload_response.raise_for_status()
-
-            # Check status and set result
-            if upload_response.status_code == HTTP_OK:
-                result = authorized_filename or filename
-        finally:
-            progress_reader.close()
-            pbar.close()
-
-    except requests.exceptions.HTTPError as e:  # Catch HTTPError specifically
-        print(f"API call failed: {e!s}")  # Print standard HTTP error
+    except requests.exceptions.HTTPError as e:
+        print(f"API call failed: {e!s}")
         if e.response is not None:
             try:
-                # Try to parse the JSON response from the server
                 error_data = e.response.json()
-                # Extract the specific error message using the 'error' key
                 server_message = error_data.get("error", "No specific error message found in JSON.")
                 print(f"Server Error ({e.response.status_code}): {server_message}")
-            except ValueError:  # Handle cases where response body isn't valid JSON
-                print(
-                    f"Server Response ({e.response.status_code}): {e.response.text}",
-                )  # Fallback to raw text
+            except ValueError:
+                print(f"Server Response ({e.response.status_code}): {e.response.text}")
         else:
             print("API call failed without receiving a response from the server.")
-    except requests.exceptions.RequestException as e:  # Catch other network/request errors
+    except requests.exceptions.RequestException as e:
         print(f"API call failed: {e!s}")
         if hasattr(e, "response") and e.response:
             print(f"Server response: {json.loads(e.response.text)['error']}")
@@ -682,7 +714,7 @@ def make_submission_on_server(
     return _make_submission_on_server(submission_scenario_name, key, config)
 
 
-def upload(  # noqa: PLR0913
+def upload(  # noqa: PLR0913 - comprehensive upload requires all configuration parameters
     scenario_name: str,
     key: str,
     details: list[str] | None = None,

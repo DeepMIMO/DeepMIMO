@@ -25,7 +25,7 @@ CAT_LABELS_MAX_UNIQUE = 30
 VAL_RANGE_THRESHOLD = 100
 
 
-def _create_colorbar(  # noqa: PLR0913
+def _create_colorbar(  # noqa: PLR0913 - all params needed for flexible colorbar customization
     scatter_plot: plt.scatter,
     cov_map: np.ndarray,
     cmap: str,
@@ -89,7 +89,7 @@ def _create_colorbar(  # noqa: PLR0913
     return cbar
 
 
-def plot_coverage(  # noqa: PLR0913, C901
+def plot_coverage(  # noqa: PLR0913, C901 - scientific visualization requires extensive customization
     rxs: np.ndarray,
     cov_map: tuple[float, ...] | list[float] | np.ndarray,
     *,

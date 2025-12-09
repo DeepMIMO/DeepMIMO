@@ -188,7 +188,7 @@ def _load_dataset(folder: str, params: dict, load_params: dict) -> Dataset | Mac
     return dataset
 
 
-def _load_raytracing_scene(  # noqa: PLR0913
+def _load_raytracing_scene(  # noqa: PLR0913 - all scene loading parameters required
     scene_folder: str,
     txrx_dict: dict,
     max_paths: int = c.MAX_PATHS,
@@ -258,7 +258,7 @@ def _load_raytracing_scene(  # noqa: PLR0913
     return final_dataset
 
 
-def _load_tx_rx_raydata(  # noqa: PLR0913
+def _load_tx_rx_raydata(  # noqa: PLR0913 - all raytracing data loading parameters required
     rayfolder: str,
     tx_set_id: int,
     rx_set_id: int,
