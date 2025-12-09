@@ -201,6 +201,7 @@ testpaths = ["tests"]
 python_files = ["test_*.py"]
 norecursedirs = [
     "tests/webtests",
+    "tests/webtest",
     "tests/tutorials",
     "deepmimo_scenarios",
     "docs",
