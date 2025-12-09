@@ -30,8 +30,9 @@ from .aodt_scene import read_scene
 from .aodt_txrx import read_txrx
 
 
-def aodt_rt_converter(
+def aodt_rt_converter(  # noqa: PLR0913
     rt_folder: str,
+    *,
     copy_source: bool = False,
     overwrite: bool | None = None,
     vis_scene: bool = True,
@@ -72,7 +73,7 @@ def aodt_rt_converter(
 
     # Check if scenario already exists in the scenarios folder
     scenarios_folder = str(Path(c.SCENARIOS_FOLDER) / parent_folder)
-    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite):
+    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite=overwrite):
         return None
 
     # Setup temporary output folder

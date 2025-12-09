@@ -101,7 +101,7 @@ class AODTMaterial:
         eps_imag = self.itu_r_p2040_d * (freq_ghz**self.itu_r_p2040_c)
 
         # Convert imaginary permittivity to conductivity
-        # σ = ω*ε0*ε" = 2π*f*ε0*(d*f^c)
+        # sigma = omega*eps0*eps_imag = 2π*f*eps0*(d*f^c)
         # ε0 = 8.854e-12 F/m
         eps0 = 8.854e-12
         conductivity = 2 * np.pi * (freq_ghz * 1e9) * eps0 * eps_imag

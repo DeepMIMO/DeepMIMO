@@ -558,7 +558,7 @@ def _upload_to_db(scen_folder: str, key: str, *, skip_zip: bool = False) -> str:
     return upload_result.split(".")[0].split("/")[-1].split("\\")[-1]
 
 
-def _make_submission_on_server(  # noqa: PLR0913
+def _make_submission_on_server(  # noqa: PLR0913, PLR0915, C901
     submission_scenario_name: str,
     key: str,
     params_dict: dict,

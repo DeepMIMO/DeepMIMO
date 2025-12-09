@@ -1,6 +1,7 @@
 """Sionna Ray Tracing TX/RX Module.
 
-This module handles loading and converting transmitter and receiver data from Sionna's format to DeepMIMO's format.
+This module handles loading and converting transmitter and receiver data from
+Sionna's format to DeepMIMO's format.
 """
 
 from deepmimo.txrx import TxRxSet
@@ -10,7 +11,7 @@ def read_txrx(rt_params_dict: dict) -> dict:
     """Read and convert TX/RX data from Sionna format.
 
     Args:
-        setup_dict: Dictionary containing Sionna setup parameters
+        rt_params_dict: Dictionary containing Sionna setup parameters.
 
     Returns:
         Dict containing TX/RX configuration in DeepMIMO format

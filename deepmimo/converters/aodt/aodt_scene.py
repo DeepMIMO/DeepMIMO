@@ -64,9 +64,9 @@ class AODTScene:
         how the primitive paths are represented and what plotting
         library is being used.
         """
-        # TODO: Implement scene visualization
+        # Scene visualization not yet implemented.
 
-    def export_data(self, output_folder: str) -> dict[str, Any]:
+    def export_data(self, _output_folder: str) -> dict[str, Any]:
         """Export scene data to dictionary format.
 
         Args:

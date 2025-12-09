@@ -37,6 +37,8 @@ AODT_INTERACTIONS_MAP = {
     5: c.INTERACTION_TRANSMISSION,  # transmission
 }
 
+MIN_INTERACTIONS = 2
+
 
 def _transform_interaction_types(types: np.ndarray) -> float:
     """Transform AODT interaction types array into a single DeepMIMO interaction code.
@@ -60,7 +62,7 @@ def _transform_interaction_types(types: np.ndarray) -> float:
 
     """
     # If only emission and reception, it's LoS
-    if len(types) <= 2:
+    if len(types) <= MIN_INTERACTIONS:
         return c.INTERACTION_LOS
 
     # Take only middle interactions (exclude first and last)
@@ -116,7 +118,9 @@ def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> dict:
     }
 
 
-def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) -> None:
+def read_paths(  # noqa: C901, PLR0912, PLR0915
+    rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]
+) -> None:
     """Read and process ray paths and channel responses.
 
     Args:
@@ -153,16 +157,14 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
 
     if is_single_ue_multi_pair:
         print(f"\nDetected single UE ({unique_ues[0]}) with multiple TX/RX pairs.")
-        print("Currently using only first TX/RX pair. Multi-pair support coming soon.")
-        # TODO: In the future, we'll process all pairs here
+        print("Currently using only first TX/RX pair. Multi-pair support planned later.")
         # For now, just filter to first RU
 
     # Build mapping from RU/UE IDs to txrx_set IDs
     tx_id_map = {}  # ru_id -> (tx_set_id, tx_idx)
-    rx_id_map = {}  # ue_id -> rx_idx
 
     # Map transmitters
-    for key, txrx_set in txrx_dict.items():
+    for txrx_set in txrx_dict.values():
         if txrx_set["is_tx"]:
             tx_id_map[txrx_set["id_orig"]] = (
                 txrx_set["id"],
@@ -174,9 +176,6 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
     rx_set_id = rx_set["id"]
 
     # Map receivers to their indices in the order they appear in paths_df
-    for idx, ue_id in enumerate(paths_df["ue_id"].unique()):
-        rx_id_map[ue_id] = idx
-
     time_idx = paths_df["time_idx"].unique()[0]  # take first time index
     paths_time_df = paths_df[paths_df["time_idx"] == time_idx]
     cirs_time_df = cirs_df[cirs_df["time_idx"] == time_idx]

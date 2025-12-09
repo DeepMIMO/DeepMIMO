@@ -20,13 +20,13 @@ from .wireless_insite.insite_converter import insite_rt_converter
 
 
 def _find_converter_from_dir(directory: str) -> Callable | None:
-    """Helper function to find the appropriate converter for a given directory.
+    """Find the appropriate converter for a given directory.
 
     Args:
         directory (str): Path to the directory to search for raytracing data
 
     Returns:
-        Optional[Callable]: The converter function if a converter is found, or None if no converter is found
+        Optional[Callable]: Converter function if found, or None if not found
 
     """
     files_in_dir = [p.name for p in Path(directory).iterdir()]
@@ -88,7 +88,8 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> Any 
         if rt_converter is None:
             print("No converter match found in subdirectories.")
             print(
-                "Make sure the folder contains ray tracing output files (.pkl, .parquet, .setup, etc.)",
+                "Make sure the folder contains ray tracing output files "
+                "(.pkl, .parquet, .setup, etc.)",
             )
             print(f"Supported ray tracers: {c.SUPPORTED_RAYTRACERS}")
             return None

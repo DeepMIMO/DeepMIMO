@@ -45,7 +45,8 @@ class SionnaRayTracingParameters(RayTracingParameters):
         diffuse_reflections (int): Reflections allowed in paths with diffuse scattering
         diffuse_diffractions (int): Diffractions allowed in paths with diffuse scattering
         diffuse_transmissions (int): Transmissions allowed in paths with diffuse scattering
-        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering at final interaction
+        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering
+            at final interaction
         diffuse_random_phases (bool): Whether to use random phases for diffuse scattering
         terrain_reflection (bool): Whether to allow reflections on terrain
         terrain_diffraction (bool): Whether to allow diffractions on terrain
@@ -131,9 +132,9 @@ class SionnaRayTracingParameters(RayTracingParameters):
             # Details on diffraction, scattering, and transmission
             "diffuse_reflections": int(raw_params["max_depth"])
             - 1,  # Sionna only supports diffuse reflections
-            "diffuse_diffractions": 0,  # Sionna only supports 1 diffraction event, with no diffuse scattering
+            "diffuse_diffractions": 0,  # Sionna supports one diffraction, no diffuse scattering
             "diffuse_transmissions": 0,  # Sionna does not support transmissions
-            "diffuse_final_interaction_only": True,  # Sionna only supports diffuse scattering at final interaction
+            "diffuse_final_interaction_only": True,  # Diffuse scattering only at final interaction
             "diffuse_random_phases": raw_params.get("scat_random_phases", True),
             "synthetic_array": raw_params.get("synthetic_array", True),
             "num_rays": -1 if rt_method != "fibonacci" else n_rays,

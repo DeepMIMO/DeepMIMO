@@ -20,8 +20,9 @@ from .sionna_scene import read_scene
 from .sionna_txrx import read_txrx
 
 
-def sionna_rt_converter(
+def sionna_rt_converter(  # noqa: PLR0913
     rt_folder: str,
+    *,
     copy_source: bool = False,
     overwrite: bool | None = None,
     vis_scene: bool = True,
@@ -43,9 +44,9 @@ def sionna_rt_converter(
         vis_scene (bool): Whether to visualize the scene layout. Defaults to False.
         scenario_name (str): Custom name for output folder. Uses rt folder name if empty.
         print_params (bool): Whether to print the parameters to the console. Defaults to False.
-        parent_folder (str): Name of parent folder containing the scenario. Defaults to empty string.
-                             If empty, the scenario is saved in the DeepMIMO scenarios folder.
-                             This parameter is only used if the scenario is time-varying.
+        parent_folder (str): Name of parent folder containing the scenario.
+            If empty, the scenario is saved in the DeepMIMO scenarios folder.
+            This parameter is only used if the scenario is time-varying.
         num_scenes (int): Number of scenes in the scenario. Defaults to 1.
                           This parameter is only used if the scenario is time-varying.
 
@@ -65,7 +66,7 @@ def sionna_rt_converter(
 
     # Check if scenario already exists in the scenarios folder
     scenarios_folder = str(Path(c.SCENARIOS_FOLDER) / parent_folder)
-    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite):
+    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite=overwrite):
         return None
 
     # Setup temporary output folder

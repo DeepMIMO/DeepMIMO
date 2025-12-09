@@ -10,6 +10,7 @@ This module provides:
 
 The module serves as a shared utility library for all DeepMIMO converters.
 """
+# ruff: noqa: I001
 
 import shutil
 from pathlib import Path
@@ -18,12 +19,16 @@ from typing import Any
 import numpy as np
 
 from deepmimo import consts as c
-from deepmimo.general_utils import save_dict_as_json, zip
+from deepmimo.general_utils import save_dict_as_json, zip as zip_folder
+
+TWO_DIMS = 2
+THREE_DIMS = 3
 
 
 def check_scenario_exists(
     scenarios_folder: str,
     scen_name: str,
+    *,
     overwrite: bool | None = None,
 ) -> bool:
     """Check if a scenario exists and handle overwrite prompts.
@@ -92,7 +97,7 @@ def save_rt_source_files(sim_folder: str, source_exts: list[str]) -> None:
             shutil.copy(str(curr_file_path), str(new_file_path))
 
     # Zip the temp folder
-    zip(zip_temp_folder)
+    zip_folder(zip_temp_folder)
 
     # Delete the temp folder (not the zip)
     shutil.rmtree(zip_temp_folder)
@@ -156,13 +161,15 @@ def compress_path_data(data: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         max_bounces = np.max(comp_next_pwr_10(data[c.INTERACTIONS_PARAM_NAME]))
 
     # Compress arrays to not take more than that space
-    for key in data:
+    for key, value in data.items():
         if key in [c.RX_POS_PARAM_NAME, c.TX_POS_PARAM_NAME]:
             continue
-        if len(data[key].shape) >= 2:
-            data[key] = data[key][:, :max_paths, ...]
-        if len(data[key].shape) >= 3:
-            data[key] = data[key][:, :max_paths, :max_bounces]
+        compressed = value
+        if compressed.ndim >= TWO_DIMS:
+            compressed = compressed[:, :max_paths, ...]
+        if compressed.ndim >= THREE_DIMS:
+            compressed = compressed[:, :max_paths, :max_bounces]
+        data[key] = compressed
 
     return data
 

@@ -1,6 +1,7 @@
 """AODT Ray Tracing Parameters.
 
-This module provides parameter handling for AODT (Aerial Optical Digital Twin) ray tracing simulations.
+This module provides parameter handling for AODT (Aerial Optical Digital Twin)
+ray tracing simulations.
 
 This module provides:
 - Parameter parsing from AODT parquet files
@@ -46,7 +47,8 @@ class AODTRayTracingParameters(RayTracingParameters):
         diffuse_reflections (int): Reflections allowed in paths with diffuse scattering
         diffuse_diffractions (int): Diffractions allowed in paths with diffuse scattering
         diffuse_transmissions (int): Transmissions allowed in paths with diffuse scattering
-        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering at final interaction
+        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering
+            at final interaction
         diffuse_random_phases (bool): Whether to use random phases for diffuse scattering
         terrain_reflection (bool): Whether to allow reflections on terrain
         terrain_diffraction (bool): Whether to allow diffractions on terrain
@@ -118,7 +120,7 @@ class AODTRayTracingParameters(RayTracingParameters):
             "diffuse_reflections": 1,  # AODT specify this in the documentation
             "diffuse_diffractions": 0,  # AODT doesn't specify this
             "diffuse_transmissions": 0,  # AODT doesn't specify this
-            "diffuse_final_interaction_only": False,  # AODT allows diffuse scattering at any interaction
+            "diffuse_final_interaction_only": False,  # AODT allows diffuse scattering anywhere
             "diffuse_random_phases": False,  # AODT doesn't specify this
             # Terrain interaction settings
             "terrain_reflection": True,  # AODT allows reflections on any surface
@@ -127,7 +129,7 @@ class AODTRayTracingParameters(RayTracingParameters):
             # Ray casting settings
             "num_rays": int(params["num_emitted_rays_in_thousands"] * 1000),
             "ray_casting_method": "uniform",  # AODT uses uniform ray casting
-            "synthetic_array": True,  # AODT does not use synthetic arrays, but we take only one element
+            "synthetic_array": True,  # AODT does not use synthetic arrays; we take one element
             "ray_casting_range_az": 360.0,  # AODT casts rays in all directions
             "ray_casting_range_el": 180.0,  # AODT casts rays in all directions
             # GPS Bounding Box

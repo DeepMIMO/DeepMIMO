@@ -35,6 +35,8 @@ from .consts import (
     SCENARIOS_FOLDER,
 )
 
+TWO_ARGS = 2
+
 
 class DeepMIMOConfig:
     """Singleton configuration class for DeepMIMO.
@@ -48,7 +50,7 @@ class DeepMIMOConfig:
     def __new__(cls: Any) -> Any:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
-            cls._instance._initialize()
+            cls._instance._initialize()  # noqa: SLF001
         return cls._instance
 
     def _initialize(self: Any) -> None:
@@ -85,7 +87,8 @@ class DeepMIMOConfig:
             default (Any): The default value to return if the key doesn't exist.
 
         Returns:
-            Any: The configuration value for the given key, or the default value if the key doesn't exist.
+            Any: The configuration value for the given key, or the default value
+            if the key doesn't exist.
 
         """
         return self._config.get(key, default)
@@ -120,14 +123,13 @@ class DeepMIMOConfig:
         """Function-like interface for the configuration.
 
         If no arguments are provided, print all current configuration values.
-        If only the key is provided as a positional argument, get the configuration value for that key.
-        If both key and value are provided as positional arguments, set the configuration value for that key.
-        If keyword arguments are provided, set the configuration values for those keys.
+        If only the key is provided as a positional argument, get the value.
+        If both key and value are provided as positional arguments, set that value.
+        If keyword arguments are provided, set configuration values for those keys.
 
         Args:
-            *args: Positional arguments. If one argument is provided, it's treated as a key to get.
-                  If two arguments are provided, they're treated as a key-value pair to set.
-            **kwargs: Keyword arguments. Each keyword-value pair sets a configuration value.
+            *args: Positional arguments. One arg gets a value; two set key/value.
+            **kwargs: Keyword arguments. Each key/value sets a configuration entry.
 
         Returns:
             If getting a configuration value, returns the value for the given key.
@@ -144,7 +146,7 @@ class DeepMIMOConfig:
             return None
         if len(args) == 1 and (not kwargs):
             return self.get(args[0])
-        if len(args) == 2 and (not kwargs):
+        if len(args) == TWO_ARGS and (not kwargs):
             self.set(args[0], args[1])
             return None
         if args and kwargs:

@@ -46,11 +46,12 @@ class InsiteMaterial:
 
     Notes:
         Scattering model parameters based on [1] and extended with cross-polarization terms.
-        At present, according to the Wireless InSite 3.3.0 Reference Manual, section 10.5,
-        all materials are nonmagnetic, and their permeability is that of free space (µ0 = 4π x 10e-7 H/m).
+        Wireless InSite 3.3.0 Reference Manual (section 10.5) states all materials are
+        nonmagnetic, with permeability of free space (µ0 = 4π x 10e-7 H/m).
 
     Sources:
-        [1] A Diffuse Scattering Model for Urban Propagation Prediction - Vittorio Degli-Esposti 2001
+        [1] A Diffuse Scattering Model for Urban Propagation Prediction
+            - Vittorio Degli-Esposti 2001
             https://ieeexplore.ieee.org/document/4052607
 
     """
@@ -213,7 +214,7 @@ def parse_materials_from_file(file: Path) -> list[Material]:
     return materials
 
 
-def read_materials(sim_folder: str, verbose: bool = False) -> dict:
+def read_materials(sim_folder: str, *, verbose: bool = False) -> dict:
     """Read materials from a Wireless Insite simulation folder.
 
     Args:
@@ -258,10 +259,11 @@ if __name__ == "__main__":
     test_dir = r"./P2Ms/simple_street_canyon_test/"
 
     # Get all files in test directory
-    files = []
-    for root, _, filenames in os.walk(test_dir):
-        for filename in filenames:
-            files.append(str(Path(root) / filename))
+    files = [
+        str(Path(root) / filename)
+        for root, _, filenames in os.walk(test_dir)
+        for filename in filenames
+    ]
 
     print(f"\nTesting materials extraction from: {test_dir}")
     print("-" * 50)

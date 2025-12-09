@@ -26,6 +26,9 @@ PATTERN_TYPES = {
     # ≥100: Custom pattern
 }
 
+PATTERN_TYPE_HALF_WAVE = 2
+CUSTOM_PATTERN_THRESHOLD = 100
+
 
 def read_panels(rt_folder: str) -> dict[str, Any]:
     """Read antenna panel configurations.
@@ -69,7 +72,9 @@ def read_panels(rt_folder: str) -> dict[str, Any]:
     return panels
 
 
-def convert_to_deepmimo_txrxset(tx_rx_data: dict[str, Any], is_tx: bool, id_: int) -> TxRxSet:
+def convert_to_deepmimo_txrxset(
+    tx_rx_data: dict[str, Any], *, is_tx: bool, id_: int
+) -> TxRxSet:
     """Convert AODT TX/RX data to DeepMIMO TxRxSet format.
 
     Args:
@@ -184,7 +189,7 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
             raise ValueError(msg)
 
         pattern_type = pattern.iloc[0]["pattern_type"]
-        if pattern_type == 2:
+        if pattern_type == PATTERN_TYPE_HALF_WAVE:
             print(
                 f"WARNING: Pattern ID {pattern_id} uses halfwave dipole antenna (type=2)."
                 "Ray tracing results may be inaccurate.",
@@ -192,7 +197,7 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
         elif pattern_type != 0:
             pattern_desc = PATTERN_TYPES.get(
                 pattern_type,
-                "custom" if pattern_type >= 100 else "unknown",
+                "custom" if pattern_type >= CUSTOM_PATTERN_THRESHOLD else "unknown",
             )
             msg = (
                 f"Pattern ID {pattern_id} uses {pattern_desc} antenna (type={pattern_type}). "
@@ -284,7 +289,7 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
         # orientations_array = au.process_points(route_orientations)
         # # Take first orientation's azimuth
         # initial_azimuth = float(orientations_array[0, 0])
-        initial_azimuth = 0.0  # TODO: this is a temporary fix.
+        initial_azimuth = 0.0  # Temporary placeholder until orientations clarified.
         # The orientations are not clear...
         # raise issue if ue has multiple panels
         if len(ue["panel"]) > 1:
@@ -339,7 +344,7 @@ def is_dynamic(rt_params: dict[str, Any]) -> bool:
 
     """
     # check batches
-    # 'num_batches': 1, 'slots_per_batch': 0, 'symbols_per_slot': 0, 'duration': 2.0, 'interval': 1.0,
+    # Example raw params: slots_per_batch/symbols_per_slot/duration/interval
     raw_params = rt_params.get("raw_params", {})
     if raw_params.get("slots_per_batch", 0) > 0:  # use slots per batch timing
         return raw_params.get("num_batches", 1) * raw_params.get("slots_per_batch", 1) > 1
