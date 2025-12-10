@@ -90,7 +90,7 @@ pydoc.pager = pydoc.plainpager  # when calling help(function), print instead of 
 # | | | [Aliases](#aliases) | Shortcuts for dataset fields | dataset.\<attribute-alias\> |
 # | | | [Attribute Access](#attribute-access) | Directly access dataset properties | dataset.\<attribute\> |
 # | | | [Antenna Rotation](#antenna-rotation) | Adjust antenna orientations | dataset.rotate_antennas() |
-# | [Advanced Operations](#advanced-operations) | [Video](https://youtu.be/PApPjG4HTHs) | [Field-of-View](#field-of-view) | FoV analysis for receivers | dataset.apply_fov() |
+# | [Advanced Operations](#advanced-operations) | [Video](https://youtu.be/PApPjG4HTHs) | [Field-of-View](#field-of-view) | FoV analysis for receivers | dataset.trim_by_fov() |
 # | [Scene & Materials](#scene--materials) | [Video](https://youtu.be/gq7F2cUthuU) | [Visualization](#scene-visualization) | Show scene | dataset.scene, dataset.materials |
 # | | | [Operations](#scene-operations) | Retrieve objects and materials | scene.get_objects(), objects.get_materials() |
 # | [User Sampling](#user-sampling) | [Video](https://youtu.be/KV0LLp0jOFc) | [Dataset Trimming](#dataset-trimming) | Trim dataset based on conditions | dataset.get_idxs("active"), dataset.trim(idxs=...) |
@@ -396,13 +396,13 @@ _ = dataset_t.channel.shape
 # #### Others
 #
 # - Field of View (FoV) filtering also moved from the parameters to its own
-#   function `dm.apply_fov(bs_fov, ue_fov)`. The reason for this is to maintain
-#   maximum dataset consistency and integrity. If FoV is in the channel
-#   parameters, it will affect the channel but then the data inside the dataset
-#   does not match the data in the channel. Some matrices would change but not
-#   others, very likely creating errors. Because of that, we have an explicit
-#   call that changes only fov matrices. For more information, see the FoV
-#   reference example and APIs.
+#   function `dataset.trim_by_fov(bs_fov, ue_fov)` or `dataset.trim(bs_fov=..., ue_fov=...)`.
+#   The reason for this is to maintain maximum dataset consistency and integrity.
+#   If FoV was in the channel parameters, it would affect the channel but then
+#   the data inside the dataset would not match the data in the channel. Some
+#   matrices would change but not others, very likely creating errors. Because of
+#   that, FoV filtering returns a new dataset with paths outside the FoV removed.
+#   For more information, see the FoV reference example and APIs.
 # - Examples of Sionna Adapter using O1 scenario with v3 and v4:
 #   - [v3 Sionna Adapter](https://github.com/NVlabs/sionna/blob/main/tutorials/phy/DeepMIMO.ipynb)
 #   - [v4 Sionna Adapter](https://github.com/jmoraispk/sionna/blob/DeepMIMOv4_sionna_adapter/tutorials/phy/DeepMIMO.ipynb)
@@ -1260,7 +1260,7 @@ for i, (rot, title) in enumerate(zip(rotations, titles, strict=False)):
 # #### Azimuth
 
 # %%
-dataset.apply_fov()
+# First plot with no FoV filtering (full coverage)
 dataset.plot_coverage(dataset.los)
 
 # %%
@@ -1280,15 +1280,15 @@ fovs = [
 
 titles = [f"FoV = {fov[0]} x {fov[1]}°" for fov in fovs]
 
-# Plot each azimuth rotation
+# Plot each FoV setting
 for i, (fov, title) in enumerate(zip(fovs, titles, strict=False)):
-    # Update channel parameters with new rotation
     print(f"Iteration {i}: Setting FoV to {fov}")
-    dataset.apply_fov(bs_fov=fov)  # dataset.apply_fov() to reset fov
+    # Create a temporary dataset with FoV applied
+    dataset_fov = dataset.trim_by_fov(bs_fov=fov)
+    dataset_fov.plot_coverage(dataset_fov.los, ax=axes[i], title=title, cbar_title="LoS status")
 
-    dataset.plot_coverage(dataset.los, ax=axes[i], title=title, cbar_title="LoS status")
-
-# Note, when applying fov, several cached values will be invalidated, like the los and channels
+# Note: trim_by_fov returns a new dataset with paths outside FoV removed
+# The original dataset remains unchanged
 
 # %% [markdown]
 # #### Elevation
@@ -1310,15 +1310,15 @@ fovs = [
 
 titles = [f"FoV = {fov[0]} x {fov[1]}°" for fov in fovs]
 
-# Plot each azimuth rotation
+# Plot each FoV setting
 for i, (fov, title) in enumerate(zip(fovs, titles, strict=False)):
     print(f"Iteration {i}: Setting FoV to {fov}")
-    dataset.apply_fov(bs_fov=fov)
-    dataset.plot_coverage(dataset.los, ax=axes[i], title=title, cbar_title="LoS status")
+    # Create a temporary dataset with FoV applied
+    dataset_fov = dataset.trim_by_fov(bs_fov=fov)
+    dataset_fov.plot_coverage(dataset_fov.los, ax=axes[i], title=title, cbar_title="LoS status")
 
-dataset.apply_fov()  # to reset fov
-
-# Note, to see path information affected by fov, index arrays with: dataset.los != -1
+# Note: trim_by_fov returns a new dataset with paths outside FoV removed
+# To see path information affected by fov, index arrays with: dataset.los != -1
 
 # %% [markdown]
 # ## Scene & Materials
