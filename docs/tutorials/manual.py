@@ -96,7 +96,7 @@ pydoc.pager = pydoc.plainpager  # when calling help(function), print instead of 
 # | [User Sampling](#user-sampling) | [Video](https://youtu.be/KV0LLp0jOFc) | [Dataset Trimming](#dataset-trimming) | Trim dataset based on conditions | dataset.get_idxs("active"), dataset.trim(idxs=...) |
 # | | | [Uniform](#uniform) | Uniform user sampling | dataset.get_uniform_idxs() |
 # | | | [Rows and Columns](#rows-and-columns) | Select users by row/col | dataset.get_row_idxs(), dataset.get_col_idxs() |
-# | | | [Linear](#linear) | Linear user placement | dm.LinearPath() |
+# | | | [Linear](#linear) | Linear user placement | dataset.get_idxs("linear", ...) |
 # | | | [Rectangular Zones](#rectangular-zones) | Filtering in 3D bounding boxes | dm.get_idxs_with_limits() |
 # | [Beamforming](#beamforming) | [Video](https://youtu.be/IPVnIW2vGLE) | [Computing Beamformers](#computing-beamformers) | Calculate received power with beamforming | dm.steering_vec() |
 # | | | [Visualization](#beamforming-visualization) | Beamforming visualization methods | dm.plot_beamforming() |
@@ -1458,9 +1458,9 @@ plt.ylim(y_lim)
 
 # %%
 # Get the closest dataset positions for a given path
-idxs1 = dm.LinearPath(dataset.rx_pos, [100, 90], [-50, 90], n_steps=75).idxs
-idxs2 = dm.LinearPath(dataset.rx_pos, [100, 80], [-50, 80], n_steps=75).idxs
-idxs3 = dm.LinearPath(dataset.rx_pos, [30, 0], [30, 150], n_steps=75).idxs
+idxs1 = dataset.get_idxs("linear", start_pos=[100, 90], end_pos=[-50, 90], n_steps=75)
+idxs2 = dataset.get_idxs("linear", start_pos=[100, 80], end_pos=[-50, 80], n_steps=75)
+idxs3 = dataset.get_idxs("linear", start_pos=[30, 0], end_pos=[30, 150], n_steps=75)
 
 dataset.plot_coverage(dataset.los, title="LoS with positions", cbar_title="LoS status")
 
@@ -1697,7 +1697,7 @@ subprocess.run([
 dm.unzip("asu_campus_p2m.zip")
 
 # %%
-rt_folder = "asu_campus"
+rt_folder = "./asu_campus_p2m/asu_campus"
 scen_name_insite = dm.convert(rt_folder, scenario_name="asu_campus_insite")
 
 # %%
