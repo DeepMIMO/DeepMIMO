@@ -14,6 +14,7 @@ Welcome to the DeepMIMO tutorials! These step-by-step guides will help you maste
 | 6 | [Beamforming](6_beamforming.py) | Steering vectors, beamforming visualization, MIMO | [▶️](https://youtu.be/IPVnIW2vGLE) |
 | 7 | [Convert & Upload Ray-tracing Dataset](7_converters.py) | External ray tracers, format conversion, uploading | [▶️](https://youtu.be/kXY2bMWeDgg) |
 | 8 | [Migration Guide](8_migration_guide.py) | Migrating from DeepMIMO v3 to v4 | [▶️](https://youtu.be/15nQWS15h3k) |
+| 9 | [Complete Examples Manual](manual.py) | Comprehensive reference with all DeepMIMO examples | - |
 
 ## How to Use These Tutorials
 
