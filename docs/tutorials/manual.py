@@ -1703,6 +1703,8 @@ scen_name_insite = dm.convert(rt_folder, scenario_name="asu_campus_insite")
 # %%
 dataset_insite = dm.load(scen_name_insite)
 
+# NOTE: This will crash if sionna is not installed
+
 # %% [markdown]
 # ### From Sionna RT
 # Sionna is a bit more complicated because it doesn't have standard saving
