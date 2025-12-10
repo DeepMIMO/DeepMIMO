@@ -9,6 +9,8 @@
 
 # Daily use folders
 deepmimo_scenarios*
+deepmimo_scen/*
+deepmimo_scen.zip
 
 # Artifacts
 site/
