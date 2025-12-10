@@ -214,8 +214,11 @@ def _extract_and_move_scenario(output_path: str, scenario_name: str) -> None:
         shutil.rmtree(tmp_path)
         print(f"✓ Flattened nested directory '{scenario_name}'")
 
-        Path(scenarios_dir).mkdir(parents=True, exist_ok=True)
+    # Rename to remove suffix if needed
+    Path(scenarios_dir).mkdir(parents=True, exist_ok=True)
+    if Path(unzipped_folder).exists() and unzipped_folder != unzipped_folder_without_suffix:
         shutil.move(str(Path(unzipped_folder)), unzipped_folder_without_suffix)
+
     shutil.move(unzipped_folder_without_suffix, scenario_folder)
     print(f"✓ Unzipped and moved to {scenarios_dir}")
     print(f"✓ Scenario '{scenario_name}' ready to use!")
@@ -258,6 +261,8 @@ def download(
             return None
     else:
         print(f'Scenario zip file "{output_path}" already exists.')
+
+    time.sleep(.5)  # wait for the file lock to be lifted
 
     # Extract and move to appropriate location
     if rt_source:

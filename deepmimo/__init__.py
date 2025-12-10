@@ -38,6 +38,15 @@ from .datasets.dataset import Dataset, DynamicDataset, MacroDataset
 from .datasets.generate import generate
 from .datasets.load import load
 
+# Sampling functions (moved to datasets/)
+from .datasets.sampling import (
+    dbw2watt,
+    get_grid_idxs,
+    get_idxs_with_limits,
+    get_linear_idxs,
+    get_uniform_idxs,
+)
+
 # Summary (moved to datasets/)
 from .datasets.summary import plot_summary, summary
 from .datasets.visualization import (
@@ -109,6 +118,12 @@ __all__ = [
     "export_dataset_to_binary",
     # Core functionality
     "generate",
+    # Sampling functions
+    "dbw2watt",
+    "get_grid_idxs",
+    "get_idxs_with_limits",
+    "get_linear_idxs",
+    "get_uniform_idxs",
     # Scenario management utils
     "get_available_scenarios",
     "get_mat_filename",
