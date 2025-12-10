@@ -52,7 +52,7 @@ The tutorials are Python files with cell markers (`# %%`) that work with:
 - **Part 2**: Deep Dive - complex scenarios with multiple base stations  
 - **Part 3**: Discovery - using `dm.info()`, aliases, and implicit computations
 
-**Key Functions**: `dm.download()`, `dm.load()`, `get_time_domain_channel()`, `dm.info()`
+**Key Functions**: `dm.download()`, `dm.load()`, `dataset.compute_channels()`, `dm.info()`
 
 ### 2. Visualization and Scene
 - Coverage maps for power, pathloss, and other metrics
@@ -70,7 +70,7 @@ The tutorials are Python files with cell markers (`# %%`) that work with:
 - Antenna array configuration and rotation
 - Comparing different antenna configurations
 
-**Key Functions**: `dm.ChannelParameters()`, `get_time_domain_channel()`, `get_freq_domain_channel()`
+**Key Functions**: `dm.ChannelParameters()`, `dataset.compute_channels()`
 
 ### 4. User Selection and Dataset Manipulation
 - Dataset trimming and active user filtering
@@ -80,7 +80,7 @@ The tutorials are Python files with cell markers (`# %%`) that work with:
 - Path type and depth filtering
 - Field-of-view (FOV) analysis
 
-**Key Functions**: `get_active_idxs()`, `get_uniform_idxs()`, `get_row_idxs()`, `subset()`, `apply_fov()`
+**Key Functions**: `dataset.get_idxs()`, `dataset.trim()`
 
 ### 5. Doppler and Mobility
 - Setting Doppler shifts directly
@@ -89,7 +89,7 @@ The tutorials are Python files with cell markers (`# %%`) that work with:
 - Mobility patterns (linear, circular)
 - Doppler spectrum analysis
 
-**Key Functions**: `set_doppler()`, `set_user_velocity()`, `set_timestamps()`
+**Key Functions**: `dataset.set_doppler()`, `dataset.rx_vel`, `dataset.tx_vel`, `dataset.set_timestamps()`
 
 ### 6. Beamforming
 - Computing steering vectors

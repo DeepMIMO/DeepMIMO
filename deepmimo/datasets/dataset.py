@@ -879,7 +879,7 @@ class Dataset(DotDict):
                 kwargs["start_pos"],
                 kwargs["end_pos"],
                 kwargs["n_steps"],
-                kwargs.get("filter_repeated", True),
+                filter_repeated=kwargs.get("filter_repeated", True),
             )
         if m == "uniform":
             return self._get_uniform_idxs(kwargs["steps"])

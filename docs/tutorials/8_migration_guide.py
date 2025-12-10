@@ -232,7 +232,7 @@ parameter_mapping = {
     "DoA_phi / DoA_theta": "aoa_az / aoa_el",
     "DoD_phi / DoD_theta": "aod_az / aod_el",
     "active_BS": "tx_sets (in dm.load())",
-    "user_rows": "get_row_idxs() method",
+    "user_rows": "dataset.get_idxs(mode='row', row_idxs=...)",
     "ue_antenna": "ant_ue (in ChannelParameters)",
     "bs_antenna": "ant_bs (in ChannelParameters)",
 }
@@ -261,9 +261,9 @@ print("  - Average size reduction: ~50%")
 # - [ ] Update installation: `pip install --pre deepmimo`
 # - [ ] Change import: `import deepmimo as dm`
 # - [ ] Replace `default_params()` with `dm.load()`
-# - [ ] Replace `generate_data()` with `get_time/freq_domain_channel()`
+# - [ ] Replace `generate_data()` with `dataset.compute_channels()`
 # - [ ] Update data access from `dataset[bs]["user"]["param"]` to `dataset.param`
-# - [ ] Move user selection from params to `dataset.subset()`
+# - [ ] Move user selection from params to `dataset.get_idxs()` and `dataset.trim()`
 # - [ ] Update parameter names (DoA/DoD -> aoa/aod, etc.)
 # - [ ] Update antenna configuration to ChannelParameters
 # - [ ] Test thoroughly with your existing workflows
