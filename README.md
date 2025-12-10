@@ -46,7 +46,6 @@
 - 🧪 **Easy ML benchmarking across sites** — Find 100s of datasets in the [Scenarios Database](https://deepmimo.net/scenarios)
 - 🔁 **Reproduce benchmarks** — Search papers by topic and application in [Publications Database](https://deepmimo.net/publications).
 - 🚀 **Feature-rich toolbox** — Explore a wide array of wireless utilities in our [Notebook Tutorials](https://deepmimo.net/docs/manual_full.html#examples-manual).
-
 - 🔌 **Seamless integration** — From Sionna RT/InSite/AODT to Sionna/MATLAB 5G/NeoRadium.
 - 📦 **Shareable datasets** — Versioned scenarios, open formats. Explore in the [Online Visualizer](https://deepmimo.net/visualizer)
 - 🤗 **User friendly** — Great docs, practical examples, easy install, and available on Colab.
