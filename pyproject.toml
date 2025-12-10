@@ -213,7 +213,6 @@ norecursedirs = [
 addopts = "-q"
 markers = [
     "tutorial: marks tests as tutorial tests (run with 'pytest -m tutorial' or 'pytest tests/tutorials/')",
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 filterwarnings = [
     "ignore::UserWarning:matplotlib",
