@@ -29,7 +29,6 @@ MODULES = [
     "deepmimo.integrations.web",
     "deepmimo.integrations.sionna_adapter",
     # Utilities
-    "deepmimo.general_utils",
     "deepmimo.utils.scenarios",
     "deepmimo.utils.io",
     "deepmimo.utils.geometry",

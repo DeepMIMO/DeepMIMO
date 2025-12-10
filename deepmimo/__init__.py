@@ -21,7 +21,7 @@ from .config import config
 # Converters
 from .converters.converter import convert
 
-# Core models (moved from root to core/)
+# Core models
 from .core.materials import Material, MaterialList
 from .core.rt_params import RayTracingParameters
 from .core.scene import BoundingBox, Face, PhysicalElement, PhysicalElementGroup, Scene
@@ -33,7 +33,7 @@ from .core.txrx import (
     print_available_txrx_pair_ids,
 )
 
-# Datasets (moved from generator/ to datasets/)
+# Datasets
 from .datasets.dataset import Dataset, DynamicDataset, MacroDataset
 from .datasets.generate import generate
 from .datasets.load import load
@@ -46,17 +46,17 @@ from .datasets.visualization import (
     plot_rays,
 )
 
-# Channel parameters (still in generator/)
+# Channel generator
 from .generator.channel import ChannelParameters
 from .generator.geometry import steering_vec
 
-# Backward compatibility - re-export web_export
+# Re-export web module as web_export
 from .integrations import web as web_export
 
 # Integrations
 from .integrations.web import export_dataset_to_binary
 
-# General utilities (moved to utils/)
+# Utilities
 from .utils import (
     DelegatingList,
     DotDict,
@@ -138,7 +138,6 @@ __all__ = [
     "upload",
     "upload_images",
     "upload_rt_source",
-    # Backward compatibility
     "web_export",
     # Zip/unzip
     "zip",
