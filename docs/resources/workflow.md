@@ -30,6 +30,7 @@ Tutorial tests execute each `.py` tutorial file in `docs/tutorials/` to ensure t
 |---------|-------------|
 | `uv run pytest` | Run all tests **except** tutorials (default, fast) |
 | `uv run pytest tests/tutorials/` | Run **all** tutorial tests (~6 min) |
+| `uv run pytest -s tests/tutorials/` | Run **all** tutorial tests with output capture |
 | `uv run pytest tests/tutorials/test_1_getting_started.py` | Run **one** specific tutorial test |
 | `uv run pytest -m tutorial` | Run all tutorial tests (alternative method) |
 | `uv run python docs/tutorials/1_getting_started.py` | Run tutorial directly (not as test) |
