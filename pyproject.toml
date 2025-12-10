@@ -200,6 +200,8 @@ ignore = [
 ]
 "docs/tutorials/manual.py" = [
     "E402",    # Imports not at top of the file
+    "E501",    # Long lines are okay for tables
+    "S607"     # Allow partial paths in subprocess run
 ]
 
 [tool.pytest.ini_options]

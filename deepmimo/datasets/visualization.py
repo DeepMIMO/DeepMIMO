@@ -78,7 +78,9 @@ def _create_colorbar(  # noqa: PLR0913 - all params needed for flexible colorbar
             boundaries=np.arange(-0.5, n_cats + 0.5),
             values=np.arange(n_cats),
         )
-        val_range = np.max(unique_vals) - np.min(unique_vals)
+        # Convert boolean arrays to int for range calculation
+        unique_vals_numeric = unique_vals.astype(int) if unique_vals.dtype == bool else unique_vals
+        val_range = np.max(unique_vals_numeric) - np.min(unique_vals_numeric)
         str_labels = [
             str(int(val)) if val_range > VAL_RANGE_THRESHOLD else str(val) for val in unique_vals
         ]

@@ -23,6 +23,7 @@ This manual covers:
 - Uploading scenarios
 """
 
+
 # %% [markdown]
 # # Examples Manual
 #
@@ -54,6 +55,13 @@ import deepmimo as dm
 scen_name = "asu_campus_3p5"
 dm.download(scen_name)
 dataset = dm.load(scen_name)
+
+# %% Purely visual changes for this notebook
+
+import pydoc
+
+pydoc.pager = pydoc.plainpager  # when calling help(function), print instead of page w/ less
+
 
 # %% [markdown]
 # | Section | Video | Subsection | Description | DeepMIMO Functions |
@@ -363,7 +371,7 @@ for key in other_keys:
 # User sampling in v3
 params_v3_sampling = DeepMIMOv3.default_params()
 # Set your scenario path
-params_v3_sampling["dataset_folder"] = "."
+params_v3_sampling["dataset_folder"] = "./deepmimo_scen"
 params_v3_sampling["scenario"] = "asu_campus1"
 
 # Set BSs and rows to generate
@@ -838,7 +846,7 @@ ch_params.ofdm.rx_filter = 0  # Receive Low Pass / ADC Filter
 
 # Generate channels
 dataset.compute_channels(ch_params)
-dataset.channel.shape
+print(f"Shape of channel matrix: {dataset.channel.shape}")
 
 # %%
 dm.info("channel")
@@ -875,7 +883,7 @@ dm.info("ch_params")
 ch_params.freq_domain = False  # Whether to compute frequency domain channels
 
 dataset.compute_channels(ch_params)
-dataset.channel.shape  # as many taps as paths
+print(f"Shape of channel matrix: {dataset.channel.shape}")  # as many taps as paths
 
 # %%
 # Plot CIR
@@ -1024,7 +1032,7 @@ if dyn_dataset is not None:
 dm.info("los")
 
 # %%
-dataset.los.shape
+print(f"Shape of LOS matrix: {dataset.los.shape}")
 
 # %%
 dataset.plot_coverage(dataset.los)
