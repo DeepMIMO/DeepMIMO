@@ -16,7 +16,7 @@ import numpy as np
 from tqdm import tqdm
 
 from deepmimo import consts as c
-from deepmimo.general_utils import DotDict, compare_two_dicts, deep_dict_merge
+from deepmimo.utils import DotDict, compare_two_dicts, deep_dict_merge
 
 ROT_DIM = 3
 RANGE_DIM = 2

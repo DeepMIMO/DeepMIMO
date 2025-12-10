@@ -7,7 +7,7 @@ from unittest.mock import patch
 import numpy as np
 import pytest
 
-from deepmimo import general_utils
+from deepmimo import utils as general_utils
 
 
 @pytest.fixture
@@ -30,10 +30,10 @@ def test_check_scen_name() -> None:
 def test_get_dirs(temp_dir) -> None:
     """Test directory getter functions."""
     # Mock config to return a path inside temp_dir
-    # Patch deepmimo.general_utils.config
+    # Patch deepmimo.utils.scenarios.config
     with (
-        patch("deepmimo.general_utils.config.get", return_value="scenarios"),
-        patch("deepmimo.general_utils.os.getcwd", return_value=str(temp_dir)),
+        patch("deepmimo.utils.scenarios.config.get", return_value="scenarios"),
+        patch("deepmimo.utils.scenarios.Path.cwd", return_value=Path(temp_dir)),
     ):
         assert general_utils.get_scenarios_dir() == str(Path(temp_dir) / "scenarios")
 
@@ -267,7 +267,7 @@ def test_printing_utilities() -> None:
 def test_available_scenarios(temp_dir) -> None:
     """Test get_available_scenarios function."""
     # Mock scenarios directory
-    with patch("deepmimo.general_utils.get_scenarios_dir", return_value=str(temp_dir)):
+    with patch("deepmimo.utils.scenarios.get_scenarios_dir", return_value=str(temp_dir)):
         # Create mock scenario folders
         (temp_dir / "scenario1").mkdir()
         (temp_dir / "scenario2").mkdir()
@@ -300,7 +300,7 @@ def test_get_params_path(temp_dir) -> None:
     # Create a params.json file
     (temp_dir / "params.json").write_text("{}")
 
-    with patch("deepmimo.general_utils.get_scenario_folder", return_value=str(temp_dir)):
+    with patch("deepmimo.utils.scenarios.get_scenario_folder", return_value=str(temp_dir)):
         params_path = general_utils.get_params_path("my_scenario")
         assert "params.json" in params_path
 
@@ -313,7 +313,7 @@ def test_get_params_path_subdirectory(temp_dir) -> None:
     sub_dir.mkdir()
     (sub_dir / "params.json").write_text("{}")
 
-    with patch("deepmimo.general_utils.get_scenario_folder", return_value=str(scenario_dir)):
+    with patch("deepmimo.utils.scenarios.get_scenario_folder", return_value=str(scenario_dir)):
         path = general_utils.get_params_path("scenario")
         assert "scene1" in path
         assert "params.json" in path
@@ -322,7 +322,7 @@ def test_get_params_path_subdirectory(temp_dir) -> None:
 def test_get_params_path_not_found(temp_dir) -> None:
     """Test params file not found raises error."""
     with (
-        patch("deepmimo.general_utils.get_scenario_folder", return_value=str(temp_dir)),
+        patch("deepmimo.utils.scenarios.get_scenario_folder", return_value=str(temp_dir)),
         pytest.raises(FileNotFoundError, match="Params file not found"),
     ):
         general_utils.get_params_path("my_scenario")

@@ -11,7 +11,7 @@ from typing import Any
 import numpy as np
 
 from deepmimo import consts as c
-from deepmimo import general_utils as gu
+from deepmimo import utils as gu
 from deepmimo.converters import converter_utils as cu
 
 from . import aodt_utils as au

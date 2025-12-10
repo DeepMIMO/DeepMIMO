@@ -43,7 +43,7 @@ import numpy as np
 from deepmimo import consts as c
 
 # Local imports
-from deepmimo.general_utils import (
+from deepmimo.utils import (
     get_params_path,
     load_dict_from_json,
 )

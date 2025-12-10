@@ -30,7 +30,12 @@ MODULES = [
     "deepmimo.integrations.sionna_adapter",
     # Utilities
     "deepmimo.general_utils",
-    "deepmimo.info",
+    "deepmimo.utils.scenarios",
+    "deepmimo.utils.io",
+    "deepmimo.utils.geometry",
+    "deepmimo.utils.data_structures",
+    "deepmimo.utils.dict_utils",
+    "deepmimo.utils.info",
     # Config
     "deepmimo.config",
     "deepmimo.consts",

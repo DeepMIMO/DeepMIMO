@@ -28,7 +28,7 @@ from typing import Any
 import numpy as np
 
 from deepmimo.consts import SUPPORTED_SIONNA_VERSIONS
-from deepmimo.general_utils import save_pickle
+from deepmimo.utils import save_pickle
 
 try:
     import sionna.rt

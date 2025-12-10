@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from deepmimo import consts as c
 from deepmimo.converters.converter_utils import compress_path_data
-from deepmimo.general_utils import get_mat_filename, load_pickle, save_mat
+from deepmimo.utils import get_mat_filename, load_pickle, save_mat
 
 # Interaction Type Map for Sionna
 INTERACTIONS_MAP = {

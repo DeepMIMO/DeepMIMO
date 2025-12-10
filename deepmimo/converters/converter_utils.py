@@ -18,8 +18,8 @@ from typing import Any
 import numpy as np
 
 from deepmimo import consts as c
-from deepmimo.general_utils import save_dict_as_json
-from deepmimo.general_utils import zip as zip_folder
+from deepmimo.utils import save_dict_as_json
+from deepmimo.utils import zip as zip_folder
 
 TWO_DIMS = 2
 THREE_DIMS = 3

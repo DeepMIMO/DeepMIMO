@@ -7,7 +7,7 @@ to represent transmitter and receiver configurations.
 from dataclasses import asdict, dataclass, field
 
 from deepmimo import consts as c
-from deepmimo.general_utils import get_params_path, load_dict_from_json
+from deepmimo.utils import get_params_path, load_dict_from_json
 
 
 @dataclass

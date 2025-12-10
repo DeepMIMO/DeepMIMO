@@ -21,7 +21,7 @@ from pathlib import Path
 import requests
 from tqdm import tqdm
 
-from deepmimo.general_utils import (
+from deepmimo.utils import (
     get_rt_source_folder,
     get_rt_sources_dir,
     get_scenario_folder,

@@ -20,7 +20,7 @@ from deepmimo import consts as c
 from deepmimo.core.materials import MaterialList
 from deepmimo.core.scene import Scene
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
-from deepmimo.general_utils import (
+from deepmimo.utils import (
     DotDict,
     get_mat_filename,
     get_params_path,

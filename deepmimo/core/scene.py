@@ -16,7 +16,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from scipy.spatial import ConvexHull
 
 from deepmimo.consts import MAT_FMT, SCENE_PARAM_NUMBER_SCENES
-from deepmimo.general_utils import (
+from deepmimo.utils import (
     DelegatingList,
     load_dict_from_json,
     load_mat,

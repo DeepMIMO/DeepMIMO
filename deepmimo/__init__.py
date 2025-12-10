@@ -4,7 +4,7 @@ __version__ = "4.0.0b11"
 
 # Core functionality
 # Import immediate modules
-from . import consts, general_utils
+from . import consts
 
 # API imports - using root api.py until api/ folder is fully migrated
 from .api import (
@@ -46,30 +46,32 @@ from .datasets.visualization import (
     plot_rays,
 )
 
-# General utilities
-from .general_utils import (
-    get_available_scenarios,
-    get_params_path,
-    get_rt_source_folder,
-    get_rt_sources_dir,
-    get_scenario_folder,
-    load_dict_from_json,
-    unzip,
-    zip,  # noqa: A004
-)
-
 # Channel parameters (still in generator/)
 from .generator.channel import ChannelParameters
 from .generator.geometry import steering_vec
-
-# Info
-from .info import info
 
 # Backward compatibility - re-export web_export
 from .integrations import web as web_export
 
 # Integrations
 from .integrations.web import export_dataset_to_binary
+
+# General utilities (moved to utils/)
+from .utils import (
+    DelegatingList,
+    DotDict,
+    get_available_scenarios,
+    get_mat_filename,
+    get_params_path,
+    get_rt_source_folder,
+    get_rt_sources_dir,
+    get_scenario_folder,
+    get_scenarios_dir,
+    info,
+    load_dict_from_json,
+    unzip,
+    zip,  # noqa: A004
+)
 
 __all__ = [
     # Bounding Box
@@ -78,6 +80,9 @@ __all__ = [
     "ChannelParameters",
     # Datasets
     "Dataset",
+    # Data structures
+    "DelegatingList",
+    "DotDict",
     "DynamicDataset",
     # Physical world representation
     "Face",
@@ -102,15 +107,16 @@ __all__ = [
     "download",
     # Integrations
     "export_dataset_to_binary",
-    "general_utils",
     # Core functionality
     "generate",
     # Scenario management utils
     "get_available_scenarios",
+    "get_mat_filename",
     "get_params_path",
     "get_rt_source_folder",
     "get_rt_sources_dir",
     "get_scenario_folder",
+    "get_scenarios_dir",
     "get_txrx_pairs",
     "get_txrx_sets",
     "info",

@@ -2,7 +2,7 @@
 
 from textwrap import dedent
 
-from . import consts as c
+from deepmimo import consts as c
 
 # Dictionary of help messages for fundamental matrices
 FUNDAMENTAL_MATRICES_HELP = {

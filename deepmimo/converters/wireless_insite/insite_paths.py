@@ -22,7 +22,7 @@ from pathlib import Path
 import numpy as np
 
 from deepmimo import consts as c
-from deepmimo.general_utils import get_mat_filename, save_mat
+from deepmimo.utils import get_mat_filename, save_mat
 
 from .p2m_parser import extract_tx_pos, paths_parser, read_pl_p2m_file
 

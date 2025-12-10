@@ -30,7 +30,7 @@ from tqdm import tqdm
 
 from deepmimo import consts as c
 from deepmimo.datasets.summary import plot_summary, summary
-from deepmimo.general_utils import (
+from deepmimo.utils import (
     get_params_path,
     get_scenario_folder,
     load_dict_from_json,

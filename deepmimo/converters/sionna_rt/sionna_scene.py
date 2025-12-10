@@ -13,7 +13,7 @@ from deepmimo.core.scene import (
     Scene,
     get_object_faces,
 )
-from deepmimo.general_utils import load_pickle
+from deepmimo.utils import load_pickle
 
 
 def read_scene(load_folder: str, material_indices: list[int]) -> Scene:
