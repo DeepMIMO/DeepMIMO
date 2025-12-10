@@ -9,8 +9,13 @@
 
 # Daily use folders
 deepmimo_scenarios*
+
+# Tests and Tutorials
 deepmimo_scen/*
 deepmimo_scen.zip
+asu_campus_p2m.zip
+asu_campus_p2m/*
+*.bin
 
 # Artifacts
 site/
@@ -25,7 +30,6 @@ api_keys.py
 .vscode
 .coverage
 coverage.xml
-*.bin
 
 
 # Development:
