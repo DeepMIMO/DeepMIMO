@@ -40,6 +40,7 @@ Homepage = "https://deepmimo.net/"
 [project.optional-dependencies]
 
 dev = [
+    # Development tools
     "build",
     "jupyter",
     "twine==6.0.1",
@@ -48,10 +49,8 @@ dev = [
     "pytest-cov>=4.1.0",
     "nbmake>=1.5.0",
     "ruff>=0.6.9",
-]
 
-doc = [
-    "ipykernel>=6.0.0",
+    # Documentation
     "mkdocs>=1.6",
     "mkdocs-material>=9.7",
     "mkdocs-jupyter>=0.25",
@@ -62,9 +61,6 @@ doc = [
     "mkdocstrings[python]>=0.25",
     "mkdocs-autorefs>=1.2",
     "mkdocs-exclude>=1.0",
-
-    # Signature formatting for mkdocstrings
-    "ruff>=0.6.9",
 
     # Jupyter/platformdirs pins to avoid deprecation warnings
     "jupyter-core>=5.7,<6.0",
@@ -119,7 +115,7 @@ sionna = [
 ]
 
 
-# Combination of [dev], [docs], [sionna1], [insite] and [aodt]
+# Combination of [dev], [sionna], [insite] and [aodt]
 all = [
     # Common ray tracing pipeline tools
     "utm",               

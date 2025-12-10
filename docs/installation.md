@@ -24,8 +24,7 @@ And install dependencies from the table below based on your needs.
 | Method | Command | Python Version | Description |
 |--------|---------|---------------|-------------|
 | Base | `pip install -e .` | ≥3.10 | Basic install with core dependencies |
-| Documentation | `pip install .[doc]` | ≥3.10 | Install with documentation dependencies |
-| Development | `pip install .[dev]` | ≥3.11 | Full development environment |
+| Development | `pip install .[dev]` | ≥3.11 | Full development environment (includes docs) |
 | Pipelines (Sionna 1.0.x) | `pip install .[sionna1]` | 3.10 or 3.11 | Ray tracing pipeline with Sionna 1.0 |
 | Pipelines (Sionna 0.19.x) | `pip install .[sionna019]` | 3.10 or 3.11 | Ray tracing pipeline with Sionna 0.19 |
 | All | `pip install .[all]` | 3.10 or 3.11 | Complete installation |

@@ -156,7 +156,7 @@ After cloning the repository:
 
 | Step    | Command                 | Description                        |
 |---------|-------------------------|------------------------------------|
-| Install | `pip install .[doc]`    | Install docs dependencies          |
+| Install | `pip install .[dev]`    | Install development dependencies   |
 | Serve   | `mkdocs serve`          | Preview at http://localhost:8000   |
 
 Change `execute: false` to `execute: true` in `mkdocs.yml` to run the tutorials and preserve cell outputs. 

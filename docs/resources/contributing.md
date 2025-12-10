@@ -139,7 +139,7 @@ Build documentation:
 
 | Step    | Command                                           | Description                       |
 |---------|---------------------------------------------------|-----------------------------------|
-| Install | `pip install .[doc]`                             | Install docs dependencies         |
+| Install | `pip install .[dev]`                             | Install development dependencies  |
 | Build   | `mkdocs build`                                   | Generate HTML documentation       |
 | Serve   | `mkdocs serve`                                   | View docs at http://localhost:8000|
 
