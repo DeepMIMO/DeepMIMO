@@ -48,4 +48,3 @@ __all__ = [
     # Validation
     "validate_txrx_sets",
 ]
-

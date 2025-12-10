@@ -142,4 +142,3 @@ def get_mat_filename(
     """
     str_id = f"t{tx_set_idx:03}_tx{tx_idx:03}_r{rx_set_idx:03}"
     return f"{key}_{str_id}.{fmt}"
-

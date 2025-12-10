@@ -176,4 +176,3 @@ def print_available_txrx_pair_ids(scenario_name: str) -> None:
         tx_id, rx_id = pair.get_ids()
         print(f"{idx:^6} | {tx_id:^6} | {rx_id:^6}")
     print("-" * 25)
-

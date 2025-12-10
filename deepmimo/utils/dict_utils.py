@@ -62,4 +62,3 @@ def compare_two_dicts(dict1: dict[str, Any], dict2: dict[str, Any]) -> bool:
         if isinstance(item, dict) and key in dict2:
             additional_keys = additional_keys | compare_two_dicts(item, dict2[key])
     return additional_keys
-

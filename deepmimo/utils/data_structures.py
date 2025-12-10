@@ -266,4 +266,3 @@ class PrintIfVerbose:
         """
         if self.verbose:
             print(message)
-

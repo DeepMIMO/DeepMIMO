@@ -47,4 +47,3 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     cartesian_coords[..., 1] = r * np.sin(elevation) * np.sin(azimuth)
     cartesian_coords[..., 2] = r * np.cos(elevation)
     return cartesian_coords
-

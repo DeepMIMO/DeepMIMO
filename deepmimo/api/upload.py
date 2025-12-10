@@ -832,5 +832,3 @@ def upload_rt_source(scenario_name: str, rt_zip_path: str, key: str) -> bool:
         print(f"An unexpected error occurred during RT upload: {e!s}")
 
     return result
-
-

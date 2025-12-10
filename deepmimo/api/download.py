@@ -262,7 +262,7 @@ def download(
     else:
         print(f'Scenario zip file "{output_path}" already exists.')
 
-    time.sleep(.5)  # wait for the file lock to be lifted
+    time.sleep(0.5)  # wait for the file lock to be lifted
 
     # Extract and move to appropriate location
     if rt_source:
@@ -271,4 +271,3 @@ def download(
         _extract_and_move_scenario(output_path, scenario_name)
 
     return output_path
-

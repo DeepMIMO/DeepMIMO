@@ -129,11 +129,16 @@ pydoc.pager = pydoc.plainpager  # when calling help(function), print instead of 
 # Link from: deepmimo.net/scenarios/asu-campus-1
 import subprocess
 
-subprocess.run([
-    "wget", "-O", "deepmimo_scen.zip",
-    "https://www.dropbox.com/scl/fi/unldvnar22cuxjh7db2rf/ASU_Campus1.zip?"
-    "rlkey=rs2ofv3pt4ctafs2zi3vwogrh&dl=0"
-], check=False)
+subprocess.run(
+    [
+        "wget",
+        "-O",
+        "deepmimo_scen.zip",
+        "https://www.dropbox.com/scl/fi/unldvnar22cuxjh7db2rf/ASU_Campus1.zip?"
+        "rlkey=rs2ofv3pt4ctafs2zi3vwogrh&dl=0",
+    ],
+    check=False,
+)
 dm.unzip("deepmimo_scen.zip")
 
 # %% [markdown]
@@ -260,17 +265,19 @@ keys_v4 = [key for key in dataset if not key.startswith("_")]
 
 # Group keys by type (filter out callable methods)
 array_keys = [
-    key for key in keys_v4
+    key
+    for key in keys_v4
     if not callable(getattr(dataset, key, None)) and isinstance(dataset[key], np.ndarray)
 ]
 dict_keys = [
-    key for key in keys_v4
+    key
+    for key in keys_v4
     if not callable(getattr(dataset, key, None)) and hasattr(dataset[key], "keys")
 ]
 other_keys = [
-    key for key in keys_v4
-    if not callable(getattr(dataset, key, None))
-    and key not in array_keys + dict_keys
+    key
+    for key in keys_v4
+    if not callable(getattr(dataset, key, None)) and key not in array_keys + dict_keys
 ]
 
 # Print numpy arrays
@@ -1528,6 +1535,7 @@ plt.scatter(
 plt.legend()
 plt.title("Dataset zones on AoA Azimuth [º]")
 
+
 # %%
 def plot_feat_dist(data_a: np.ndarray, data_b: np.ndarray, feat_name: str) -> None:
     """Plot histograms of coordinate distributions for two datasets.
@@ -1689,11 +1697,15 @@ dm.plot_coverage(
 # %%
 import subprocess
 
-subprocess.run([
-    "wget", "-O", "asu_campus_p2m.zip",
-    "https://www.dropbox.com/s/lgzw8am5v5qz06v/asu_campus_p2m.zip?"
-    "e=1&st=pcon8w9l&dl=1"
-], check=False)
+subprocess.run(
+    [
+        "wget",
+        "-O",
+        "asu_campus_p2m.zip",
+        "https://www.dropbox.com/s/lgzw8am5v5qz06v/asu_campus_p2m.zip?e=1&st=pcon8w9l&dl=1",
+    ],
+    check=False,
+)
 dm.unzip("asu_campus_p2m.zip")
 
 # %%
@@ -1931,8 +1943,7 @@ try:
     dyn_dataset = dm.convert("path to folder containing individual datasets")
     dyn_dataset.scene.plot()  # Draws the scene of each dataset
 except (FileNotFoundError, RuntimeError, ValueError) as e:
-    print("This should be executed when a Dynamic scenario exists in the "
-          "database (coming soon)")
+    print("This should be executed when a Dynamic scenario exists in the database (coming soon)")
     print(f"Error: {e!s}")
 
 # %% [markdown]
@@ -1976,9 +1987,7 @@ dm.upload(scen_name_to_upload, key=MY_DEEPMIMO_KEY)
 # For example, a GPS image
 import subprocess
 
-subprocess.run([
-    "wget", "https://deepmimo.net/images/1737161953000.jpg"
-], check=False)
+subprocess.run(["wget", "https://deepmimo.net/images/1737161953000.jpg"], check=False)
 
 # %%
 from IPython.display import Image
@@ -2010,10 +2019,15 @@ dm.upload_rt_source(scen_name_to_upload, zip_path, MY_DEEPMIMO_KEY)
 # download screenshot
 import subprocess
 
-subprocess.run([
-    "wget", "-O", "submission_screenshot_example.png",
-    "https://deepmimo.net/examples/submission_screenshot_example.png"
-], check=False)
+subprocess.run(
+    [
+        "wget",
+        "-O",
+        "submission_screenshot_example.png",
+        "https://deepmimo.net/examples/submission_screenshot_example.png",
+    ],
+    check=False,
+)
 
 # %%
 from IPython.display import Image

@@ -57,4 +57,3 @@ class _ProgressFileReader:
 
     def close(self) -> None:
         self.file_object.close()
-

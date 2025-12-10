@@ -480,4 +480,3 @@ def validate_txrx_sets(
 ) -> dict[int, list]:
     """Public wrapper around `_validate_txrx_sets`."""
     return _validate_txrx_sets(sets, txrx_dict, tx_or_rx)
-

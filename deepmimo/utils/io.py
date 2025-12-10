@@ -192,4 +192,3 @@ def unzip(path_to_zip: str) -> str:
         for file in tqdm(files, desc="Extracting", unit="file"):
             zip_ref.extract(file, extracted_path)
     return extracted_path
-

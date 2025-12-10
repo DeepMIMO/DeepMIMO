@@ -62,4 +62,3 @@ def generate(
     _ = dataset.compute_channels(ch_params if ch_params else ChannelParameters())
 
     return dataset
-

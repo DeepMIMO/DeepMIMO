@@ -94,97 +94,99 @@ def test_read_txrx(mock_path, mock_parse_xml) -> None:
                         "TxRxSetList": {
                             "remcom_rxapi_TxRxSetList": {
                                 "TxRxSet": [
-                                # TX Set (Point)
-                                {
-                                    "remcom_rxapi_TxSet": {
-                                        "OutputID": {"remcom_rxapi_Integer": 1},
-                                        "ShortDescription": {"remcom_rxapi_String": "TxSet1"},
-                                        "ConformToTerrain": {"remcom_rxapi_Boolean": False},
-                                        "UseAPGAcceleration": {"remcom_rxapi_Boolean": False},
-                                        "ControlPoints": {
-                                            "remcom_rxapi_ProjectedPointList": {
-                                                "ProjectedPoint": [
-                                                    {
-                                                        "remcom_rxapi_CartesianPoint": {
-                                                            "X": {"remcom_rxapi_Double": 0},
-                                                            "Y": {"remcom_rxapi_Double": 0},
-                                                            "Z": {"remcom_rxapi_Double": 0},
-                                                        }
-                                                    }
-                                                ]
-                                            }
-                                        },
-                                        "TransmitterList": {
-                                            "remcom_rxapi_TransmitterList": {
-                                                "Transmitter": [
-                                                    {
-                                                        "Point": {
+                                    # TX Set (Point)
+                                    {
+                                        "remcom_rxapi_TxSet": {
+                                            "OutputID": {"remcom_rxapi_Integer": 1},
+                                            "ShortDescription": {"remcom_rxapi_String": "TxSet1"},
+                                            "ConformToTerrain": {"remcom_rxapi_Boolean": False},
+                                            "UseAPGAcceleration": {"remcom_rxapi_Boolean": False},
+                                            "ControlPoints": {
+                                                "remcom_rxapi_ProjectedPointList": {
+                                                    "ProjectedPoint": [
+                                                        {
                                                             "remcom_rxapi_CartesianPoint": {
                                                                 "X": {"remcom_rxapi_Double": 0},
                                                                 "Y": {"remcom_rxapi_Double": 0},
                                                                 "Z": {"remcom_rxapi_Double": 0},
                                                             }
-                                                        },
-                                                        "AntennaID": {"remcom_rxapi_Integer": 1},
-                                                        "Orientation": {
-                                                            "remcom_rxapi_Rotation": {
-                                                                "P1": {"remcom_rxapi_Double": 0}
-                                                            }
-                                                        },
-                                                    }
-                                                ]
-                                            }
-                                        },
-                                    }
-                                },
-                                # RX Set (Grid)
-                                {
-                                    "remcom_rxapi_GridSet": {  # Using GridSet for grid
-                                        "OutputID": {"remcom_rxapi_Integer": 2},
-                                        "ShortDescription": {"remcom_rxapi_String": "RxGrid1"},
-                                        "ConformToTerrain": {"remcom_rxapi_Boolean": False},
-                                        "UseAPGAcceleration": {"remcom_rxapi_Boolean": False},
-                                        "LengthX": {"remcom_rxapi_Double": 10},
-                                        "LengthY": {"remcom_rxapi_Double": 10},
-                                        "Spacing": {"remcom_rxapi_Double": 10},
-                                        "ControlPoints": {
-                                            "remcom_rxapi_ProjectedPointList": {
-                                                "ProjectedPoint": [
-                                                    {
-                                                        "remcom_rxapi_CartesianPoint": {
-                                                            "X": {"remcom_rxapi_Double": 0},
-                                                            "Y": {"remcom_rxapi_Double": 0},
-                                                            "Z": {"remcom_rxapi_Double": 0},
                                                         }
-                                                    }
-                                                ]
-                                            }
-                                        },
-                                        "Receiver": {
-                                            "remcom_rxapi_Receiver": {
-                                                "Antenna": {
-                                                    "remcom_rxapi_Isotropic": {
-                                                        "Polarization": {
-                                                            "remcom_rxapi_PolarizationEnum": (
-                                                                "Vertical"
-                                                            )
-                                                        },
-                                                        "PowerThreshold": {
-                                                            "remcom_rxapi_Double": -250
-                                                        },
-                                                    }
-                                                },
-                                                "AntennaRotations": {
-                                                    "remcom_rxapi_Rotations": {
-                                                        "Bearing": {"remcom_rxapi_Double": 0},
-                                                        "Pitch": {"remcom_rxapi_Double": 0},
-                                                        "Roll": {"remcom_rxapi_Double": 0},
-                                                    }
-                                                },
-                                            }
-                                        },
-                                    }
-                                },
+                                                    ]
+                                                }
+                                            },
+                                            "TransmitterList": {
+                                                "remcom_rxapi_TransmitterList": {
+                                                    "Transmitter": [
+                                                        {
+                                                            "Point": {
+                                                                "remcom_rxapi_CartesianPoint": {
+                                                                    "X": {"remcom_rxapi_Double": 0},
+                                                                    "Y": {"remcom_rxapi_Double": 0},
+                                                                    "Z": {"remcom_rxapi_Double": 0},
+                                                                }
+                                                            },
+                                                            "AntennaID": {
+                                                                "remcom_rxapi_Integer": 1
+                                                            },
+                                                            "Orientation": {
+                                                                "remcom_rxapi_Rotation": {
+                                                                    "P1": {"remcom_rxapi_Double": 0}
+                                                                }
+                                                            },
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                        }
+                                    },
+                                    # RX Set (Grid)
+                                    {
+                                        "remcom_rxapi_GridSet": {  # Using GridSet for grid
+                                            "OutputID": {"remcom_rxapi_Integer": 2},
+                                            "ShortDescription": {"remcom_rxapi_String": "RxGrid1"},
+                                            "ConformToTerrain": {"remcom_rxapi_Boolean": False},
+                                            "UseAPGAcceleration": {"remcom_rxapi_Boolean": False},
+                                            "LengthX": {"remcom_rxapi_Double": 10},
+                                            "LengthY": {"remcom_rxapi_Double": 10},
+                                            "Spacing": {"remcom_rxapi_Double": 10},
+                                            "ControlPoints": {
+                                                "remcom_rxapi_ProjectedPointList": {
+                                                    "ProjectedPoint": [
+                                                        {
+                                                            "remcom_rxapi_CartesianPoint": {
+                                                                "X": {"remcom_rxapi_Double": 0},
+                                                                "Y": {"remcom_rxapi_Double": 0},
+                                                                "Z": {"remcom_rxapi_Double": 0},
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            },
+                                            "Receiver": {
+                                                "remcom_rxapi_Receiver": {
+                                                    "Antenna": {
+                                                        "remcom_rxapi_Isotropic": {
+                                                            "Polarization": {
+                                                                "remcom_rxapi_PolarizationEnum": (
+                                                                    "Vertical"
+                                                                )
+                                                            },
+                                                            "PowerThreshold": {
+                                                                "remcom_rxapi_Double": -250
+                                                            },
+                                                        }
+                                                    },
+                                                    "AntennaRotations": {
+                                                        "remcom_rxapi_Rotations": {
+                                                            "Bearing": {"remcom_rxapi_Double": 0},
+                                                            "Pitch": {"remcom_rxapi_Double": 0},
+                                                            "Roll": {"remcom_rxapi_Double": 0},
+                                                        }
+                                                    },
+                                                }
+                                            },
+                                        }
+                                    },
                                 ]
                             }
                         }
@@ -201,9 +203,9 @@ def test_read_txrx(mock_path, mock_parse_xml) -> None:
         }
     }
 
-    tx_set_data = mock_parse_xml.return_value["InSite"]["remcom_rxapi_Job"]["Scene"]["remcom_rxapi_Scene"][
-        "TxRxSetList"
-    ]["remcom_rxapi_TxRxSetList"]["TxRxSet"][0]["remcom_rxapi_TxSet"]
+    tx_set_data = mock_parse_xml.return_value["InSite"]["remcom_rxapi_Job"]["Scene"][
+        "remcom_rxapi_Scene"
+    ]["TxRxSetList"]["remcom_rxapi_TxRxSetList"]["TxRxSet"][0]["remcom_rxapi_TxSet"]
     tx_set_data["Transmitter"] = {
         "remcom_rxapi_Transmitter": {
             "Antenna": {

@@ -81,4 +81,3 @@ def search(query: dict | None = None) -> list[str] | None:
         print(f"Unexpected error: {e!s}")
 
     return None
-
