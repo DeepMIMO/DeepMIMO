@@ -1,12 +1,12 @@
-"""# DeepMIMO Examples Manual.
+"""DeepMIMO Examples Manual.
 
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py)
-&nbsp;
-[![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py)
+Comprehensive reference manual with all DeepMIMO examples.
 
----
+Open in Colab:
+https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
 
-**Comprehensive reference manual with all DeepMIMO examples.**
+Open on GitHub:
+https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
 
 This manual covers:
 - Migration from v3 to v4
@@ -21,26 +21,27 @@ This manual covers:
 - Beamforming
 - Converting from other ray tracers
 - Uploading scenarios
-
----
 """
 
 # %% [markdown]
 # # Examples Manual
 #
-# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1U-e2rLDJYW-VcbJ7C3H2dqC625JJH5FF)
-# &nbsp;
-# [![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/manual.ipynb)
+# Open in Colab:
+# https://colab.research.google.com/drive/1U-e2rLDJYW-VcbJ7C3H2dqC625JJH5FF
+#
+# Open on GitHub:
+# https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/manual.ipynb
 #
 # ---
-# **How to use this notebook**:
-# 1. Always run the cell below
-# 2. Jump to the section of interest (see table)
-# 3. Watch the video explaining the section in detail
+# **How to use this script**:
+# 1. Install DeepMIMO: `pip install --pre deepmimo`
+# 2. Run sections interactively in your IDE
+# 3. Jump to the section of interest (see table below)
+# 4. Watch the video explaining the section in detail
 
 # %%
-# Install DeepMIMO
-%pip install --pre deepmimo
+# Install DeepMIMO (run this in your terminal or uncomment to run here)
+# pip install --pre deepmimo
 
 # Import manual-wide dependencies
 
@@ -84,7 +85,7 @@ dataset = dm.load(scen_name)
 # | [Advanced Operations](#advanced-operations) | [Video](https://youtu.be/PApPjG4HTHs) | [Field-of-View](#field-of-view) | FoV analysis for receivers | dataset.apply_fov() |
 # | [Scene & Materials](#scene--materials) | [Video](https://youtu.be/gq7F2cUthuU) | [Visualization](#scene-visualization) | Show scene | dataset.scene, dataset.materials |
 # | | | [Operations](#scene-operations) | Retrieve objects and materials | scene.get_objects(), objects.get_materials() |
-# | [User Sampling](#user-sampling) | [Video](https://youtu.be/KV0LLp0jOFc) | [Dataset Trimming](#dataset-trimming) | Trim dataset based on conditions | dataset.get_active_idxs(), dataset.subset() |
+# | [User Sampling](#user-sampling) | [Video](https://youtu.be/KV0LLp0jOFc) | [Dataset Trimming](#dataset-trimming) | Trim dataset based on conditions | dataset.get_idxs("active"), dataset.trim(idxs=...) |
 # | | | [Uniform](#uniform) | Uniform user sampling | dataset.get_uniform_idxs() |
 # | | | [Rows and Columns](#rows-and-columns) | Select users by row/col | dataset.get_row_idxs(), dataset.get_col_idxs() |
 # | | | [Linear](#linear) | Linear user placement | dm.LinearPath() |
@@ -103,22 +104,36 @@ dataset = dm.load(scen_name)
 # ## Migrating from v3
 
 # %% [markdown]
-# The DeepMIMO API changed drastically since version 3 for more efficient storage and processing. And to allow for the inclusion of more powerful tools, not only to manage, analyze, and operate on ray tracing datasets, but also to let users conveniently download, upload, and convert their own ray tracer datasets. See below the differences between DeepMIMO v2/v3 (very similar) and version 4.
+# The DeepMIMO API changed drastically since version 3 for more efficient storage
+# and processing. And to allow for the inclusion of more powerful tools, not only
+# to manage, analyze, and operate on ray tracing datasets, but also to let users
+# conveniently download, upload, and convert their own ray tracer datasets. See
+# below the differences between DeepMIMO v2/v3 (very similar) and version 4.
 
 # %% [markdown]
 # ### Generating v3 Dataset
 
 # %%
-!pip install deepmimov3
+# pip install deepmimov3
 
 # %%
 # DeepMIMO Scenario Download & Unzip
 # Link from: deepmimo.net/scenarios/asu-campus-1
-!wget -O deepmimo_scen.zip "https://www.dropbox.com/scl/fi/unldvnar22cuxjh7db2rf/ASU_Campus1.zip?rlkey=rs2ofv3pt4ctafs2zi3vwogrh&dl=0"
-!unzip deepmimo_scen.zip
+import subprocess
+
+subprocess.run([
+    "wget", "-O", "deepmimo_scen.zip",
+    "https://www.dropbox.com/scl/fi/unldvnar22cuxjh7db2rf/ASU_Campus1.zip?"
+    "rlkey=rs2ofv3pt4ctafs2zi3vwogrh&dl=0"
+], check=False)
+dm.unzip("deepmimo_scen.zip")
 
 # %% [markdown]
-# Note that the ASU scenario from v3 is 50% larger than that of v4. That is because v3 has structures of dictionaries with very small matrices inside, which introduce additional overhead and prevent the matlab compression to work well on those files. DeepMIMO v4 has simpler file formats where each file is a simple 2D matrix (except inter_pos which is 4D) that can be opened and used directly.
+# Note that the ASU scenario from v3 is 50% larger than that of v4. That is because
+# v3 has structures of dictionaries with very small matrices inside, which introduce
+# additional overhead and prevent the matlab compression to work well on those files.
+# DeepMIMO v4 has simpler file formats where each file is a simple 2D matrix (except
+# `inter_pos` which is 4D) that can be opened and used directly.
 
 # %%
 import DeepMIMOv3
@@ -130,7 +145,7 @@ params_v3 = DeepMIMOv3.default_params()
 
 # %%
 # Set your scenario path
-params_v3["dataset_folder"] = "."
+params_v3["dataset_folder"] = "./deepmimo_scen"
 params_v3["scenario"] = "asu_campus1"
 
 # Set BSs and rows to generate
@@ -161,7 +176,7 @@ ch_params.ofdm.bandwidth = 50e6
 ch_params.num_paths = 5
 
 dataset.compute_channels(ch_params)
-ch_params
+print(f"Channel parameters: \n{ch_params}")
 
 # %% [markdown]
 # ### Comparing v3 & v4
@@ -174,16 +189,19 @@ ch_params
 # - **10x faster** loading, thanks to the efficient matrix format
 # - **2.5x faster** channel generation is vectorized leveraging matrices
 # - Data can be accessed as attributes in v4
-# - Some parameters changed their default values for more practical parameter settings. These include the:
+# - Some parameters changed their default values for more practical parameter
+#   settings. These include the:
 #   - number of paths (5 in v3 vs 25 in v4)
 #   - bandwidth (50 MHz in v3 vs 10 MHz in v4)
 #   - bandwidth units (GHz in v3 vs Hz in v4)
 #   - no. user antenna elements (`[4,2]` in v3 vs `[1,1]` in v4)
 #   - number of rows to generate (1 in v3 vs all in v4)
 #   - BS2BS channels (yes vs no by default)
-#   - User sampling (like row selection) and FoV moved to separate functions. This allowed for better dataset consistency and organization. More information further down.
+#   - User sampling (like row selection) and FoV moved to separate functions.
+#     This allowed for better dataset consistency and organization. More
+#     information further down.
 #
-# Importantly, for the same configurations, the channels *match exacty*.
+# Importantly, for the same configurations, the channels *match exactly*.
 
 # %%
 ch_v3 = dataset_v3[0]["user"]["channel"]
@@ -205,7 +223,10 @@ print(f"Mean absolute v4: {mean_abs_v4}")
 # #### Data Access and Format
 
 # %% [markdown]
-# The dimensions and data access also changed. Version 3 is heavily nested while version 4 is extremely flat. See below the data structures of the v3 and the v4 datasets, and the pros and cons for wireless applications using ray tracing datasets.
+# The dimensions and data access also changed. Version 3 is heavily nested while
+# version 4 is extremely flat. See below the data structures of the v3 and the v4
+# datasets, and the pros and cons for wireless applications using ray tracing
+# datasets.
 
 # %%
 print("--- V3 Dataset Structure ---")
@@ -229,10 +250,20 @@ print("--- V4 Dataset Structure ---")
 
 keys_v4 = [key for key in dataset if not key.startswith("_")]
 
-# Group keys by type
-array_keys = [key for key in keys_v4 if isinstance(dataset[key], np.ndarray)]
-dict_keys = [key for key in keys_v4 if hasattr(dataset[key], "keys")]
-other_keys = [key for key in keys_v4 if key not in array_keys + dict_keys]
+# Group keys by type (filter out callable methods)
+array_keys = [
+    key for key in keys_v4
+    if not callable(getattr(dataset, key, None)) and isinstance(dataset[key], np.ndarray)
+]
+dict_keys = [
+    key for key in keys_v4
+    if not callable(getattr(dataset, key, None)) and hasattr(dataset[key], "keys")
+]
+other_keys = [
+    key for key in keys_v4
+    if not callable(getattr(dataset, key, None))
+    and key not in array_keys + dict_keys
+]
 
 # Print numpy arrays
 print("\n=== Numpy Arrays ===")
@@ -253,19 +284,29 @@ for key in other_keys:
 
 # %% [markdown]
 # **Why the change into v4 format**
-# - All path data is stored in aligned NumPy arrays → enables fast slicing, filtering, and batching.
-# - Flat structure avoids deep indexing → makes code for ML training, plotting, and analysis shorter and clearer.
-# - Efficient memory layout and easier I/O → good for large datasets and GPU pipelines.
+# - All path data is stored in aligned NumPy arrays → enables fast slicing,
+#   filtering, and batching.
+# - Flat structure avoids deep indexing → makes code for ML training, plotting,
+#   and analysis shorter and clearer.
+# - Efficient memory layout and easier I/O → good for large datasets and GPU
+#   pipelines.
 # - Compatible with vectorized NumPy and PyTorch/TensorFlow operations.
-# - Metadata (e.g., ray tracing settings, scene info) is easily accessible at the top level.
+# - Metadata (e.g., ray tracing settings, scene info) is easily accessible at
+#   the top level.
 # - Best for debugging and inspecting datasets interactively.
 # - Ideal for single-modal data with uniform UE structures.
 #
 # **When v3 structure is better**
-# - Multi-modal or per-user datasets like DeepVerse and DeepSense → easier to manage heterogeneity.
-# - Useful when each user/entity has unique fields or variable numbers of data elements.
+# - Multi-modal or per-user datasets like DeepVerse and DeepSense → easier to
+#   manage heterogeneity.
+# - Useful when each user/entity has unique fields or variable numbers of data
+#   elements.
 #
-# The need for speed and simplicity with the ever growing ray tracing datasets required new tools to adapt. For DeepMIMO, this meant a complete redesign of the dataset format and backend processing. We have witnessed many advantages and we continuously expand this toolchain to fit the wireless community. Please let us know if you find places of improvement.
+# The need for speed and simplicity with the ever growing ray tracing datasets
+# required new tools to adapt. For DeepMIMO, this meant a complete redesign of
+# the dataset format and backend processing. We have witnessed many advantages
+# and we continuously expand this toolchain to fit the wireless community.
+# Please let us know if you find places of improvement.
 
 # %% [markdown]
 # #### User Selection
@@ -274,32 +315,47 @@ for key in other_keys:
 # **Decoupling User Sampling in v4**
 #
 # User sampling was separated to enable data-dependent selection.
-# - Sampling is decoupled to allow user selection based on the dataset's internal information (e.g., user positions, row/col density, active paths, path types, etc.).
-# - Since this information is only available **after loading**, sampling must be done **after** the initial `load()` step.
-# - This enables flexible user control — e.g., trimming users in a bounding box, or selecting a regular grid subset.
+# - Sampling is decoupled to allow user selection based on the dataset's
+#   internal information (e.g., user positions, row/col density, active paths,
+#   path types, etc.).
+# - Since this information is only available **after loading**, sampling must
+#   be done **after** the initial `load()` step.
+# - This enables flexible user control — e.g., trimming users in a bounding box,
+#   or selecting a regular grid subset.
 #
-# > In contrast, **Field of View (FoV)** trimming was separated primarily for **data integrity**: to ensure that the available paths in the dataset match those used for channel generation.
+# > In contrast, **Field of View (FoV)** trimming was separated primarily for
+# > **data integrity**: to ensure that the available paths in the dataset match
+# > those used for channel generation.
 #
 # ----
 #
-# To further enable separation of concerns, DeepMIMO v4 introduces a clean 3-step workflow:
+# To further enable separation of concerns, DeepMIMO v4 introduces a clean
+# 3-step workflow:
 #
-# 1. **Loading**: `deepmimo.load()` uses `load_params` to load full path data and metadata.
-# 2. **Modification**: Optional user sampling, path filtering and dataset trimming, done after loading, based on dataset contents.
-# 3. **Channel Generation**: `deepmimo.compute_channels()` generates the channel matrix. It takes an optional `dm.ChannelParameters()` object containing parameters that **only affect the channel computation** (e.g., number of antennas, polarization, combining, etc.).
+# 1. **Loading**: `deepmimo.load()` uses `load_params` to load full path data
+#    and metadata.
+# 2. **Modification**: Optional user sampling, path filtering and dataset
+#    trimming, done after loading, based on dataset contents.
+# 3. **Channel Generation**: `deepmimo.compute_channels()` generates the channel
+#    matrix. It takes an optional `dm.ChannelParameters()` object containing
+#    parameters that **only affect the channel computation** (e.g., number of
+#    antennas, polarization, combining, etc.).
 #
-# This decoupling allows users to first inspect and modify the dataset — for instance, selecting users based on position or number of active paths — before computing any channel data.
+# This decoupling allows users to first inspect and modify the dataset — for
+# instance, selecting users based on position or number of active paths — before
+# computing any channel data.
 #
 # The result is **more user sampling functions in DeepMIMOv4**:
 #
-# - `dataset.get_row_idxs(...)`
-# - `dataset.get_col_idxs(...)`
-# - `dataset.get_uniform_idxs(...)`
-# - `dataset.get_idxs_with_limits(...)`
-# - `dataset.get_active_idxs(...)`
-# - `dataset.get_linear_idxs(...)`
+# - `dataset.get_idxs("row", row_idxs=...)`
+# - `dataset.get_idxs("col", col_idxs=...)`
+# - `dataset.get_idxs("uniform", steps=...)`
+# - `dataset.get_idxs("limits", x_min=..., x_max=..., ...)`
+# - `dataset.get_idxs("active")`
+# - `dataset.get_idxs("linear", start_pos=..., end_pos=..., n_steps=...)`
 #
-# These functions return user indices for trimming. Only the first function is supported in DeepMIMOv3.
+# These functions return user indices for trimming. Only the first function is
+# supported in DeepMIMOv3.
 #
 # Below we see the differences between both versions to obtain rows between 40 and 50.
 
@@ -323,15 +379,22 @@ print(f"\nNumber of users: {len(dataset_v3_sampling[0]['user']['LoS'])}")
 
 # %%
 # User sampling in v4
-idxs = dataset.get_row_idxs(range(40, 50))
-dataset_t = dataset.subset(idxs)
+idxs = dataset.get_idxs("row", row_idxs=range(40, 50))
+dataset_t = dataset.trim(idxs=idxs)
 _ = dataset_t.n_ue
 _ = dataset_t.channel.shape
 
 # %% [markdown]
 # #### Others
 #
-# - Field of View (FoV) filtering also moved from the parameters to its own function `dm.apply_fov(bs_fov, ue_fov)`. The reason for this is to maintain maximum dataset consistency and integrity. If FoV is in the channel parameters, it will affect the channel but then the data inside the dataset does not match the data in the channel. Some matrices would change but not others, very likely creating errors. Because of that, we have an explicit call that changes only fov matrices. For more information, see the FoV reference example and APIs.
+# - Field of View (FoV) filtering also moved from the parameters to its own
+#   function `dm.apply_fov(bs_fov, ue_fov)`. The reason for this is to maintain
+#   maximum dataset consistency and integrity. If FoV is in the channel
+#   parameters, it will affect the channel but then the data inside the dataset
+#   does not match the data in the channel. Some matrices would change but not
+#   others, very likely creating errors. Because of that, we have an explicit
+#   call that changes only fov matrices. For more information, see the FoV
+#   reference example and APIs.
 # - Examples of Sionna Adapter using O1 scenario with v3 and v4:
 #   - [v3 Sionna Adapter](https://github.com/NVlabs/sionna/blob/main/tutorials/phy/DeepMIMO.ipynb)
 #   - [v4 Sionna Adapter](https://github.com/jmoraispk/sionna/blob/DeepMIMOv4_sionna_adapter/tutorials/phy/DeepMIMO.ipynb)
@@ -344,32 +407,44 @@ _ = dataset_t.channel.shape
 # ### Python (pip)
 
 # %% [markdown]
-# The best way to use python is to use virtual environments. We recommend miniforge (smaller version of conda) to manage such environments.
+# The best way to use python is to use virtual environments. We recommend
+# miniforge (smaller version of conda) to manage such environments.
 #
 # Here are the steps to create a Python environment with the DeepMIMO package:
 #
-# 1. Install **[miniforge](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install)** (tip: select init now & then `conda config --set auto_activate_base false`)
-# 2. In windows, open miniforge prompt from the start menu. In Linux/Mac, source bash or restart the terminal.
+# 1. Install **[miniforge](https://github.com/conda-forge/miniforge?tab=readme-ov-file#install)**
+#    (tip: select init now & then `conda config --set auto_activate_base false`)
+# 2. In windows, open miniforge prompt from the start menu. In Linux/Mac, source
+#    bash or restart the terminal.
 # 3. Run the following commands to create and activate an environment:
 #   1. `mamba create -n deepmimo_env python=3.11 expat=2.5.0`
 #   2. `mamba activate deepmimo_env`
 # 4. Install DeepMIMO:
 #   - For Users: `pip install --pre deepmimo`
-#   - For Developers: clone [DeepMIMO](https://github.com/DeepMIMO/DeepMIMO), go into folder, `pip install -e .`
+#   - For Developers: clone [DeepMIMO](https://github.com/DeepMIMO/DeepMIMO),
+#     go into folder, `pip install -e .`
 
 # %% [markdown]
 # ### Matlab
 #
-# The way DeepMIMO "supports" execution in Matlab is via [Python in Matlab](https://www.mathworks.com/help/matlab/call-python-libraries.html).
+# The way DeepMIMO "supports" execution in Matlab is via
+# [Python in Matlab](https://www.mathworks.com/help/matlab/call-python-libraries.html).
 #
-# Check [MATLAB's Python Version Compatibility Table](https://www.mathworks.com/support/requirements/python-compatibility.html) to make sure your Python version is supported in Matlab. DeepMIMO recommends Python 3.11
+# Check [MATLAB's Python Version Compatibility Table]
+# (https://www.mathworks.com/support/requirements/python-compatibility.html) to
+# make sure your Python version is supported in Matlab. DeepMIMO recommends
+# Python 3.11
 
 # %% [markdown]
 # **Step 1**: Configure python environment with the interpreter path:
-# - `pyenv("Version", "C:\Users\joao\mambaforge\envs\deepmimo_env\python.exe")` to setup the interpreter in Matlab
-# - `pyenv("ExecutionMode","OutOfProcess")` to separate the python and Matlab processes - helps reduce library collisions (e.g. needed for plots)
+# - `pyenv("Version", "C:\Users\joao\mambaforge\envs\deepmimo_env\python.exe")`
+#   to setup the interpreter in Matlab
+# - `pyenv("ExecutionMode","OutOfProcess")` to separate the python and Matlab
+#   processes - helps reduce library collisions (e.g. needed for plots)
 #
-# ***Tip***: To get the interpreter path, open the terminal, navigate to where python could be called (activate the environment if needed) and get the path via:
+# ***Tip***: To get the interpreter path, open the terminal, navigate to where
+# python could be called (activate the environment if needed) and get the path
+# via:
 # - `where python` on Windows
 # - `which python` on Linux & MacOS
 #
@@ -391,7 +466,8 @@ _ = dataset_t.channel.shape
 # * `pyrun("dataset = dm.load('asu_campus_3p5')")`
 # * `py_chs = pyrun("chs = dataset.compute_channels()", "chs")`
 #
-# Note: You have to convert/cast variables that come from pyrun into matrices with a certain type. See a full example below:
+# Note: You have to convert/cast variables that come from `pyrun` into matrices
+# with a certain type. See a full example below:
 
 # %% [markdown]
 # ```python
@@ -408,7 +484,8 @@ _ = dataset_t.channel.shape
 # %% [markdown]
 # #### Troubleshooting MATLAB
 #
-# Sometimes, the environment may not install or force a wrong version of expat in python. This is needed by matlab. In that case, run with conda/mamba:
+# Sometimes, the environment may not install or force a wrong version of expat
+# in python. This is needed by matlab. In that case, run with conda/mamba:
 #
 # 1. Remove expat cleanly
 # `mamba remove expat --yes`
@@ -477,7 +554,10 @@ dm.summary("city_0_newyork_3p5")
 
 # %%
 dm.download("city_0_newyork_3p5_s")
-dm.plot_summary("city_0_newyork_3p5_s")
+try:
+    dm.plot_summary("city_0_newyork_3p5_s")
+except AttributeError as e:
+    print(f"Plot summary skipped due to error: {e}")
 
 # %%
 dm.info()
@@ -690,7 +770,9 @@ dm.plot_coverage(
 # ### Plot Overlays
 
 # %% [markdown]
-# DeepMIMO's main plot functions are `plot_coverage()`, `plot_rays()` and `plot_scene()` (in available via `dataset.scene.plot()`). These can be composed / overlayed on top of each other to obtain more insightful visualizations.
+# DeepMIMO's main plot functions are `plot_coverage()`, `plot_rays()` and
+# `plot_scene()` (available via `dataset.scene.plot()`). These can be composed
+# / overlayed on top of each other to obtain more insightful visualizations.
 
 # %% [markdown]
 # #### 2D Scene, Coverage & Rays Overlay
@@ -705,7 +787,9 @@ ax.legend().set_visible(False)
 # #### 3D Scene & Rays Overlay
 
 # %% [markdown]
-# In 3D the overlay of coverage does not work well because DeepMIMO's plotting backend (Matplotlib) has severe limitations with rendering depth in 3D. More capable backends will become available in the future.
+# In 3D the overlay of coverage does not work well because DeepMIMO's plotting
+# backend (Matplotlib) has severe limitations with rendering depth in 3D. More
+# capable backends will become available in the future.
 
 # %%
 ax = dataset.plot_rays(365)  # another los user
@@ -844,12 +928,18 @@ plt.show()
 # ### Doppler
 
 # %% [markdown]
-# Doppler can be added to the generated channels (in time or frequency domain) in three different ways:
-# - Set Doppler directly: Set manually the Doppler frequencies per user (and optinally, per path)
-# - Set Speeds directly: Set manually the TX, RX or object speeds. This will automatically compute Doppler Frequencies.
-# - Set Time Reference: This will automatically compute, the TX, RX and object speeds across scenes. Note that this method only works when using a Dynamic Dataset.
+# Doppler can be added to the generated channels (in time or frequency domain)
+# in three different ways:
+# - Set Doppler directly: Set manually the Doppler frequencies per user (and
+#   optionally, per path)
+# - Set Speeds directly: Set manually the TX, RX or object speeds. This will
+#   automatically compute Doppler Frequencies.
+# - Set Time Reference: This will automatically compute, the TX, RX and object
+#   speeds across scenes. Note that this method only works when using a Dynamic
+#   Dataset.
 #
-# Note: For Doppler to be ADDED to the channel, the parameters "enable_doppler" must be set to True in the channel parameters
+# Note: For Doppler to be ADDED to the channel, the `enable_doppler` parameter
+# must be set to `True` in the channel parameters
 #
 
 # %% [markdown]
@@ -1317,12 +1407,12 @@ print("\nActive Users and Dataset Subsetting (Trimming) Example")
 print("-" * 50)
 
 # Get indices of active users (those with paths)
-active_idxs = dataset.get_active_idxs()
+active_idxs = dataset.get_idxs("active")
 print(f"Original dataset has {dataset.n_ue} UEs")
 print(f"Found {len(active_idxs)} active UEs")
 
 # Create new dataset with only active users
-dataset_t = dataset.subset(active_idxs)
+dataset_t = dataset.trim(idxs=active_idxs)
 print(f"New dataset has {dataset_t.n_ue} UEs")
 
 dataset_t.plot_coverage(dataset_t.aoa_az[:, 0])
@@ -1331,18 +1421,18 @@ dataset_t.plot_coverage(dataset_t.aoa_az[:, 0])
 # ### Uniform
 
 # %%
-idxs = dataset.get_uniform_idxs([4, 4])
+idxs = dataset.get_idxs("uniform", steps=[4, 4])
 dm.plot_coverage(dataset.rx_pos[idxs], dataset.aoa_az[idxs, 0], dpi=150, bs_pos=dataset.tx_pos.T)
 
 # %% [markdown]
 # ### Rows and Columns
 
 # %%
-row_idxs = dataset.get_row_idxs(np.arange(40, 60))
-col_idxs = dataset.get_col_idxs(np.arange(40, 60))
+row_idxs = dataset.get_idxs("row", row_idxs=np.arange(40, 60))
+col_idxs = dataset.get_idxs("col", col_idxs=np.arange(40, 60))
 
-dataset_sub1 = dataset.subset(row_idxs)
-dataset_sub2 = dataset.subset(col_idxs)
+dataset_sub1 = dataset.trim(idxs=row_idxs)
+dataset_sub2 = dataset.trim(idxs=col_idxs)
 
 dataset.plot_coverage(dataset.los, title="Full dataset")
 x_lim, y_lim = plt.xlim(), plt.ylim()
@@ -1589,8 +1679,14 @@ dm.plot_coverage(
 #
 
 # %%
-!wget -O asu_campus_p2m.zip "https://www.dropbox.com/s/lgzw8am5v5qz06v/asu_campus_p2m.zip?e=1&st=pcon8w9l&dl=1"
-!unzip asu_campus_p2m.zip
+import subprocess
+
+subprocess.run([
+    "wget", "-O", "asu_campus_p2m.zip",
+    "https://www.dropbox.com/s/lgzw8am5v5qz06v/asu_campus_p2m.zip?"
+    "e=1&st=pcon8w9l&dl=1"
+], check=False)
+dm.unzip("asu_campus_p2m.zip")
 
 # %%
 rt_folder = "asu_campus"
@@ -1601,15 +1697,19 @@ dataset_insite = dm.load(scen_name_insite)
 
 # %% [markdown]
 # ### From Sionna RT
-# Sionna is a bit more complicated because it doesn't have standard saving methods. Because of that, we use DeepMIMO exporter for Sionna, that saves the Scene, Path and computation parameters.
+# Sionna is a bit more complicated because it doesn't have standard saving
+# methods. Because of that, we use DeepMIMO exporter for Sionna, that saves the
+# Scene, Path and computation parameters.
 #
-# Below is an example of ray tracing a simple scene in Sionna and converting it to DeepMIMO.
+# Below is an example of ray tracing a simple scene in Sionna and converting it
+# to DeepMIMO.
 #
-# Note: This code was tested with Sionna 0.19. It should work with many previous versions too, but needs to be verified.
-# An exampel for Sionna 1.x is coming soon.
+# Note: This code was tested with Sionna 0.19. It should work with many previous
+# versions too, but needs to be verified. An example for Sionna 1.x is coming
+# soon.
 
 # %%
-!pip install sionna==0.19.1
+# pip install sionna==0.19.1
 
 # %%
 from typing import Any
@@ -1738,11 +1838,11 @@ save_folder = "sionna_test_scen/"
 sionna_exporter(scene, path_list, my_compute_path_params, save_folder)
 
 # %%
-# To download the scenario to try locally
-!zip -r sionna_test_scen.zip sionna_test_scen
-from google.colab import files
-
-files.download("sionna_test_scen.zip")
+# To download the scenario to try locally (Colab only)
+zip_path = dm.zip("sionna_test_scen")
+# Uncomment the following lines if running in Google Colab:
+# from google.colab import files
+# files.download(zip_path)
 
 # %%
 import deepmimo as dm
@@ -1763,9 +1863,14 @@ for key in main_keys:
 
 # %% [markdown]
 # ### From AODT
-# Like Sionna, conversion from AODT requires an exporter in DeepMIMO. This exporter will save AODT data using similar methods to those presented in AODT `Export_Data.ipynb` notebook.
+# Like Sionna, conversion from AODT requires an exporter in DeepMIMO. This
+# exporter will save AODT data using similar methods to those presented in AODT
+# `Export_Data.ipynb` notebook.
 #
-# After ray tracing with AODT, be it AODT on the cloud, locally or in a remote server, this code can be executed wherever a clickhouse client can be executed, to fetch data from the database and save the necessary tables in parquet format.
+# After ray tracing with AODT, be it AODT on the cloud, locally or in a remote
+# server, this code can be executed wherever a clickhouse client can be executed,
+# to fetch data from the database and save the necessary tables in parquet
+# format.
 
 # %%
 # Install DeepMIMO in the Notebook (with AODT dependencies)
@@ -1797,16 +1902,27 @@ except (ImportError, RuntimeError) as e:
 # ### Dynamic Dataset
 
 # %% [markdown]
-# Dynamic datasets are the same as normal datasets, but usually with fewer receivers, but these receivers (or the transmitters, or the objects in the scene) move across scenes. Therefore the DeepMIMO dataset will consist of multiple MacroDatasets (or Datasets - refer to the Loading Section for information about these objects), one for each *snapshot*.
+# Dynamic datasets are the same as normal datasets, but usually with fewer
+# receivers, but these receivers (or the transmitters, or the objects in the
+# scene) move across scenes. Therefore the DeepMIMO dataset will consist of
+# multiple MacroDatasets (or Datasets - refer to the Loading Section for
+# information about these objects), one for each *snapshot*.
 #
-# To ray trace and convert such a dataset to DeepMIMO is very simple. Ray trace each individual scene independently and export them to a common folder, and pass that folder (which effectively contains several independent ray tracer outputs) to the converter, and it will figure out that the dataset is a Dynamic Dataset if it find a folders instead of files, and files inside one of those folders. The folders will be sorted (using the `sorted()` Python built-in) and the snapshots will be saved in that order.
+# To ray trace and convert such a dataset to DeepMIMO is very simple. Ray trace
+# each individual scene independently and export them to a common folder, and
+# pass that folder (which effectively contains several independent ray tracer
+# outputs) to the converter, and it will figure out that the dataset is a
+# Dynamic Dataset if it finds folders instead of files, and files inside one of
+# those folders. The folders will be sorted (using the `sorted()` Python
+# built-in) and the snapshots will be saved in that order.
 
 # %%
 try:
     dyn_dataset = dm.convert("path to folder containing individual datasets")
     dyn_dataset.scene.plot()  # Draws the scene of each dataset
 except (FileNotFoundError, RuntimeError, ValueError) as e:
-    print("This should be executed when a Dynamic scenario exists in the database (coming soon)")
+    print("This should be executed when a Dynamic scenario exists in the "
+          "database (coming soon)")
     print(f"Error: {e!s}")
 
 # %% [markdown]
@@ -1814,7 +1930,11 @@ except (FileNotFoundError, RuntimeError, ValueError) as e:
 #
 
 # %% [markdown]
-# Similar to Dynamic datasets, DeepMIMO supports multiple antenna raytracing scenarios. Currently, the easiest way to ray trace such scenarios is to define multiple transmitters, each with a single antenna. In the future DeepMIMO will support multi-antenna terminals, but this has proven to be a rare use-case that is most often unnecessary.
+# Similar to Dynamic datasets, DeepMIMO supports multiple antenna raytracing
+# scenarios. Currently, the easiest way to ray trace such scenarios is to define
+# multiple transmitters, each with a single antenna. In the future DeepMIMO will
+# support multi-antenna terminals, but this has proven to be a rare use-case that
+# is most often unnecessary.
 
 # %% [markdown]
 # ## Upload to DeepMIMO
@@ -1844,7 +1964,11 @@ dm.upload(scen_name_to_upload, key=MY_DEEPMIMO_KEY)
 
 # %%
 # For example, a GPS image
-!wget https://deepmimo.net/images/1737161953000.jpg
+import subprocess
+
+subprocess.run([
+    "wget", "https://deepmimo.net/images/1737161953000.jpg"
+], check=False)
 
 # %%
 from IPython.display import Image
@@ -1874,7 +1998,12 @@ dm.upload_rt_source(scen_name_to_upload, zip_path, MY_DEEPMIMO_KEY)
 
 # %%
 # download screenshot
-!wget -O submission_screenshot_example.png "https://deepmimo.net/examples/submission_screenshot_example.png"
+import subprocess
+
+subprocess.run([
+    "wget", "-O", "submission_screenshot_example.png",
+    "https://deepmimo.net/examples/submission_screenshot_example.png"
+], check=False)
 
 # %%
 from IPython.display import Image

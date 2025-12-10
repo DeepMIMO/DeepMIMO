@@ -49,6 +49,7 @@ dev = [
     "pytest-cov>=4.1.0",
     "nbmake>=1.5.0",
     "ruff>=0.6.9",
+    "deepmimov3",
 
     # Documentation
     "mkdocs>=1.6",
@@ -196,6 +197,9 @@ ignore = [
 ]
 "docs/tutorials/*.py" = [
     "N999",    # Allow tutorial names to start with a number
+]
+"docs/tutorials/manual.py" = [
+    "E402",    # Imports not at top of the file
 ]
 
 [tool.pytest.ini_options]

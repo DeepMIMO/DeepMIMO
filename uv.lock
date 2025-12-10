@@ -738,6 +738,7 @@ aodt = [
 ]
 dev = [
     { name = "build" },
+    { name = "deepmimov3" },
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "jupyter-client" },
@@ -791,6 +792,7 @@ requires-dist = [
     { name = "bpy", marker = "python_full_version == '3.11.*' and extra == 'sionna'", specifier = "==4.4.0" },
     { name = "build", marker = "extra == 'all'" },
     { name = "build", marker = "extra == 'dev'" },
+    { name = "deepmimov3", marker = "extra == 'dev'" },
     { name = "ipykernel", marker = "extra == 'all'" },
     { name = "ipykernel", marker = "extra == 'dev'" },
     { name = "ipykernel", marker = "extra == 'insite'" },
@@ -863,6 +865,21 @@ requires-dist = [
     { name = "utm", marker = "extra == 'sionna'" },
 ]
 provides-extras = ["dev", "aodt", "insite", "sionna", "all"]
+
+[[package]]
+name = "deepmimov3"
+version = "0.2.9"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "scipy" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c8/d9/8bf476a85b182ed696c82a18679b0c7075f0531647567f50f868dcf8dfb6/deepmimov3-0.2.9.tar.gz", hash = "sha256:f36dd3dca8eaed8a6ce57c7c08af83de2a7078790bf0a844819bab8464e4644d", size = 28084, upload-time = "2025-05-04T15:41:56.285Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b2/ed/95ac0dbe736e7f39b6a62fe2d3e4fa9c9df03c4866f64446322fe6bd286a/deepmimov3-0.2.9-py3-none-any.whl", hash = "sha256:b4fd35dcdc0cfc49d5de4d1dfcbe5749036baf642d150947e0d8a8e88da22d46", size = 31572, upload-time = "2025-05-04T15:41:55.037Z" },
+]
 
 [[package]]
 name = "defusedxml"
