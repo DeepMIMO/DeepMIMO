@@ -312,9 +312,8 @@ def get_txrx_insite_sets_from_xml(xml_file: str) -> list[InSiteTxRxSet]:
     data = parse_insite_xml(xml_file)
 
     # Get TxRxSetList
-    txrx_list = data["remcom_rxapi_Job"]["Scene"]["remcom_rxapi_Scene"]["TxRxSetList"][
-        "remcom_rxapi_TxRxSetList"
-    ]["TxRxSet"]
+    scene = data["InSite"]["remcom_rxapi_Job"]["Scene"]["remcom_rxapi_Scene"]
+    txrx_list = scene["TxRxSetList"]["remcom_rxapi_TxRxSetList"]["TxRxSet"]
 
     insite_sets = []
     for txrx_set in txrx_list:
