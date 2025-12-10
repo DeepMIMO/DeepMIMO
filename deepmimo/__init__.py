@@ -112,20 +112,19 @@ __all__ = [
     "consts",
     # Converters
     "convert",
+    # Sampling functions
+    "dbw2watt",
     # Database API
     "download",
     # Integrations
     "export_dataset_to_binary",
     # Core functionality
     "generate",
-    # Sampling functions
-    "dbw2watt",
+    # Scenario management utils
+    "get_available_scenarios",
     "get_grid_idxs",
     "get_idxs_with_limits",
     "get_linear_idxs",
-    "get_uniform_idxs",
-    # Scenario management utils
-    "get_available_scenarios",
     "get_mat_filename",
     "get_params_path",
     "get_rt_source_folder",
@@ -134,6 +133,7 @@ __all__ = [
     "get_scenarios_dir",
     "get_txrx_pairs",
     "get_txrx_sets",
+    "get_uniform_idxs",
     "info",
     "load",
     "load_dict_from_json",
