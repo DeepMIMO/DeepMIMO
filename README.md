@@ -192,7 +192,7 @@ DeepMIMO is not a simulator; it’s a standardized ray-tracing toolchain that *r
 <details>
 <summary><b>3) How long do dataset downloads take?</b></summary>
 
-A *few* minutes. Sometimes seconds. Data is stored on Backblaze B2, so in practice the transfer speeds are limited by the internet connection. E.g., at 50 Mbps the ASU Campus scenario would take ~5 seconds to download.
+A *few* minutes. Sometimes seconds. Data is stored on super-fast and available object storage, so in practice the transfer speeds are limited by the internet connection (see [speedtest.net](https://www.speedtest.net/)). At 50 Mbps the ASU Campus scenario with 85 thousand candidate users would take ~5 seconds to download.
 
 </details>
 
