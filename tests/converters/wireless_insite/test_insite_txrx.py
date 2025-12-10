@@ -87,12 +87,13 @@ def test_read_txrx(mock_path, mock_parse_xml) -> None:
 
     # Mock parse_insite_xml return
     mock_parse_xml.return_value = {
-        "remcom_rxapi_Job": {
-            "Scene": {
-                "remcom_rxapi_Scene": {
-                    "TxRxSetList": {
-                        "remcom_rxapi_TxRxSetList": {
-                            "TxRxSet": [
+        "InSite": {
+            "remcom_rxapi_Job": {
+                "Scene": {
+                    "remcom_rxapi_Scene": {
+                        "TxRxSetList": {
+                            "remcom_rxapi_TxRxSetList": {
+                                "TxRxSet": [
                                 # TX Set (Point)
                                 {
                                     "remcom_rxapi_TxSet": {
@@ -184,22 +185,23 @@ def test_read_txrx(mock_path, mock_parse_xml) -> None:
                                         },
                                     }
                                 },
-                            ]
+                                ]
+                            }
                         }
                     }
-                }
-            },
-            "Waveforms": {
-                "remcom_rxapi_WaveformList": {
-                    "Waveform": [
-                        {"remcom_rxapi_Sinusoid": {"Frequency": {"remcom_rxapi_Double": 28e9}}}
-                    ]
-                }
-            },
+                },
+                "Waveforms": {
+                    "remcom_rxapi_WaveformList": {
+                        "Waveform": [
+                            {"remcom_rxapi_Sinusoid": {"Frequency": {"remcom_rxapi_Double": 28e9}}}
+                        ]
+                    }
+                },
+            }
         }
     }
 
-    tx_set_data = mock_parse_xml.return_value["remcom_rxapi_Job"]["Scene"]["remcom_rxapi_Scene"][
+    tx_set_data = mock_parse_xml.return_value["InSite"]["remcom_rxapi_Job"]["Scene"]["remcom_rxapi_Scene"][
         "TxRxSetList"
     ]["remcom_rxapi_TxRxSetList"]["TxRxSet"][0]["remcom_rxapi_TxSet"]
     tx_set_data["Transmitter"] = {
