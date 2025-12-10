@@ -22,12 +22,12 @@ nav:
       - Converters: tutorials/7_converters.py
       - Migration Guide: tutorials/8_migration_guide.py
   - API Reference:
+      - Datasets: api/datasets.md
       - Generator: api/generator.md
       - Converter: api/converter.md
       - Visualization: api/visualization.md
       - Database: api/database.md
-      - Scene: api/scene.md
-      - Materials: api/materials.md
+      - Core Models: api/core.md
       - Integrations: api/integrations.md
       - Pipelines: api/pipelines.md
       - Utilities: api/utils.md

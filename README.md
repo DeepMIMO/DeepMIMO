@@ -94,46 +94,60 @@ dm.upload('my_scenario', 'your-api-key')
 ## Project Structure
 ```
 deepmimo/
-├── api.py                  # API interface with DeepMIMO database
-├── scene.py                # Scene (3D environment) management
-├── consts.py               # Constants and configurations
-├── info.py                 # Information on matrices and parameters
-├── materials.py            # Material properties
-├── txrx.py                 # Transmitter and receiver
-├── rt_params.py            # Ray tracing parameters
-├── general_utils.py        # Utility functions
+├── api/                    # Database API
+│   ├── download.py         # Download scenarios from database
+│   ├── search.py           # Search scenarios in database
+│   └── upload.py           # Upload scenarios to database
 ├── converters/             # Ray tracer output converters
 │   ├── aodt/               # AODT converter
 │   ├── sionna_rt/          # Sionna RT converter
 │   ├── wireless_insite/    # Wireless Insite converter
 │   ├── converter.py        # Base converter class
 │   └── converter_utils.py  # Converter utilities
+├── core/                   # Core data models
+│   ├── materials.py        # Material properties
+│   ├── rt_params.py        # Ray tracing parameters
+│   ├── scene.py            # Physical environment representation
+│   └── txrx.py             # Transmitter/receiver configurations
+├── datasets/               # Dataset operations
+│   ├── array_wrapper.py    # Array management utilities
+│   ├── dataset.py          # Dataset, MacroDataset, DynamicDataset classes
+│   ├── generate.py         # Dataset generation with channel computation
+│   ├── load.py             # Dataset loading functionality
+│   ├── sampling.py         # User sampling utilities
+│   ├── summary.py          # Dataset summary functions
+│   └── visualization.py    # Plotting and visualization tools
 ├── exporters/              # Data exporters
 │   ├── aodt_exporter.py    # AODT format exporter
 │   └── sionna_exporter.py  # Sionna format exporter
-├── generator/              # Dataset generator
-│   ├── core.py             # Core generation functionality
-│   ├── dataset.py          # Dataset class and management
-│   ├── channel.py          # Channel generation
-│   ├── geometry.py         # Geometric calculations
+├── generator/              # Channel generation
 │   ├── ant_patterns.py     # Antenna pattern definitions
-│   ├── array_wrapper.py    # Array management utilities
-│   ├── visualization.py    # Visualization tools
-│   └── generator_utils.py  # Generator utilities
-├── integrations/           # Integrations with 5G simulation tools
+│   ├── channel.py          # MIMO channel computation
+│   └── geometry.py         # Geometric calculations and beamforming
+├── integrations/           # Integration with 5G simulation tools
+│   ├── matlab/             # MATLAB 5G Toolbox integration
 │   ├── sionna_adapter.py   # Sionna integration
-│   └── matlab/             # Matlab 5GNR integration
-└── pipelines/              # Automatic raytracing pipelines
-    ├── sionna_rt/          # Sionna raytracer pipeline
-    ├── wireless_insite/    # Wireless Insite pipeline
-    ├── blender_osm.py      # Blender OSM export utilities
-    ├── txrx_placement.py   # Transmitter/Receiver placement
-    └── utils/              # Pipeline utilities
+│   └── web.py              # DeepMIMO web format export
+├── pipelines/              # Automatic ray tracing pipelines
+│   ├── sionna_rt/          # Sionna raytracer pipeline
+│   ├── wireless_insite/    # Wireless Insite pipeline
+│   ├── blender_osm.py      # Blender OSM export utilities
+│   ├── txrx_placement.py   # Transmitter/receiver placement
+│   └── utils/              # Pipeline utilities
+├── utils/                  # Utility modules
+│   ├── data_structures.py  # Custom data structures
+│   ├── dict_utils.py       # Dictionary utilities
+│   ├── geometry.py         # Geometric utility functions
+│   ├── info.py             # Information on matrices and parameters
+│   ├── io.py               # File I/O operations
+│   └── scenarios.py        # Scenario management functions
+├── config.py               # Configuration management
+└── consts.py               # Constants and default values
 
 Additional directories:
-├── scripts/                # Utility scripts and pipelines
 ├── docs/                   # Documentation
-└── test/                   # Test suite (wip)
+├── scripts/                # Utility scripts
+└── tests/                  # Test suite
 ```
 
 ## Build the Docs

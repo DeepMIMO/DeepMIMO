@@ -3,7 +3,7 @@
 The `scene` module provides classes for representing and managing physical objects in a wireless environment, including buildings, terrain, vegetation, and other structures that affect wireless propagation.
 
 ```
-scene.py
+deepmimo/core/scene.py
   ├── BoundingBox (3D bounds)
   ├── Face (Surface representation)
   ├── PhysicalElement (Individual objects)
@@ -20,8 +20,8 @@ with functionalities for plotting and material management integrated into the sc
 
 
 The scene module depends on:
-- `materials.py` for material properties
-- `general_utils.py` for utility functions
+- `deepmimo.core.materials` for material properties
+- `deepmimo.utils` for utility functions
 - NumPy for geometric computations
 - Matplotlib for visualization
 
@@ -66,7 +66,7 @@ face = dm.Face(
 )
 ```
 
-::: deepmimo.scene.Face
+::: deepmimo.core.scene.Face
 
 ## PhysicalElement
 
@@ -97,7 +97,7 @@ volume = element.volume
 position = element.position
 ```
 
-::: deepmimo.scene.PhysicalElement
+::: deepmimo.core.scene.PhysicalElement
 
 ## PhysicalElementGroup
 
@@ -116,7 +116,7 @@ first = group[0]
 subset = group[1:3]
 ```
 
-::: deepmimo.scene.PhysicalElementGroup
+::: deepmimo.core.scene.PhysicalElementGroup
 
 ## Scene
 
@@ -150,5 +150,5 @@ scene.plot(mode='tri_faces')  # Use triangular representation
 scene.plot(proj_3D=False)
 ```
 
-::: deepmimo.scene.Scene
+::: deepmimo.core.scene.Scene
 

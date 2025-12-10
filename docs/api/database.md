@@ -25,7 +25,7 @@ for scenario in scenarios:
     
 ```
 
-::: deepmimo.api.search
+::: deepmimo.api.search.search
 
 ## Download
 
@@ -40,7 +40,7 @@ download_path = dm.download(scenario_name)
 print(f"Downloaded to: {download_path}")
 ```
 
-::: deepmimo.api.download
+::: deepmimo.api.download.download
 
 ## Upload
 
@@ -65,7 +65,7 @@ key = 'your_api_key'
 dm.upload(scenario_name, key=key)
 ```
 
-::: deepmimo.api.upload
+::: deepmimo.api.upload.upload
 
 ### Images
 
@@ -81,7 +81,7 @@ img_paths = ['image1.png', 'image2.png']
 dm.upload_images(scenario_name, img_paths, key)
 ```
 
-::: deepmimo.api.upload_images
+::: deepmimo.api.upload.upload_images
 
 ### RT Source
 
@@ -97,5 +97,5 @@ key = 'your_api_key'
 dm.upload_rt_source(scenario_name, rt_zip_path, key)
 ```
 
-::: deepmimo.api.upload_rt_source
+::: deepmimo.api.upload.upload_rt_source
 

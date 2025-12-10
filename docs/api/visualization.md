@@ -43,7 +43,7 @@ for key in features:
     dataset.plot_coverage(plt_var, title=key)  # wrapper to plot_coverage(dataset.rx_pos)
 ```
 
-::: deepmimo.generator.visualization.plot_coverage
+::: deepmimo.datasets.visualization.plot_coverage
 
 ## Rays
 Plot ray paths between transmitter and receiver with interaction points.
@@ -70,4 +70,4 @@ fig, ax = dm.plot_rays(
 dataset.plot_rays(10)  # user index
 ```
 
-::: deepmimo.generator.visualization.plot_rays
+::: deepmimo.datasets.visualization.plot_rays
