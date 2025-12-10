@@ -17,14 +17,16 @@ Main Functions:
     update_txrx_points(): Update TX/RX point information with path data
 """
 
-import os
 from pathlib import Path
 
 import numpy as np
 
-from ... import consts as c
-from ...general_utils import get_mat_filename, save_mat
+from deepmimo import consts as c
+from deepmimo.utils import get_mat_filename, save_mat
+
 from .p2m_parser import extract_tx_pos, paths_parser, read_pl_p2m_file
+
+INACTIVE_PATH_LOSS = 250.0
 
 
 def update_txrx_points(
@@ -52,11 +54,11 @@ def update_txrx_points(
         txrx_dict[f"txrx_set_{rx_set_id}"]["num_points"] = n_points
 
     # Find inactive points (those with path loss of 250 dB)
-    inactive_idxs = np.where(path_loss == 250.0)[0]
+    inactive_idxs = np.where(path_loss == INACTIVE_PATH_LOSS)[0]
     txrx_dict[f"txrx_set_{rx_set_id}"]["num_active_points"] = n_points - len(inactive_idxs)
 
 
-def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
+def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:  # noqa: C901, PLR0912
     """Create path data from a folder containing Wireless Insite files.
 
     This function:
@@ -77,14 +79,15 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
     """
     p2m_folder = next(p for p in Path(rt_folder).iterdir() if p.is_dir())
     if not p2m_folder.exists():
-        raise ValueError(f"Folder does not exist: {p2m_folder}")
+        msg = f"Folder does not exist: {p2m_folder}"
+        raise ValueError(msg)
 
     # Get TX/RX sets from dictionary in a deterministic order
     tx_sets = [txrx_dict[key] for key in sorted(txrx_dict.keys()) if txrx_dict[key]["is_tx"]]
     rx_sets = [txrx_dict[key] for key in sorted(txrx_dict.keys()) if txrx_dict[key]["is_rx"]]
 
     # Find any p2m file to extract project name (e.g. project_name.paths.t001_01.r001.p2m)
-    proj_name = list(p2m_folder.glob("*.p2m"))[0].name.split(".")[0]
+    proj_name = next(iter(p2m_folder.glob("*.p2m"))).name.split(".")[0]
 
     # Calculate total number of TX/RX pairs (for progress tracking)
     n_tot_txs = sum(tx_set["num_points"] for tx_set in tx_sets)
@@ -111,11 +114,15 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
                     f"({(processed_pairs / total_pairs) * 100:.1f}%)",
                 )
 
-                base_filename = f"{proj_name}.paths.t{tx_idx + 1:03}_{tx_set['id_orig']:02}.r{rx_set['id_orig']:03}.p2m"
+                base_filename = (
+                    f"{proj_name}.paths.t{tx_idx + 1:03}_{tx_set['id_orig']:02}."
+                    f"r{rx_set['id_orig']:03}.p2m"
+                )
                 paths_p2m_file = p2m_folder / base_filename
 
                 if not paths_p2m_file.exists():
-                    raise FileNotFoundError(f"\n P2M path file not found: {paths_p2m_file}")
+                    msg = f"\n P2M path file not found: {paths_p2m_file}"
+                    raise FileNotFoundError(msg)
 
                 # Parse path data
                 data = paths_parser(str(paths_p2m_file))
@@ -126,7 +133,7 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
                         tx_pos = extract_tx_pos(str(paths_p2m_file))
                         if tx_pos is not None:
                             tx_positions[tx_key] = tx_pos
-                    except Exception as e:
+                    except (OSError, ValueError, IndexError) as e:
                         print(
                             f"\nWarning: Could not extract TX position from {paths_p2m_file}: {e}",
                         )
@@ -143,9 +150,9 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
                 update_txrx_points(txrx_dict, rx_set["id"], data[c.RX_POS_PARAM_NAME], path_loss)
 
                 # Save each data key using the set's id
-                for key in data.keys():
+                for key in data:
                     mat_file = get_mat_filename(key, tx_set["id"], tx_idx, rx_set["id"])
-                    save_mat(data[key], key, os.path.join(output_folder, mat_file))
+                    save_mat(data[key], key, str(Path(output_folder) / mat_file))
 
     # Remove TX sets that have no paths with any receivers
     for tx_set in tx_sets:
@@ -156,7 +163,8 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict) -> None:
                 break
         if not tx_set_has_paths:
             print(
-                f"\nWarning: TX set {tx_set['id']} has no paths with any receivers - removing from txrx_dict",
+                f"\nWarning: TX set {tx_set['id']} has no paths with any receivers - "
+                "removing from txrx_dict",
             )
             del txrx_dict[f"txrx_set_{tx_set['id']}"]
 

@@ -3,10 +3,11 @@
 This module handles loading and converting material data from Sionna's format to DeepMIMO's format.
 """
 
-import os
+from pathlib import Path
+from typing import Any
 
-from ...general_utils import load_pickle
-from ...materials import Material, MaterialList
+from deepmimo.core.materials import Material, MaterialList
+from deepmimo.utils import load_pickle
 
 
 def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:
@@ -21,8 +22,8 @@ def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:
 
     """
     # Load Sionna materials
-    material_properties = load_pickle(os.path.join(load_folder, "sionna_materials.pkl"))
-    material_indices = load_pickle(os.path.join(load_folder, "sionna_material_indices.pkl"))
+    material_properties = load_pickle(str(Path(load_folder) / "sionna_materials.pkl"))
+    material_indices = load_pickle(str(Path(load_folder) / "sionna_material_indices.pkl"))
 
     # Initialize material list
     material_list = MaterialList()
@@ -43,8 +44,8 @@ def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:
         scattering_model = Material.SCATTERING_NONE if not scat_coeff else scattering_model
 
         # Create Material object
-        def safe_float(val, default=0.0):
-            return float(val) if val is not None else default
+        def safe_float(val: Any, default: float = 0.0) -> float:
+            return float(val) if val is not None else float(default)
 
         material = Material(
             id=i,

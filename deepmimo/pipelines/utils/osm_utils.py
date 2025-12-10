@@ -19,12 +19,14 @@ Constants:
     DEGREE_TO_METER (float): Conversion factor from degrees to meters at equator
 """
 
+import contextlib
 from dataclasses import dataclass
 from math import cos, pi, sin
 from typing import Optional
 
 import numpy as np
 import requests
+from shapely.errors import GEOSException
 from shapely.geometry import Point, Polygon
 from shapely.ops import nearest_points
 
@@ -38,6 +40,7 @@ SPIRAL_STEP = 5  # meters between test points
 MAX_SPIRAL_RADIUS = 100  # meters maximum search radius
 MIN_BUILDING_AREA = 25  # sq meters (ignore small buildings)
 DEGREE_TO_METER = 111320  # approx. meters per degree at equator
+MIN_POLYGON_POINTS = 3  # minimum nodes to form a polygon
 
 
 @dataclass
@@ -58,18 +61,17 @@ class Building:
 
         Args:
             element (Dict): OSM element containing building data
-            nodes_cache (Dict[int, Tuple[float, float]]): Cache of node coordinates
+            nodes_cache (dict[int, tuple[float, float]]): Cache of node coordinates
 
         Returns:
             Optional[Building]: Building instance or None if invalid
 
         """
-        nodes = []
-        for node_id in element.get("nodes", []):
-            if node_id in nodes_cache:
-                nodes.append(nodes_cache[node_id])
+        nodes = [
+            nodes_cache[node_id] for node_id in element.get("nodes", []) if node_id in nodes_cache
+        ]
 
-        if len(nodes) < 3:  # Need at least 3 points for a polygon
+        if len(nodes) < MIN_POLYGON_POINTS:  # Need at least 3 points for a polygon
             return None
 
         try:
@@ -86,24 +88,20 @@ class Building:
 
             # Try different height tags
             if "height" in properties:
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     height = float(properties["height"])
-                except (ValueError, TypeError):
-                    pass
 
             if height is None and "building:height" in properties:
-                try:
+                with contextlib.suppress(ValueError, TypeError):
                     height = float(properties["building:height"])
-                except (ValueError, TypeError):
-                    pass
 
             return cls(
                 geometry=buffered_polygon,
                 height=height if height else cls.height,
                 properties=properties,
             )
-        except:
-            print(f"Invalid polygon: {element}. Skipping...")
+        except (ValueError, TypeError, AttributeError, GEOSException) as exc:
+            print(f"Invalid polygon: {element}. Skipping... ({exc})")
             return None
 
 
@@ -116,7 +114,7 @@ def get_buildings(lat: float, lon: float, radius: float = SEARCH_RADIUS) -> list
         radius (float): Search radius in meters, defaults to SEARCH_RADIUS
 
     Returns:
-        List[Building]: List of Building instances
+        list[Building]: List of Building instances
 
     """
     overpass_url = "https://overpass-api.de/api/interpreter"
@@ -135,8 +133,8 @@ def get_buildings(lat: float, lon: float, radius: float = SEARCH_RADIUS) -> list
         response = requests.get(overpass_url, params={"data": query}, timeout=30)
         response.raise_for_status()
         data = response.json()
-    except Exception as e:
-        print(f"OSM query failed: {e}")
+    except (requests.RequestException, ValueError) as exc:
+        print(f"OSM query failed: {exc}")
         return []
 
     buildings = []
@@ -162,7 +160,7 @@ def is_point_clear_of_buildings(point: Point, buildings: list[Building]) -> bool
 
     Args:
         point (Point): Point to check
-        buildings (List[Building]): List of Building instances
+        buildings (list[Building]): List of Building instances
 
     Returns:
         bool: True if point maintains minimum distance from all buildings
@@ -173,10 +171,7 @@ def is_point_clear_of_buildings(point: Point, buildings: list[Building]) -> bool
 
     buffer_degrees = meter_to_degree(MIN_DISTANCE_FROM_BUILDING, point.y)
 
-    for building in buildings:
-        if building.geometry.distance(point) < buffer_degrees:
-            return False
-    return True
+    return all(building.geometry.distance(point) >= buffer_degrees for building in buildings)
 
 
 def find_nearest_clear_location(
@@ -196,10 +191,10 @@ def find_nearest_clear_location(
     Args:
         original_lat (float): Original latitude
         original_lon (float): Original longitude
-        buildings (List[Building]): List of Building instances
+        buildings (list[Building]): List of Building instances
 
     Returns:
-        Tuple[float, float]: Tuple of (latitude, longitude) for location clear of buildings
+        tuple[float, float]: Tuple of (latitude, longitude) for location clear of buildings
 
     """
     original_point = Point(original_lon, original_lat)
@@ -242,9 +237,10 @@ def find_nearest_clear_location(
                 return test_lat, test_lon
 
     # Final strategy: Random walk with increasing distance
+    rng = np.random.default_rng()
     for attempt in range(1, 6):
         distance = SPIRAL_STEP * attempt
-        angle = np.random.uniform(0, 2 * pi)
+        angle = rng.uniform(0, 2 * pi)
         test_lat = original_lat + meter_to_degree(distance * sin(angle), original_lat)
         test_lon = original_lon + meter_to_degree(distance * cos(angle), original_lat)
         test_point = Point(test_lon, test_lat)

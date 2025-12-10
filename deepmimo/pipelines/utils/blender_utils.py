@@ -1,17 +1,19 @@
-"""This file contains utility functions for Blender.
+"""Utility functions for Blender.
+
 Many of them will only work inside Blender.
 """
 
+import importlib.util
 import logging
 import math
-import os
 import subprocess
 import sys
+from pathlib import Path
 from typing import Any
 
 # Blender imports
-import bpy  # type: ignore
-import mathutils  # type: ignore (comes with blender)
+import bpy  # type: ignore[import]
+import mathutils  # type: ignore[import] (comes with blender)
 import requests
 
 ADDONS = {
@@ -30,10 +32,11 @@ ADDON_URLS = {
 
 # Material names for scene objects
 FLOOR_MATERIAL = "itu_wet_ground"
-PROJ_ROOT = os.path.dirname(os.path.abspath(__file__))
+PROJ_ROOT = str(Path(str(Path(__file__).resolve()).parent))
 
 # Blender version
 BLENDER_MAJOR_VERSION = bpy.app.version[0]
+MIN_BLENDER_EXPORT_VERSION = 4
 
 ###############################################################################
 # LOGGER SETUP
@@ -49,7 +52,7 @@ def log_local_setup(log_file_path: str) -> logging.Logger:
         log_file_path (str): Full path to the log file
 
     """
-    os.makedirs(os.path.dirname(log_file_path), exist_ok=True)
+    Path(str(Path(log_file_path).parent)).mkdir(parents=True, exist_ok=True)
 
     logging.basicConfig(
         level=logging.DEBUG,
@@ -59,12 +62,12 @@ def log_local_setup(log_file_path: str) -> logging.Logger:
             logging.FileHandler(log_file_path, mode="w"),  # File handler
         ],
     )
-    return logging.getLogger(os.path.basename(log_file_path))
+    return logging.getLogger(Path(log_file_path).name)
 
 
-def set_LOGGER(logger: Any) -> None:
+def set_logger(logger: Any) -> None:
     """Set the logger for the BlenderUtils class."""
-    global LOGGER
+    global LOGGER  # noqa: PLW0603
     LOGGER = logger
 
 
@@ -75,81 +78,80 @@ def set_LOGGER(logger: Any) -> None:
 
 def download_addon(addon_name: str) -> str:
     """Download a file from a URL and save it to a local path."""
-    output_path = os.path.join(PROJ_ROOT, "blender_addons", ADDONS[addon_name])
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    output_path = str(Path(PROJ_ROOT) / "blender_addons", ADDONS[addon_name])
+    Path(str(Path(output_path).parent)).mkdir(parents=True, exist_ok=True)
 
     url = ADDON_URLS[addon_name]
-    LOGGER.info(f"📥 Downloading file from {url} to {output_path}")
+    LOGGER.info("📥 Downloading file from %s to %s", url, output_path)
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
         response.raise_for_status()
-        with open(output_path, "wb") as f:
+        with Path(output_path).open("wb") as f:
             f.write(response.content)
     except Exception as e:
         error_msg = f"❌ Failed to download file from {url}: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
     return output_path
 
 
 def install_python_package(pckg_name: str) -> None:
     """Install a Python package using Blender's Python executable."""
-    LOGGER.info(f"📦 Installing Python package: {pckg_name}")
+    LOGGER.info("📦 Installing Python package: %s", pckg_name)
     python_exe = sys.executable
-    LOGGER.debug(f"Using Python executable: {python_exe}")
+    LOGGER.debug("Using Python executable: %s", python_exe)
 
     try:
-        subprocess.call([python_exe, "-m", "ensurepip"])
-        subprocess.call([python_exe, "-m", "pip", "install", "--upgrade", "pip"])
-        subprocess.call([python_exe, "-m", "pip", "install", pckg_name])
-        LOGGER.info(f"✅ Successfully installed {pckg_name}")
+        subprocess.call([python_exe, "-m", "ensurepip"])  # noqa: S603
+        subprocess.call([python_exe, "-m", "pip", "install", "--upgrade", "pip"])  # noqa: S603
+        subprocess.call([python_exe, "-m", "pip", "install", pckg_name])  # noqa: S603
+        LOGGER.info("✅ Successfully installed %s", pckg_name)
     except Exception as e:
         error_msg = f"❌ Failed to install {pckg_name}: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def install_blender_addon(addon_name: str) -> None:
     """Install and enable a Blender add-on from a zip file if not already installed."""
-    LOGGER.info(f"🔧 Processing Blender add-on: {addon_name}")
+    LOGGER.info("🔧 Processing Blender add-on: %s", addon_name)
     zip_name = ADDONS.get(addon_name)
     if not zip_name:
-        LOGGER.error(f"❌ No zip file defined for add-on '{addon_name}'")
+        LOGGER.error("❌ No zip file defined for add-on '%s'", addon_name)
         return
 
-    if addon_name in bpy.context.preferences.addons.keys():
-        LOGGER.info(f"📌 Add-on '{addon_name}' is already installed")
+    if addon_name in bpy.context.preferences.addons:
+        LOGGER.info("📌 Add-on '%s' is already installed", addon_name)
         if not bpy.context.preferences.addons[addon_name].module:
-            LOGGER.info(f"  Enabling add-on '{addon_name}'")
+            LOGGER.info("  Enabling add-on '%s'", addon_name)
             bpy.ops.preferences.addon_enable(module=addon_name)
             bpy.ops.wm.save_userpref()
     else:
-        addon_zip_path = os.path.join(PROJ_ROOT, "blender_addons", zip_name)
-        if not os.path.exists(addon_zip_path):
-            LOGGER.warning(f"⚠ Add-on zip file not found: {addon_zip_path}")
-            LOGGER.info(f"Attempting to download {addon_zip_path}")
+        addon_zip_path = str(Path(PROJ_ROOT) / "blender_addons", zip_name)
+        if not Path(addon_zip_path).exists():
+            LOGGER.warning("⚠ Add-on zip file not found: %s", addon_zip_path)
+            LOGGER.info("Attempting to download %s", addon_zip_path)
             addon_zip_path = download_addon(addon_name)
 
         try:
             bpy.ops.preferences.addon_install(filepath=addon_zip_path)
             bpy.ops.preferences.addon_enable(module=addon_name)
             bpy.ops.wm.save_userpref()
-            LOGGER.info(f"✅ Add-on '{addon_name}' installed and enabled")
-        except Exception as e:
-            LOGGER.error(f"❌ Failed to install/enable add-on '{addon_name}': {e!s}")
+            LOGGER.info("✅ Add-on '%s' installed and enabled", addon_name)
+        except Exception:
+            LOGGER.exception("❌ Failed to install/enable add-on '%s'", addon_name)
             raise
 
     # Special handling for Mitsuba
     if addon_name == "mitsuba-blender":
-        try:
-            import mitsuba
-
-            LOGGER.info("✅ Mitsuba import successful")
-        except ImportError:
+        mitsuba_spec = importlib.util.find_spec("mitsuba")
+        if mitsuba_spec is None:
             LOGGER.info("📦 Mitsuba not found, installing mitsuba package")
             install_python_package("mitsuba==3.5.0")  # sionna 0.19
             # install_python_package('mitsuba==3.6.2') # sionna 1.0
+        else:
+            LOGGER.info("✅ Mitsuba import successful")
             LOGGER.warning("🔄 Packages installed! Restarting Blender to update imports")
             bpy.ops.wm.quit_blender()
 
@@ -168,7 +170,11 @@ def configure_osm_import(
 ) -> None:
     """Configure blosm add-on for OSM data import."""
     LOGGER.info(
-        f"🗺️ Configuring OSM import for region: [{min_lat}, {min_lon}] to [{max_lat}, {max_lon}]",
+        "🗺️ Configuring OSM import for region: [%.6f, %.6f] to [%.6f, %.6f]",
+        min_lat,
+        min_lon,
+        max_lat,
+        max_lon,
     )
     try:
         prefs = bpy.context.preferences.addons["blosm"].preferences
@@ -184,24 +190,24 @@ def configure_osm_import(
         LOGGER.info("✅ OSM import configuration complete")
     except Exception as e:
         error_msg = f"❌ Failed to configure OSM import: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def save_osm_origin(scene_folder: str) -> None:
     """Save OSM origin coordinates to a text file."""
     origin_lat = bpy.data.scenes["Scene"]["lat"]
     origin_lon = bpy.data.scenes["Scene"]["lon"]
-    LOGGER.info(f"📍 Saving OSM origin coordinates: [{origin_lat}, {origin_lon}]")
+    LOGGER.info("📍 Saving OSM origin coordinates: [%.6f, %.6f]", origin_lat, origin_lon)
     try:
-        output_path = os.path.join(scene_folder, "osm_gps_origin.txt")
-        with open(output_path, "w") as f:
+        output_path = str(Path(scene_folder) / "osm_gps_origin.txt")
+        with Path(output_path).open("w") as f:
             f.write(f"{origin_lat}\n{origin_lon}\n")
         LOGGER.info("✅ OSM origin saved")
     except Exception as e:
         error_msg = f"❌ Failed to save OSM origin: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 ###############################################################################
@@ -246,47 +252,58 @@ def get_xy_bounds_from_latlon(
         min_lon: Minimum longitude
         max_lat: Maximum latitude
         max_lon: Maximum longitude
+        pad: Extra padding (meters) to add around bounds
 
     Returns:
         tuple[float, float, float, float]: (min_x, max_x, min_y, max_y) in meters
 
     """
-    LOGGER.info(f"🌐 Converting lat/lon bounds: [{min_lat}, {min_lon}] to [{max_lat}, {max_lon}]")
+    LOGGER.info(
+        "🌐 Converting lat/lon bounds: [%.6f, %.6f] to [%.6f, %.6f]",
+        min_lat,
+        min_lon,
+        max_lat,
+        max_lon,
+    )
 
     # Get center point
     center_lat = (min_lat + max_lat) / 2
     center_lon = (min_lon + max_lon) / 2
-    LOGGER.debug(f"📍 Center point: [{center_lat}, {center_lon}]")
+    LOGGER.debug("📍 Center point: [%.6f, %.6f]", center_lat, center_lon)
 
     # Constants for conversion (meters per degree at equator)
-    METER_PER_DEGREE_LAT = 111320  # Approximately constant
+    meter_per_degree_lat = 111320  # Approximately constant
     meter_per_degree_lon = 111320 * math.cos(math.radians(center_lat))  # Varies with latitude
 
     # Convert lat/lon differences to meters
-    min_y = (min_lat - center_lat) * METER_PER_DEGREE_LAT - pad
-    max_y = (max_lat - center_lat) * METER_PER_DEGREE_LAT + pad
+    min_y = (min_lat - center_lat) * meter_per_degree_lat - pad
+    max_y = (max_lat - center_lat) * meter_per_degree_lat + pad
     min_x = (min_lon - center_lon) * meter_per_degree_lon - pad
     max_x = (max_lon - center_lon) * meter_per_degree_lon + pad
 
     LOGGER.info(
-        f"📐 Converted bounds (meters): x=[{min_x:.2f}, {max_x:.2f}], y=[{min_y:.2f}, {max_y:.2f}]",
+        "📐 Converted bounds (meters): x=[%.2f, %.2f], y=[%.2f, %.2f]",
+        min_x,
+        max_x,
+        min_y,
+        max_y,
     )
     if pad > 0:
-        LOGGER.debug(f"\t (with padding of {pad} meters to all sides)")
+        LOGGER.debug("\t (with padding of %s meters to all sides)", pad)
 
     return min_x, max_x, min_y, max_y
 
 
 def compute_distance(coord1: tuple[float, float], coord2: tuple[float, float]) -> float:
     """Compute Haversine distance between two coordinates in meters."""
-    R = 6371.0  # Earth radius in kilometers
+    earth_radius_km = 6371.0  # Earth radius in kilometers
     lat1, lon1 = map(math.radians, coord1)
     lat2, lon2 = map(math.radians, coord2)
     dlat = lat2 - lat1
     dlon = lon2 - lon1
     a = math.sin(dlat / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin(dlon / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c * 1000  # Convert to meters
+    return earth_radius_km * c * 1000  # Convert to meters
 
 
 def setup_world_lighting() -> None:
@@ -307,8 +324,8 @@ def setup_world_lighting() -> None:
         LOGGER.info("✅ World lighting configured")
     except Exception as e:
         error_msg = f"❌ Failed to setup world lighting: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def create_camera_and_render(
@@ -317,20 +334,20 @@ def create_camera_and_render(
     rotation: tuple[float, float, float] = (0, 0, 0),
 ) -> None:
     """Add a camera, render the scene, and delete the camera."""
-    LOGGER.info(f"📸 Setting up camera for render at {output_path}")
+    LOGGER.info("📸 Setting up camera for render at %s", output_path)
     scene = bpy.context.scene
-    output_folder = os.path.dirname(output_path)
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder, exist_ok=True)
-        LOGGER.debug(f"📸 Created output folder = {output_folder}")
+    output_folder = str(Path(output_path).parent)
+    if not Path(output_folder).exists():
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
+        LOGGER.debug("📸 Created output folder = %s", output_folder)
 
     bpy.ops.object.select_all(action="DESELECT")
     bpy.ops.object.camera_add(location=location, rotation=rotation)
     camera = bpy.context.active_object
     scene.camera = camera
-    LOGGER.debug(f"📸 Camera = {camera}")
+    LOGGER.debug("📸 Camera = %s", camera)
     scene.render.filepath = output_path
-    LOGGER.debug(f"📸 Path = {scene.render.filepath}")
+    LOGGER.debug("📸 Path = %s", scene.render.filepath)
 
     try:
         bpy.ops.render.render(write_still=True)
@@ -339,8 +356,8 @@ def create_camera_and_render(
         LOGGER.debug("📸 Camera deleted!")
     except Exception as e:
         error_msg = f"❌ Failed to render scene: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 ###############################################################################
@@ -373,14 +390,16 @@ def create_ground_plane(
 ) -> bpy.types.Object:
     """Create and size a ground plane with FLOOR_MATERIAL."""
     LOGGER.info("🌍 Creating ground plane")
+    bpy.ops.mesh.primitive_plane_add(size=1)
+    plane = bpy.data.objects.get("Plane")
+    if plane is None:
+        msg = "Failed to create ground plane"
+        LOGGER.error(msg)
+        raise RuntimeError(msg)
+
     try:
-        bpy.ops.mesh.primitive_plane_add(size=1)
         x_size = compute_distance([min_lat, min_lon], [min_lat, max_lon]) * 1.2
         y_size = compute_distance([min_lat, min_lon], [max_lat, min_lon]) * 1.2
-
-        plane = bpy.data.objects.get("Plane")
-        if plane is None:
-            raise ValueError("Failed to create ground plane")
         plane.scale = (x_size, y_size, 1)
         plane.name = "terrain"
 
@@ -388,8 +407,8 @@ def create_ground_plane(
         plane.data.materials.append(floor_material)
     except Exception as e:
         error_msg = f"❌ Failed to create ground plane: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
     return plane
 
@@ -399,25 +418,26 @@ def add_materials_to_objs(
     material: bpy.types.Material,
 ) -> bpy.types.Object | None:
     """Join objects matching a name pattern and apply a material."""
-    LOGGER.info(f"🔄 Processing objects matching pattern: {name_pattern}")
+    LOGGER.info("🔄 Processing objects matching pattern: %s", name_pattern)
     bpy.ops.object.select_all(action="DESELECT")
 
     # Find mesh objects
     mesh_objs = [o for o in bpy.data.objects if name_pattern in o.name.lower() and o.type == "MESH"]
 
     if not mesh_objs:
-        LOGGER.warning(f"⚠️ No objects found matching pattern: {name_pattern}")
+        LOGGER.warning("⚠️ No objects found matching pattern: %s", name_pattern)
         return None
 
     try:
         for obj in mesh_objs:
             obj.data.materials.clear()
             obj.data.materials.append(material)
-        return obj
     except Exception as e:
         error_msg = f"❌ Failed to process objects with pattern '{name_pattern}': {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
+    else:
+        return obj
 
 
 def trim_faces_outside_bounds(
@@ -427,8 +447,8 @@ def trim_faces_outside_bounds(
     min_y: float,
     max_y: float,
 ) -> None:
-    """Trim faces of an object at the boundary lines and remove parts outside the bounds using boolean intersection."""
-    LOGGER.info(f"✂️ Trimming faces at bounds for object: {obj.name}")
+    """Trim faces at bounds and remove exterior parts via boolean intersection."""
+    LOGGER.info("✂️ Trimming faces at bounds for object: %s", obj.name)
     try:
         # First check if object is completely outside bounds
         bbox_corners = [obj.matrix_world @ mathutils.Vector(corner) for corner in obj.bound_box]
@@ -438,9 +458,19 @@ def trim_faces_outside_bounds(
         obj_max_y = max(corner.y for corner in bbox_corners)
 
         LOGGER.debug(
-            f"Object bounds: x=[{obj_min_x:.2f}, {obj_max_x:.2f}], y=[{obj_min_y:.2f}, {obj_max_y:.2f}]",
+            "Object bounds: x=[%.2f, %.2f], y=[%.2f, %.2f]",
+            obj_min_x,
+            obj_max_x,
+            obj_min_y,
+            obj_max_y,
         )
-        LOGGER.debug(f"Target bounds: x=[{min_x:.2f}, {max_x:.2f}], y=[{min_y:.2f}, {max_y:.2f}]")
+        LOGGER.debug(
+            "Target bounds: x=[%.2f, %.2f], y=[%.2f, %.2f]",
+            min_x,
+            max_x,
+            min_y,
+            max_y,
+        )
 
         # Expand the bounds by a factor to keep more of the roads
         expansion_factor = 2.0  # Double the bounds to better match road sizes
@@ -450,7 +480,11 @@ def trim_faces_outside_bounds(
         expanded_max_y = max_y * expansion_factor
 
         LOGGER.debug(
-            f"Expanded bounds: x=[{expanded_min_x:.2f}, {expanded_max_x:.2f}], y=[{expanded_min_y:.2f}, {expanded_max_y:.2f}]",
+            "Expanded bounds: x=[%.2f, %.2f], y=[%.2f, %.2f]",
+            expanded_min_x,
+            expanded_max_x,
+            expanded_min_y,
+            expanded_max_y,
         )
 
         # If object is completely outside expanded bounds, delete it
@@ -460,15 +494,21 @@ def trim_faces_outside_bounds(
             or obj_max_y < expanded_min_y
             or obj_min_y > expanded_max_y
         ):
-            LOGGER.warning(f"Object {obj.name} is completely outside expanded bounds - skipping")
+            LOGGER.warning(
+                "Object %s is completely outside expanded bounds - skipping",
+                obj.name,
+            )
             return
 
         # If object is completely inside original bounds, keep it
         if obj_min_x >= min_x and obj_max_x <= max_x and obj_min_y >= min_y and obj_max_y <= max_y:
-            LOGGER.info(f"Object {obj.name} is completely inside bounds - keeping as is")
+            LOGGER.info(
+                "Object %s is completely inside bounds - keeping as is",
+                obj.name,
+            )
             return
 
-        LOGGER.info(f"Initial face count for {obj.name}: {len(obj.data.polygons)}")
+        LOGGER.info("Initial face count for %s: %d", obj.name, len(obj.data.polygons))
 
         # Create a cube that will be our bounding box
         padding = 0.1  # Small padding to avoid precision issues
@@ -500,12 +540,12 @@ def trim_faces_outside_bounds(
         # Delete the bounding box
         bpy.data.objects.remove(bound_box, do_unlink=True)
 
-        LOGGER.info(f"Final face count for {obj.name}: {len(obj.data.polygons)}")
+        LOGGER.info("Final face count for %s: %d", obj.name, len(obj.data.polygons))
 
     except Exception as e:
         error_msg = f"❌ Failed to trim faces for {obj.name}: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
 def convert_objects_to_mesh() -> None:
@@ -521,11 +561,11 @@ def convert_objects_to_mesh() -> None:
             LOGGER.warning("⚠ No objects found for conversion. Skipping.")
     except Exception as e:
         error_msg = f"❌ Failed to convert objects to mesh: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e
 
 
-def process_roads(
+def process_roads(  # noqa: C901
     terrain_bounds: tuple[float, float, float, float],
     road_material: bpy.types.Material,
 ) -> None:
@@ -541,7 +581,7 @@ def process_roads(
     # Step 1: Delete rejected roads early
     for obj in list(bpy.data.objects):
         if any(k in obj.name.lower() for k in REJECTED_ROAD_KEYWORDS):
-            LOGGER.debug(f"❌ Rejecting road: {obj.name}")
+            LOGGER.debug("❌ Rejecting road: %s", obj.name)
             bpy.data.objects.remove(obj, do_unlink=True)
 
     # Step 2: Tiered selection
@@ -551,7 +591,7 @@ def process_roads(
         if objs:
             selected_roads = objs
             selected_tier = tier
-            LOGGER.info(f"✅ Using Tier {tier} roads")
+            LOGGER.info("✅ Using Tier %s roads", tier)
             break
 
     if not selected_roads:
@@ -565,12 +605,12 @@ def process_roads(
         for name in names:
             obj = bpy.data.objects.get(name)
             if obj:
-                LOGGER.debug(f"🗑️ Removing tier {tier} road: {obj.name}")
+                LOGGER.debug("🗑️ Removing tier %s road: %s", tier, obj.name)
                 bpy.data.objects.remove(obj, do_unlink=True)
 
     # Step 4: Process selected roads
     for obj in selected_roads:
-        LOGGER.info(f"🔄 Processing road: {obj.name}")
+        LOGGER.info("🔄 Processing road: %s", obj.name)
         trim_faces_outside_bounds(obj, *terrain_bounds)
         obj.data.materials.clear()
         obj.data.materials.append(road_material)
@@ -586,8 +626,8 @@ def export_mitsuba_scene(scene_folder: str) -> None:
     LOGGER.info("📤 Exporting Sionna Scene")
 
     try:
-        mitsuba_path = os.path.join(scene_folder, "scene.xml")
-        blend_path = os.path.join(scene_folder, "scene.blend")
+        mitsuba_path = str(Path(scene_folder) / "scene.xml")
+        blend_path = str(Path(scene_folder) / "scene.blend")
 
         bpy.ops.export_scene.mitsuba(
             filepath=mitsuba_path,
@@ -600,7 +640,7 @@ def export_mitsuba_scene(scene_folder: str) -> None:
         LOGGER.info("✅ Mitsuba scene export complete")
     except Exception as e:
         error_msg = f"❌ Failed to export scene: {e!s}"
-        LOGGER.error(error_msg)
+        LOGGER.exception(error_msg)
 
 
 ###############################################################################
@@ -617,16 +657,16 @@ def export_mesh_obj_to_ply(object_type: str, output_folder: str) -> None:
     objects = [o for o in bpy.data.objects if object_type in o.name.lower()]
 
     # Log all selected object names
-    LOGGER.debug(f"🔍 Found objects matching '{object_type}':")
+    LOGGER.debug("🔍 Found objects matching '%s':", object_type)
     for obj in objects:
-        LOGGER.debug(f"  - {obj.name}")
-        obj.select_set(True)
+        LOGGER.debug("  - %s", obj.name)
+        obj.select_set(select=True)
 
     if objects:
         emoji = "🏗" if "building" in object_type else "🛣"
-        LOGGER.info(f"{emoji} Exporting {len(objects)} {object_type}s to .ply")
-        ply_path = os.path.join(output_folder, f"{object_type}s.ply")
-        if BLENDER_MAJOR_VERSION >= 4:
+        LOGGER.info("%s Exporting %d %ss to .ply", emoji, len(objects), object_type)
+        ply_path = str(Path(output_folder) / f"{object_type}s.ply")
+        if BLENDER_MAJOR_VERSION >= MIN_BLENDER_EXPORT_VERSION:
             bpy.ops.wm.ply_export(
                 filepath=ply_path,
                 ascii_format=True,
@@ -635,7 +675,7 @@ def export_mesh_obj_to_ply(object_type: str, output_folder: str) -> None:
         else:
             bpy.ops.export_mesh.ply(filepath=ply_path, use_ascii=True, use_selection=True)
     else:
-        LOGGER.warning(f"⚠ No {object_type}s found for export.")
+        LOGGER.warning("⚠ No %ss found for export.", object_type)
 
 
 ###############################################################################
@@ -653,11 +693,11 @@ def save_bbox_metadata(
     """Save scenario properties to a metadata file."""
     LOGGER.info("📝 Saving scenario metadata")
     try:
-        metadata_path = os.path.join(output_folder, "scenario_info.txt")
-        with open(metadata_path, "w") as meta_file:
+        metadata_path = str(Path(output_folder) / "scenario_info.txt")
+        with Path(metadata_path).open("w") as meta_file:
             meta_file.write(f"Bounding Box: [{minlat}, {minlon}] to [{maxlat}, {maxlon}]\n")
         LOGGER.info("✅ Scenario metadata saved.")
-    except Exception as e:
+    except OSError as e:
         error_msg = f"❌ Failed to save scenario metadata: {e!s}"
-        LOGGER.error(error_msg)
-        raise Exception(error_msg)
+        LOGGER.exception(error_msg)
+        raise RuntimeError(error_msg) from e

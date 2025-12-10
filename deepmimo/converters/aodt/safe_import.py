@@ -7,9 +7,10 @@ message on how to install extras.
 
 # Keep this minimal: only import and print warnings.
 try:
-    import pandas as pd  # type: ignore
-except Exception:
-    pd = None  # type: ignore
+    import pandas as pd
+except ImportError:
+    pd = None
     print(
-        "Warning: AODT features require pandas/pyarrow.\nInstall with: pip install 'deepmimo[aodt]'",
+        "Warning: AODT features require pandas/pyarrow.\n"
+        "Install with: pip install 'deepmimo[aodt]'",
     )

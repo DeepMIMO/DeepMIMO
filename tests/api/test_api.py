@@ -1,0 +1,195 @@
+"""Tests for DeepMIMO API module."""
+
+import unittest
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import requests
+
+from deepmimo import api
+
+
+class TestDeepMIMOAPI(unittest.TestCase):
+    """API unit tests for uploads, downloads, and helpers."""
+
+    @patch("deepmimo.api.upload.requests.get")
+    def test_dm_upload_api_call_auth_fail(self, mock_get) -> None:
+        """Test upload authorization failure."""
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Unauthorized")
+        mock_get.return_value = mock_response
+
+        # Create a dummy file
+        with Path("test_file.zip").open("w") as f:
+            f.write("dummy content")
+
+        try:
+            result = api.dm_upload_api_call("test_file.zip", "fake_key")
+            assert result is None
+        finally:
+            test_file = Path("test_file.zip")
+            if test_file.exists():
+                test_file.unlink()
+
+    @patch("deepmimo.api.upload.requests.get")
+    @patch("deepmimo.api.upload.requests.put")
+    def test_dm_upload_api_call_success(self, mock_put, mock_get) -> None:
+        """Test successful upload."""
+        # Mock auth response
+        auth_response = MagicMock()
+        auth_response.status_code = 200
+        auth_response.json.return_value = {
+            "presignedUrl": "http://upload.url",
+            "filename": "test_file.zip",
+            "contentType": "application/zip",
+        }
+        mock_get.return_value = auth_response
+
+        # Mock upload response
+        upload_response = MagicMock()
+        upload_response.status_code = 200
+        mock_put.return_value = upload_response
+
+        # Create a dummy file
+        with Path("test_file.zip").open("w") as f:
+            f.write("dummy content")
+
+        try:
+            result = api.dm_upload_api_call("test_file.zip", "fake_key")
+            assert result == "test_file.zip"
+        finally:
+            test_file = Path("test_file.zip")
+            if test_file.exists():
+                test_file.unlink()
+
+    def test_process_params_data(self) -> None:
+        """Test parameter processing."""
+        params_dict = {
+            "version": "4.0.0",
+            "rt_params": {"frequency": 28e9, "raytracer_name": "Insite", "max_reflections": 3},
+            "txrx_sets": {
+                "set1": {"num_active_points": 10, "is_rx": True, "num_ant": 1},
+                "set2": {"num_active_points": 1, "is_tx": True, "num_ant": 64},
+            },
+        }
+
+        result = api.process_params_data(params_dict)
+
+        primary = result["primaryParameters"]
+        assert primary["bands"]["mmW"] is True
+        assert primary["numRx"] == 10
+        assert primary["maxReflections"] == 3
+        assert primary["raytracerName"] == "Insite"
+
+    def test_generate_key_components(self) -> None:
+        """Test key component generation from summary string."""
+        summary_str = """
+[Section 1]
+Description line 1
+Description line 2
+
+[Section 2]
+Title line
+- Item 1
+- Item 2
+"""
+        result = api.generate_key_components(summary_str)
+        assert len(result["sections"]) == 2
+        assert result["sections"][0]["name"] == "Section 1"
+        assert result["sections"][1]["name"] == "Section 2"
+
+    @patch("deepmimo.api.search.requests.post")
+    def test_search_success(self, mock_post) -> None:
+        """Test search functionality."""
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"scenarios": ["scenario1", "scenario2"]}
+        mock_post.return_value = mock_response
+
+        query = {"bands": ["mmW"]}
+        result = api.search(query)
+
+        assert result == ["scenario1", "scenario2"]
+        mock_post.assert_called_once()
+        _args, kwargs = mock_post.call_args
+        assert kwargs["json"] == query
+
+    @patch("deepmimo.api.search.requests.post")
+    def test_search_failure(self, mock_post) -> None:
+        """Test search failure."""
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError("Server Error")
+        mock_post.return_value = mock_response
+
+        result = api.search({})
+        assert result is None
+
+    @patch("deepmimo.api.search.requests.post")
+    def test_search_connection_error(self, mock_post) -> None:
+        """Test search connection error."""
+        mock_post.side_effect = requests.exceptions.ConnectionError("Connection failed")
+        result = api.search({})
+        assert result is None
+
+    def test_download_url(self) -> None:
+        """Test download URL generation."""
+        url = api.download_url("test_scen", rt_source=False)
+        assert "filename=test_scen.zip" in url
+        assert "rt_source=true" not in url
+
+        url_rt = api.download_url("test_scen", rt_source=True)
+        assert "rt_source=true" in url_rt
+
+    @patch("deepmimo.api.search.requests.post")
+    def test_upload_images(self, mock_post) -> None:
+        """Test image upload."""
+        # Create dummy image
+        with Path("test_img.png").open("wb") as f:
+            f.write(b"fake png content")
+
+        try:
+            mock_response = MagicMock()
+            mock_response.status_code = 200
+            mock_response.json.return_value = {"id": "img1"}
+            mock_post.return_value = mock_response
+
+            results = api.upload_images("test_scen", ["test_img.png"], "key")
+            assert len(results) == 1
+            assert results[0]["id"] == "img1"
+        finally:
+            test_img = Path("test_img.png")
+            if test_img.exists():
+                test_img.unlink()
+
+    @patch("deepmimo.api.upload.requests.get")
+    @patch("deepmimo.api.upload.requests.put")
+    def test_upload_rt_source(self, mock_put, mock_get) -> None:
+        """Test RT source upload."""
+        # Create dummy zip
+        with Path("test_rt.zip").open("wb") as f:
+            f.write(b"fake zip content")
+
+        try:
+            # Mock auth
+            mock_auth_resp = MagicMock()
+            mock_auth_resp.status_code = 200
+            mock_auth_resp.json.return_value = {
+                "presignedUrl": "http://upload.url",
+                "filename": "test_scen.zip",
+                "contentType": "application/zip",
+            }
+            mock_get.return_value = mock_auth_resp
+
+            # Mock upload
+            mock_upload_resp = MagicMock()
+            mock_upload_resp.status_code = 200
+            mock_put.return_value = mock_upload_resp
+
+            result = api.upload_rt_source("test_scen", "test_rt.zip", "key")
+            assert result is True
+        finally:
+            test_rt = Path("test_rt.zip")
+            if test_rt.exists():
+                test_rt.unlink()

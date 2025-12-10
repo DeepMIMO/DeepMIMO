@@ -5,14 +5,15 @@ This module handles reading and processing:
 2. Channel Impulse Response (CIR) from cirs.parquet
 """
 
-import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from ... import consts as c
-from ... import general_utils as gu
-from .. import converter_utils as cu
+from deepmimo import consts as c
+from deepmimo import utils as gu
+from deepmimo.converters import converter_utils as cu
+
 from . import aodt_utils as au
 from .safe_import import pd
 
@@ -35,6 +36,8 @@ AODT_INTERACTIONS_MAP = {
     4: None,  # reception - not counted as interaction
     5: c.INTERACTION_TRANSMISSION,  # transmission
 }
+
+MIN_INTERACTIONS = 2
 
 
 def _transform_interaction_types(types: np.ndarray) -> float:
@@ -59,7 +62,7 @@ def _transform_interaction_types(types: np.ndarray) -> float:
 
     """
     # If only emission and reception, it's LoS
-    if len(types) <= 2:
+    if len(types) <= MIN_INTERACTIONS:
         return c.INTERACTION_LOS
 
     # Take only middle interactions (exclude first and last)
@@ -81,6 +84,10 @@ def _transform_interaction_types(types: np.ndarray) -> float:
     return float("".join(mapped))
 
 
+# Public alias for external callers and tests.
+transform_interaction_types = _transform_interaction_types
+
+
 def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> dict:
     """Pre-allocate data for path conversion.
 
@@ -92,7 +99,7 @@ def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> dict:
         data: Dictionary containing pre-allocated data
 
     """
-    data = {
+    return {
         c.RX_POS_PARAM_NAME: np.zeros((n_rx, 3), dtype=c.FP_TYPE),
         c.TX_POS_PARAM_NAME: np.zeros((1, 3), dtype=c.FP_TYPE),
         c.AOA_AZ_PARAM_NAME: np.zeros((n_rx, n_paths), dtype=c.FP_TYPE) * np.nan,
@@ -110,16 +117,16 @@ def _preallocate_data(n_rx: int, n_paths: int = c.MAX_PATHS) -> dict:
         * np.nan,
     }
 
-    return data
 
-
-def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) -> None:
+def read_paths(  # noqa: C901, PLR0912, PLR0915
+    rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]
+) -> None:
     """Read and process ray paths and channel responses.
 
     Args:
         rt_folder (str): Path to folder containing parquet files.
         output_folder (str): Path to folder where processed paths will be saved.
-        txrx_dict (Dict[str, Any]): Dictionary containing TX/RX configurations.
+        txrx_dict (dict[str, Any]): Dictionary containing TX/RX configurations.
 
     Raises:
         FileNotFoundError: If required files are not found.
@@ -127,20 +134,22 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
 
     """
     # Read both parquet files
-    paths_file = os.path.join(rt_folder, "raypaths.parquet")
-    cirs_file = os.path.join(rt_folder, "cirs.parquet")
+    paths_file = str(Path(rt_folder) / "raypaths.parquet")
+    cirs_file = str(Path(rt_folder) / "cirs.parquet")
 
-    if not os.path.exists(paths_file) or not os.path.exists(cirs_file):
-        raise FileNotFoundError("Both raypaths.parquet and cirs.parquet are required")
+    if not Path(paths_file).exists() or not Path(cirs_file).exists():
+        msg = "Both raypaths.parquet and cirs.parquet are required"
+        raise FileNotFoundError(msg)
 
     paths_df = pd.read_parquet(paths_file)
     cirs_df = pd.read_parquet(cirs_file)
 
     if len(paths_df) == 0 or len(cirs_df) == 0:
-        raise ValueError("Empty parquet files")
+        msg = "Empty parquet files"
+        raise ValueError(msg)
 
     # Create output folder
-    os.makedirs(output_folder, exist_ok=True)
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
 
     # Check if we have single UE with multiple TX/RX pairs
     unique_ues = paths_df["ue_id"].unique()
@@ -148,16 +157,14 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
 
     if is_single_ue_multi_pair:
         print(f"\nDetected single UE ({unique_ues[0]}) with multiple TX/RX pairs.")
-        print("Currently using only first TX/RX pair. Multi-pair support coming soon.")
-        # TODO: In the future, we'll process all pairs here
+        print("Currently using only first TX/RX pair. Multi-pair support planned later.")
         # For now, just filter to first RU
 
     # Build mapping from RU/UE IDs to txrx_set IDs
     tx_id_map = {}  # ru_id -> (tx_set_id, tx_idx)
-    rx_id_map = {}  # ue_id -> rx_idx
 
     # Map transmitters
-    for key, txrx_set in txrx_dict.items():
+    for txrx_set in txrx_dict.values():
         if txrx_set["is_tx"]:
             tx_id_map[txrx_set["id_orig"]] = (
                 txrx_set["id"],
@@ -169,9 +176,6 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
     rx_set_id = rx_set["id"]
 
     # Map receivers to their indices in the order they appear in paths_df
-    for idx, ue_id in enumerate(paths_df["ue_id"].unique()):
-        rx_id_map[ue_id] = idx
-
     time_idx = paths_df["time_idx"].unique()[0]  # take first time index
     paths_time_df = paths_df[paths_df["time_idx"] == time_idx]
     cirs_time_df = cirs_df[cirs_df["time_idx"] == time_idx]
@@ -260,6 +264,6 @@ def read_paths(rt_folder: str, output_folder: str, txrx_dict: dict[str, Any]) ->
         data = cu.compress_path_data(data)
 
         # Save data for all UEs of this RU
-        for key in data.keys():
+        for key in data:
             mat_filename = gu.get_mat_filename(key, tx_set_id, tx_idx, rx_set_id)
-            gu.save_mat(data[key], key, os.path.join(output_folder, mat_filename))
+            gu.save_mat(data[key], key, str(Path(output_folder) / mat_filename))

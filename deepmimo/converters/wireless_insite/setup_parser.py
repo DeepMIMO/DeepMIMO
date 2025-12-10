@@ -22,19 +22,20 @@ values := (node | line_value)*
 line_value := (STR | "yes" | "no" | INT | FLOAT)+ NL
 """
 
+import contextlib
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
-RE_BOOL_TRUE = re.compile(r"yes")
-RE_BOOL_FALSE = re.compile(r"no")
-RE_BEGIN_NODE = re.compile(r"begin_<(?P<node_name>\S*)>")
-RE_END_NODE = re.compile(r"end_<(?P<node_name>\S*)>")
-RE_INT = re.compile(r"^-?\d+$")
-RE_FLOAT = re.compile(r"^-?\d+[.]\d+$")
-RE_LABEL = re.compile(r"\S+")
-
-NL_TOKEN = "\n"
+RE_BOOL_TRUE = re.compile("yes")
+RE_BOOL_FALSE = re.compile("no")
+RE_BEGIN_NODE = re.compile("begin_<(?P<node_name>\\S*)>")
+RE_END_NODE = re.compile("end_<(?P<node_name>\\S*)>")
+RE_INT = re.compile("^-?\\d+$")
+RE_FLOAT = re.compile("^-?\\d+[.]\\d+$")
+RE_LABEL = re.compile("\\S+")
+NL_TOKEN = "\n"  # noqa: S105 (not a password)
 
 
 def tokenize_file(path: str) -> str:
@@ -50,52 +51,54 @@ def tokenize_file(path: str) -> str:
         Special handling is applied to the first line if it contains format information.
 
     """
-    with open(path) as f:
+    with Path(path).open() as f:
         first_line = f.readline()
         if first_line.startswith("Format type:keyword version:"):
-            # print(f'Ignoring first line: {first_line.lower()}')
             pass
         else:
-            yield first_line
+            yield from first_line.split()
+            yield NL_TOKEN
         for line in f:
             yield from line.split()
             yield NL_TOKEN
 
 
-class peekable:
+class Peekable:
     """Makes it possible to peek at the next value of an iterator."""
 
-    def __init__(self, iterator):
+    def __init__(self, iterator: Any) -> None:
+        """Initialize with underlying iterator."""
         self._iterator = iterator
-        # Unique sentinel used as flag.
         self._sentinel = object()
         self._next = self._sentinel
 
-    def peek(self):
+    def peek(self) -> Any:
         """Peeks at the next value of the iterator, if any."""
         if self._next is self._sentinel:
             self._next = next(self._iterator)
         return self._next
 
-    def has_values(self):
+    def has_values(self) -> Any:
         """Check if the iterator has any values left."""
         if self._next is self._sentinel:
-            try:
+            with contextlib.suppress(StopIteration):
                 self._next = next(self._iterator)
-            except StopIteration:
-                pass
         return self._next is not self._sentinel
 
-    def __iter__(self):
+    def __iter__(self) -> Any:
         """Implement the iterator protocol for `peekable`."""
         return self
 
-    def __next__(self):
+    def __next__(self) -> Any:
         """Implement the iterator protocol for `peekable`."""
         if (next_value := self._next) is not self._sentinel:
             self._next = self._sentinel
             return next_value
         return next(self._iterator)
+
+
+# Backward compatibility alias
+peekable = Peekable
 
 
 @dataclass
@@ -166,52 +169,53 @@ class Node:
         return self.values.__delitem__(key)
 
 
-def eat(tokens, expected):
-    """Ensures the next token is what's expected."""
+def eat(tokens: Any, expected: Any) -> None:
+    """Ensure the next token matches the expected value."""
     if (tok := next(tokens)) != expected:
-        raise RuntimeError(f"Expected token {expected!r}, got {tok!r}.")
+        msg = f"Expected token {expected!r}, got {tok!r}."
+        raise RuntimeError(msg)
 
 
-def parse_document(tokens) -> dict[str, Node]:
+def parse_document(tokens: Any) -> dict[str, Node]:
     """Parse a Wireless Insite setup document into a dictionary of nodes.
 
     Args:
         tokens: Iterator of tokens from tokenize_file()
 
     Returns:
-        Dict[str, Node]: Dictionary mapping node names to Node objects
+        dict[str, Node]: Dictionary mapping node names to Node objects
 
     Raises:
         RuntimeError: If document structure is invalid or contains duplicate nodes
 
     """
-    if not isinstance(tokens, peekable):
-        tokens = peekable(tokens)
-
+    if not isinstance(tokens, Peekable):
+        tokens = Peekable(tokens)
     document = {}
     while tokens.has_values():
         tok = tokens.peek()
         if not RE_BEGIN_NODE.match(tok):
-            raise RuntimeError(f"Non node {tok!r} at the top-level of the document.")
-
-        node_name, node = parse_node(tokens)
+            msg = f"Non node {tok!r} at the top-level of the document."
+            raise RuntimeError(msg)
+        (node_name, node) = parse_node(tokens)
         node.kind = node_name
         potential_name = "_".join(tok.split(" ")[1:])[:-1]
         node_name = potential_name if potential_name else node.name
         if node_name in document:
-            raise RuntimeError(f"Node with duplicate name {node_name} found.")
+            msg = f"Node with duplicate name {node_name} found."
+            raise RuntimeError(msg)
         document[node_name] = node
     return document
 
 
-def parse_node(tokens) -> tuple[str, Node]:
+def parse_node(tokens: Any) -> tuple[str, Node]:
     """Parse a node section from a Wireless Insite setup file.
 
     Args:
         tokens: Iterator of tokens from tokenize_file()
 
     Returns:
-        Tuple[str, Node]: Node name and parsed Node object
+        tuple[str, Node]: Node name and parsed Node object
 
     Notes:
         A node section starts with begin_<name> and ends with end_<name>.
@@ -222,58 +226,44 @@ def parse_node(tokens) -> tuple[str, Node]:
     begin_tag = next(tokens)
     begin_match = RE_BEGIN_NODE.match(begin_tag)
     node_name = begin_match.group("node_name")
-
-    # Is there a name?
     while tokens.peek() != NL_TOKEN:
         node.name += next(tokens) + " "
-
-    # Remove possible ' ' at end of name
     if node.name and node.name[-1] == " ":
         node.name = node.name[:-1]
-
     eat(tokens, NL_TOKEN)
-
-    # Parse the values and put them in the node dictionary.
     for value in parse_values(tokens):
-        # What does the value look like?
         match value:
-            case (str(label),):  # Is it a single label?
+            case [str(label)]:
                 node.labels.append(label)
-            case (str(label), value):  # Is it a label / value pair?
+            case [str(label), value]:
                 node[label] = value
-            case str(label), *rest:  # Is it a label followed by 2+ values?
+            case [str(label), *rest]:
                 node[label] = rest
-            case _:  # Is it data without a label?
+            case _:
                 node.data.append(value)
-
-    # Parse the closing tag and newline.
     eat(tokens, f"end_<{node_name}>")
     eat(tokens, NL_TOKEN)
+    return (node_name, node)
 
-    return node_name, node
 
-
-def parse_values(tokens):
+def parse_values(tokens: Any) -> Any:
     """Parse the lines of values within a node.
 
     Returns a list of line values.
     """
     lines = []
-
     while tokens.has_values():
         tok = tokens.peek()
-
         if RE_END_NODE.match(tok):
             return lines
         if RE_BEGIN_NODE.match(tok):
             lines.append(parse_node(tokens))
         else:
             lines.append(parse_line_value(tokens))
-
     return lines
 
 
-def parse_line_value(tokens) -> tuple:
+def parse_line_value(tokens: Any) -> tuple:
     """Parse a single line value from a Wireless Insite setup file.
 
     Args:
@@ -291,7 +281,6 @@ def parse_line_value(tokens) -> tuple:
 
     """
     values = []
-
     while tokens.has_values() and tokens.peek() != NL_TOKEN:
         tok = next(tokens)
         if RE_BOOL_TRUE.match(tok):
@@ -303,7 +292,6 @@ def parse_line_value(tokens) -> tuple:
         elif RE_INT.match(tok):
             values.append(int(tok))
         else:
-            # If it doesn't match any pattern exactly, treat as string
             values.append(tok)
     eat(tokens, NL_TOKEN)
     return tuple(values)
@@ -316,7 +304,7 @@ def parse_file(file_path: str) -> dict[str, Node]:
         file_path (str): Path to the setup file to parse
 
     Returns:
-        Dict[str, Node]: Dictionary mapping node names to Node objects
+        dict[str, Node]: Dictionary mapping node names to Node objects
 
     Raises:
         FileNotFoundError: If file_path does not exist

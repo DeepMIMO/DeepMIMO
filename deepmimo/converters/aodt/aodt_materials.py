@@ -4,13 +4,14 @@ This module handles reading and processing material properties from materials.pa
 following ITU-R P.2040 standard for building materials and structures.
 """
 
-import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 
-from ...materials import Material, MaterialList
-from .. import converter_utils as cu
+from deepmimo.converters import converter_utils as cu
+from deepmimo.core.materials import Material, MaterialList
+
 from .safe_import import pd
 
 
@@ -100,7 +101,7 @@ class AODTMaterial:
         eps_imag = self.itu_r_p2040_d * (freq_ghz**self.itu_r_p2040_c)
 
         # Convert imaginary permittivity to conductivity
-        # σ = ω*ε0*ε" = 2π*f*ε0*(d*f^c)
+        # sigma = omega*eps0*eps_imag = 2π*f*eps0*(d*f^c)
         # ε0 = 8.854e-12 F/m
         eps0 = 8.854e-12
         conductivity = 2 * np.pi * (freq_ghz * 1e9) * eps0 * eps_imag
@@ -128,7 +129,7 @@ class AODTMaterial:
         )
 
 
-def read_materials(rt_folder: str, save_folder: str = None) -> tuple[dict, dict[str, int]]:
+def read_materials(rt_folder: str, save_folder: str | None = None) -> tuple[dict, dict[str, int]]:
     """Read material properties from materials.parquet.
 
     Args:
@@ -145,14 +146,16 @@ def read_materials(rt_folder: str, save_folder: str = None) -> tuple[dict, dict[
         ValueError: If required parameters are missing
 
     """
-    materials_file = os.path.join(rt_folder, "materials.parquet")
-    if not os.path.exists(materials_file):
-        raise FileNotFoundError(f"materials.parquet not found in {rt_folder}")
+    materials_file = str(Path(rt_folder) / "materials.parquet")
+    if not Path(materials_file).exists():
+        msg = f"materials.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     # Read materials data
     df = pd.read_parquet(materials_file)
     if len(df) == 0:
-        raise ValueError("materials.parquet is empty")
+        msg = "materials.parquet is empty"
+        raise ValueError(msg)
 
     # Initialize material list and indices mapping
     material_list = MaterialList()

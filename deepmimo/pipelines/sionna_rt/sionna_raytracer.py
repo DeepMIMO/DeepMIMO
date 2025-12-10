@@ -8,32 +8,30 @@ Pipeline untested for versions <0.19 and >1.0.2.
 
 """
 
-# Standard library imports
 import os
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"  # Suppress TensorFlow (excessive) logging
-
-# Third-party imports
 import mitsuba as mi
 import numpy as np
+import sionna.rt as sionna_rt
+from sionna.rt import Receiver, Transmitter
 from tqdm import tqdm
 
-from ...exporters.sionna_exporter import export_paths, sionna_exporter
+from deepmimo.exporters.sionna_exporter import export_paths, sionna_exporter
 
-# Local imports
 from .sionna_utils import create_base_scene, get_sionna_version, is_sionna_v1, set_materials
 
-# Version check constant
-IS_LEGACY_VERSION = not is_sionna_v1()
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
-# Conditional TensorFlow import based on Sionna version
+IS_LEGACY_VERSION = not is_sionna_v1()
 if IS_LEGACY_VERSION:
     if not get_sionna_version().startswith("0.19"):
-        raise Warning("Pipeline untested for versions <0.19 and >1.0.2")
+        msg = "Pipeline untested for versions <0.19 and >1.0.2"
+        raise Warning(msg)
     try:
-        import tensorflow as tf  # type: ignore
+        import tensorflow as tf
 
         tf.random.set_seed(1)
         gpus = tf.config.list_physical_devices("GPU")
@@ -41,37 +39,28 @@ if IS_LEGACY_VERSION:
     except ImportError:
         print("TensorFlow not found. Please install TensorFlow to use Sionna ray tracing.")
         tf = None
-
-try:
-    import sionna.rt
-except ImportError:
-    raise ImportError("Sionna not found. Install Sionna to use ray tracing functionality.")
-
-from sionna.rt import Receiver, Transmitter
-
-if not IS_LEGACY_VERSION:
-    from sionna.rt import PathSolver
-else:
     PathSolver = None
+else:
+    from sionna.rt import PathSolver
 
 
 class _DataLoader:
     """DataLoader class for Sionna RT that returns user indices for raytracing."""
 
-    def __init__(self, data, batch_size):
+    def __init__(self, data: Any, batch_size: Any) -> None:
         self.data = np.array(data)
         self.batch_size = batch_size
         self.num_samples = len(data)
         self.indices = np.arange(self.num_samples)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return int(np.ceil(self.num_samples / self.batch_size))
 
-    def __iter__(self):
+    def __iter__(self) -> Any:
         self.current_idx = 0
         return self
 
-    def __next__(self):
+    def __next__(self) -> Any:
         if self.current_idx >= self.num_samples:
             raise StopIteration
         start_idx = self.current_idx
@@ -82,13 +71,14 @@ class _DataLoader:
 
 
 def _compute_paths(
-    scene: sionna.rt.Scene,
+    scene: sionna_rt.Scene,
     p_solver: PathSolver | None,
     compute_paths_rt_params: dict,
+    *,
     cpu_offload: bool = True,
     path_inspection_func: Callable | None = None,
-):
-    """Helper function to compute paths based on Sionna version.
+) -> Any:
+    """Compute paths based on the active Sionna version.
 
     Args:
         scene: The scene to compute paths for.
@@ -103,22 +93,17 @@ def _compute_paths(
     """
     if IS_LEGACY_VERSION:
         paths = scene.compute_paths(**compute_paths_rt_params)
-    else:  # version 1.x
+    else:
         paths = p_solver(scene=scene, **compute_paths_rt_params)
-
     paths.normalize_delays = False
-
     if path_inspection_func is not None:
         path_inspection_func(paths)
-
-    # Export paths to CPU if requested
-    if cpu_offload and not IS_LEGACY_VERSION:
+    if cpu_offload and (not IS_LEGACY_VERSION):
         paths = export_paths(paths)[0]
-
     return paths
 
 
-def raytrace_sionna(
+def raytrace_sionna(  # noqa: PLR0915, PLR0912, C901
     base_folder: str,
     tx_pos: np.ndarray,
     rx_pos: np.ndarray,
@@ -126,31 +111,25 @@ def raytrace_sionna(
 ) -> str:
     """Run ray tracing for the scene."""
     if rt_params["create_scene_folder"]:
-        # Create scene
+        carrier_ghz = rt_params["carrier_freq"] / 1e9
+        scattering_flag = 1 if rt_params["ds_enable"] else 0
         scene_name = (
-            f"sionna_{rt_params['carrier_freq'] / 1e9:.1f}GHz_"
-            f"{rt_params['max_reflections']}R_{rt_params['max_diffractions']}D_"
-            f"{1 if rt_params['ds_enable'] else 0}S"
+            f"sionna_{carrier_ghz:.1f}GHz_{rt_params['max_reflections']}R_"
+            f"{rt_params['max_diffractions']}D_{scattering_flag}S"
         )
-
-        scene_folder = os.path.join(base_folder, scene_name)
+        scene_folder = str(Path(base_folder) / scene_name)
     else:
         scene_folder = base_folder
-
     if rt_params["use_builtin_scene"]:
-        xml_path = getattr(sionna.rt.scene, rt_params["builtin_scene_path"], None)
+        xml_path = getattr(sionna_rt.scene, rt_params["builtin_scene_path"], None)
     else:
-        xml_path = os.path.join(base_folder, "scene.xml")  # Created by Blender OSM Export!
-
+        xml_path = str(Path(base_folder) / "scene.xml")
     print(f"XML scene path: {xml_path}")
     scene = create_base_scene(xml_path, rt_params["carrier_freq"])
     if not rt_params["use_builtin_scene"]:
         scene = set_materials(scene)
-
     if rt_params["scene_edit_func"] is not None:
         rt_params["scene_edit_func"](scene)
-
-    # Change objects in the scene
     if rt_params["obj_idx"] is not None:
         for i, obj_idx in enumerate(rt_params["obj_idx"]):
             obj = scene.objects[obj_idx]
@@ -160,8 +139,6 @@ def raytrace_sionna(
                 obj.orientation = mi.Vector3f(rt_params["obj_ori"][i])
             if rt_params["obj_vel"] is not None:
                 obj.velocity = mi.Vector3f(rt_params["obj_vel"][i])
-
-    # Map general parameters to Sionna RT parameters
     if IS_LEGACY_VERSION:
         compute_paths_rt_params = {
             "los": rt_params["los"],
@@ -174,23 +151,21 @@ def raytrace_sionna(
             "ris": False,
         }
         scene.synthetic_array = rt_params["synthetic_array"]
-    else:  # version 1.x
+    else:
         compute_paths_rt_params = {
             "los": rt_params["los"],
             "synthetic_array": rt_params["synthetic_array"],
             "samples_per_src": rt_params["n_samples_per_src"],
             "max_num_paths_per_src": rt_params["max_paths_per_src"],
             "max_depth": rt_params["max_reflections"],
-            # "diffraction": bool(rt_params['max_diffractions']),
             "specular_reflection": bool(rt_params["max_reflections"]),
             "diffuse_reflection": rt_params["ds_enable"],
             "refraction": rt_params["refraction"],
         }
 
-    # Helper function to get None or index of array if not None
-    none_or_index = lambda x, i: None if x is None else x[i]
+    def none_or_index(x: Any, i: Any) -> Any:
+        return None if x is None else x[i]
 
-    # Add BSs
     num_bs = len(tx_pos)
     for b in range(num_bs):
         pwr_dbm = tf.Variable(0, dtype=tf.float32) if IS_LEGACY_VERSION else 0
@@ -204,16 +179,11 @@ def raytrace_sionna(
         )
         scene.add(tx)
         print(f"Added BS_{b} at position {tx_pos[b]}")
-
     indices = np.arange(rx_pos.shape[0])
-
     data_loader = _DataLoader(indices, rt_params["batch_size"])
     path_list = []
-
     p_solver = None if IS_LEGACY_VERSION else PathSolver()
-
     if rt_params["bs2bs"]:
-        # Ray-tracing BS-BS paths
         print("Ray-tracing BS-BS paths")
         for b in range(num_bs):
             vel_dict = (
@@ -227,7 +197,6 @@ def raytrace_sionna(
                     **vel_dict,
                 ),
             )
-
         paths = _compute_paths(
             scene,
             p_solver,
@@ -236,11 +205,8 @@ def raytrace_sionna(
             path_inspection_func=rt_params["path_inspection_func"],
         )
         path_list.append(paths)
-
         for b in range(num_bs):
             scene.remove(f"rx_{b}")
-
-    # Ray-tracing BS-UE paths
     for batch in tqdm(data_loader, desc="Ray-tracing BS-UE paths", unit="batch"):
         for i in batch:
             vel_dict = (
@@ -254,7 +220,6 @@ def raytrace_sionna(
                     **vel_dict,
                 ),
             )
-
         paths = _compute_paths(
             scene,
             p_solver,
@@ -263,12 +228,8 @@ def raytrace_sionna(
             path_inspection_func=rt_params["path_inspection_func"],
         )
         path_list.append(paths)
-
         for i in batch:
             scene.remove(f"rx_{i}")
-
-    # Save Sionna outputs
     print("Saving Sionna outputs")
-
     sionna_exporter(scene, path_list, rt_params, scene_folder)
     return scene_folder

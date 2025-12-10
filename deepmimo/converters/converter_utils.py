@@ -11,19 +11,24 @@ This module provides:
 The module serves as a shared utility library for all DeepMIMO converters.
 """
 
-import os
 import shutil
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from .. import consts as c
-from ..general_utils import save_dict_as_json, zip
+from deepmimo import consts as c
+from deepmimo.utils import save_dict_as_json
+from deepmimo.utils import zip as zip_folder
+
+TWO_DIMS = 2
+THREE_DIMS = 3
 
 
 def check_scenario_exists(
     scenarios_folder: str,
     scen_name: str,
+    *,
     overwrite: bool | None = None,
 ) -> bool:
     """Check if a scenario exists and handle overwrite prompts.
@@ -37,14 +42,14 @@ def check_scenario_exists(
         bool: True if scenario should be overwritten, False if should be skipped
 
     """
-    if os.path.exists(os.path.join(scenarios_folder, scen_name)):
+    if (Path(scenarios_folder) / scen_name).exists():
         if overwrite is None:
             print(
                 f'Scenario with name "{scen_name}" already exists in '
                 f"{scenarios_folder}. Delete? (Y/n)",
             )
             ans = input()
-            overwrite = False if "n" in ans.lower() else True
+            overwrite = "n" not in ans.lower()
         return overwrite
     return True
 
@@ -57,10 +62,10 @@ def ext_in_list(extension: str, file_list: list[str]) -> list[str]:
 
     Args:
         extension (str): File extension to filter by (e.g. '.txt')
-        file_list (List[str]): List of filenames to filter
+        file_list (list[str]): List of filenames to filter
 
     Returns:
-        List[str]: Filtered list containing only filenames ending with extension
+        list[str]: Filtered list containing only filenames ending with extension
 
     """
     return [el for el in file_list if el.endswith(extension)]
@@ -71,27 +76,28 @@ def save_rt_source_files(sim_folder: str, source_exts: list[str]) -> None:
 
     Args:
         sim_folder (str): Path to simulation folder.
-        source_exts (List[str]): List of file extensions to copy.
+        source_exts (list[str]): List of file extensions to copy.
         verbose (bool): Whether to print progress messages. Defaults to True.
 
     """
-    rt_source_folder = os.path.basename(sim_folder) + "_raytracing_source"
-    files_in_sim_folder = os.listdir(sim_folder)
+    sim_folder_path = Path(sim_folder)
+    rt_source_folder = sim_folder_path.name + "_raytracing_source"
+    files_in_sim_folder = [f.name for f in sim_folder_path.iterdir()]
     print(f"Copying raytracing source files to {rt_source_folder}")
-    zip_temp_folder = os.path.join(sim_folder, rt_source_folder)
-    os.makedirs(zip_temp_folder)
+    zip_temp_folder = sim_folder_path / rt_source_folder
+    zip_temp_folder.mkdir(parents=True)
 
     for ext in source_exts:
         # copy all files with extensions to temp folder
         for file in ext_in_list(ext, files_in_sim_folder):
-            curr_file_path = os.path.join(sim_folder, file)
-            new_file_path = os.path.join(zip_temp_folder, file)
+            curr_file_path = sim_folder_path / file
+            new_file_path = zip_temp_folder / file
 
             # vprint(f'Adding {file}')
-            shutil.copy(curr_file_path, new_file_path)
+            shutil.copy(str(curr_file_path), str(new_file_path))
 
     # Zip the temp folder
-    zip(zip_temp_folder)
+    zip_folder(zip_temp_folder)
 
     # Delete the temp folder (not the zip)
     shutil.rmtree(zip_temp_folder)
@@ -113,11 +119,11 @@ def save_scenario(sim_folder: str, target_folder: str = c.SCENARIOS_FOLDER) -> s
     new_scen_folder = sim_folder.replace(c.DEEPMIMO_CONVERSION_SUFFIX, "")
 
     # Get output scenario folder
-    scen_name = os.path.basename(new_scen_folder)
-    scen_path = os.path.join(target_folder, scen_name)
+    scen_name = Path(new_scen_folder).name
+    scen_path = Path(target_folder) / scen_name
 
     # Delete scenario if it exists
-    if os.path.exists(scen_path):
+    if scen_path.exists():
         shutil.rmtree(scen_path)
 
     # Move simulation folder to scenarios folder
@@ -139,11 +145,11 @@ def compress_path_data(data: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     3. Trimming arrays to remove unused entries
 
     Args:
-        data (Dict[str, np.ndarray]): Dictionary containing path information arrays
+        data (dict[str, np.ndarray]): Dictionary containing path information arrays
         num_paths_key (str): Key in data dict containing number of paths. Defaults to 'n_paths'
 
     Returns:
-        Dict[str, np.ndarray]: Compressed data dictionary with unused entries removed
+        dict[str, np.ndarray]: Compressed data dictionary with unused entries removed
 
     """
     # Compute max paths
@@ -155,13 +161,15 @@ def compress_path_data(data: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         max_bounces = np.max(comp_next_pwr_10(data[c.INTERACTIONS_PARAM_NAME]))
 
     # Compress arrays to not take more than that space
-    for key in data:
+    for key, value in data.items():
         if key in [c.RX_POS_PARAM_NAME, c.TX_POS_PARAM_NAME]:
             continue
-        if len(data[key].shape) >= 2:
-            data[key] = data[key][:, :max_paths, ...]
-        if len(data[key].shape) >= 3:
-            data[key] = data[key][:, :max_paths, :max_bounces]
+        compressed = value
+        if compressed.ndim >= TWO_DIMS:
+            compressed = compressed[:, :max_paths, ...]
+        if compressed.ndim >= THREE_DIMS:
+            compressed = compressed[:, :max_paths, :max_bounces]
+        data[key] = compressed
 
     return data
 
@@ -196,7 +204,7 @@ def get_max_paths(arr: dict[str, np.ndarray], angle_key: str = c.AOA_AZ_PARAM_NA
     the first path index where all entries (across all receivers) are NaN.
 
     Args:
-        arr (Dict[str, np.ndarray]): Dictionary containing path information arrays
+        arr (dict[str, np.ndarray]): Dictionary containing path information arrays
         angle_key (str): Key to use for checking valid paths. Defaults to AOA_AZ
 
     Returns:
@@ -226,7 +234,7 @@ def save_params(params_dict: dict[str, Any], output_folder: str) -> None:
 
     """
     # Get standardized path for params.json
-    params_path = os.path.join(output_folder, c.PARAMS_FILENAME + ".json")
+    params_path = str(Path(output_folder) / (c.PARAMS_FILENAME + ".json"))
 
     # Save using JSON serializer that properly handles numeric types
     save_dict_as_json(params_path, params_dict)

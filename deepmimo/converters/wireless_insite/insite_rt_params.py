@@ -13,15 +13,16 @@ and DeepMIMO's standardized ray tracing parameters.
 """
 
 import os
+import sys
 from dataclasses import dataclass
 from pathlib import Path
-from pprint import pprint
 
 import numpy as np
 
-from ...config import config
-from ...consts import BBOX_PAD, RAYTRACER_NAME_WIRELESS_INSITE
-from ...rt_params import RayTracingParameters
+from deepmimo.config import config
+from deepmimo.consts import BBOX_PAD, RAYTRACER_NAME_WIRELESS_INSITE
+from deepmimo.core.rt_params import RayTracingParameters
+
 from .setup_parser import parse_file
 
 
@@ -37,6 +38,7 @@ def _get_gps_bbox(
     pad: float = BBOX_PAD,
 ) -> tuple[float, float, float, float]:
     """Get the GPS bounding box of a Wireless Insite simulation.
+
     This is an approximated method that considers the earth round.
     For a typical scenario, the error in latitude should be < 20 micro degress,
     and the error in longitude should be < 10 micro degress, which corresponds to
@@ -47,9 +49,10 @@ def _get_gps_bbox(
         origin_lat (float): Latitude of the origin
         origin_lon (float): Longitude of the origin
         studyarea_vertices (np.ndarray): Vertices of the study area
+        pad (float): Padding for the bounding box in degrees
 
     Returns:
-        Tuple[float, float, float, float]: Bounding box of the study area
+        tuple[float, float, float, float]: Bounding box of the study area
 
     """
     if origin_lat == 0 and origin_lon == 0:
@@ -81,6 +84,10 @@ def _get_gps_bbox(
     return min_lat, min_lon, max_lat, max_lon
 
 
+# Public alias for tests and external callers.
+get_gps_bbox = _get_gps_bbox
+
+
 @dataclass
 class InsiteRayTracingParameters(RayTracingParameters):
     """Wireless Insite ray tracing parameter representation.
@@ -100,7 +107,8 @@ class InsiteRayTracingParameters(RayTracingParameters):
         diffuse_reflections (int): Reflections allowed in paths with diffuse scattering
         diffuse_diffractions (int): Diffractions allowed in paths with diffuse scattering
         diffuse_transmissions (int): Transmissions allowed in paths with diffuse scattering
-        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering at final interaction
+        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering
+            at the final interaction
         diffuse_random_phases (bool): Whether to use random phases for diffuse scattering
         terrain_reflection (bool): Whether to allow reflections on terrain
         terrain_diffraction (bool): Whether to allow diffractions on terrain
@@ -136,21 +144,24 @@ class InsiteRayTracingParameters(RayTracingParameters):
         """
         sim_folder = Path(sim_folder)
         if not sim_folder.exists():
-            raise ValueError(f"Simulation folder does not exist: {sim_folder}")
+            msg = f"Simulation folder does not exist: {sim_folder}"
+            raise ValueError(msg)
 
         # Find .setup file
         setup_files = list(sim_folder.glob("*.setup"))
         if not setup_files:
-            raise ValueError(f"No .setup file found in {sim_folder}")
+            msg = f"No .setup file found in {sim_folder}"
+            raise ValueError(msg)
         if len(setup_files) > 1:
-            raise ValueError(f"Multiple .setup files found in {sim_folder}")
+            msg = f"Multiple .setup files found in {sim_folder}"
+            raise ValueError(msg)
 
         # Parse setup file
         setup_file = str(setup_files[0])
         document = parse_file(setup_file)
 
         # Select study area
-        prim = list(document.keys())[0]
+        prim = next(iter(document.keys()))
 
         prim_vals = document[prim].values
         antenna_vals = prim_vals["antenna"].values
@@ -165,7 +176,7 @@ class InsiteRayTracingParameters(RayTracingParameters):
         model_vals["terrain_diffractions"] = model_vals.get("terrain_diffractions", "No")
 
         # Diffractions
-        if "max_wedge_diffractions" in model_vals.keys():
+        if "max_wedge_diffractions" in model_vals:
             pass  # all good, information present
         else:
             default_diffractions = diffuse_scat_vals.get("diffuse_diffractions", 0)
@@ -271,14 +282,14 @@ if __name__ == "__main__":
     for root, _, filenames in os.walk(test_dir):
         for filename in filenames:
             if filename.endswith(".setup"):
-                setup_file = os.path.join(root, filename)
+                setup_file = str(Path(root) / filename)
                 break
         if setup_file:
             break
 
     if not setup_file:
         print(f"No .setup file found in {test_dir}")
-        exit(1)
+        sys.exit(1)
 
     print(f"\nTesting setup extraction from: {setup_file}")
     print("-" * 50)
@@ -287,4 +298,3 @@ if __name__ == "__main__":
     setup_dict = InsiteRayTracingParameters.read_rt_params(setup_file)
 
     # Filter out raw_params to keep output cleaner
-    pprint(setup_dict, sort_dicts=True, width=80)

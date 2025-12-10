@@ -7,12 +7,12 @@ into the DeepMIMO format. It handles reading and processing ray tracing data inc
 - Scene geometry and materials
 """
 
-import os
 import shutil
-from pprint import pprint
+from pathlib import Path
 
-from ... import consts as c
-from .. import converter_utils as cu
+from deepmimo import consts as c
+from deepmimo.converters import converter_utils as cu
+
 from .sionna_materials import read_materials
 from .sionna_paths import read_paths
 from .sionna_rt_params import read_rt_params
@@ -20,10 +20,11 @@ from .sionna_scene import read_scene
 from .sionna_txrx import read_txrx
 
 
-def sionna_rt_converter(
+def sionna_rt_converter(  # noqa: PLR0913
     rt_folder: str,
+    *,
     copy_source: bool = False,
-    overwrite: bool = None,
+    overwrite: bool | None = None,
     vis_scene: bool = True,
     scenario_name: str = "",
     print_params: bool = False,
@@ -43,7 +44,7 @@ def sionna_rt_converter(
         vis_scene (bool): Whether to visualize the scene layout. Defaults to False.
         scenario_name (str): Custom name for output folder. Uses rt folder name if empty.
         print_params (bool): Whether to print the parameters to the console. Defaults to False.
-        parent_folder (str): Name of parent folder containing the scenario. Defaults to empty string.
+        parent_folder (str): Name of parent folder containing the scenario.
                              If empty, the scenario is saved in the DeepMIMO scenarios folder.
                              This parameter is only used if the scenario is time-varying.
         num_scenes (int): Number of scenes in the scenario. Defaults to 1.
@@ -61,18 +62,18 @@ def sionna_rt_converter(
 
     # Get scenario name from folder if not provided
     rt_folder = rt_folder[:-1] if rt_folder[-1] in ["/", "\\"] else rt_folder
-    scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
+    scen_name = scenario_name if scenario_name else Path(rt_folder).name.lower()
 
     # Check if scenario already exists in the scenarios folder
-    scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
-    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite):
+    scenarios_folder = str(Path(c.SCENARIOS_FOLDER) / parent_folder)
+    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite=overwrite):
         return None
 
     # Setup temporary output folder
-    temp_folder = os.path.join(rt_folder, scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
-    if os.path.exists(temp_folder):
+    temp_folder = str(Path(rt_folder) / (scen_name + c.DEEPMIMO_CONVERSION_SUFFIX))
+    if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
-    os.makedirs(temp_folder)
+    Path(temp_folder).mkdir(parents=True)
 
     # Read ray tracing parameters
     rt_params = read_rt_params(rt_folder)
@@ -105,7 +106,7 @@ def sionna_rt_converter(
     }
     cu.save_params(params, temp_folder)
     if print_params:
-        pprint(params)
+        pass
 
     # Save (move) scenario to deepmimo scenarios folder
     cu.save_scenario(temp_folder, scenarios_folder)
@@ -122,7 +123,7 @@ if __name__ == "__main__":
         "C:/Users/jmora/Documents/GitHub/AutoRayTracing/"
         "all_runs/run_02-02-2025_15H45M26S/scen_0/DeepMIMO_folder"
     )
-    temp_folder = os.path.join(rt_folder, "test_deepmimo")
+    temp_folder = str(Path(rt_folder) / "test_deepmimo")
 
     rt_params = read_rt_params(rt_folder)
     txrx_dict = read_txrx(rt_params)

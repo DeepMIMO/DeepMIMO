@@ -14,10 +14,10 @@ calculations in MIMO channel generation.
 import numpy as np
 
 # Local imports
-from .. import consts as c
+from deepmimo import consts as c
 
 
-def _pattern_isotropic(theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
+def _pattern_isotropic(_theta: np.ndarray, _phi: np.ndarray) -> np.ndarray:
     """Compute isotropic antenna pattern.
 
     Args:
@@ -31,7 +31,10 @@ def _pattern_isotropic(theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
     return 1.0
 
 
-def _pattern_halfwave_dipole(theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
+EPS_ANGLE = 1e-10
+
+
+def _pattern_halfwave_dipole(theta: np.ndarray, _phi: np.ndarray) -> np.ndarray:
     """Compute half-wave dipole antenna pattern.
 
     This function implements the theoretical radiation pattern of a half-wave
@@ -58,7 +61,7 @@ def _pattern_halfwave_dipole(theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
     pattern = np.zeros_like(theta, dtype=np.float64)
 
     # Handle valid angles (not near 0 or π)
-    valid_angles = np.abs(np.sin(theta)) > 1e-10
+    valid_angles = np.abs(np.sin(theta)) > EPS_ANGLE
 
     # Calculate the pattern using the standard dipole formula
     # Pre-compute terms for better performance
@@ -121,12 +124,12 @@ class AntennaPattern:
 
         """
         if pattern not in c.PARAMSET_ANT_RAD_PAT_VALS:
-            raise NotImplementedError(
-                f"The given '{pattern}' antenna radiation pattern is not applicable for {pattern_type}.",
-            )
+            msg = f"The '{pattern}' antenna radiation pattern is not applicable for {pattern_type}."
+            raise NotImplementedError(msg)
         if pattern not in PATTERN_REGISTRY:
+            msg = f"The pattern '{pattern}' is defined but not implemented for {pattern_type}."
             raise NotImplementedError(
-                f"The pattern '{pattern}' is defined but not implemented for {pattern_type}.",
+                msg,
             )
         return PATTERN_REGISTRY[pattern]
 

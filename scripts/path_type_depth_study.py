@@ -1,4 +1,10 @@
+"""Study different path-type and depth combinations and plot coverage results."""
+
 # %%
+from collections import defaultdict
+from pathlib import Path
+
+import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -98,8 +104,10 @@ path_combinations = [
 ]
 
 # Process each combination
+SKIP_INITIAL_COMBINATIONS = 62
+
 for combo_idx, (path_types, max_depth) in enumerate(path_combinations):
-    if combo_idx < 62:
+    if combo_idx < SKIP_INITIAL_COMBINATIONS:
         continue
     # Start with original dataset
     trimmed_dataset = dataset
@@ -138,7 +146,7 @@ for combo_idx, (path_types, max_depth) in enumerate(path_combinations):
         depth_str = str(max_depth) if max_depth is not None else "all-depths"
         exp_str = f"{combo_idx:03d}_{path_type_str}_{depth_str}"
         save_path = f"{save_dir}/pwr_exp_{exp_str}.png"
-        os.makedirs(save_dir, exist_ok=True)
+        Path(save_dir).mkdir(parents=True, exist_ok=True)
         plt.savefig(save_path)
 
     plt.show()
@@ -149,15 +157,6 @@ for combo_idx, (path_types, max_depth) in enumerate(path_combinations):
     # FUN FACT: trimming by depth is much faster than trimming by type.
 
 
-# %%
-
-import os
-from collections import defaultdict
-
-import matplotlib.image as mpimg
-import matplotlib.pyplot as plt
-import numpy as np
-
 IMG_SIZE = (1200, 800)
 
 # Define specific columns and rows for the montage
@@ -166,16 +165,17 @@ desired_depths = ["1", "2", "3", "4", "5", "6"]
 
 # Build a structured map of images
 image_grid = defaultdict(dict)
+MIN_FILENAME_PARTS = 5
 
 # Parse files from extracted folder
-for fname in os.listdir(save_dir):
+for fname in [p.name for p in Path(save_dir).iterdir()]:
     if not fname.endswith(".png"):
         continue
 
     # Parse filename
     # Format: pwr_exp_[index]_[type]_[depth].png
     parts = fname.split("_")
-    if len(parts) < 5:  # we expect at least 5 parts
+    if len(parts) < MIN_FILENAME_PARTS:  # we expect at least 5 parts
         continue
 
     type_str = parts[3]  # The type is in the 4th position
@@ -184,14 +184,14 @@ for fname in os.listdir(save_dir):
     # Map type strings to our desired format
     if type_str in ["LoS", "R", "D", "S", "R-D", "R-S", "R-D-S", "LoS-R-D-S"]:
         display_type = type_str if type_str == "LoS" else type_str.replace("-", "+")
-        image_grid[depth_str][display_type] = os.path.join(save_dir, fname)
+        image_grid[depth_str][display_type] = str(Path(save_dir) / fname)
 
 # Debug print
 print("\nAvailable combinations:")
 for depth in sorted(image_grid.keys()):
     print(f"\nDepth {depth}:")
     for type_key in sorted(image_grid[depth].keys()):
-        print(f"  {type_key}: {os.path.basename(image_grid[depth][type_key])}")
+        print(f"  {type_key}: {Path(image_grid[depth][type_key]).name}")
 
 # Create the montage figure
 nrows = len(desired_depths)
@@ -218,7 +218,7 @@ for i, row_key in enumerate(desired_depths):
         ax = axes[i][j]
         img_path = image_grid.get(row_key, {}).get(col_key)
 
-        if img_path and os.path.exists(img_path):
+        if img_path and Path(img_path).exists():
             # Read and trim the image
             img = mpimg.imread(img_path)
             # Trim the image using the specified coordinates
@@ -275,12 +275,11 @@ sim_type_mapping = {
 missing_combinations = []
 for depth in desired_depths:
     for type_key in desired_types:
-        if depth != "all-depths":  # Skip all-depths for now as it's special
-            if not image_grid.get(depth, {}).get(type_key):
-                # Convert display format to simulation parameters
-                path_types = sim_type_mapping[type_key]
-                max_depth = int(depth)
-                missing_combinations.append((path_types, max_depth))
+        if depth != "all-depths" and not image_grid.get(depth, {}).get(type_key):
+            # Convert display format to simulation parameters
+            path_types = sim_type_mapping[type_key]
+            max_depth = int(depth)
+            missing_combinations.append((path_types, max_depth))
 
 print("\nMissing combinations that need to be simulated:")
 for path_types, max_depth in missing_combinations:

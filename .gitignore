@@ -10,6 +10,13 @@
 # Daily use folders
 deepmimo_scenarios*
 
+# Tests and Tutorials
+deepmimo_scen/*
+deepmimo_scen.zip
+asu_campus_p2m.zip
+asu_campus_p2m/*
+*.bin
+
 # Artifacts
 site/
 **/osm_root/*
@@ -19,6 +26,11 @@ manuals/*
 *.mp4
 *.npy
 api_keys.py
+.DS_Store
+.vscode
+.coverage
+coverage.xml
+
 
 # Development:
 #   For wireless insite outputs

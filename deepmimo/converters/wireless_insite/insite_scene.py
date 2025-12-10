@@ -4,7 +4,6 @@ This module provides functionality to parse physical object files (.city, .ter, 
 from Wireless InSite into DeepMIMO's physical object representation.
 """
 
-import os
 import re
 from pathlib import Path
 
@@ -12,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
-from ...scene import (
+from deepmimo.core.scene import (
     CAT_BUILDINGS,
     CAT_FLOORPLANS,
     CAT_OBJECTS,
@@ -32,6 +31,7 @@ OBJECT_LABELS: dict[str, str] = {
     ".flp": CAT_FLOORPLANS,
     ".obj": CAT_OBJECTS,
 }
+MIN_TRI_POINTS = 3
 
 
 def read_scene(folder_path: str | Path) -> Scene:
@@ -52,7 +52,8 @@ def read_scene(folder_path: str | Path) -> Scene:
     """
     folder = Path(folder_path)
     if not folder.exists():
-        raise ValueError(f"Folder does not exist: {folder}")
+        msg = f"Folder does not exist: {folder}"
+        raise ValueError(msg)
 
     scene = Scene()
     next_object_id = 0  # Track the next available object ID
@@ -66,10 +67,11 @@ def read_scene(folder_path: str | Path) -> Scene:
 
     # Check if any valid files were found
     if not any(files for files in found_files.values()):
-        raise ValueError(f"No valid files (.city, .ter, .veg) found in {folder}")
+        msg = f"No valid files (.city, .ter, .veg) found in {folder}"
+        raise ValueError(msg)
 
     # Parse each type of file and add to scene
-    for suffix, type_files in found_files.items():
+    for type_files in found_files.values():
         if not type_files:
             continue
 
@@ -87,7 +89,7 @@ def visualize_road_object(
     name: str,
     vertices: np.ndarray,
     faces: list[list[tuple[float, float, float]]],
-):
+) -> None:
     """Visualize a road object and its generated faces."""
     # Save vertices for testing
     save_path = f"road_vertices_{name.replace(' ', '_')}.npy"
@@ -124,9 +126,9 @@ def visualize_road_object(
 
             # Fill face if it has at least 3 unique points
             unique_points = np.unique(face_array[:, :2], axis=0)
-            if len(unique_points) >= 3:
+            if len(unique_points) >= MIN_TRI_POINTS:
                 try:
-                    from matplotlib.tri import Triangulation
+                    from matplotlib.tri import Triangulation  # noqa: PLC0415
 
                     tri = Triangulation(face_array[:, 0], face_array[:, 1])
                     ax2.plot_trisurf(
@@ -136,8 +138,8 @@ def visualize_road_object(
                         triangles=tri.triangles,
                         alpha=0.2,
                     )
-                except Exception as e:
-                    print(f"  Warning: Could not triangulate face: {e!s}")
+                except (ImportError, ValueError, RuntimeError) as err:
+                    print(f"  Warning: Could not triangulate face: {err!s}")
             else:
                 print("  Warning: Face has fewer than 3 unique points in XY plane")
 
@@ -151,7 +153,7 @@ def visualize_road_object(
 class PhysicalObjectParser:
     """Parser for Wireless InSite physical object files (.city, .ter, .veg)."""
 
-    def __init__(self, file_path: str, starting_id: int = 0):
+    def __init__(self, file_path: str, starting_id: int = 0) -> None:
         """Initialize parser with file path.
 
         Args:
@@ -161,13 +163,14 @@ class PhysicalObjectParser:
         """
         self.file_path = Path(file_path)
         if self.file_path.suffix not in OBJECT_LABELS:
-            raise ValueError(f"Unsupported file type: {self.file_path.suffix}")
+            msg = f"Unsupported file type: {self.file_path.suffix}"
+            raise ValueError(msg)
 
         self.label = OBJECT_LABELS[self.file_path.suffix]
         self.name = self.file_path.stem  # Get filename without extension
         self.starting_id = starting_id
 
-    def parse(self, force_fast_mode: bool = True) -> list[PhysicalElement]:
+    def parse(self, *, force_fast_mode: bool = True) -> list[PhysicalElement]:
         """Parse the file and return a list of physical objects.
 
         Returns:
@@ -175,10 +178,10 @@ class PhysicalObjectParser:
 
         """
         # Read file content
-        with open(self.file_path) as f:
+        with Path(self.file_path).open() as f:
             content = f.read()
 
-        file_base = os.path.basename(self.file_path)
+        file_base = Path(self.file_path).name
 
         # Extract objects using extract_objects
         object_vertices = extract_objects(content)
@@ -191,14 +194,14 @@ class PhysicalObjectParser:
             total=n_obj,
             desc=f"Processing objs in {file_base}",
         ):
-            vertices = np.array(vertices)
+            vertices_array = np.array(vertices)
 
             # Use detailed mode for roads to preserve their geometry
             use_fast_mode = "road" not in self.name.lower()
             self.name = f"{self.name}_{i}"
 
             # Generate faces
-            object_faces = get_object_faces(vertices, fast=use_fast_mode or force_fast_mode)
+            object_faces = get_object_faces(vertices_array, fast=use_fast_mode or force_fast_mode)
             if object_faces is None:
                 print(f"Failed to generate faces for object {self.name}")
                 continue

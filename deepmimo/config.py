@@ -1,4 +1,4 @@
-"""DeepMIMO Configuration Module
+"""DeepMIMO Configuration Module.
 
 This module provides a singleton configuration class for DeepMIMO that allows
 setting and retrieving global configuration values. It can be used to configure
@@ -25,7 +25,6 @@ Usage:
     deepmimo.config()  # Print all configs
 """
 
-# Import constants for ray tracer versions
 from typing import Any
 
 from .consts import (
@@ -35,6 +34,8 @@ from .consts import (
     RT_SOURCES_FOLDER,
     SCENARIOS_FOLDER,
 )
+
+TWO_ARGS = 2
 
 
 class DeepMIMOConfig:
@@ -46,26 +47,21 @@ class DeepMIMOConfig:
 
     _instance = None
 
-    def __new__(cls):
+    def __new__(cls: type["DeepMIMOConfig"]) -> "DeepMIMOConfig":
         if cls._instance is None:
-            cls._instance = super(DeepMIMOConfig, cls).__new__(cls)
-            cls._instance._initialize()
+            cls._instance = super().__new__(cls)
+            cls._instance.reset()
         return cls._instance
 
-    def _initialize(self):
+    def _initialize(self) -> None:
         """Initialize the configuration with default values."""
         self._config = {
-            # Ray tracer versions
             "wireless_insite_version": RAYTRACER_VERSION_WIRELESS_INSITE,
             "sionna_version": RAYTRACER_VERSION_SIONNA,
             "aodt_version": RAYTRACER_VERSION_AODT,
-            # Use GPU
             "use_gpu": False,
-            # GPU device ID
             "gpu_device_id": 0,
-            # Folder containing scenarios (extracted and ZIPs)
             "scenarios_folder": SCENARIOS_FOLDER,
-            # Folder containing ray tracing source files
             "rt_sources_folder": RT_SOURCES_FOLDER,
         }
 
@@ -91,12 +87,13 @@ class DeepMIMOConfig:
             default (Any): The default value to return if the key doesn't exist.
 
         Returns:
-            Any: The configuration value for the given key, or the default value if the key doesn't exist.
+            Any: The configuration value for the given key, or the default value
+            if the key doesn't exist.
 
         """
         return self._config.get(key, default)
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset all configuration values to their defaults."""
         self._initialize()
 
@@ -126,14 +123,13 @@ class DeepMIMOConfig:
         """Function-like interface for the configuration.
 
         If no arguments are provided, print all current configuration values.
-        If only the key is provided as a positional argument, get the configuration value for that key.
-        If both key and value are provided as positional arguments, set the configuration value for that key.
-        If keyword arguments are provided, set the configuration values for those keys.
+        If only the key is provided as a positional argument, get the value.
+        If both key and value are provided as positional arguments, set that value.
+        If keyword arguments are provided, set configuration values for those keys.
 
         Args:
-            *args: Positional arguments. If one argument is provided, it's treated as a key to get.
-                  If two arguments are provided, they're treated as a key-value pair to set.
-            **kwargs: Keyword arguments. Each keyword-value pair sets a configuration value.
+            *args: Positional arguments. One arg gets a value; two set key/value.
+            **kwargs: Keyword arguments. Each key/value sets a configuration entry.
 
         Returns:
             If getting a configuration value, returns the value for the given key.
@@ -141,37 +137,27 @@ class DeepMIMOConfig:
             If printing all configuration values, returns None.
 
         """
-        # If no arguments are provided, print all configuration values
-        if not args and not kwargs:
+        if not args and (not kwargs):
             self.print_config()
             return None
-
-        # If only keyword arguments are provided, set configuration values
         if not args and kwargs:
             for key, value in kwargs.items():
                 self.set(key, value)
             return None
-
-        # If one positional argument is provided, get the configuration value
-        if len(args) == 1 and not kwargs:
+        if len(args) == 1 and (not kwargs):
             return self.get(args[0])
-
-        # If two positional arguments are provided, set the configuration value
-        if len(args) == 2 and not kwargs:
+        if len(args) == TWO_ARGS and (not kwargs):
             self.set(args[0], args[1])
             return None
-
-        # If both positional arguments and keyword arguments are provided, raise an error
         if args and kwargs:
-            raise ValueError("Cannot mix positional arguments and keyword arguments")
+            msg = "Cannot mix positional arguments and keyword arguments"
+            raise ValueError(msg)
+        return None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return a string representation of the configuration."""
         return self.get_config_str()
 
 
-# Create a singleton instance
 config = DeepMIMOConfig()
-
-# Export the config instance
 __all__ = ["config"]

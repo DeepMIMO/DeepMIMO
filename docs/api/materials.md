@@ -69,6 +69,10 @@ material.lambda_param = 0.5  # Forward/backward ratio
 The field `vertical_attenuation` and `horizontal_attenuation` describe the attenuation properties of the material, and are mainly used in folliage. 
 
 ## MaterialList
+
+!!! info
+    For detailed information about `MaterialList`, see the [Core Models API Reference](core.md).
+
 The `MaterialList` class manages collections of materials and provides database functionality.
 
 ```python
@@ -82,14 +86,8 @@ materials.add_materials([concrete, glass, metal])
 concrete = materials[0]  # By index
 metal_objects = materials[1:3]  # Slice
 
-# Export/import
-materials_dict = materials.to_dict()
-materials = dm.MaterialList.from_dict(materials_dict)
-
 # Material management
-
 dataset = dm.load('asu_campus_3p5')[0]
-
 materials = dataset.materials
 
 # Get materials used by buildings
@@ -99,8 +97,6 @@ building_materials = buildings.get_materials()
 # Get objects with a certain material
 objects_with_material = dataset.scene.get_objects(material=building_materials[0])
 ```
-
-::: deepmimo.materials.MaterialList
 
 !!! tip "Materials examples"
     See the <a href="../manual/#scene-materials">Materials</a> section of the DeepMIMO Manual for examples.

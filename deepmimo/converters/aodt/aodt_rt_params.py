@@ -1,6 +1,7 @@
 """AODT Ray Tracing Parameters.
 
-This module provides parameter handling for AODT (Aerial Optical Digital Twin) ray tracing simulations.
+This module provides parameter handling for AODT (Aerial Optical Digital Twin)
+ray tracing simulations.
 
 This module provides:
 - Parameter parsing from AODT parquet files
@@ -12,13 +13,13 @@ The module serves as the interface between AODT's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from ...config import config
-from ...consts import RAYTRACER_NAME_AODT
-from ...rt_params import RayTracingParameters
+from deepmimo.config import config
+from deepmimo.consts import RAYTRACER_NAME_AODT
+from deepmimo.core.rt_params import RayTracingParameters
+
 from .safe_import import pd
 
 
@@ -46,7 +47,8 @@ class AODTRayTracingParameters(RayTracingParameters):
         diffuse_reflections (int): Reflections allowed in paths with diffuse scattering
         diffuse_diffractions (int): Diffractions allowed in paths with diffuse scattering
         diffuse_transmissions (int): Transmissions allowed in paths with diffuse scattering
-        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering at final interaction
+        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering
+            at final interaction
         diffuse_random_phases (bool): Whether to use random phases for diffuse scattering
         terrain_reflection (bool): Whether to allow reflections on terrain
         terrain_diffraction (bool): Whether to allow diffractions on terrain
@@ -81,13 +83,15 @@ class AODTRayTracingParameters(RayTracingParameters):
 
         """
         # Load scenario parameters
-        scenario_file = os.path.join(rt_folder, "scenario.parquet")
-        if not os.path.exists(scenario_file):
-            raise FileNotFoundError(f"scenario.parquet not found in {rt_folder}")
+        scenario_file = str(Path(rt_folder) / "scenario.parquet")
+        if not Path(scenario_file).exists():
+            msg = f"scenario.parquet not found in {rt_folder}"
+            raise FileNotFoundError(msg)
 
         df = pd.read_parquet(scenario_file)
         if len(df) == 0:
-            raise ValueError("scenario.parquet is empty")
+            msg = "scenario.parquet is empty"
+            raise ValueError(msg)
 
         # Get first row since parameters are the same for all rows
         params = df.iloc[0]
@@ -116,7 +120,7 @@ class AODTRayTracingParameters(RayTracingParameters):
             "diffuse_reflections": 1,  # AODT specify this in the documentation
             "diffuse_diffractions": 0,  # AODT doesn't specify this
             "diffuse_transmissions": 0,  # AODT doesn't specify this
-            "diffuse_final_interaction_only": False,  # AODT allows diffuse scattering at any interaction
+            "diffuse_final_interaction_only": False,  # AODT allows diffuse scattering anywhere
             "diffuse_random_phases": False,  # AODT doesn't specify this
             # Terrain interaction settings
             "terrain_reflection": True,  # AODT allows reflections on any surface
@@ -125,7 +129,7 @@ class AODTRayTracingParameters(RayTracingParameters):
             # Ray casting settings
             "num_rays": int(params["num_emitted_rays_in_thousands"] * 1000),
             "ray_casting_method": "uniform",  # AODT uses uniform ray casting
-            "synthetic_array": True,  # AODT does not use synthetic arrays, but we take only one element
+            "synthetic_array": True,  # AODT does not use synthetic arrays; we take one element
             "ray_casting_range_az": 360.0,  # AODT casts rays in all directions
             "ray_casting_range_el": 180.0,  # AODT casts rays in all directions
             # GPS Bounding Box

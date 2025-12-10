@@ -11,14 +11,24 @@ nav:
   - Getting Started:
       - Installation: installation.md
       - Quickstart: quickstart.md
-      - User Manual: manual.ipynb
+  - Tutorials:
+      - Overview: tutorials/index.md
+      - Getting Started: tutorials/1_getting_started.py
+      - Visualization: tutorials/2_visualization.py
+      - Channel Generation: tutorials/3_channel_generation.py
+      - Dataset Manipulation: tutorials/4_dataset_manipulation.py
+      - Doppler & Mobility: tutorials/5_doppler_mobility.py
+      - Beamforming: tutorials/6_beamforming.py
+      - Converters: tutorials/7_converters.py
+      - Migration Guide: tutorials/8_migration_guide.py
+      - Complete Manual: tutorials/manual.py
   - API Reference:
+      - Datasets: api/datasets.md
       - Generator: api/generator.md
       - Converter: api/converter.md
       - Visualization: api/visualization.md
       - Database: api/database.md
-      - Scene: api/scene.md
-      - Materials: api/materials.md
+      - Core Models: api/core.md
       - Integrations: api/integrations.md
       - Pipelines: api/pipelines.md
       - Utilities: api/utils.md

@@ -4,9 +4,10 @@ This module provides functionality to convert PLY (Polygon File Format) files to
 city files used in electromagnetic simulations, including material properties.
 """
 
-import os
+from pathlib import Path
+from typing import TextIO
 
-from plyfile import PlyData  # type: ignore
+from plyfile import PlyData  # type: ignore[import]
 
 
 def convert_ply2city(
@@ -25,17 +26,17 @@ def convert_ply2city(
                                              If None, derived from ply_path. Defaults to None.
 
     Returns:
-        Tuple[int, int]: Number of vertices and faces in the city file
+        tuple[int, int]: Number of vertices and faces in the city file
 
     """
     if not object_name:
         object_name = ply_path.split(".")[0].split("/")[-1]
 
     ply_data = PlyData.read(ply_path)
-    with open(material_path) as f:
+    with Path(material_path).open() as f:
         material_sec = f.readlines()
 
-    with open(save_path, "w") as f:
+    with Path(save_path).open("w") as f:
         f.write("Format type:keyword version: 1.1.0\n")
         f.write("begin_<city> " + object_name + "\n")
         write_reference_sec(f)
@@ -45,40 +46,40 @@ def convert_ply2city(
     return (len(ply_data["vertex"]), len(ply_data["face"]))
 
 
-def write_reference_sec(f) -> None:
+def write_reference_sec(f: TextIO) -> None:
     """Write the reference section to the city file.
 
     Args:
         f: File object to write to
 
     """
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    ref_path = os.path.join(script_dir, "resources", "reference_section.txt")
-    with open(ref_path) as f1:
+    script_dir = str(Path(str(Path(__file__).resolve()).parent))
+    ref_path = str(Path(script_dir) / "resources", "reference_section.txt")
+    with Path(ref_path).open() as f1:
         reference_sec = f1.readlines()
     return f.writelines(reference_sec)
 
 
-def write_material_sec(f, material_sec: list[str]) -> None:
+def write_material_sec(f: TextIO, material_sec: list[str]) -> None:
     """Write the material section to the city file.
 
     Args:
         f: File object to write to
-        material_sec (List[str]): Material section lines
+        material_sec (list[str]): Material section lines
 
     """
     # Replace 'none' by 'directive_with_backscatter' in 'diffuse_scattering_model'
-    idx_to_replace = [
+    idx_to_replace = next(
         line_idx
         for line_idx, line in enumerate(material_sec)
         if line == "diffuse_scattering_model none\n"
-    ][0]
+    )
     material_sec[idx_to_replace] = "diffuse_scattering_model directive_with_backscatter\n"
 
     return f.writelines(material_sec)
 
 
-def write_face_sec(f, ply_data: PlyData) -> None:
+def write_face_sec(f: TextIO, ply_data: PlyData) -> None:
     """Write the face section to the city file.
 
     Args:
@@ -95,14 +96,14 @@ def write_face_sec(f, ply_data: PlyData) -> None:
         num_vertex = vertex_idx.size
         f.write("begin_<face> \n")
         f.write("Material 1\n")
-        f.write("nVertices %d\n" % num_vertex)
+        f.write(f"nVertices {num_vertex}\n")
         for v in vertex_idx:
             x = ply_data["vertex"][v][0]
             y = ply_data["vertex"][v][1]
             z = ply_data["vertex"][v][2]
-            f.write("%.10f " % x)
-            f.write("%.10f " % y)
-            f.write("%.10f\n" % z)
+            f.write(f"{x:.10f} ")
+            f.write(f"{y:.10f} ")
+            f.write(f"{z:.10f}\n")
         f.write("end_<face>\n")
 
     f.write("end_<sub_structure>\n")
@@ -116,7 +117,7 @@ def convert_to_city_file(
     feature_name: str,
     material_path: str,
 ) -> str | None:
-    """Helper function to convert a PLY file to a city feature file.
+    """Convert a PLY file to a city feature file.
 
     Args:
         ply_root (str): Root directory containing PLY files
@@ -128,10 +129,10 @@ def convert_to_city_file(
         Optional[str]: Name of the city file if conversion successful, None otherwise
 
     """
-    ply_path = os.path.join(ply_root, f"{feature_name}.ply")
-    save_path = os.path.join(city_root, f"{feature_name}.city")
+    ply_path = str(Path(ply_root) / f"{feature_name}.ply")
+    save_path = str(Path(city_root) / f"{feature_name}.city")
 
-    if os.path.exists(ply_path):
+    if Path(ply_path).exists():
         num_vertex, num_faces = convert_ply2city(ply_path, material_path, save_path)
         print(f"Converted {num_vertex} vertices and {num_faces} faces for {feature_name}")
         return f"{feature_name}.city"
@@ -146,7 +147,7 @@ if __name__ == "__main__":
 
     (num_vertex, num_faces) = convert_ply2city(ply_path, material_path, save_path)
 
-    print("Converted %d vertexes and %d faces" % (num_vertex, num_faces))
+    print(f"Converted {num_vertex} vertexes and {num_faces} faces")
 
     ply_path = "scenario/city_models/scenario_0/gwc_road.ply"
     material_path = "resources/material/Asphalt_1GHz.mtl"
@@ -154,4 +155,4 @@ if __name__ == "__main__":
 
     (num_vertex, num_faces) = convert_ply2city(ply_path, material_path, save_path)
 
-    print("Converted %d vertexes and %d faces" % (num_vertex, num_faces))
+    print(f"Converted {num_vertex} vertexes and {num_faces} faces")

@@ -13,6 +13,9 @@ The functions handle both single values and numpy arrays for vectorized operatio
 import numpy as np
 from numpy.typing import NDArray
 
+BATCH_DIM = 2
+ROTATION_NDIM = 3
+
 
 def _array_response(ant_ind: NDArray, theta: float, phi: float, kd: float) -> NDArray:
     """Calculate the array response vector for given antenna indices and angles.
@@ -110,7 +113,7 @@ def _ant_indices(panel_size: tuple[int, int]) -> NDArray:
     in 3D space for a rectangular antenna panel.
 
     Args:
-        panel_size (Tuple[int, int]): Panel dimensions as tuple (Mx, My)
+        panel_size (tuple[int, int]): Panel dimensions as tuple (Mx, My)
 
     Returns:
         NDArray: Array of antenna indices with shape (N,3) where N is total number of elements
@@ -122,14 +125,14 @@ def _ant_indices(panel_size: tuple[int, int]) -> NDArray:
     return np.vstack([gamma_x, gamma_y, gamma_z]).T
 
 
-def _apply_FoV(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
+def _apply_fov(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
     """Apply field of view constraints to angles.
 
     This function filters angles based on specified field of view limits
     in both elevation and azimuth directions.
 
     Args:
-        FoV (Tuple[float, float]): Field of view limits [horizontal, vertical] in degrees
+        fov (tuple[float, float]): Field of view limits [horizontal, vertical] in degrees
         theta (numpy.ndarray): Elevation angles in radians
         phi (numpy.ndarray): Azimuth angles in radians
 
@@ -157,12 +160,10 @@ def _apply_FoV(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> 
     )
 
     # Combine horizontal and vertical masks
-    path_inclusion = np.logical_and(path_inclusion_phi, path_inclusion_theta)
-
-    return path_inclusion
+    return np.logical_and(path_inclusion_phi, path_inclusion_theta)
 
 
-def _apply_FoV_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
+def _apply_fov_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> np.ndarray:
     """Apply field of view constraints to angles in batch.
 
     This function filters angles based on specified field of view limits
@@ -170,7 +171,7 @@ def _apply_FoV_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarra
     Uses the same FoV for all users.
 
     Args:
-        fov (Tuple[float, float]): Field of view limits [horizontal_fov, vertical_fov] in degrees.
+        fov (tuple[float, float]): Field of view limits [horizontal_fov, vertical_fov] in degrees.
             Single FoV applied to all users.
         theta (numpy.ndarray): Elevation angles [batch_size, n_paths] in radians
         phi (numpy.ndarray): Azimuth angles [batch_size, n_paths] in radians
@@ -197,9 +198,7 @@ def _apply_FoV_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarra
     )
 
     # Combine horizontal and vertical masks - exactly matching original function
-    path_inclusion = np.logical_and(path_inclusion_phi, path_inclusion_theta)
-
-    return path_inclusion  # [batch_size, n_paths]
+    return np.logical_and(path_inclusion_phi, path_inclusion_theta)
 
 
 def _rotate_angles(
@@ -284,7 +283,7 @@ def _rotate_angles_batch(
         NaN values in input angles are preserved in the output
 
     """
-    is_batched = theta.ndim == 2
+    is_batched = theta.ndim == BATCH_DIM
     if not is_batched:
         theta = theta[None, :]  # [1, n_paths]
         phi = phi[None, :]  # [1, n_paths]
@@ -292,7 +291,7 @@ def _rotate_angles_batch(
     # Ensure rotation is 2D with shape [batch_size, 3] or [1, 3]
     if rotation.ndim == 1:
         rotation = rotation[None, :]  # [1, 3]
-    elif rotation.ndim == 3:
+    elif rotation.ndim == ROTATION_NDIM:
         # Handle case where rotation is [batch_size, 0, 3]
         rotation = rotation.reshape(-1, 3)
 

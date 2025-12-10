@@ -1,8 +1,9 @@
 # Generator
 
-The generator module is the core of DeepMIMO. This module takes ray tracing scenarios saved in the DeepMIMO format, and generates channels. 
+The generator module handles MIMO channel generation from ray tracing data. This module computes channel matrices from geometric ray paths and antenna array configurations.
 
-Below is an ascii diagram of how the simulations from the ray tracers are converted into DeepMIMO scenarios (by the converter module, following the DeepMIMO SPEC), and then loaded and used to generate channels (with the generator module).
+Below is an ascii diagram of how the simulations from the ray tracers are converted into DeepMIMO scenarios (by the converter module, following the DeepMIMO SPEC), and then loaded and used to generate channels.
+
 ```text
 ┌───────────────────┐     ┌────────────────┐     ┌────────────────┐
 │ WIRELESS INSITE   │ ──▶ │   SIONNA_RT    │ ──▶ │      AODT      │
@@ -34,42 +35,23 @@ Below is an ascii diagram of how the simulations from the ray tracers are conver
                          └────────────────┘
 ```
 
-Dependencies of the Generator Module:
+DeepMIMO Package Structure:
 
 ```
-generator/
-  ├── core.py (Main generation functions)
-  ├── channel.py (Channel computation)
-  ├── dataset.py (Dataset classes)
-  |    ├── geometry.py (Antenna array functions)
-  |    └── ant_patterns.py (Antenna patterns)
-  ├── visualization.py (Plotting functions)
-  └── utils.py (Helper functions)
+deepmimo/
+  ├── core/ (Data models: Scene, Materials, RayTracingParameters, TxRxSet)
+  ├── datasets/ (Dataset classes, load/generate, visualization, sampling)
+  ├── generator/ (Channel computation)
+  │    ├── channel.py (MIMO channel generation)
+  │    ├── geometry.py (Antenna array functions)
+  │    └── ant_patterns.py (Antenna patterns)
+  ├── api/ (Database operations: download, upload, search)
+  ├── utils/ (Utilities: I/O, scenarios, geometry)
+  └── integrations/ (Export to other simulators)
 ```
 
-Additionally, the generator module depends on:
-- `scene.py` for physical world representation
-- `materials.py` for material properties
-- `general_utils.py` for utility functions
-- `api.py` for scenario management
 
-
-## Load Dataset
-
-```python
-import deepmimo as dm
-
-# Load a scenario
-dataset = dm.load('asu_campus_3p5')
-```
-
-!!! tip "Detailed load examples"
-    See the <a href="../manual/#detailed-load">Detailed Load</a> section of the DeepMIMO Manual for more examples.
-
-::: deepmimo.generator.core.load
-
-
-## Generate Channels
+## Channel Parameters
 
 The `ChannelParameters` class manages parameters for MIMO channel generation.
 
@@ -125,7 +107,29 @@ Note 2: The default orientation of an antenna panel is along the +X axis.
 
 ::: deepmimo.generator.channel.ChannelParameters
 
-::: deepmimo.generator.dataset.Dataset.compute_channels
+::: deepmimo.datasets.dataset.Dataset.compute_channels
+
+## Compute Channels
+
+Once a dataset is loaded, channels can be computed using the `compute_channels()` method:
+
+```python
+import deepmimo as dm
+
+# Load dataset
+dataset = dm.load('asu_campus_3p5')
+
+# Configure channel parameters
+params = dm.ChannelParameters()
+params.bs_antenna.shape = [8, 1]
+params.ue_antenna.shape = [1, 1]
+
+# Compute channels
+channels = dataset.compute_channels(params)
+```
+
+::: deepmimo.datasets.dataset.Dataset.compute_channels
+
 
 ## Doppler
 
@@ -137,7 +141,7 @@ Doppler effects can be added to the generated channels (in time or frequency dom
 !!! note
     To add Doppler to the channel, set `doppler=True` in the channel parameters.
 
-For more details about working with datasets and its methods, see the [Dataset](#dataset) section below.
+For more details about working with datasets and its methods, see the [Datasets API](datasets.md).
 
 ### Set Doppler
 
@@ -206,150 +210,29 @@ print(f'obj_vel: {[obj.vel for obj in dataset.scene.objects]}')
 ```
 
 !!! note
-    Setting timestamps requires a Dynamic Dataset. Provide a folder containing one subfolder per scene (ray-tracing results per snapshot). See the [Dataset](#dataset) and DynamicDataset sections below.
+    Setting timestamps requires a Dynamic Dataset. Provide a folder containing one subfolder per scene (ray-tracing results per snapshot). See the [Datasets API](datasets.md) for more information.
 
-## Dataset
 
-The `Dataset` class represents a single dataset within DeepMIMO, containing transmitter, receiver, and channel information for a specific scenario configuration.
+## Antenna Patterns
+
+The generator module supports custom antenna patterns for more realistic channel modeling.
+
+::: deepmimo.generator.ant_patterns.AntennaPattern
+
+
+## Geometry Functions
+
+Geometric functions for beamforming and array processing:
 
 ```python
 import deepmimo as dm
 
-# Load a dataset
-dataset = dm.load('scenario_name')
-
-# Access transmitter data
-tx_locations = dataset.tx_locations
-n_tx = len(dataset.tx_locations)
-
-# Access receiver data
-rx_locations = dataset.rx_locations
-n_rx = len(dataset.rx_locations)
-
-# Access channel data
-channels = dataset.channels  # If already computed
-```
-
-### Core Properties
-
-| Property       | Description                             | Dimensions    |
-|----------------|-----------------------------------------|---------------|
-| `rx_pos`       | Receiver locations                      | N x 3         |
-| `tx_pos`       | Transmitter locations                   | 1 x 3         |
-| `power`        | Path powers in dBm                      | N x P         |
-| `phase`        | Path phases in degrees                  | N x P         |
-| `delay`        | Path delays in seconds                  | N x P         |
-| `aoa_az/aoa_el`| Angles of arrival (azimuth/elevation)   | N x P         |
-| `aod_az/aod_el`| Angles of departure (azimuth/elevation) | N x P         |
-| `inter`        | Path interaction indicators             | N x P         |
-| `inter_pos`    | Path interaction positions              | N x P x I x 3 |
-
-- N: number of receivers in the receiver set
-- P: maximum number of paths
-- I: maximum number of interactions along any path
-
-The maximum number of paths and interactions are either configured by the load function or hardcoded to a absolute maximum value. 
-
-### Computed Properties
-| `channels` | ndarray | Channel matrices |
-| `parameters` | dict | Dataset-specific parameters |
-| `num_paths` | int | Number of paths generated for each user |
-| `pathloss` | ndarray | Path loss values for each path |
-| `aod_theta_rot` | ndarray | Rotated angles of departure in elevation |
-| `aod_phi_rot` | ndarray | Rotated angles of departure in azimuth |
-| `aoa_theta_rot` | ndarray | Rotated angles of arrival in elevation |
-| `aoa_phi_rot` | ndarray | Rotated angles of arrival in azimuth |
-| `grid_size` | tuple | Size of the grid for the dataset |
-| `grid_spacing` | float | Spacing of the grid for the dataset |
-
-### Sampling & Trimming
-
-Unified index selection (dispatcher):
-```python
-# Uniform sampling on the grid
-uniform_idxs = dataset.get_idxs('uniform', steps=[2, 2])
-
-# Active users (paths > 0)
-active_idxs = dataset.get_idxs('active')
-
-# Users along a line
-linear_idxs = dataset.get_idxs('linear', start_pos=[0,0,0], end_pos=[100,0,0], n_steps=50)
-```
-
-Create trimmed datasets (physical trimming):
-```python
-# Subset by indices
-dataset2 = dataset.trim(idxs=uniform_idxs)
-
-# Apply FoV trimming (uses rotated angles)
-dataset_fov = dataset.trim(bs_fov=[90, 90])  # optional: ue_fov=[...]
-
-# Combine trims efficiently (order: idxs -> FoV -> path depth -> path type)
-dataset_t = dataset.trim(
-    idxs=active_idxs,
-    bs_fov=[90, 90],
-    path_depth=1,
-    path_types=['LoS', 'R']
+# Generate steering vector
+steering_vector = dm.steering_vec(
+    array_shape=[8, 1],
+    angles=[45, 30],  # [azimuth, elevation]
+    spacing=0.5
 )
 ```
 
-!!! tip "User sampling and subsets"
-    See the <a href="../manual/#user-sampling">User Sampling</a> section of the DeepMIMO Manual for examples of sampling users and creating subsets.
-
-### Plotting
-
-```python
-# Plot coverage
-plot_coverage = dataset.plot_coverage()
-
-# Plot rays
-plot_rays = dataset.plot_rays()
-```
-
-!!! tip "Visualization details"
-    For visualization examples, see the <a href="../manual/#visualization">Visualization</a> section of the manual and the <a href="visualization.html">Visualization API</a>.
-
-### Dataset Class
-::: deepmimo.generator.dataset.Dataset
-
-
-## MacroDataset
-
-The `MacroDataset` class is a container for managing multiple datasets, providing unified access to their data. This is the default output of the dm.load() if there are multiple txrx pairs.
-
-```python
-# Access individual datasets
-dataset = macro_dataset[0]  # First dataset
-datasets = macro_dataset[1:3]  # Slice of datasets
-
-# Iterate over datasets
-for dataset in macro_dataset:
-    print(f"Dataset has {len(dataset)} users")
-
-# Batch operations
-channels = macro_dataset.compute_channels()
-```
-
-::: deepmimo.generator.dataset.MacroDataset
-
-## DynamicDataset
-
-The `DynamicDataset` class extends `MacroDataset` to handle multiple time snapshots of a scenario. Each snapshot is represented by a `MacroDataset` instance, allowing you to track changes in the environment over time.
-
-```python
-# Convert a dynamic dataset
-dm.convert(rt_folder) # rt_folder must contain individual folders of ray tracing results
-
-# Load a dynamic dataset
-dynamic_dataset = dm.load('scenario_name')  # Returns DynamicDataset if multiple time snapshots exist
-
-# Access individual time snapshots
-snapshot = dynamic_dataset[0]  # First time snapshot
-snapshots = dynamic_dataset[1:3]  # Slice of time snapshots
-
-# Access basic properties
-print(f"Number of scenes: {len(dynamic_dataset)}")  # or dynamic_dataset.n_scenes
-print(f"Scene names: {dynamic_dataset.names}")
-```
-
-::: deepmimo.generator.dataset.DynamicDataset
+::: deepmimo.generator.geometry.steering_vec

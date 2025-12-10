@@ -14,15 +14,17 @@ The module serves as a bridge between Wireless Insite's XML-based configuration
 and DeepMIMO's standardized dataset format.
 """
 
-import os
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import matplotlib.pyplot as plt
 import numpy as np
 
-from ...config import config
-from ...txrx import TxRxSet
+from deepmimo.config import config
+from deepmimo.core.txrx import TxRxSet
+
 from .xml_parser import parse_insite_xml
 
 
@@ -35,7 +37,7 @@ class InSiteTxRxSet:
     convert to DeepMIMO format.
 
     Attributes:
-        data (Dict[str, Any]): Raw dictionary containing the TX/RX set configuration
+        data (dict[str, Any]): Raw dictionary containing the TX/RX set configuration
         set_type (str): Type of set, either 'grid' or 'point'
 
     """
@@ -164,8 +166,6 @@ class InSiteTxRxSet:
             A new InSiteTxRxSet instance with copied data
 
         """
-        from copy import deepcopy
-
         return InSiteTxRxSet(deepcopy(self.data), self.set_type)
 
     @classmethod
@@ -173,7 +173,7 @@ class InSiteTxRxSet:
         """Create an InSiteTxRxSet instance from a dictionary.
 
         Args:
-            data (Dict[str, Any]): Dictionary containing TX/RX set configuration
+            data (dict[str, Any]): Dictionary containing TX/RX set configuration
             set_type (str, optional): Type of set. Defaults to 'point'.
 
         Returns:
@@ -257,7 +257,7 @@ def convert_sets_to_deepmimo(
     by splitting them into separate TX and RX sets when necessary.
 
     Args:
-        insite_sets (List[InSiteTxRxSet]): List of InSite TX/RX sets to convert
+        insite_sets (list[InSiteTxRxSet]): List of InSite TX/RX sets to convert
 
     Returns:
         Tuple containing:
@@ -306,19 +306,18 @@ def get_txrx_insite_sets_from_xml(xml_file: str) -> list[InSiteTxRxSet]:
         xml_file (str): Path to InSite XML file
 
     Returns:
-        List[InSiteTxRxSet]: List of parsed InSite TX/RX sets
+        list[InSiteTxRxSet]: List of parsed InSite TX/RX sets
 
     """
     data = parse_insite_xml(xml_file)
 
     # Get TxRxSetList
-    txrx_list = data["remcom_rxapi_Job"]["Scene"]["remcom_rxapi_Scene"]["TxRxSetList"][
-        "remcom_rxapi_TxRxSetList"
-    ]["TxRxSet"]
+    scene = data["InSite"]["remcom_rxapi_Job"]["Scene"]["remcom_rxapi_Scene"]
+    txrx_list = scene["TxRxSetList"]["remcom_rxapi_TxRxSetList"]["TxRxSet"]
 
     insite_sets = []
     for txrx_set in txrx_list:
-        txrx_type = list(txrx_set.keys())[0]
+        txrx_type = next(iter(txrx_set.keys()))
         set_data = txrx_set[txrx_type]
 
         # Convert to InSiteTxRxSet with appropriate type
@@ -337,14 +336,12 @@ def plot_txrx_sets(
     """Create a 2D visualization of TxRx sets and their positions.
 
     Args:
-        txrx_sets (List[TxRxSet]): List of DeepMIMO TX/RX sets
-        point_locations (Dict[int, np.ndarray]): Dictionary mapping set IDs to their point coordinates
+        txrx_sets (list[TxRxSet]): List of DeepMIMO TX/RX sets
+        point_locations (dict[int, np.ndarray]): Mapping of set IDs to point coordinates
         max_points (int, optional): Maximum number of points to plot per set. Defaults to 5000.
-        figsize (Tuple[float, float], optional): Figure size as (width, height). Defaults to (8, 8).
+        figsize (tuple[float, float], optional): Figure size as (width, height). Defaults to (8, 8).
 
     """
-    import matplotlib.pyplot as plt
-
     plt.figure(figsize=figsize)
     for txrx_set in txrx_sets:
         points = point_locations[txrx_set.id]
@@ -358,14 +355,14 @@ def plot_txrx_sets(
 
     plt.legend()
     plt.axis("equal")
-    plt.grid(True)
+    plt.grid()
     plt.title("TxRx Sets")
     plt.xlabel("X (m)")
     plt.ylabel("Y (m)")
     plt.show()
 
 
-def read_txrx(folder: str, plot: bool = False) -> dict[str, Any]:
+def read_txrx(folder: str, *, plot: bool = False) -> dict[str, Any]:
     """Create TX/RX information from a folder containing Wireless Insite files.
 
     This function:
@@ -377,7 +374,7 @@ def read_txrx(folder: str, plot: bool = False) -> dict[str, Any]:
         plot (bool, optional): Whether to plot the TX/RX sets. Defaults to False.
 
     Returns:
-        Dict[str, Any]: Dictionary containing TX/RX set information and indices
+        dict[str, Any]: Dictionary containing TX/RX set information and indices
 
     """
     sim_folder = Path(folder)
@@ -385,14 +382,16 @@ def read_txrx(folder: str, plot: bool = False) -> dict[str, Any]:
     # Find .txrx file
     xml_files = list(sim_folder.glob("*.xml"))
     if not xml_files:
-        raise ValueError(f"No .xml file found in {sim_folder}")
+        msg = f"No .xml file found in {sim_folder}"
+        raise ValueError(msg)
     if len(xml_files) > 1:
-        raise ValueError(f"Multiple .xml files found in {sim_folder}")
+        msg = f"Multiple .xml files found in {sim_folder}"
+        raise ValueError(msg)
 
     # Parse TX/RX sets
     xml_file = str(xml_files[0])
 
-    print(f"Reading xml file: {os.path.basename(xml_file)}")
+    print(f"Reading xml file: {Path(xml_file).name}")
 
     insite_sets = get_txrx_insite_sets_from_xml(xml_file)
     txrx_sets, point_locations = convert_sets_to_deepmimo(insite_sets)

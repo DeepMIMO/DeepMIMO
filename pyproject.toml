@@ -14,7 +14,7 @@ description = "DeepMIMO dataset generator library"
 license = "GPL-2.0-or-later"
 license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">=3.10"  # to build the docs, python 3.11 is needed (uses 3.11 built-in tomllib)
+requires-python = ">=3.11"
 keywords = ["MIMO", "ray tracing", "dataset", "DeepMIMO", "raytracing", "wireless"]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -40,46 +40,34 @@ Homepage = "https://deepmimo.net/"
 [project.optional-dependencies]
 
 dev = [
+    # Development tools
     "build",
     "jupyter",
     "twine==6.0.1",
-    "ipykernel"
-]
+    "ipykernel",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "nbmake>=1.5.0",
+    "ruff>=0.6.9",
+    "deepmimov3",
 
-doc = [
-    "sphinx>=7.2.6,<8.0.0",                      # Stable Sphinx
-    "myst-parser",                               # Avoids footnote detector error
-    "myst-nb>=0.17.2",                           # Notebook support
-    "sphinx-autodoc-typehints>=1.25.0",          # Better type hints rendering
-    "sphinx-copybutton>=0.5.0",                  # Copy buttons
-    "sphinx-automodapi>=0.15.0",                 # Optional: for module API docs
-    "sphinxext-opengraph>=0.8.0",                # Social previews
-    "sphinx-design>=0.4.1",                      # Grids/cards
-    # "sphinx-plotly-directive>=0.1.0",            # Plotly directive
-    # "sphinx-contrib-bibtex>=2.6.2",              # Citations
-    "ipykernel>=6.0.0",                          # Needed for notebook execution
-    "docutils>=0.19",
-    # "beautifulsoup4>=4.12.0",
-    # "git+https://github.com/pradyunsg/sphinx-remove-toctrees.git"  # ToC pruning
-    # Themes
-    "sphinx-rtd-theme>=2.0.0",                   # RTD theme
-    # "furo",                                      # Works with 2024.8.6
-    # MkDocs stack for the new site
+    # Documentation
     "mkdocs>=1.6",
     "mkdocs-material>=9.7",
     "mkdocs-jupyter>=0.25",
     "pymdown-extensions>=10.0",
     "mkdocs-material-extensions>=1.3",
+
     # MkDocs API docs
     "mkdocstrings[python]>=0.25",
     "mkdocs-autorefs>=1.2",
     "mkdocs-exclude>=1.0",
-    # Signature formatting for mkdocstrings
-    "ruff>=0.6.9",
+
     # Jupyter/platformdirs pins to avoid deprecation warnings
     "jupyter-core>=5.7,<6.0",
     "jupyter-client>=8.6.3",
     "platformdirs>=4.3.0",
+
     # Better nbconvert handling for Colab MIME quirks
     "nbconvert>=7.16",
     "nbformat>=5.10",
@@ -96,9 +84,12 @@ insite = [
     "lxml",              # To be replaced by built-in (see insite_raytracer.py)
     "pandas",
     "shapely",           # Used to create building polygons (see pipeline_csv_gen.py)
-    "bpy==3.6.0; python_version == '3.10'",
-    "bpy==4.4.0; python_version == '3.11'",
-    "numpy<2.0; python_version == '3.11'",
+    
+    "bpy==3.6.0; python_version == '3.10'",  # ()
+    "bpy==4.4.0; python_version == '3.11'",  # WARNING - this may not work with >=3.11
+    "numpy==1.26.4; python_version == '3.11'",  # needed because bpy ships with this, and can break ABI
+    # TODO: UPDATE bpy==5.0
+
     "ipykernel",
 
     # InSite Specific
@@ -117,59 +108,15 @@ sionna = [
     "numpy<2.0; python_version == '3.11'",
     "ipykernel",
 
-    # Sionna 1.0 specific
+    # Sionna 1.0
     "sionna-rt==1.0.2",  # Sionna Ray Tracer (pins "mitsuba==3.6.2")
 
     # Development
     "jupyter"
 ]
 
-sionna019 = [
-     # Common ray tracing pipeline tools
-     "utm",
-     "lxml",
-     "pandas",
-     "shapely",
-     "bpy==3.6.0; python_version == '3.10'",
-     "bpy==4.4.0; python_version == '3.11'",
-     "numpy<2.0; python_version == '3.11'",
-     "ipykernel",
- 
-     # Other Requirements (to ensure suitable binaries)
-     "numpy<2.0",
- 
-     # Development
-     "jupyter",
- 
-     # Sionna Specific
-     "absl-py==2.1.0",
-     "gpustat==1.1.1",
-     "keras==2.15.0",
-     "matplotlib==3.10.0",
-     "mitsuba==3.5.0",
-     "plotly==6.0.0",
-     "pyarrow==19.0.1",
-     "pythreejs==2.4.2",
-     "scipy==1.15.1",
-     "sionna==0.19.2",
-     "tensorflow==2.15.1",
-     
-     # GPU dependencies (Requires CUDA 12.2+ drivers & Host driver ≥ 535.54.03)
-     "nvidia-cublas-cu12==12.2.5.6",
-     "nvidia-cuda-cupti-cu12==12.2.142",
-     "nvidia-cuda-nvcc-cu12==12.2.140",
-     "nvidia-cuda-nvrtc-cu12==12.2.140",
-     "nvidia-cuda-runtime-cu12==12.2.140",
-     "nvidia-cudnn-cu12==8.9.4.25",
-     "nvidia-cufft-cu12==11.0.8.103",
-     "nvidia-curand-cu12==10.3.3.141",
-     "nvidia-cusolver-cu12==11.5.2.141",
-     "nvidia-cusparse-cu12==12.1.2.141",
-     "nvidia-nccl-cu12==2.16.5",
-     "nvidia-nvjitlink-cu12==12.2.140"
-]
 
-# Combination of [dev], [docs], [sionna1], [insite] and [aodt]
+# Combination of [dev], [sionna], [insite] and [aodt]
 all = [
     # Common ray tracing pipeline tools
     "utm",               
@@ -181,36 +128,46 @@ all = [
     "numpy<2.0; python_version == '3.11'",
     "ipykernel",
 
-    # InSite Specific
+    # InSite
     "plyfile",           
     
-    # Sionna 1.0 specific
+    # Sionna
     "sionna-rt==1.0.2",
 
-    # AODT specific
+    # AODT
     "pyarrow",
 
     # Development
     "build",
     "jupyter",
     "twine==6.0.1",
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "nbmake>=1.5.0",
 
     # Documentation
-    "docutils>=0.19",
-    "beautifulsoup4>=4.12.0",
-    "myst-parser>=2.0.0",
-    "sphinx>=7.0.0",
-    "sphinx-rtd-theme>=2.0.0",
-    "sphinx-autodoc-typehints>=1.25.0",
-    "sphinx-copybutton>=0.5.0",
-    "sphinx-automodapi>=0.15.0",
-    "nbsphinx>=0.9.0",
-    "ipykernel>=6.0.0"
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.7",
+    "mkdocs-jupyter>=0.25",
+    "pymdown-extensions>=10.0",
+    "mkdocs-material-extensions>=1.3",
+    "mkdocstrings[python]>=0.25",
+    "mkdocs-autorefs>=1.2",
+    "mkdocs-exclude>=1.0",
+    "ruff>=0.6.9",
+    "jupyter-core>=5.7,<6.0",
+    "jupyter-client>=8.6.3",
+    "platformdirs>=4.3.0",
+    "nbconvert>=7.16",
+    "nbformat>=5.10",
 ]
 
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = [
+    "scripts",
+]
 
 [tool.ruff.lint]
 select = ["ALL"]
@@ -220,13 +177,50 @@ ignore = [
     "D213",    # Multi-line docstring summary should start at the second line (incompatible with D212)
     "COM812",  # Trailing comma missing (conflicts with formatter)
 
-    # Life quality
+    # Life quality  
     "T201",    # Allow "print" in production code
+    "T203",    # Allow pprint in production code
     
+    # Type annotations - Any is appropriate for dynamic structures  
+    "ANN401",  # Dynamically typed expressions (Any) are fine for dict-like structures
+    
+    # Code comments that look like code but are actually documentation
+    "ERA001",  # Commented-out code (often formulas, examples, or documentation)
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "S101",    # Use of assert detected (standard in pytest)
     "PLR2004", # Magic value used in comparison (acceptable in tests)
+    # Harmless in tests: allow missing annotations
+    "ANN001", "ANN002", "ANN003", "ANN201", "ANN202", "ANN204",
+]
+"docs/tutorials/*.py" = [
+    "N999",    # Allow tutorial names to start with a number
+]
+"docs/tutorials/manual.py" = [
+    "E402",    # Imports not at top of the file
+    "E501",    # Long lines are okay for tables
+    "S607"     # Allow partial paths in subprocess run
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+norecursedirs = [
+    "tests/webtests",
+    "tests/webtest",
+    "tests/tutorials",
+    "deepmimo_scenarios",
+    "docs",
+    "scripts",
+    "DeepMIMO.egg-info",
+]
+addopts = "-q"
+markers = [
+    "tutorial: marks tests as tutorial tests (run with 'pytest -m tutorial' or 'pytest tests/tutorials/')",
+]
+filterwarnings = [
+    "ignore::UserWarning:matplotlib",
+    "ignore:FigureCanvasAgg is non-interactive",
 ]

@@ -1,10 +1,11 @@
-"""Blender Script: Convert OSM Data to PLY Files (Folder Naming Based on Bounding Box)
+"""Blender Script: Convert OSM Data to PLY Files (Folder Naming Based on Bounding Box).
+
 Each scenario's output is stored in a folder named after its bounding box.
 """
 
-import os
+from pathlib import Path
 
-import bpy  # type: ignore
+import bpy  # type: ignore[import-not-found]
 
 from .utils.blender_utils import (
     add_materials_to_objs,
@@ -21,18 +22,18 @@ from .utils.blender_utils import (
     process_roads,
     save_bbox_metadata,
     save_osm_origin,
-    set_LOGGER,
+    set_logger,
     setup_world_lighting,
 )
 
 
-def fetch_osm_scene(
+def fetch_osm_scene(  # noqa: PLR0913 - signature follows Blender/OSM requirements
     minlat: float,
     minlon: float,
     maxlat: float,
     maxlon: float,
     output_folder: str,
-    output_formats: list[str] = ["insite"],
+    output_formats: list[str] | None = None,
 ) -> None:
     """Process an OpenStreetMap scene and export it in the specified formats.
 
@@ -42,26 +43,28 @@ def fetch_osm_scene(
             maxlat (float): Maximum latitude of the bounding box
             maxlon (float): Maximum longitude of the bounding box
             output_folder (str): Path to the output folder
-            output_formats (list[str], optional): List of output formats. Defaults to ["insite"].
-                                                                                      Possible values: "insite", "sionna"
+            output_formats (list[str], optional): List of output formats.
+                Defaults to ["insite"]. Possible values: "insite", "sionna"
 
     """
     # Check if the folder already exists
-    if os.path.exists(output_folder):
+    if output_formats is None:
+        output_formats = ["insite"]
+    if Path(output_folder).exists():
         print(f"⏩ Folder '{output_folder}' already exists. Skipping OSM extraction.")
         return
 
     # Create output directory if it doesn't exist
-    os.makedirs(output_folder, exist_ok=True)
+    Path(output_folder).mkdir(parents=True, exist_ok=True)
 
     # Setup logging to both console and file (great for debugging)
-    log_file = os.path.join(output_folder, "logging_blender_osm.txt")
+    log_file = str(Path(output_folder) / "logging_blender_osm.txt")
     logger = log_local_setup(log_file)
-    set_LOGGER(logger)  # So the inner functions can log
+    set_logger(logger)  # So the inner functions can log
 
-    logger.info(f"📍 Processing Scenario: [{minlat}, {minlon}] to [{maxlat}, {maxlon}]")
-    logger.info(f"📂 Saving output to: {output_folder}")
-    logger.info(f"📊 Output formats: {output_formats}")
+    logger.info("📍 Processing Scenario: [%s, %s] to [%s, %s]", minlat, minlon, maxlat, maxlon)
+    logger.info("📂 Saving output to: %s", output_folder)
+    logger.info("📊 Output formats: %s", output_formats)
 
     # Clear existing objects in Blender
     clear_blender()
@@ -85,20 +88,20 @@ def fetch_osm_scene(
     # Initialize scene
     setup_world_lighting()
 
-    BUILDING_MATERIAL = "itu_concrete"
-    ROAD_MATERIAL = "itu_brick"
+    building_material_name = "itu_concrete"
+    road_material_name = "itu_brick"
 
     # Create materials (for lighting/coloring and downstream processing)
-    building_material = bpy.data.materials.new(name=BUILDING_MATERIAL)
+    building_material = bpy.data.materials.new(name=building_material_name)
     building_material.diffuse_color = (0.75, 0.40, 0.16, 1)  # Beige
-    road_material = bpy.data.materials.new(name=ROAD_MATERIAL)
+    road_material = bpy.data.materials.new(name=road_material_name)
     road_material.diffuse_color = (0.29, 0.25, 0.21, 1)  # Dark grey
 
     # Convert all to meshes
     convert_objects_to_mesh()
 
     # Render original scene (no processing)
-    im_path = os.path.join(output_folder, "figs", "cam_org.png")
+    im_path = str(Path(output_folder) / "figs", "cam_org.png")
     create_camera_and_render(im_path)
 
     # Process buildings

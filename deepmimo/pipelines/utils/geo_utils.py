@@ -21,8 +21,8 @@ Variables:
     DEGREE_TO_METER (float): Conversion factor from degrees to meters at equator
 """
 
-import os
 from math import atan2, cos, radians, sin, sqrt
+from pathlib import Path
 
 import numpy as np
 import requests
@@ -31,6 +31,8 @@ import utm
 # Constants
 EARTH_RADIUS = 6371000  # meters
 DEGREE_TO_METER = 111320  # approx. meters per degree at equator
+HTTP_OK = 200
+STATIC_MAP_URL = "https://maps.googleapis.com/maps/api/staticmap"
 
 
 def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -97,7 +99,7 @@ def xy_from_latlong(
         long (float | np.ndarray): Longitude in degrees
 
     Returns:
-        Tuple[float | np.ndarray, float | np.ndarray]: Tuple containing:
+        tuple[float | np.ndarray, float | np.ndarray]: Tuple containing:
             - x (easting): Distance in meters east from zone origin
             - y (northing): Distance in meters north from equator
 
@@ -111,7 +113,7 @@ def xy_from_latlong(
     return x, y
 
 
-def convert_GpsBBox2CartesianBBox(
+def convert_GpsBBox2CartesianBBox(  # noqa: PLR0913, N802
     minlat: float,
     minlon: float,
     maxlat: float,
@@ -135,7 +137,7 @@ def convert_GpsBBox2CartesianBBox(
         pad (float, optional): Padding to add to the bounding box in meters
 
     Returns:
-        Tuple[float, float, float, float]: Tuple containing:
+        tuple[float, float, float, float]: Tuple containing:
             - xmin: Minimum x coordinate in meters from origin
             - ymin: Minimum y coordinate in meters from origin
             - xmax: Maximum x coordinate in meters from origin
@@ -158,7 +160,7 @@ def convert_GpsBBox2CartesianBBox(
     return xmin - pad, ymin - pad, xmax + pad, ymax + pad
 
 
-def convert_Gps2RelativeCartesian(
+def convert_Gps2RelativeCartesian(  # noqa: N802
     lat: float | np.ndarray,
     lon: float | np.ndarray,
     origin_lat: float,
@@ -177,7 +179,7 @@ def convert_Gps2RelativeCartesian(
         origin_lon (float): Origin longitude in degrees
 
     Returns:
-        Tuple[float | np.ndarray, float | np.ndarray]: Tuple containing:
+        tuple[float | np.ndarray, float | np.ndarray]: Tuple containing:
             - x: Distance in meters east from origin
             - y: Distance in meters north from origin
 
@@ -221,9 +223,9 @@ def get_city_name(lat: float, lon: float, api_key: str) -> str:
         "latlng": f"{lat},{lon}",
         "key": api_key,
     }
-    response = requests.get(url, params=params)
+    response = requests.get(url, params=params, timeout=30)
 
-    if response.status_code == 200:
+    if response.status_code == HTTP_OK:
         data = response.json()
         if data["status"] == "OK":
             # Look for the city in the address components
@@ -238,7 +240,7 @@ def get_city_name(lat: float, lon: float, api_key: str) -> str:
     return "unknown"
 
 
-def fetch_satellite_view(
+def fetch_satellite_view(  # noqa: PLR0913
     minlat: float,
     minlon: float,
     maxlat: float,
@@ -270,7 +272,7 @@ def fetch_satellite_view(
 
     """
     # Create the directory if it doesn't exist
-    os.makedirs(save_dir, exist_ok=True)
+    Path(save_dir).mkdir(parents=True, exist_ok=True)
 
     # Calculate the center of the bounding box
     center_lat = (minlat + maxlat) / 2
@@ -285,16 +287,13 @@ def fetch_satellite_view(
         "key": api_key,
     }
 
-    # API endpoint
-    STATIC_MAP_URL = "https://maps.googleapis.com/maps/api/staticmap"
-
     # Make the request
-    response = requests.get(STATIC_MAP_URL, params=params)
+    response = requests.get(STATIC_MAP_URL, params=params, timeout=30)
 
     # Save the image in the specified directory
-    if response.status_code == 200:
-        image_path = os.path.join(save_dir, "satellite_view.png")
-        with open(image_path, "wb") as f:
+    if response.status_code == HTTP_OK:
+        image_path = str(Path(save_dir) / "satellite_view.png")
+        with Path(image_path).open("wb") as f:
             f.write(response.content)
         print(f"Satellite view saved as '{image_path}'")
     else:

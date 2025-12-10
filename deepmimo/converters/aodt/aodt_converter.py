@@ -17,12 +17,12 @@ Main Entry Point:
     aodt_rt_converter(): Converts a complete AODT scenario to DeepMIMO format
 """
 
-import os
 import shutil
-from pprint import pprint
+from pathlib import Path
 
-from ... import consts as c
-from .. import converter_utils as cu
+from deepmimo import consts as c
+from deepmimo.converters import converter_utils as cu
+
 from .aodt_materials import read_materials
 from .aodt_paths import read_paths
 from .aodt_rt_params import read_rt_params
@@ -30,8 +30,9 @@ from .aodt_scene import read_scene
 from .aodt_txrx import read_txrx
 
 
-def aodt_rt_converter(
+def aodt_rt_converter(  # noqa: PLR0913
     rt_folder: str,
+    *,
     copy_source: bool = False,
     overwrite: bool | None = None,
     vis_scene: bool = True,
@@ -68,18 +69,18 @@ def aodt_rt_converter(
 
     # Get scenario name from folder if not provided
     rt_folder = rt_folder[:-1] if rt_folder[-1] in ["/", "\\"] else rt_folder
-    scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
+    scen_name = scenario_name if scenario_name else Path(rt_folder).name.lower()
 
     # Check if scenario already exists in the scenarios folder
-    scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
-    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite):
+    scenarios_folder = str(Path(c.SCENARIOS_FOLDER) / parent_folder)
+    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite=overwrite):
         return None
 
     # Setup temporary output folder
-    temp_folder = os.path.join(rt_folder, scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
-    if os.path.exists(temp_folder):
+    temp_folder = str(Path(rt_folder) / (scen_name + c.DEEPMIMO_CONVERSION_SUFFIX))
+    if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
-    os.makedirs(temp_folder)
+    Path(temp_folder).mkdir(parents=True)
 
     # Read ray tracing parameters from scenario.parquet
     rt_params = read_rt_params(rt_folder)
@@ -115,7 +116,7 @@ def aodt_rt_converter(
     }
     cu.save_params(params, temp_folder)
     if print_params:
-        pprint(params)
+        pass
 
     # Save scenario to deepmimo scenarios folder
     cu.save_scenario(temp_folder, scenarios_folder)

@@ -7,7 +7,7 @@ The scene geometry follows the NVIDIA Omniverse USD format, where each primitive
 is defined by its path in the stage hierarchy.
 """
 
-import os
+from pathlib import Path
 from typing import Any
 
 from .safe_import import pd
@@ -27,7 +27,7 @@ class AODTScene:
     - Diffraction can only occur once per ray
     """
 
-    def __init__(self, world_df: "pd.DataFrame"):
+    def __init__(self, world_df: "pd.DataFrame") -> None:
         """Initialize scene from world dataframe.
 
         Args:
@@ -64,16 +64,16 @@ class AODTScene:
         how the primitive paths are represented and what plotting
         library is being used.
         """
-        # TODO: Implement scene visualization
+        # Scene visualization not yet implemented.
 
-    def export_data(self, output_folder: str) -> dict[str, Any]:
+    def export_data(self, _output_folder: str) -> dict[str, Any]:
         """Export scene data to dictionary format.
 
         Args:
             output_folder (str): Path to folder where additional data may be saved.
 
         Returns:
-            Dict[str, Any]: Dictionary containing scene data including:
+            dict[str, Any]: Dictionary containing scene data including:
                 - primitives: List of primitive paths
                 - materials: List of material names
                 - rf_properties: List of RF property dictionaries
@@ -100,9 +100,10 @@ def read_scene(rt_folder: str) -> AODTScene | None:
         FileNotFoundError: If world.parquet is not found.
 
     """
-    world_file = os.path.join(rt_folder, "world.parquet")
-    if not os.path.exists(world_file):
-        raise FileNotFoundError(f"world.parquet not found in {rt_folder}")
+    world_file = str(Path(rt_folder) / "world.parquet")
+    if not Path(world_file).exists():
+        msg = f"world.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     # Read world data
     df = pd.read_parquet(world_file)

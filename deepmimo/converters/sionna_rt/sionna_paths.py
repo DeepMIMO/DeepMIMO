@@ -3,14 +3,15 @@
 This module handles loading and converting path data from Sionna's format to DeepMIMO's format.
 """
 
-import os
+from pathlib import Path
+from typing import Any
 
 import numpy as np
 from tqdm import tqdm
 
-from ... import consts as c
-from ...general_utils import get_mat_filename, load_pickle, save_mat
-from ..converter_utils import compress_path_data
+from deepmimo import consts as c
+from deepmimo.converters.converter_utils import compress_path_data
+from deepmimo.utils import get_mat_filename, load_pickle, save_mat
 
 # Interaction Type Map for Sionna
 INTERACTIONS_MAP = {
@@ -21,8 +22,14 @@ INTERACTIONS_MAP = {
     4: None,  # Sionna RIS is not supported yet
 }
 
+SIONNA_TYPE_LOS = 0
+SIONNA_TYPE_REFLECTION = 1
+SIONNA_TYPE_DIFFRACTION = 2
+SIONNA_TYPE_SCATTERING = 3
+SIONNA_TYPE_RIS = 4
 
-def _is_sionna_v1(sionna_version: str):
+
+def _is_sionna_v1(sionna_version: str) -> bool:
     """Determine if Sionna version is 1.x or higher."""
     return sionna_version.startswith("1.")
 
@@ -37,7 +44,7 @@ def _preallocate_data(n_rx: int) -> dict:
         data: Dictionary containing pre-allocated data
 
     """
-    data = {
+    return {
         c.RX_POS_PARAM_NAME: np.zeros((n_rx, 3), dtype=c.FP_TYPE),
         c.TX_POS_PARAM_NAME: np.zeros((1, 3), dtype=c.FP_TYPE),
         c.AOA_AZ_PARAM_NAME: np.zeros((n_rx, c.MAX_PATHS), dtype=c.FP_TYPE) * np.nan,
@@ -55,10 +62,19 @@ def _preallocate_data(n_rx: int) -> dict:
         * np.nan,
     }
 
-    return data
+
+SIONNA_TYPE_LOS = 0
+SIONNA_TYPE_REFLECTION = 1
+SIONNA_TYPE_DIFFRACTION = 2
+SIONNA_TYPE_SCATTERING = 3
+SIONNA_TYPE_RIS = 4
+
+MULTI_ANT_NDIM = 3
+TWO_D = 2
+EXPECTED_TXRX_SETS = 2
 
 
-def _process_paths_batch(
+def _process_paths_batch(  # noqa: PLR0913, PLR0915
     paths_dict: dict,
     data: dict,
     t: int,
@@ -123,7 +139,7 @@ def _process_paths_batch(
     # Handle multi-antenna arrays
     tx_idx = t
 
-    if theta_r.ndim > 3:  # Multi-antenna case
+    if theta_r.ndim > MULTI_ANT_NDIM:  # Multi-antenna case
         # Extract data for specific antenna elements
         a = a[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
         tau = tau[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
@@ -135,6 +151,7 @@ def _process_paths_batch(
             # the vertices are always (max_depth, n_rx, n_tx, max_paths, 3)
             # i.e. no antenna dimensions in vertices in sionna 0.x
             vertices = vertices[:, :, tx_idx, ...]
+            types = types[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
         else:
             types = types[:, :, rx_ant_idx, :, tx_ant_idx]
             vertices = vertices[:, :, rx_ant_idx, tx_idx, tx_ant_idx, :]
@@ -148,6 +165,9 @@ def _process_paths_batch(
         theta_r = theta_r[:, tx_idx, :]
         theta_t = theta_t[:, tx_idx, :]
         vertices = vertices[:, :, tx_idx, ...]
+
+        if not sionna_v1:
+            types = types[:, 0, tx_idx, 0, :]
 
     n_rx = a.shape[0]
     for rel_rx_idx in range(n_rx):
@@ -193,25 +213,29 @@ def _process_paths_batch(
             path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0, 1)
             inter_types = _transform_interaction_types(path_types)
         else:
-            inter_types = _get_sionna_interaction_types(types[path_idxs], inter_pos_rx)
+            inter_types = _get_sionna_interaction_types(types[rel_rx_idx, path_idxs], inter_pos_rx)
 
         data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = inter_types
 
     return inactive_count
 
 
-def _get_path_key(paths_dict, key, fallback_key=None, default=None):
+def _get_path_key(
+    paths_dict: dict[str, Any], key: str, fallback_key: str | None = None, default: Any = None
+) -> Any:
     if key in paths_dict:
         return paths_dict[key]
     if fallback_key and fallback_key in paths_dict:
         return paths_dict[fallback_key]
     if default is not None:
         return default
-    raise KeyError(f"Neither '{key}' nor '{fallback_key}' found in paths_dict.")
+    msg = f"Neither '{key}' nor '{fallback_key}' found in paths_dict."
+    raise KeyError(msg)
 
 
 def _transform_interaction_types(types: np.ndarray) -> np.ndarray:
-    """Transform a (n_paths, max_depth) interaction types array into a (n_paths,) array
+    """Transform a (n_paths, max_depth) interaction types array into a (n_paths,) array.
+
     where each element is an integer formed by concatenating the interaction type digits.
 
     Args:
@@ -256,7 +280,9 @@ def _transform_interaction_types(types: np.ndarray) -> np.ndarray:
     return result
 
 
-def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> np.ndarray:
+def _get_sionna_interaction_types(  # noqa: C901, PLR0912
+    types: np.ndarray, inter_pos: np.ndarray
+) -> np.ndarray:
     """Convert Sionna interaction types to DeepMIMO interaction codes.
 
     Args:
@@ -271,8 +297,27 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
     """
     # Ensure types is a numpy array
     types = np.asarray(types)
-    if types.ndim == 0:
+    original_shape = types.shape
+
+    # Flatten if multidimensional to simplify processing
+    if types.ndim > 1:
+        types_flat = types.flatten()
+        n_paths = len(types_flat)
+        # inter_pos is assumed to be (..., max_interactions, 3) matching types structure
+        # We flatten the batch dimensions of inter_pos to match types_flat
+        # Target shape: (n_paths, max_interactions, 3)
+        if inter_pos.ndim >= TWO_D:
+            max_interactions = inter_pos.shape[-2]
+            inter_pos_flat = inter_pos.reshape(n_paths, max_interactions, 3)
+        else:
+            # Handle unexpected shape gracefully or let downstream error catch it
+            inter_pos_flat = inter_pos
+
+        types = types_flat
+        inter_pos = inter_pos_flat
+    elif types.ndim == 0:
         types = np.array([types])
+        original_shape = (1,)
 
     # Get number of paths
     n_paths = len(types)
@@ -281,10 +326,11 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
     # For each path
     for path_idx in range(n_paths):
         # Skip if no type (nan or 0)
-        if np.isnan(types[path_idx]) or types[path_idx] == 0:
+        current_type = types[path_idx]
+        if np.any(np.isnan(current_type)) or np.all(current_type == 0):
             continue
 
-        sionna_type = int(types[path_idx])
+        sionna_type = int(current_type) if np.ndim(current_type) == 0 else int(current_type[0])
 
         # Handle LoS case (type 0)
         if sionna_type == 0:
@@ -292,7 +338,7 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
             continue
 
         # Count number of actual interactions by checking non-nan positions
-        if inter_pos.ndim == 2:  # Single path case
+        if inter_pos.ndim == TWO_D:  # Single path case
             n_interactions = np.nansum(~np.isnan(inter_pos[:, 0]))
         else:  # Multiple paths case
             n_interactions = np.nansum(~np.isnan(inter_pos[path_idx, :, 0]))
@@ -301,32 +347,33 @@ def _get_sionna_interaction_types(types: np.ndarray, inter_pos: np.ndarray) -> n
             continue
 
         # Handle different Sionna interaction types
-        if sionna_type == 1:  # Pure reflection path
+        if sionna_type == SIONNA_TYPE_REFLECTION:  # Pure reflection path
             # Create string of '1's with length = number of reflections
             code = "1" * n_interactions
             result[path_idx] = np.float32(code)
 
-        elif sionna_type == 2:  # Single diffraction path
+        elif sionna_type == SIONNA_TYPE_DIFFRACTION:  # Single diffraction path
             # Always just '2' since Sionna only allows single diffraction
             result[path_idx] = c.INTERACTION_DIFFRACTION
 
-        elif sionna_type == 3:  # Scattering path with possible reflections
+        elif sionna_type == SIONNA_TYPE_SCATTERING:  # Scattering path with possible reflections
             # Create string of '1's for reflections + '3' at the end for scattering
-            if n_interactions > 1:
-                code = "1" * (n_interactions - 1) + "3"
-            else:
-                code = "3"
+            code = "1" * (n_interactions - 1) + "3" if n_interactions > 1 else "3"
             result[path_idx] = np.float32(code)
 
-        elif sionna_type == 4:
-            raise NotImplementedError("RIS code not supported yet")
+        elif sionna_type == SIONNA_TYPE_RIS:
+            msg = "RIS code not supported yet"
+            raise NotImplementedError(msg)
         else:
-            raise ValueError(f"Unknown Sionna interaction type: {sionna_type}")
+            msg = f"Unknown Sionna interaction type: {sionna_type}"
+            raise ValueError(msg)
 
-    return result
+    return result.reshape(original_shape)
 
 
-def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_version: str) -> None:
+def read_paths(  # noqa: C901, PLR0912, PLR0915
+    load_folder: str, save_folder: str, txrx_dict: dict, sionna_version: str
+) -> None:
     """Read and convert path data from Sionna format.
 
     Args:
@@ -340,7 +387,8 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
         - Transmitters are identified by their positions across all path dictionaries
         - RX positions maintain their relative order across path dictionaries
 
-    -- Information about the Sionna paths (from https://nvlabs.github.io/sionna/api/rt.html#paths) --
+    -- Information about the Sionna paths (from
+    https://nvlabs.github.io/sionna/api/rt.html#paths) --
 
     [Amplitude]
     - paths_dict['a'] is the amplitude of the path
@@ -372,7 +420,7 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
     - For multi-antenna arrays, each antenna element is treated as a separate transmitter
 
     """
-    path_dict_list = load_pickle(os.path.join(load_folder, "sionna_paths.pkl"))
+    path_dict_list = load_pickle(str(Path(load_folder) / "sionna_paths.pkl"))
 
     # Collect all unique TX positions from all path dictionaries
     all_tx_pos = np.unique(
@@ -398,7 +446,9 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
     # NOTE: sources and targets have unique positions across antenna elements too.
     # This is why we either support multi-antenna or multi-user/BS.
     n_txrx_sets = len(txrx_dict.keys())
-    assert n_txrx_sets == 2, "Only one pair of TXRX sets supported for now"
+    if n_txrx_sets != EXPECTED_TXRX_SETS:
+        msg = "Only one pair of TXRX sets supported for now"
+        raise ValueError(msg)
 
     # Get number of TXs, RXs, and respective antenna elements from txrx_dict
     n_tx_ant = txrx_dict["txrx_set_0"]["num_ant"]
@@ -408,8 +458,12 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
 
     multi_tx_ant = n_tx_ant > 1
     multi_rx_ant = n_rx_ant > 1
-    assert not (multi_tx_ant and n_txs > 1), "Multi-antenna & multi-TX not supported yet"
-    assert not (multi_rx_ant and n_rxs > 1), "Multi-antenna & multi-RX not supported yet"
+    if multi_tx_ant and n_txs > 1:
+        msg = "Multi-antenna & multi-TX not supported yet"
+        raise ValueError(msg)
+    if multi_rx_ant and n_rxs > 1:
+        msg = "Multi-antenna & multi-RX not supported yet"
+        raise ValueError(msg)
 
     # Initialize inactive indices list
     rx_inactive_idxs_count = 0
@@ -472,14 +526,15 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
         data = compress_path_data(data)
 
         # Save each data key with antenna index in filename
-        for key in data.keys():
+        for key in data:
             idx = tx_ant_idx if multi_tx_ant else tx_idx
             mat_file = get_mat_filename(key, 0, idx, 1)  # tx_set=0, tx_idx=tx_ant_idx, rx_set=1
-            save_mat(data[key], key, os.path.join(save_folder, mat_file))
+            save_mat(data[key], key, str(Path(save_folder) / mat_file))
 
         if bs_bs_paths:
             if multi_tx_ant:
-                raise NotImplementedError("Multi-antenna BS-BS paths not supported yet")
+                msg = "Multi-antenna BS-BS paths not supported yet"
+                raise NotImplementedError(msg)
                 # It would just be necessary to loop over the sources like above
 
             print(f"BS-BS paths found for TX {tx_idx}, Ant {tx_ant_idx}")
@@ -508,14 +563,14 @@ def read_paths(load_folder: str, save_folder: str, txrx_dict: dict, sionna_versi
             data_bs_bs = compress_path_data(data_bs_bs)
 
             # Save each data key
-            for key in data_bs_bs.keys():
+            for key in data_bs_bs:
                 mat_file = get_mat_filename(
                     key,
                     0,
                     tx_ant_idx,
                     0,
                 )  # tx_set=0, tx_idx=tx_ant_idx, rx_set=0
-                save_mat(data_bs_bs[key], key, os.path.join(save_folder, mat_file))
+                save_mat(data_bs_bs[key], key, str(Path(save_folder) / mat_file))
 
     if bs_bs_paths:
         txrx_dict["txrx_set_0"]["is_rx"] = True  # add BS set also as RX

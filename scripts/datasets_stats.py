@@ -1,4 +1,8 @@
+"""Compute basic statistics for DeepMIMO city scenarios."""
+
 import deepmimo as dm
+
+CITY_INDEX_THRESHOLD = 20
 
 scen_list = dm.get_available_scenarios()
 
@@ -8,7 +12,7 @@ n_active_list = []
 for scen in scen_list:
     if "city_" in scen:
         city_idx = int(scen.split("_")[1])
-        if city_idx > 20:
+        if city_idx > CITY_INDEX_THRESHOLD:
             print(scen)
             dataset = dm.load(scen)[0]
             n_ue_list.append(dataset.n_ue)
@@ -20,7 +24,7 @@ print("\nScenario Statistics:")
 print("-" * 65)
 print(f"{'Scenario':<32} | {'Total':<8} | {'Active':<8} | {'Ratio':<8}")
 print("-" * 65)
-for scen, n_ue, n_active in zip(scen_name_list, n_ue_list, n_active_list):
+for scen, n_ue, n_active in zip(scen_name_list, n_ue_list, n_active_list, strict=False):
     ratio = n_active / n_ue if n_ue > 0 else 0
     print(f"{scen:<32} | {n_ue:>8} | {n_active:>8} | {ratio:>8.0%}")
 print("-" * 65)

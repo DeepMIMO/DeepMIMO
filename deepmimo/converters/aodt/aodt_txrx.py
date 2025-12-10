@@ -7,12 +7,13 @@ This module handles reading and processing:
 4. Antenna patterns from patterns.parquet
 """
 
-import os
+from pathlib import Path
 from typing import Any
 
 import numpy as np
 
-from ...txrx import TxRxSet
+from deepmimo.core.txrx import TxRxSet
+
 from . import aodt_utils as au
 from .safe_import import pd
 
@@ -25,6 +26,9 @@ PATTERN_TYPES = {
     # ≥100: Custom pattern
 }
 
+PATTERN_TYPE_HALF_WAVE = 2
+CUSTOM_PATTERN_THRESHOLD = 100
+
 
 def read_panels(rt_folder: str) -> dict[str, Any]:
     """Read antenna panel configurations.
@@ -33,11 +37,11 @@ def read_panels(rt_folder: str) -> dict[str, Any]:
         rt_folder (str): Path to folder containing panels.parquet.
 
     Returns:
-        Dict[str, Any]: Dictionary mapping panel IDs to configurations.
+        dict[str, Any]: Dictionary mapping panel IDs to configurations.
 
     """
-    panels_file = os.path.join(rt_folder, "panels.parquet")
-    if not os.path.exists(panels_file):
+    panels_file = str(Path(rt_folder) / "panels.parquet")
+    if not Path(panels_file).exists():
         return {}
 
     df = pd.read_parquet(panels_file)
@@ -68,11 +72,11 @@ def read_panels(rt_folder: str) -> dict[str, Any]:
     return panels
 
 
-def convert_to_deepmimo_txrxset(tx_rx_data: dict[str, Any], is_tx: bool, id_: int) -> TxRxSet:
+def convert_to_deepmimo_txrxset(tx_rx_data: dict[str, Any], *, is_tx: bool, id_: int) -> TxRxSet:
     """Convert AODT TX/RX data to DeepMIMO TxRxSet format.
 
     Args:
-        tx_rx_data (Dict[str, Any]): Dictionary containing TX/RX configuration
+        tx_rx_data (dict[str, Any]): Dictionary containing TX/RX configuration
         is_tx (bool): Whether this is a transmitter (True) or receiver (False)
         id_ (int): Unique identifier for the DeepMIMO set
 
@@ -138,7 +142,7 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
 
     Args:
         rt_folder (str): Path to folder containing patterns.parquet
-        panels (Dict[str, Any]): Dictionary of panel configurations
+        panels (dict[str, Any]): Dictionary of panel configurations
 
     Raises:
         FileNotFoundError: If patterns.parquet is not found
@@ -150,20 +154,23 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
 
     """
     # Read patterns file
-    patterns_file = os.path.join(rt_folder, "patterns.parquet")
-    if not os.path.exists(patterns_file):
-        raise FileNotFoundError(f"patterns.parquet not found in {rt_folder}")
+    patterns_file = str(Path(rt_folder) / "patterns.parquet")
+    if not Path(patterns_file).exists():
+        msg = f"patterns.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     patterns_df = pd.read_parquet(patterns_file)
     if len(patterns_df) == 0:
-        raise ValueError("patterns.parquet is empty")
+        msg = "patterns.parquet is empty"
+        raise ValueError(msg)
 
     # Check that each panel has exactly one pattern ID
     for panel_id, panel in panels.items():
         unique_pattern_ids = np.unique(panel["pattern_indices"])
         if len(unique_pattern_ids) != 1:
+            msg = f"Panel {panel_id} has {len(unique_pattern_ids)} patterns. Expected exactly 1."
             raise ValueError(
-                f"Panel {panel_id} has {len(unique_pattern_ids)} patterns. Expected exactly 1.",
+                msg,
             )
 
     # Get all unique pattern IDs across all panels
@@ -176,10 +183,11 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
     for pattern_id in unique_pattern_ids:
         pattern = patterns_df[patterns_df["pattern_id"] == pattern_id]
         if len(pattern) == 0:
-            raise ValueError(f"Pattern ID {pattern_id} not found in patterns.parquet")
+            msg = f"Pattern ID {pattern_id} not found in patterns.parquet"
+            raise ValueError(msg)
 
         pattern_type = pattern.iloc[0]["pattern_type"]
-        if pattern_type == 2:
+        if pattern_type == PATTERN_TYPE_HALF_WAVE:
             print(
                 f"WARNING: Pattern ID {pattern_id} uses halfwave dipole antenna (type=2)."
                 "Ray tracing results may be inaccurate.",
@@ -187,11 +195,14 @@ def validate_isotropic_patterns(rt_folder: str, panels: dict[str, Any]) -> None:
         elif pattern_type != 0:
             pattern_desc = PATTERN_TYPES.get(
                 pattern_type,
-                "custom" if pattern_type >= 100 else "unknown",
+                "custom" if pattern_type >= CUSTOM_PATTERN_THRESHOLD else "unknown",
+            )
+            msg = (
+                f"Pattern ID {pattern_id} uses {pattern_desc} antenna (type={pattern_type}). "
+                "Only isotropic antennas (type=0) are supported."
             )
             raise ValueError(
-                f"Pattern ID {pattern_id} uses {pattern_desc} antenna (type={pattern_type}). "
-                "Only isotropic antennas (type=0) are supported.",
+                msg,
             )
 
 
@@ -200,10 +211,10 @@ def read_transmitters(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, 
 
     Args:
         rt_folder (str): Path to folder containing rus.parquet
-        panels (Dict[str, Any]): Dictionary of panel configurations
+        panels (dict[str, Any]): Dictionary of panel configurations
 
     Returns:
-        List[Dict[str, Any]]: List of processed transmitter configurations
+        list[dict[str, Any]]: List of processed transmitter configurations
 
     Raises:
         FileNotFoundError: If rus.parquet is not found
@@ -211,13 +222,15 @@ def read_transmitters(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, 
 
     """
     # Read RUs file
-    rus_file = os.path.join(rt_folder, "rus.parquet")
-    if not os.path.exists(rus_file):
-        raise FileNotFoundError(f"rus.parquet not found in {rt_folder}")
+    rus_file = str(Path(rt_folder) / "rus.parquet")
+    if not Path(rus_file).exists():
+        msg = f"rus.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     rus_df = pd.read_parquet(rus_file)
     if len(rus_df) == 0:
-        raise ValueError("rus.parquet is empty")
+        msg = "rus.parquet is empty"
+        raise ValueError(msg)
 
     # Process RUs
     transmitters = []
@@ -230,7 +243,7 @@ def read_transmitters(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, 
             "mech_azimuth": float(ru["mech_azimuth"]),
             "scs": int(ru["subcarrier_spacing"]),
             "fft_size": int(ru["fft_size"]),
-            "panel": [panels[i] for i in ru["panel"]][0],  # use only first panel
+            "panel": next(panels[i] for i in ru["panel"]),  # use only first panel
             "du_id": int(ru["du_id"]) if not pd.isna(ru["du_id"]) else None,
             "du_manual_assign": bool(ru["du_manual_assign"]),
         }
@@ -243,10 +256,10 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
 
     Args:
         rt_folder (str): Path to folder containing ues.parquet
-        panels (Dict[str, Any]): Dictionary of panel configurations
+        panels (dict[str, Any]): Dictionary of panel configurations
 
     Returns:
-        List[Dict[str, Any]]: List of processed receiver configurations
+        list[dict[str, Any]]: List of processed receiver configurations
 
     Raises:
         FileNotFoundError: If ues.parquet is not found
@@ -254,16 +267,17 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
 
     """
     # Read UEs file
-    ues_file = os.path.join(rt_folder, "ues.parquet")
-    if not os.path.exists(ues_file):
-        raise FileNotFoundError(f"ues.parquet not found in {rt_folder}")
+    ues_file = str(Path(rt_folder) / "ues.parquet")
+    if not Path(ues_file).exists():
+        msg = f"ues.parquet not found in {rt_folder}"
+        raise FileNotFoundError(msg)
 
     ues_df = pd.read_parquet(ues_file)
     if len(ues_df) == 0:
-        raise ValueError("ues.parquet is empty")
+        msg = "ues.parquet is empty"
+        raise ValueError(msg)
 
     # Process UEs
-    time_idx = 0  # TODO: this should be passed as a parameter for Dynamic scenes
     receivers = []
     for _, ue in ues_df.iterrows():
         # Get initial orientation (azimuth) from route if available
@@ -273,11 +287,12 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
         # orientations_array = au.process_points(route_orientations)
         # # Take first orientation's azimuth
         # initial_azimuth = float(orientations_array[0, 0])
-        initial_azimuth = 0.0  # TODO: this is a temporary fix.
+        initial_azimuth = 0.0  # Temporary placeholder until orientations clarified.
         # The orientations are not clear...
         # raise issue if ue has multiple panels
         if len(ue["panel"]) > 1:
-            raise ValueError(f"UE {ue['ID']} has multiple panels: {ue['panel']}")
+            msg = f"UE {ue['ID']} has multiple panels: {ue['panel']}"
+            raise ValueError(msg)
 
         rx = {
             "id": int(ue["ID"]),
@@ -287,7 +302,7 @@ def read_receivers(rt_folder: str, panels: dict[str, Any]) -> list[dict[str, Any
             "height": float(ue["height"]),
             "mech_tilt": float(ue["mech_tilt"]),
             "mech_azimuth": initial_azimuth,  # Using initial orientation from route
-            "panel": [panels[i] for i in ue["panel"]][0],
+            "panel": next(panels[i] for i in ue["panel"]),
             "indoor": bool(ue["is_indoor_mobility"]),
             "bler_target": float(ue["bler_target"]),
             "mobility": {
@@ -320,14 +335,14 @@ def is_dynamic(rt_params: dict[str, Any]) -> bool:
     """Check if the scenario is dynamic.
 
     Args:
-        rt_params (Dict[str, Any]): Ray tracing parameters dictionary.
+        rt_params (dict[str, Any]): Ray tracing parameters dictionary.
 
     Returns:
         bool: True if the scenario is dynamic, False otherwise.
 
     """
     # check batches
-    # 'num_batches': 1, 'slots_per_batch': 0, 'symbols_per_slot': 0, 'duration': 2.0, 'interval': 1.0,
+    # Example raw params: slots_per_batch/symbols_per_slot/duration/interval
     raw_params = rt_params.get("raw_params", {})
     if raw_params.get("slots_per_batch", 0) > 0:  # use slots per batch timing
         return raw_params.get("num_batches", 1) * raw_params.get("slots_per_batch", 1) > 1
@@ -340,10 +355,10 @@ def read_txrx(rt_folder: str, rt_params: dict[str, Any]) -> dict[str, Any]:
 
     Args:
         rt_folder (str): Path to folder containing configuration files.
-        rt_params (Dict[str, Any]): Ray tracing parameters dictionary.
+        rt_params (dict[str, Any]): Ray tracing parameters dictionary.
 
     Returns:
-        Dict[str, Any]: Dictionary containing TX/RX configurations in DeepMIMO format.
+        dict[str, Any]: Dictionary containing TX/RX configurations in DeepMIMO format.
 
     Raises:
         FileNotFoundError: If required files are not found.
@@ -379,10 +394,7 @@ def read_txrx(rt_folder: str, rt_params: dict[str, Any]) -> dict[str, Any]:
     first_rx = receivers[0]
 
     # Get initial positions from route data (time_idx = 0)
-    if is_dynamic(rt_params):
-        time_idx = int(os.path.basename(rt_folder).split("_")[-1])
-    else:
-        time_idx = 0
+    time_idx = int(Path(rt_folder).name.split("_")[-1]) if is_dynamic(rt_params) else 0
 
     rx_positions = [
         au.process_points(rx["mobility"]["route"]["positions"][0])[time_idx] for rx in receivers

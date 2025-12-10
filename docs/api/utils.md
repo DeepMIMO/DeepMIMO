@@ -1,14 +1,17 @@
 # Utilities
 
-DeepMIMO provides two utility modules:
+DeepMIMO provides utility modules organized by function:
 ```
-deepmimo/general_utils.py
-  ├── Scenario Management (get_available_scenarios, get_params_path, get_scenario_folder)
-  └── Zip & Unzip (zip, unzip)
+deepmimo/utils/
+  ├── scenarios.py (Scenario management)
+  ├── io.py (File I/O operations)
+  ├── geometry.py (Geometric calculations)
+  ├── data_structures.py (Custom data structures)
+  └── dict_utils.py (Dictionary utilities)
 
-deepmimo/generator/generator_utils.py
+deepmimo/datasets/sampling.py
   ├── Unit Conversion (dbw2watt)
-  └── Position Sampling (get_uniform_idxs, get_linear_idxs)
+  └── Position Sampling (get_uniform_idxs, get_linear_idxs, get_grid_idxs)
 
 deepmimo/generator/geometry.py
   └── Beamforming (steering_vec)
@@ -27,11 +30,11 @@ folder = dm.get_scenario_folder('scenario_name')
 params = dm.get_params_path('scenario_name')
 ```
 
-::: deepmimo.general_utils.get_scenario_folder
+::: deepmimo.utils.scenarios.get_scenario_folder
 
-::: deepmimo.general_utils.get_params_path
+::: deepmimo.utils.scenarios.get_params_path
 
-::: deepmimo.general_utils.get_available_scenarios
+::: deepmimo.utils.scenarios.get_available_scenarios
 
 ## User Sampling
 
@@ -69,13 +72,13 @@ idxs = dm.get_linear_idxs(
 !!! tip "User sampling examples"
     See the <a href="../manual/#user-sampling">User Sampling</a> section of the DeepMIMO Manual for examples.
 
-::: deepmimo.generator.generator_utils.get_uniform_idxs
+::: deepmimo.datasets.sampling.get_uniform_idxs
 
-::: deepmimo.generator.generator_utils.get_idxs_with_limits
+::: deepmimo.datasets.sampling.get_idxs_with_limits
 
-::: deepmimo.generator.generator_utils.get_grid_idxs
+::: deepmimo.datasets.sampling.get_grid_idxs
 
-::: deepmimo.generator.generator_utils.get_linear_idxs
+::: deepmimo.datasets.sampling.get_linear_idxs
 
 
 !!! tip "User sampling examples"
@@ -95,7 +98,7 @@ idxs = dm.get_linear_idxs(
 power_w = dm.dbw2watt(power_dbw)
 ```
 
-::: deepmimo.generator.generator_utils.dbw2watt
+::: deepmimo.datasets.sampling.dbw2watt
 
 ## Zip & Unzip
 ```python
@@ -104,6 +107,6 @@ dm.zip('path/to/folder')
 dm.unzip('path/to/file.zip')
 ```
 
-::: deepmimo.general_utils.zip
+::: deepmimo.utils.io.zip
 
-::: deepmimo.general_utils.unzip
+::: deepmimo.utils.io.unzip

@@ -12,13 +12,13 @@ The module serves as the interface between Sionna's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
-import os
 from dataclasses import dataclass
+from pathlib import Path
 
-from ...config import config
-from ...consts import RAYTRACER_NAME_SIONNA
-from ...general_utils import load_pickle
-from ...rt_params import RayTracingParameters
+from deepmimo.config import config
+from deepmimo.consts import RAYTRACER_NAME_SIONNA
+from deepmimo.core.rt_params import RayTracingParameters
+from deepmimo.utils import load_pickle
 
 
 def read_rt_params(load_folder: str) -> dict:
@@ -45,7 +45,8 @@ class SionnaRayTracingParameters(RayTracingParameters):
         diffuse_reflections (int): Reflections allowed in paths with diffuse scattering
         diffuse_diffractions (int): Diffractions allowed in paths with diffuse scattering
         diffuse_transmissions (int): Transmissions allowed in paths with diffuse scattering
-        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering at final interaction
+        diffuse_final_interaction_only (bool): Whether to only consider diffuse scattering
+            at final interaction
         diffuse_random_phases (bool): Whether to use random phases for diffuse scattering
         terrain_reflection (bool): Whether to allow reflections on terrain
         terrain_diffraction (bool): Whether to allow diffractions on terrain
@@ -80,11 +81,12 @@ class SionnaRayTracingParameters(RayTracingParameters):
 
         """
         # Load original parameters
-        raw_params = load_pickle(os.path.join(load_folder, "sionna_rt_params.pkl"))
+        raw_params = load_pickle(str(Path(load_folder) / "sionna_rt_params.pkl"))
 
         # Raise error if los is not present
         if "los" not in raw_params or not raw_params["los"]:
-            raise ValueError("los not found in Sionna RT parameters")
+            msg = "los not found in Sionna RT parameters"
+            raise ValueError(msg)
 
         # NOTE: Sionna distributes these samples across antennas AND TXs
         n_tx, n_tx_ant = raw_params["tx_array_size"], raw_params["tx_array_num_ant"]
@@ -130,9 +132,9 @@ class SionnaRayTracingParameters(RayTracingParameters):
             # Details on diffraction, scattering, and transmission
             "diffuse_reflections": int(raw_params["max_depth"])
             - 1,  # Sionna only supports diffuse reflections
-            "diffuse_diffractions": 0,  # Sionna only supports 1 diffraction event, with no diffuse scattering
+            "diffuse_diffractions": 0,  # Sionna supports one diffraction, no diffuse scattering
             "diffuse_transmissions": 0,  # Sionna does not support transmissions
-            "diffuse_final_interaction_only": True,  # Sionna only supports diffuse scattering at final interaction
+            "diffuse_final_interaction_only": True,  # Diffuse scattering only at final interaction
             "diffuse_random_phases": raw_params.get("scat_random_phases", True),
             "synthetic_array": raw_params.get("synthetic_array", True),
             "num_rays": -1 if rt_method != "fibonacci" else n_rays,

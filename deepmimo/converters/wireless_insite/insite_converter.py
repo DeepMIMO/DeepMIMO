@@ -28,12 +28,13 @@ Main Entry Point:
 # Standard library imports
 import os
 import shutil
-from pprint import pprint
+from pathlib import Path
 
-from ... import consts as c
+from deepmimo import consts as c
 
 # Local imports
-from .. import converter_utils as cu
+from deepmimo.converters import converter_utils as cu
+
 from .insite_materials import read_materials
 from .insite_paths import read_paths
 from .insite_rt_params import read_rt_params
@@ -42,12 +43,13 @@ from .insite_txrx import read_txrx
 
 # Constants
 MATERIAL_FILES = [".city", ".ter", ".veg"]
-SETUP_FILES = [".setup", ".txrx"] + MATERIAL_FILES
-SOURCE_EXTS = SETUP_FILES + [".kmz"]  # Files to copy to ray tracing source zip
+SETUP_FILES = [".setup", ".txrx", *MATERIAL_FILES]
+SOURCE_EXTS = [*SETUP_FILES, ".kmz"]  # Files to copy to ray tracing source zip
 
 
-def insite_rt_converter(
+def insite_rt_converter(  # noqa: PLR0913
     rt_folder: str,
+    *,
     copy_source: bool = False,
     overwrite: bool | None = None,
     vis_scene: bool = True,
@@ -65,13 +67,13 @@ def insite_rt_converter(
     Args:
         rt_folder (str): Path to folder containing .setup, .txrx, and material files.
         copy_source (bool): Whether to copy ray-tracing source files to output.
-        overwrite (Optional[bool]): Whether to overwrite existing files. Prompts if None. Defaults to None.
+        overwrite (Optional[bool]): Whether to overwrite existing files. Prompts if None.
         vis_scene (bool): Whether to visualize the scene layout. Defaults to False.
         scenario_name (str): Custom name for output folder. Uses p2m folder name if empty.
         print_params (bool): Whether to print the parameters to the console. Defaults to False.
-        parent_folder (str): Name of parent folder containing the scenario. Defaults to empty string.
-                             If empty, the scenario is saved in the DeepMIMO scenarios folder.
-                             This parameter is only used if the scenario is time-varying.
+        parent_folder (str): Name of parent folder containing the scenario.
+            If empty, the scenario is saved in the DeepMIMO scenarios folder.
+            This parameter is only used if the scenario is time-varying.
         num_scenes (int): Number of scenes in the scenario. Defaults to 1.
                           This parameter is only used if the scenario is time-varying.
 
@@ -85,20 +87,22 @@ def insite_rt_converter(
     """
     # Get scenario name from folder if not provided
     rt_folder = rt_folder[:-1] if rt_folder[-1] in ["/", "\\"] else rt_folder
-    scen_name = scenario_name if scenario_name else os.path.basename(rt_folder).lower()
+    scen_name = scenario_name if scenario_name else Path(rt_folder).name.lower()
 
     # Check if scenario already exists in the scenarios folder
-    scenarios_folder = os.path.join(c.SCENARIOS_FOLDER, parent_folder)
-    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite):
+    scenarios_folder = str(Path(c.SCENARIOS_FOLDER) / parent_folder)
+    if not cu.check_scenario_exists(scenarios_folder, scen_name, overwrite=overwrite):
         return None
 
     # Get paths for input and output folders
-    temp_folder = os.path.join(os.path.dirname(rt_folder), scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
+    temp_folder = str(
+        Path(str(Path(rt_folder).parent)) / (scen_name + c.DEEPMIMO_CONVERSION_SUFFIX)
+    )
 
     # Create output folder
-    if os.path.exists(temp_folder):
+    if Path(temp_folder).exists():
         shutil.rmtree(temp_folder)
-    os.makedirs(temp_folder)
+    os.makedirs(temp_folder, exist_ok=True)  # noqa: PTH103
 
     # Read ray tracing parameters
     rt_params = read_rt_params(rt_folder)
@@ -132,7 +136,7 @@ def insite_rt_converter(
     cu.save_params(params, temp_folder)
 
     if print_params:
-        pprint(params)
+        pass
 
     # Save (move) scenario to deepmimo scenarios folder
     cu.save_scenario(temp_folder, scenarios_folder)

@@ -1,4 +1,8 @@
+"""Utility to rename txrx keys to txrx_sets in params.json files."""
+
 # %%
+from pathlib import Path
+
 import deepmimo as dm
 
 scenarios = dm.get_available_scenarios()
@@ -11,7 +15,7 @@ for scen_name in scenarios:
     params_json_path = dm.get_params_path(scen_name)
 
     # replace all occurrences of 'txrx' by 'txrx_sets'
-    with open(params_json_path) as file:
+    with Path(params_json_path).open() as file:
         text = file.read()
 
     text = text.replace('"txrx"', '"txrx_sets"')
@@ -19,5 +23,5 @@ for scen_name in scenarios:
     # print(text)
 
     # write back to file
-    with open(params_json_path, "w") as file:
+    with Path(params_json_path).open("w") as file:
         file.write(text)

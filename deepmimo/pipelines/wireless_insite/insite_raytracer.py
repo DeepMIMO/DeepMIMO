@@ -15,27 +15,28 @@ The text files are useful for debugging and verification in the Wireless InSite 
 # %% Imports
 
 # Standard library imports
-import os
 from dataclasses import fields
-from datetime import datetime
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
 # Third-party imports
 import numpy as np
 
-from ...config import config
-from ...consts import BBOX_PAD
+from deepmimo.config import config
+from deepmimo.consts import BBOX_PAD
 
 # Project-specific imports
-from ..utils.geo_utils import convert_GpsBBox2CartesianBBox
-from ..utils.pipeline_utils import run_command
-from .convert_ply2city import convert_to_city_file
-from .WI_interface.SetupEditor import RayTracingParam, SetupEditor
-from .WI_interface.TerrainEditor import TerrainEditor
-from .WI_interface.TxRxEditor import TxRxEditor
-
-# Local application imports
-from .WI_interface.XmlGenerator import XmlGenerator
+from deepmimo.pipelines.utils.geo_utils import convert_GpsBBox2CartesianBBox
+from deepmimo.pipelines.utils.pipeline_utils import run_command
+from deepmimo.pipelines.wireless_insite.convert_ply2city import convert_to_city_file
+from deepmimo.pipelines.wireless_insite.wi_interface.setup_editor import (
+    RayTracingParam,
+    SetupEditor,
+)
+from deepmimo.pipelines.wireless_insite.wi_interface.terrain_editor import TerrainEditor
+from deepmimo.pipelines.wireless_insite.wi_interface.txrx_editor import TxRxEditor
+from deepmimo.pipelines.wireless_insite.wi_interface.xml_generator import XmlGenerator
 
 TERRAIN_TEMPLATE = "newTerrain.ter"
 
@@ -44,11 +45,11 @@ def create_directory_structure(osm_folder: str, rt_params: dict[str, Any]) -> tu
     """Create folders for the scenario generations with a names based on parameters.
 
     Args:
-        base_path (str): Base path for the scenario
-        rt_params (Dict[str, Any]): Ray tracing parameters
+        osm_folder: Base folder containing the OSM-derived inputs.
+        rt_params: Ray tracing parameters.
 
     Returns:
-        Tuple[str, str]: Paths to the insite directory and study area directory
+        tuple[str, str]: Paths to the insite directory and study area directory.
 
     """
     # Format folder name with key parameters
@@ -57,16 +58,16 @@ def create_directory_structure(osm_folder: str, rt_params: dict[str, Any]) -> tu
         f"{rt_params['max_reflections']}R_{rt_params['max_diffractions']}D_"
         f"{1 if rt_params['ds_enable'] else 0}S"
     )
-    insite_path = os.path.join(osm_folder, folder_name)
-    if os.path.exists(insite_path):
-        dt = datetime.now()
+    insite_path = str(Path(osm_folder) / folder_name)
+    if Path(insite_path).exists():
+        dt = datetime.now(UTC)
         insite_path += "_" + dt.strftime("%Y%m%d_%H%M%S")
 
-    study_area_path = os.path.join(insite_path, "study_area")
+    study_area_path = str(Path(insite_path) / "study_area")
 
     # Create directories
     for path in [insite_path, study_area_path]:
-        os.makedirs(path, exist_ok=True)
+        Path(path).mkdir(parents=True, exist_ok=True)
 
     return insite_path, study_area_path
 
@@ -114,7 +115,7 @@ def raytrace_insite(
                 - ds_max_reflections (int): Maximum number of diffuse reflections
                 - ds_max_transmissions (int): Maximum number of diffuse transmissions
                 - ds_max_diffractions (int): Maximum number of diffuse diffractions
-                - ds_final_interaction_only (bool): Whether to only apply diffuse scattering at final interaction
+                - ds_final_interaction_only (bool): Apply diffuse scattering only at final step
 
     Returns:
         str: Path to the insite directory containing all generated files
@@ -147,7 +148,7 @@ def raytrace_insite(
     terrain_editor = TerrainEditor()
     terrain_editor.set_vertex(xmin=xmin_pad, ymin=ymin_pad, xmax=xmax_pad, ymax=ymax_pad)
     terrain_editor.set_material(rt_params["terrain_material"])
-    terrain_editor.save(os.path.join(insite_path, TERRAIN_TEMPLATE))
+    terrain_editor.save(str(Path(insite_path) / TERRAIN_TEMPLATE))
 
     # Configure Tx/Rx (.txrx)
     txrx_editor = TxRxEditor()
@@ -189,7 +190,7 @@ def raytrace_insite(
             grid_spacing=rt_params["grid_spacing"],
             conform_to_terrain=rt_params["conform_to_terrain"],
         )
-    txrx_editor.save(os.path.join(insite_path, "insite.txrx"))
+    txrx_editor.save(str(Path(insite_path) / "insite.txrx"))
 
     # Get ray tracing parameter names from the dataclass
     rt_param_names = {field.name for field in fields(RayTracingParam)}
@@ -207,7 +208,7 @@ def raytrace_insite(
 
     # Create setup file (.setup)
     scenario = SetupEditor(insite_path)
-    scenario.set_carrierFreq(rt_params["carrier_freq"])
+    scenario.set_carrier_freq(rt_params["carrier_freq"])
     scenario.set_bandwidth(rt_params["bandwidth"])
     scenario.set_study_area(zmin=-3, zmax=40, all_vertex=study_area_vertex)
     mean_lat = (rt_params["min_lat"] + rt_params["max_lat"]) / 2
@@ -219,7 +220,8 @@ def raytrace_insite(
     if bldgs_city:
         scenario.add_feature(bldgs_city, "city")
     else:
-        raise Exception("No buildings found. Check Blender Export to ply.")
+        msg = "No buildings found. Check Blender Export to ply."
+        raise RuntimeError(msg)
     if roads_city:
         scenario.add_feature(roads_city, "road")
     scenario.save("insite")  # insite.setup
@@ -228,10 +230,13 @@ def raytrace_insite(
     wi_major_version = int(config.get("wireless_insite_version")[0])
     xml_generator = XmlGenerator(insite_path, scenario, txrx_editor, version=wi_major_version)
     xml_generator.update()
-    xml_path = os.path.join(insite_path, "insite.study_area.xml")
+    xml_path = str(Path(insite_path) / "insite.study_area.xml")
     xml_generator.save(xml_path)
 
-    license_info = ["-set_licenses", rt_params["wi_lic"]] if wi_major_version >= 4 else []
+    min_license_version = 4
+    license_info = (
+        ["-set_licenses", rt_params["wi_lic"]] if wi_major_version >= min_license_version else []
+    )
 
     # Run Wireless InSite using the XML file
     command = [
@@ -242,7 +247,8 @@ def raytrace_insite(
         study_area_path,
         "-p",
         "insite",
-    ] + license_info
+        *license_info,
+    ]
     run_command(command, "RAY TRACING: Wireless InSite")
 
     return insite_path

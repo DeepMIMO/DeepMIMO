@@ -16,9 +16,8 @@ and DeepMIMO's standardized material representation.
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from pprint import pprint
 
-from ...materials import Material, MaterialList  # Base material classes
+from deepmimo.core.materials import Material, MaterialList  # Base material classes
 
 # Local imports
 from .setup_parser import parse_file  # For parsing Wireless InSite setup-like files
@@ -47,11 +46,12 @@ class InsiteMaterial:
 
     Notes:
         Scattering model parameters based on [1] and extended with cross-polarization terms.
-        At present, according to the Wireless InSite 3.3.0 Reference Manual, section 10.5,
-        all materials are nonmagnetic, and their permeability is that of free space (µ0 = 4π x 10e-7 H/m).
+        Wireless InSite 3.3.0 Reference Manual (section 10.5) states all materials are
+        nonmagnetic, with permeability of free space (µ0 = 4π x 10e-7 H/m).
 
     Sources:
-        [1] A Diffuse Scattering Model for Urban Propagation Prediction - Vittorio Degli-Esposti 2001
+        [1] A Diffuse Scattering Model for Urban Propagation Prediction
+            - Vittorio Degli-Esposti 2001
             https://ieeexplore.ieee.org/document/4052607
 
     """
@@ -157,6 +157,7 @@ class InsiteFoliage:
             scattering_model=Material.SCATTERING_NONE,
             vertical_attenuation=self.vertical_attenuation,
             horizontal_attenuation=self.horizontal_attenuation,
+            conductivity=0.0,
         )
 
 
@@ -173,7 +174,7 @@ def parse_materials_from_file(file: Path) -> list[Material]:
     document = parse_file(file)
     materials = []
 
-    for prim in document.keys():
+    for prim in document:
         mat_entries = document[prim].values["Material"]
         mat_entries = [mat_entries] if not isinstance(mat_entries, list) else mat_entries
 
@@ -213,7 +214,7 @@ def parse_materials_from_file(file: Path) -> list[Material]:
     return materials
 
 
-def read_materials(sim_folder: str, verbose: bool = False) -> dict:
+def read_materials(sim_folder: str, *, verbose: bool = False) -> dict:
     """Read materials from a Wireless Insite simulation folder.
 
     Args:
@@ -226,7 +227,8 @@ def read_materials(sim_folder: str, verbose: bool = False) -> dict:
     """
     sim_folder = Path(sim_folder)
     if not sim_folder.exists():
-        raise ValueError(f"Simulation folder does not exist: {sim_folder}")
+        msg = f"Simulation folder does not exist: {sim_folder}"
+        raise ValueError(msg)
 
     # Initialize material list
     material_list = MaterialList()
@@ -237,7 +239,8 @@ def read_materials(sim_folder: str, verbose: bool = False) -> dict:
         material_files.extend(sim_folder.glob(f"*{ext}"))
 
     if not material_files:
-        raise ValueError(f"No material files found in {sim_folder}")
+        msg = f"No material files found in {sim_folder}"
+        raise ValueError(msg)
 
     # Parse materials from each file
     for file in material_files:
@@ -247,7 +250,6 @@ def read_materials(sim_folder: str, verbose: bool = False) -> dict:
 
     if verbose:
         print("\nMaterial list:")
-        pprint(material_list.to_dict())
 
     return material_list.to_dict()
 
@@ -257,10 +259,11 @@ if __name__ == "__main__":
     test_dir = r"./P2Ms/simple_street_canyon_test/"
 
     # Get all files in test directory
-    files = []
-    for root, _, filenames in os.walk(test_dir):
-        for filename in filenames:
-            files.append(os.path.join(root, filename))
+    files = [
+        str(Path(root) / filename)
+        for root, _, filenames in os.walk(test_dir)
+        for filename in filenames
+    ]
 
     print(f"\nTesting materials extraction from: {test_dir}")
     print("-" * 50)

@@ -23,14 +23,14 @@ Note:
 
 """
 
-import os
 import re
+from pathlib import Path
 
 import numpy as np
 from tqdm import tqdm
 
-from ... import consts as c
-from .. import converter_utils as cu
+from deepmimo import consts as c
+from deepmimo.converters import converter_utils as cu
 
 # Configuration constants for parsing p2m files
 LINE_START = 22  # Skip info lines and n_rxs line.
@@ -56,7 +56,7 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
         file (str): Path to the .p2m file to parse
 
     Returns:
-        Dict[str, np.ndarray]: Dictionary containing path information with keys:
+        dict[str, np.ndarray]: Dictionary containing path information with keys:
             - aoa_az/el: Angles of arrival (azimuth/elevation) (degrees)
             - aod_az/el: Angles of departure (azimuth/elevation) (degrees)
             - toa: Time of arrival (s)
@@ -75,9 +75,9 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
 
     """
     # Read file
-    print(f"Reading p2m paths file: {os.path.basename(file)}...")
-    with open(file) as file:
-        lines = file.readlines()
+    print(f"Reading p2m paths file: {Path(file).name}...")
+    with Path(file).open() as file_handle:
+        lines = file_handle.readlines()
 
     n_rxs = int(lines[LINE_START - 1])
 
@@ -116,7 +116,7 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
         for path_idx in range(n_paths_to_read):
             # Line 1 (Example: '1 2 -133.1 31.9 1.7e-06 84.0 40.3 90.9 -13.4\n')
             line = lines[line_idx]
-            i1, i2, i3, i4, i5, i6, i7, i8, i9 = tuple(line.split())
+            _i1, i2, i3, i4, i5, i6, i7, i8, i9 = tuple(line.split())
             # (no need) i1 = <path number>
             # (no need) i2 = <total interactions for path> (not including Tx and Rx)
             data[c.POWER_PARAM_NAME][rx_i, path_idx] = np.float32(i3)  # i3 = <received power(dBm)>
@@ -148,9 +148,7 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
             line_idx += 4 + n_iteractions  # add number of description lines each path has
 
     # Remove extra paths and bounces
-    data_compressed = cu.compress_path_data(data)
-
-    return data_compressed
+    return cu.compress_path_data(data)
 
 
 def extract_tx_pos(filename: str) -> np.ndarray:
@@ -173,7 +171,7 @@ def extract_tx_pos(filename: str) -> np.ndarray:
     # Read file
     print("Reading paths file looking for tx position... ", end="")
 
-    with open(filename) as file:
+    with Path(filename).open() as file:
         for _ in range(LINE_START - 1):  # Skip the first 20 lines
             next(file)
 
@@ -196,16 +194,14 @@ def extract_tx_pos(filename: str) -> np.ndarray:
             print("Tx pos found!")
             break
 
-    try:
-        a = tx_pos
-    except:
+    if "tx_pos" not in locals():
         print(
             "Not found tx_pos. This is likely because there are no paths. \n"
             "Using hack of searching for tx pos in pl file...",
         )
 
         # Step 1 - swapping tx and rx indices in the filename
-        basename = os.path.basename(filename)
+        basename = Path(filename).name
         str_list = list(basename)
 
         # Objective: 'O1_28.paths.t001_21.r014.p2m' -> 'O1_28.paths.t001_14.r021.p2m'
@@ -217,7 +213,7 @@ def extract_tx_pos(filename: str) -> np.ndarray:
         new_str += str_list[-4:]  # add end ('.p2m')
 
         new_basename = "".join(new_str)
-        new_filename = os.path.join(os.path.dirname(filename), new_basename)
+        new_filename = str(Path(str(Path(filename).parent)) / new_basename)
 
         # Step 2 - parse pl file to get tx pos
         try:
@@ -227,8 +223,8 @@ def extract_tx_pos(filename: str) -> np.ndarray:
             if tx_pos is not None and len(tx_pos) == 0:
                 print(f"TX position not found in pl file {pl_filename}")
                 tx_pos = None
-        except Exception as e:
-            print(f"\nWarning: Could not extract TX position from {new_filename}: {e}")
+        except (OSError, ValueError, IndexError) as err:
+            print(f"\nWarning: Could not extract TX position from {new_filename}: {err}")
             tx_pos = None
 
     return tx_pos
@@ -247,8 +243,12 @@ def read_pl_p2m_file(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]
         - path_loss: Array of path losses with shape (n_points, 1)
 
     """
-    assert filename.endswith(".p2m")  # should be a .p2m file
-    assert ".pl." in filename  # should be the pathloss p2m
+    if not filename.endswith(".p2m"):
+        msg = "Expected a .p2m file"
+        raise ValueError(msg)
+    if ".pl." not in filename:
+        msg = "Expected pathloss .p2m file containing '.pl.'"
+        raise ValueError(msg)
 
     # Initialize empty lists for matrices
     xyz_list = []
@@ -258,7 +258,7 @@ def read_pl_p2m_file(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]
     # Define (regex) patterns to match numbers (optionally signed floats)
     re_data = r"-?\d+\.?\d*"
 
-    with open(filename) as fp:
+    with Path(filename).open() as fp:
         lines = fp.readlines()
 
     for line in lines:
@@ -278,6 +278,9 @@ def read_pl_p2m_file(filename: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]
 
 if __name__ == "__main__":
     file = "./P2Ms/ASU_campus_just_p2m/study_area_asu5/asu_campus.paths.t001_01.r004.p2m"
-    file = "./P2Ms/simple_street_canyon/study_rays=0.25_res=2m_3ghz/simple_street_canyon_test.paths.t001_01.r002.p2m"
+    file = (
+        "./P2Ms/simple_street_canyon/study_rays=0.25_res=2m_3ghz/"
+        "simple_street_canyon_test.paths.t001_01.r002.p2m"
+    )
     data = paths_parser(file)
     print(data)

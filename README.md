@@ -8,6 +8,7 @@
     <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/DeepMIMO/DeepMIMO.svg"></a>
     <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv"></a>
     <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
+    <a href="https://codecov.io/gh/DeepMIMO/DeepMIMO"><img src="https://codecov.io/gh/DeepMIMO/DeepMIMO/graph/badge.svg?token=CODECOV_TOKEN" alt="codecov"></a>
   </p>
   <img src="docs/assets/dm.gif" alt="DeepMIMO animated showcase" width="800"/>
 </div>
@@ -45,7 +46,6 @@
 - 🧪 **Easy ML benchmarking across sites** — Find 100s of datasets in the [Scenarios Database](https://deepmimo.net/scenarios)
 - 🔁 **Reproduce benchmarks** — Search papers by topic and application in [Publications Database](https://deepmimo.net/publications).
 - 🚀 **Feature-rich toolbox** — Explore a wide array of wireless utilities in our [Notebook Tutorials](https://deepmimo.net/docs/manual_full.html#examples-manual).
-
 - 🔌 **Seamless integration** — From Sionna RT/InSite/AODT to Sionna/MATLAB 5G/NeoRadium.
 - 📦 **Shareable datasets** — Versioned scenarios, open formats. Explore in the [Online Visualizer](https://deepmimo.net/visualizer)
 - 🤗 **User friendly** — Great docs, practical examples, easy install, and available on Colab.
@@ -93,46 +93,60 @@ dm.upload('my_scenario', 'your-api-key')
 ## Project Structure
 ```
 deepmimo/
-├── api.py                  # API interface with DeepMIMO database
-├── scene.py                # Scene (3D environment) management
-├── consts.py               # Constants and configurations
-├── info.py                 # Information on matrices and parameters
-├── materials.py            # Material properties
-├── txrx.py                 # Transmitter and receiver
-├── rt_params.py            # Ray tracing parameters
-├── general_utils.py        # Utility functions
+├── api/                    # Database API
+│   ├── download.py         # Download scenarios from database
+│   ├── search.py           # Search scenarios in database
+│   └── upload.py           # Upload scenarios to database
 ├── converters/             # Ray tracer output converters
 │   ├── aodt/               # AODT converter
 │   ├── sionna_rt/          # Sionna RT converter
 │   ├── wireless_insite/    # Wireless Insite converter
 │   ├── converter.py        # Base converter class
 │   └── converter_utils.py  # Converter utilities
+├── core/                   # Core data models
+│   ├── materials.py        # Material properties
+│   ├── rt_params.py        # Ray tracing parameters
+│   ├── scene.py            # Physical environment representation
+│   └── txrx.py             # Transmitter/receiver configurations
+├── datasets/               # Dataset operations
+│   ├── array_wrapper.py    # Array management utilities
+│   ├── dataset.py          # Dataset, MacroDataset, DynamicDataset classes
+│   ├── generate.py         # Dataset generation with channel computation
+│   ├── load.py             # Dataset loading functionality
+│   ├── sampling.py         # User sampling utilities
+│   ├── summary.py          # Dataset summary functions
+│   └── visualization.py    # Plotting and visualization tools
 ├── exporters/              # Data exporters
 │   ├── aodt_exporter.py    # AODT format exporter
 │   └── sionna_exporter.py  # Sionna format exporter
-├── generator/              # Dataset generator
-│   ├── core.py             # Core generation functionality
-│   ├── dataset.py          # Dataset class and management
-│   ├── channel.py          # Channel generation
-│   ├── geometry.py         # Geometric calculations
+├── generator/              # Channel generation
 │   ├── ant_patterns.py     # Antenna pattern definitions
-│   ├── array_wrapper.py    # Array management utilities
-│   ├── visualization.py    # Visualization tools
-│   └── generator_utils.py  # Generator utilities
-├── integrations/           # Integrations with 5G simulation tools
+│   ├── channel.py          # MIMO channel computation
+│   └── geometry.py         # Geometric calculations and beamforming
+├── integrations/           # Integration with 5G simulation tools
+│   ├── matlab/             # MATLAB 5G Toolbox integration
 │   ├── sionna_adapter.py   # Sionna integration
-│   └── matlab/             # Matlab 5GNR integration
-└── pipelines/              # Automatic raytracing pipelines
-    ├── sionna_rt/          # Sionna raytracer pipeline
-    ├── wireless_insite/    # Wireless Insite pipeline
-    ├── blender_osm.py      # Blender OSM export utilities
-    ├── TxRxPlacement.py    # Transmitter/Receiver placement
-    └── utils/              # Pipeline utilities
+│   └── web.py              # DeepMIMO web format export
+├── pipelines/              # Automatic ray tracing pipelines
+│   ├── sionna_rt/          # Sionna raytracer pipeline
+│   ├── wireless_insite/    # Wireless Insite pipeline
+│   ├── blender_osm.py      # Blender OSM export utilities
+│   ├── txrx_placement.py   # Transmitter/receiver placement
+│   └── utils/              # Pipeline utilities
+├── utils/                  # Utility modules
+│   ├── data_structures.py  # Custom data structures
+│   ├── dict_utils.py       # Dictionary utilities
+│   ├── geometry.py         # Geometric utility functions
+│   ├── info.py             # Information on matrices and parameters
+│   ├── io.py               # File I/O operations
+│   └── scenarios.py        # Scenario management functions
+├── config.py               # Configuration management
+└── consts.py               # Constants and default values
 
 Additional directories:
-├── scripts/                # Utility scripts and pipelines
 ├── docs/                   # Documentation
-└── test/                   # Test suite (wip)
+├── scripts/                # Utility scripts
+└── tests/                  # Test suite
 ```
 
 ## Build the Docs
@@ -141,8 +155,10 @@ After cloning the repository:
 
 | Step    | Command                 | Description                        |
 |---------|-------------------------|------------------------------------|
-| Install | `pip install .[doc]`    | Install docs dependencies          |
+| Install | `pip install .[dev]`    | Install development dependencies   |
 | Serve   | `mkdocs serve`          | Preview at http://localhost:8000   |
+
+Change `execute: false` to `execute: true` in `mkdocs.yml` to run the tutorials and preserve cell outputs. 
 
 ## Contributing
 
@@ -176,7 +192,7 @@ DeepMIMO is not a simulator; it’s a standardized ray-tracing toolchain that *r
 <details>
 <summary><b>3) How long do dataset downloads take?</b></summary>
 
-A *few* minutes. Sometimes seconds. Data is stored on Backblaze B2, so in practice the transfer speeds are limited by the internet connection. E.g., at 50 Mbps the ASU Campus scenario would take ~5 seconds to download.
+A *few* minutes. Sometimes seconds. Data is stored on super-fast and available object storage, so in practice the transfer speeds are limited by the internet connection (see [speedtest.net](https://www.speedtest.net/)). At 50 Mbps the ASU Campus scenario with 85 thousand candidate users would take ~5 seconds to download.
 
 </details>
 
