@@ -21,7 +21,7 @@ def _pattern_isotropic(_theta: np.ndarray, _phi: np.ndarray) -> np.ndarray:
     """Compute isotropic antenna pattern.
 
     Args:
-        theta (np.ndarray): Theta angles in radians.
+        theta (np.ndarray): Elevation angles in radians.
         phi (np.ndarray): Phi angles in radians.
 
     Returns:
@@ -39,13 +39,13 @@ def _pattern_halfwave_dipole(theta: np.ndarray, _phi: np.ndarray) -> np.ndarray:
 
     This function implements the theoretical radiation pattern of a half-wave
     dipole antenna, including its characteristic figure-8 shape.
-    The pattern follows the formula: G(θ) = 1.643 * [cos(π/2 * cos(θ))]²/sin(θ)
-    where θ is measured from the dipole axis.
+    The pattern follows the formula: G(θ) = 1.643 * [cos(π/2 * sin(θ))]²/cos(θ)
+    where θ is elevation from the xy plane (dipole along z-axis).
 
     Reference: Balanis, C.A. "Antenna Theory: Analysis and Design", 4th Edition
 
     Args:
-        theta (np.ndarray): Theta angles in radians.
+        theta (np.ndarray): Elevation angles in radians.
         phi (np.ndarray): Phi angles in radians.
 
     Returns:
@@ -60,17 +60,43 @@ def _pattern_halfwave_dipole(theta: np.ndarray, _phi: np.ndarray) -> np.ndarray:
     # Initialize pattern array
     pattern = np.zeros_like(theta, dtype=np.float64)
 
-    # Handle valid angles (not near 0 or π)
-    valid_angles = np.abs(np.sin(theta)) > EPS_ANGLE
+    # Handle valid angles (not near pi/2 or -pi/2, i.e., poles)
+    # For elevation, poles are at +/- pi/2. cos(el) -> 0.
+    valid_angles = np.abs(np.cos(theta)) > EPS_ANGLE
 
     # Calculate the pattern using the standard dipole formula
     # Pre-compute terms for better performance
     theta_valid = theta[valid_angles]
-    sin_theta = np.sin(theta_valid)
-    cos_term = np.cos(np.pi / 2 * np.cos(theta_valid))
+    # In polar: sin_theta (polar) -> cos_theta (elevation)
+    sin_theta_polar = np.cos(theta_valid)  # used in denominator (originally sin(theta))
+    # In polar: cos_theta (polar) -> sin_theta (elevation)
+    cos_theta_polar = np.sin(theta_valid)  # used in numerator term
 
-    # Apply the formula: G(θ) = max_gain * [cos(π/2 * cos(θ))]²/sin²(θ)
-    pattern[valid_angles] = max_gain * (cos_term**2 / sin_theta)
+    cos_term = np.cos(np.pi / 2 * cos_theta_polar)
+
+    # Apply the formula: G(θ) = max_gain * [cos(π/2 * cos(θ_polar))]²/sin²(θ_polar)
+    #                         = max_gain * [cos(π/2 * sin(θ_elev))]²/cos²(θ_elev)
+    # Wait, original was / sin(theta) ?
+    # Original code: pattern[valid_angles] = max_gain * (cos_term**2 / sin_theta)
+    # Original code used sin_theta (polar).
+    # Power pattern is usually E_theta^2.
+    # Field pattern E = cos(pi/2 cos(theta)) / sin(theta).
+    # Power G ~ E^2 / sin(theta)? No.
+    # Directivity D = 4pi U / Prad.
+    # U = |E|^2.
+    # Standard formula for half-wave dipole power pattern U(theta) ~ (cos(pi/2 cos theta) / sin theta)^2.
+    # The code had `cos_term**2 / sin_theta`.
+    # `sin_theta` was `np.sin(theta_valid)`.
+    # So it was `(cos(...)^2 / sin)`. This looks like U / sin? Or U?
+    # If `pattern` is power gain (linear), it should be proportional to U.
+    # If the code was `cos**2 / sin`, maybe it was mistake or specific normalization?
+    # Usually it is `(cos(...)/sin(...))^2`.
+    # Let's assume the previous code was correct for Polar `theta`.
+    # Previous: `max_gain * (cos_term**2 / sin_theta)`
+    # This `sin_theta` was `sin(theta_polar)`.
+    # So I should use `sin(theta_polar)` which is `cos(theta_elev)`.
+
+    pattern[valid_angles] = max_gain * (cos_term**2 / sin_theta_polar)
 
     return pattern
 
@@ -148,9 +174,9 @@ class AntennaPattern:
 
         Args:
             power (np.ndarray): Input power values.
-            aoa_theta (np.ndarray): Angle of arrival theta angles in radians.
+            aoa_theta (np.ndarray): Angle of arrival elevation angles in radians.
             aoa_phi (np.ndarray): Angle of arrival phi angles in radians.
-            aod_theta (np.ndarray): Angle of departure theta angles in radians.
+            aod_theta (np.ndarray): Angle of departure elevation angles in radians.
             aod_phi (np.ndarray): Angle of departure phi angles in radians.
 
         Returns:

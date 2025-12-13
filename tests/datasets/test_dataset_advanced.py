@@ -101,9 +101,8 @@ def test_trim_by_fov(dataset_full) -> None:
     # User 0: Path 0 @ az=0, Path 1 @ az=180
     ds.aoa_az[0, 0] = 0
     ds.aoa_az[0, 1] = 180
-    # Set elevation to 90 (equator) to ensure azimuth is preserved
-    # (If theta=0 (pole), azimuth is undefined/lost in rotation)
-    ds.aoa_el[:] = 90
+    # Set elevation to 0 (horizon) to ensure azimuth is preserved
+    ds.aoa_el[:] = 0.0
 
     # FoV: +/- 90 deg (180 deg total) around 0 (typically centered on boresight)
     # If UE boresight is 0, 0 is in, 180 is out (back).
@@ -115,6 +114,15 @@ def test_trim_by_fov(dataset_full) -> None:
     # Path 1 (180 deg) is outside.
     # User 1 has paths at 0 deg (default initialization). So User 1 has 2 paths kept.
     # So max paths is 2.
+    #
+    # Wait: Rotation by default is 0. So raw angles are used.
+    # User 0: az=0, az=180.
+    # User 1: az=0, az=0.
+    # FoV is [120, 180]. 120 horiz => +/- 60.
+    # Path 0 (0 deg): 0 <= 60 or 0 >= 300. True.
+    # Path 1 (180 deg): 180 <= 60 or 180 >= 300. False.
+    # So for User 0, path 1 should be NaN.
+
     assert ds_fov.aoa_az.shape == (4, 2)
     assert not np.isnan(ds_fov.aoa_az[0, 0])  # User 0 Path 0 kept
     assert np.isnan(ds_fov.aoa_az[0, 1])  # User 0 Path 1 dropped (NaN)

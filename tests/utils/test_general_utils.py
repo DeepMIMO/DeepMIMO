@@ -142,6 +142,7 @@ def test_coordinate_conversion() -> None:
     assert np.allclose(sph[0], [1, 0, 0])
 
     # Point (0,1,0): r=1, az=pi/2, el=0
+    # Note: cartesian_to_spherical returns (r, az, el)
     assert np.allclose(sph[1], [1, np.pi / 2, 0])
 
     # Point (0,0,1): r=1, az=0 (undefined), el=pi/2
@@ -149,19 +150,16 @@ def test_coordinate_conversion() -> None:
     assert np.isclose(sph[2, 2], np.pi / 2)
 
     # Test spherical to cartesian (inverse)
-    # NOTE: spherical_to_cartesian expects inclination (from z-axis) but
-    # cartesian_to_spherical returns elevation (from xy-plane). Convert before testing inverse.
-    sph_for_inverse = sph.copy()
-    sph_for_inverse[..., 1] = (
-        np.pi / 2 - sph[..., 2]
-    )  # Inclination = pi/2 - Elevation (if Elevation is from horizon)
-    # cartesian_to_spherical returns (r, az, el); spherical_to_cartesian expects (r, inc, az).
-    # Implementation treats "elevation" as inclination, so swap indices and convert el->inc.
+    # NOTE: spherical_to_cartesian expects elevation (from horizon).
+    # cartesian_to_spherical returns (r, az, el).
 
+    # No need to convert indices or angles now as both functions use the same convention.
+    # But we need to swap az/el order because cartesian_to_spherical returns (r, az, el)
+    # and spherical_to_cartesian expects (r, el, az).
     sph_input = np.zeros_like(sph)
     sph_input[..., 0] = sph[..., 0]  # r
-    sph_input[..., 1] = np.pi / 2 - sph[..., 2]  # inclination from z = pi/2 - elevation from xy
-    sph_input[..., 2] = sph[..., 1]  # azimuth
+    sph_input[..., 1] = sph[..., 2]  # el
+    sph_input[..., 2] = sph[..., 1]  # az
 
     back_cart = general_utils.spherical_to_cartesian(sph_input)
     assert np.allclose(back_cart, cart, atol=1e-7)

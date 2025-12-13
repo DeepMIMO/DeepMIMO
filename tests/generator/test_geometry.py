@@ -38,7 +38,7 @@ def test_array_response_batch_matches_single() -> None:
     n_paths = 5
 
     rng = np.random.default_rng(42)
-    theta = rng.uniform(0, np.pi, size=(n_users, n_paths))
+    theta = rng.uniform(-np.pi / 2, np.pi / 2, size=(n_users, n_paths))
     phi = rng.uniform(0, 2 * np.pi, size=(n_users, n_paths))
 
     # Add NaNs
@@ -77,7 +77,7 @@ def test_array_response_batch_edge_cases() -> None:
     n_ant = len(ant_ind)
 
     # Single user/path
-    theta = np.array([[np.pi / 4]])
+    theta = np.array([[0.0]])  # Horizon
     phi = np.array([[np.pi / 3]])
     result = array_response_batch(ant_ind, theta, phi, kd)
     assert result.shape == (1, n_ant, 1)
@@ -90,7 +90,7 @@ def test_array_response_batch_edge_cases() -> None:
     assert np.all(result == 0)
 
     # Partial NaN
-    theta = np.array([[np.pi / 4, np.nan, np.pi / 3], [np.nan, np.pi / 6, np.pi / 2]])
+    theta = np.array([[0.0, np.nan, np.pi / 3], [np.nan, -np.pi / 6, np.pi / 2]])
     phi = np.array([[np.pi / 3, np.nan, np.pi / 4], [np.nan, np.pi / 2, np.pi / 6]])
     result = array_response_batch(ant_ind, theta, phi, kd)
 
@@ -107,9 +107,9 @@ def test_array_response_batch_edge_cases() -> None:
 @pytest.mark.parametrize(
     ("fov_deg", "theta_rad", "phi_rad", "expected"),
     [
-        ((360.0, 180.0), np.pi / 4, np.pi / 2, True),
-        ((180.0, 90.0), np.pi / 2, 0.0, True),
-        ((60.0, 30.0), np.pi / 2, np.pi, False),
+        ((360.0, 180.0), 0.0, np.pi / 2, True),  # Horizon
+        ((180.0, 90.0), 0.0, 0.0, True),  # Horizon
+        ((60.0, 30.0), np.pi / 2, np.pi, False),  # Zenith (90 deg) is outside +/- 15 deg
     ],
 )
 def test_apply_fov_single_vs_batch(fov_deg, theta_rad, phi_rad, expected) -> None:
@@ -125,7 +125,7 @@ def test_apply_fov_batch_equivalence_random() -> None:
     """Apply FOV filter to random batches and compare vectorized vs scalar."""
     rng = np.random.default_rng(0)
     n_users, n_paths = 50, 7
-    theta = rng.uniform(0, np.pi, (n_users, n_paths))
+    theta = rng.uniform(-np.pi / 2, np.pi / 2, (n_users, n_paths))  # Elevation: -90 to 90
     phi = rng.uniform(0, 2 * np.pi, (n_users, n_paths))
     fov = (180.0, 90.0)
 
@@ -161,7 +161,7 @@ def test_rotate_angles_batch_equivalence() -> None:
     """Batch and single angle rotations should yield same results."""
     rng = np.random.default_rng(1)
     n_users, n_paths = 20, 4
-    theta = rng.uniform(0, 180, (n_users, n_paths))  # degrees
+    theta = rng.uniform(-90, 90, (n_users, n_paths))  # degrees
     phi = rng.uniform(0, 360, (n_users, n_paths))  # degrees
     rotation_single = np.array([30.0, 45.0, 60.0])  # degrees
     rotation_per_user = rng.uniform(-90, 90, (n_users, 3))  # degrees

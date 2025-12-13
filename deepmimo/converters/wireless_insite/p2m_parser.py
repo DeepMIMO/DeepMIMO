@@ -122,9 +122,11 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
             data[c.POWER_PARAM_NAME][rx_i, path_idx] = np.float32(i3)  # i3 = <received power(dBm)>
             data[c.PHASE_PARAM_NAME][rx_i, path_idx] = np.float32(i4)  # i4 = <phase(deg)>
             data[c.DELAY_PARAM_NAME][rx_i, path_idx] = np.float32(i5)  # i5 = <time of arrival(sec)>
-            data[c.AOA_EL_PARAM_NAME][rx_i, path_idx] = np.float32(i6)  # i6 = <arrival theta(deg)>
+            data[c.AOA_EL_PARAM_NAME][rx_i, path_idx] = 90.0 - np.float32(
+                i6
+            )  # i6 = <arrival theta(deg)>
             data[c.AOA_AZ_PARAM_NAME][rx_i, path_idx] = np.float32(i7)  # i7 = <arrival phi(deg)>
-            data[c.AOD_EL_PARAM_NAME][rx_i, path_idx] = np.float32(
+            data[c.AOD_EL_PARAM_NAME][rx_i, path_idx] = 90.0 - np.float32(
                 i8,
             )  # i8 = <departure theta(deg)>
             data[c.AOD_AZ_PARAM_NAME][rx_i, path_idx] = np.float32(i9)  # i9 = <departure phi(deg)>

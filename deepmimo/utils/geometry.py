@@ -33,7 +33,7 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
             r is the magnitude (distance from origin). Leading dimensions allowed; last
             dimension must be 3.
             Reference: https://en.wikipedia.org/wiki/Spherical_coordinate_system
-            Note: DeepMIMO uses elevation from the xy plane, while Sionna/Wikipedia use z-axis.
+            Note: DeepMIMO uses elevation from the xy plane (0 at horizon).
 
     Returns:
         Array of same shape containing Cartesian coordinates (x, y, z).
@@ -43,7 +43,7 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     r = spherical_coords[..., 0]
     elevation = spherical_coords[..., 1]
     azimuth = spherical_coords[..., 2]
-    cartesian_coords[..., 0] = r * np.sin(elevation) * np.cos(azimuth)
-    cartesian_coords[..., 1] = r * np.sin(elevation) * np.sin(azimuth)
-    cartesian_coords[..., 2] = r * np.cos(elevation)
+    cartesian_coords[..., 0] = r * np.cos(elevation) * np.cos(azimuth)
+    cartesian_coords[..., 1] = r * np.cos(elevation) * np.sin(azimuth)
+    cartesian_coords[..., 2] = r * np.sin(elevation)
     return cartesian_coords

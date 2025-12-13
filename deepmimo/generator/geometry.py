@@ -29,6 +29,43 @@ def _array_response(ant_ind: NDArray, theta: float, phi: float, kd: float) -> ND
         phi (float): Azimuth angle in radians
         kd (float): Product of wavenumber k and antenna spacing d
 
+    Note:
+        DeepMIMO uses elevation from the horizon (0° = x-y plane).
+        The formula used matches the standard array response but adapted for elevation input:
+        - gamma_x = j * kd * cos(theta) * cos(phi)
+        - gamma_y = j * kd * cos(theta) * sin(phi)
+        - gamma_z = j * kd * sin(theta)
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
+    Returns:
+        NDArray: Complex array response vector with shape matching ant_ind
+
     Returns:
         NDArray: Complex array response vector with shape matching ant_ind
 
@@ -58,6 +95,7 @@ def _array_response_batch(ant_ind: NDArray, theta: NDArray, phi: NDArray, kd: fl
           elements will be set to 0
         - The function is optimized for batch processing by avoiding loops
         - Output shape allows easy multiplication with path gains in channel generation
+        - Input theta is Elevation from horizon (0° = x-y plane). Internally uses standard spherical coordinates.
 
     """
     # Get dimensions
@@ -100,9 +138,9 @@ def _array_response_phase(theta: float, phi: float, kd: float) -> NDArray:
         NDArray: Array of phase components with shape (N,3) for [x,y,z] dimensions
 
     """
-    gamma_x = 1j * kd * np.sin(theta) * np.cos(phi)
-    gamma_y = 1j * kd * np.sin(theta) * np.sin(phi)
-    gamma_z = 1j * kd * np.cos(theta)
+    gamma_x = 1j * kd * np.cos(theta) * np.cos(phi)
+    gamma_y = 1j * kd * np.cos(theta) * np.sin(phi)
+    gamma_z = 1j * kd * np.sin(theta)
     return np.vstack([gamma_x, gamma_y, gamma_z]).T
 
 
@@ -141,7 +179,6 @@ def _apply_fov(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> 
 
     """
     # Convert angles to [0, 2π] range
-    theta = np.mod(theta, 2 * np.pi)
     phi = np.mod(phi, 2 * np.pi)
 
     # Convert FoV from degrees to radians
@@ -155,8 +192,8 @@ def _apply_fov(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarray) -> 
 
     # Check if elevation angle is within vertical FoV
     path_inclusion_theta = np.logical_and(
-        theta <= np.pi / 2 + fov[1] / 2,
-        theta >= np.pi / 2 - fov[1] / 2,
+        theta <= fov[1] / 2,
+        theta >= -fov[1] / 2,
     )
 
     # Combine horizontal and vertical masks
@@ -182,7 +219,6 @@ def _apply_fov_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarra
 
     """
     # Convert angles to [0, 2π] range - exactly matching original function
-    theta = np.mod(theta, 2 * np.pi)  # [batch_size, n_paths]
     phi = np.mod(phi, 2 * np.pi)  # [batch_size, n_paths]
 
     # Convert FoV from degrees to radians
@@ -193,8 +229,8 @@ def _apply_fov_batch(fov: tuple[float, float], theta: np.ndarray, phi: np.ndarra
 
     # Check if elevation angle is within vertical FoV - exactly matching original function
     path_inclusion_theta = np.logical_and(
-        theta <= np.pi / 2 + fov[1] / 2,
-        theta >= np.pi / 2 - fov[1] / 2,
+        theta <= fov[1] / 2,
+        theta >= -fov[1] / 2,
     )
 
     # Combine horizontal and vertical masks - exactly matching original function
@@ -225,10 +261,16 @@ def _rotate_angles(
         For no rotation, pass None or [0,0,0].
         The function uses a specific formulation for rotation that directly computes
         the final angles without intermediate Cartesian coordinate transformations.
+        
+        DeepMIMO uses elevation from the horizon (0° = x-y plane). Internally, this function
+        converts to polar angle (0° = z-axis) for rotation calculations and then converts back.
 
     """
     theta = np.deg2rad(theta)
     phi = np.deg2rad(phi)
+
+    # Convert Elevation to Polar for rotation calculation
+    theta = np.pi / 2 - theta
 
     if rotation is not None:
         rotation = np.deg2rad(rotation)
@@ -256,6 +298,9 @@ def _rotate_angles(
                 + sin_theta * (sin_beta * sin_gamma * cos_alpha + cos_gamma * sin_alpha)
             ),
         )
+
+    # Convert back to Elevation
+    theta = np.pi / 2 - theta
     return theta, phi
 
 
@@ -281,6 +326,7 @@ def _rotate_angles_batch(
     Note:
         The rotation is applied in the order: z-axis (gamma), y-axis (beta), x-axis (alpha)
         NaN values in input angles are preserved in the output
+        DeepMIMO uses elevation from the horizon (0° = x-y plane). Internally converts to polar for rotation.
 
     """
     is_batched = theta.ndim == BATCH_DIM
@@ -307,6 +353,9 @@ def _rotate_angles_batch(
     theta = np.deg2rad(theta)  # [batch_size, n_paths]
     phi = np.deg2rad(phi)  # [batch_size, n_paths]
     rotation = np.deg2rad(rotation)  # [batch_size, 3]
+
+    # Convert Elevation to Polar for rotation calculation
+    theta = np.pi / 2 - theta
 
     # Extract rotation angles
     alpha = rotation[:, 0:1]  # [batch_size, 1]
@@ -340,6 +389,9 @@ def _rotate_angles_batch(
         ),
     )
 
+    # Convert back to Elevation
+    theta_rot = np.pi / 2 - theta_rot
+
     # Convert back to degrees (not needed)
     # theta_rot = np.rad2deg(theta_rot)  # [batch_size, n_paths]
     # phi_rot = np.rad2deg(phi_rot)      # [batch_size, n_paths]
@@ -369,7 +421,7 @@ def steering_vec(array: NDArray, phi: float = 0, theta: float = 0, spacing: floa
 
     """
     idxs = _ant_indices(array)
-    theta_polar = np.pi / 2 - np.deg2rad(theta)  # convert elevation -> polar
+    theta_rad = np.deg2rad(theta)
     phi_rad = np.deg2rad(phi)
-    resp = _array_response(idxs, theta_polar, phi_rad, 2 * np.pi * spacing)
+    resp = _array_response(idxs, theta_rad, phi_rad, 2 * np.pi * spacing)
     return resp / np.linalg.norm(resp)

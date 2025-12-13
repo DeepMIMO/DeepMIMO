@@ -47,9 +47,9 @@ def test_single_dipole() -> None:
     # Test at different angles
     test_cases = [
         # power, theta, expected relative gain
-        (1.0, 90.0, 1.0),  # Maximum gain at 90 degrees (broadside)
-        (1.0, 0.0, 0.0),  # Null at 0 degrees (endfire)
-        (1.0, 180.0, 0.0),  # Null at 180 degrees (endfire)
+        (1.0, 0.0, 1.0),  # Maximum gain at 0 degrees elevation (broadside/horizon)
+        (1.0, 90.0, 0.0),  # Null at 90 degrees (endfire/zenith)
+        (1.0, -90.0, 0.0),  # Null at -90 degrees (endfire/nadir)
         (1.0, 45.0, 0.08),  # Gain at 45 degrees (~0.08 of maximum)
     ]
 
@@ -68,9 +68,9 @@ def test_single_dipole() -> None:
             # Normalize result to maximum gain for comparison
             max_result = pattern.apply(
                 power=np.array([1.0]),
-                aoa_theta=np.array([np.pi / 2]),
+                aoa_theta=np.array([0.0]),
                 aoa_phi=np.array([0.0]),
-                aod_theta=np.array([np.pi / 2]),
+                aod_theta=np.array([0.0]),
                 aod_phi=np.array([0.0]),
             )
             relative_gain = result[0] / max_result[0]
@@ -86,7 +86,7 @@ def test_batch_dipole() -> None:
 
     # Test multiple angles simultaneously
     power = np.ones((4, 1))  # Same power for all test cases
-    theta = np.deg2rad(np.array([[90.0], [0.0], [180.0], [45.0]]))  # Different angles
+    theta = np.deg2rad(np.array([[0.0], [90.0], [-90.0], [45.0]]))  # Different angles
     phi = np.zeros_like(theta)
 
     result = pattern.apply_batch(
@@ -94,13 +94,13 @@ def test_batch_dipole() -> None:
     )
 
     # Normalize results
-    max_val = result[0, 0]  # Value at 90 degrees
+    max_val = result[0, 0]  # Value at 0 degrees
     normalized = result / max_val
 
     # Check expected pattern
-    assert abs(normalized[0, 0] - 1.0) < 0.01, "Unexpected gain at 90 degrees"
-    assert abs(normalized[1, 0]) < 1e-10, "Expected zero gain at 0 degrees"
-    assert abs(normalized[2, 0]) < 1e-10, "Expected zero gain at 180 degrees"
+    assert abs(normalized[0, 0] - 1.0) < 0.01, "Unexpected gain at 0 degrees"
+    assert abs(normalized[1, 0]) < 1e-10, "Expected zero gain at 90 degrees"
+    assert abs(normalized[2, 0]) < 1e-10, "Expected zero gain at -90 degrees"
     assert abs(normalized[3, 0] - 0.08) < 0.01, "Unexpected gain at 45 degrees"
 
 

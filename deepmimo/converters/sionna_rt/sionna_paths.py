@@ -195,8 +195,12 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
 
         data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_r[rel_rx_idx, path_idxs])
         data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_t[rel_rx_idx, path_idxs])
-        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_r[rel_rx_idx, path_idxs])
-        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_t[rel_rx_idx, path_idxs])
+        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = 90.0 - np.rad2deg(
+            theta_r[rel_rx_idx, path_idxs]
+        )
+        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = 90.0 - np.rad2deg(
+            theta_t[rel_rx_idx, path_idxs]
+        )
 
         data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = tau[rel_rx_idx, path_idxs]
 

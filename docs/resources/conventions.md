@@ -25,9 +25,12 @@ Additionally, all angles are in degrees (not radians)
   - Range: [0°, 360°)
 
 - Elevation angle (θ):
-  - 0° points along positive z-axis
-  - 90° is in x-y plane
-  - Range: [0°, 180°)
+  - 0° is in x-y plane (Horizon)
+  - 90° points along positive z-axis (Zenith)
+  - -90° points along negative z-axis (Nadir)
+  - Range: [-90°, 90°]
+
+Note: This differs from the standard physics convention (where 0° is the zenith). DeepMIMO uses elevation from the horizon.
 
 ## Array Elements and Channel Indexing
 
