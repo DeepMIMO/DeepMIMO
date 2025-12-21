@@ -1,6 +1,7 @@
 site_name: DeepMIMO Documentation
 site_description: Open datasets, converters, and tooling for realistic MIMO channel research.
 site_url: https://deepmimo.github.io/DeepMIMO/
+use_directory_urls: false
 repo_name: DeepMIMO/DeepMIMO
 repo_url: https://github.com/DeepMIMO/DeepMIMO
 edit_uri: edit/mkdocs/docs/
