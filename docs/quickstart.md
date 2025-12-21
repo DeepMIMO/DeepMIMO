@@ -34,7 +34,7 @@ print(dataset.channels.shape)
 ```
 
 !!! tip
-    See the [Channel Generation Examples](manual.ipynb#channel-generation) for the default parameters and how to configure channel generation.
+    See the [Channel Generation Examples](tutorials/manual.py#channel-generation) for the default parameters and how to configure channel generation.
 
 ## Visualize Dataset
 
@@ -116,4 +116,4 @@ This will print 3 tables, the fundamental matrices, the computed attributes, and
 All these attributes can be accessed via dataset.`<attribute_name>`, just like we did in `dataset.power.plot()`
 
 
-For more advanced usage and features, we recommend exploring the [Examples Manual](manual.ipynb), leveraging the API reference when needed.
+For more advanced usage and features, we recommend exploring the [Examples Manual](tutorials/manual.py), leveraging the API reference when needed.
