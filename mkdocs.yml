@@ -120,6 +120,7 @@ plugins:
       glob:
         - "_build/**"
         - "manual_full.ipynb"
+        - "tutorials/__init__.py"
 
 markdown_extensions:
   - admonition

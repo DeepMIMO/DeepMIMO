@@ -225,4 +225,4 @@ These limitations apply to both exporters:
 
 - [Converters Capabilities](converters.md) - Converting exported data to DeepMIMO format
 - [AODT Converter](../../api/converter.md#aodt) - AODT to DeepMIMO conversion
-- [Sionna Converter](../../api/converter.md#sionna) - Sionna to DeepMIMO conversion
+- [Sionna Converter](../../api/converter.md#sionna-rt) - Sionna to DeepMIMO conversion
