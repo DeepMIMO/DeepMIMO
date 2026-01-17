@@ -213,7 +213,7 @@ print("Top 5 most common multipath signatures:")
 for idx in reversed(top_5_idx):
     hash_val = unique_hashes[idx]
     count = counts[idx]
-    print(f"  Hash {hash_val}: {count} users ({count/len(active_hashes)*100:.1f}%)")
+    print(f"  Hash {hash_val}: {count} users ({count / len(active_hashes) * 100:.1f}%)")
 
 # %% [markdown]
 # ---

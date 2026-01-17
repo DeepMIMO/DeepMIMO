@@ -740,7 +740,7 @@ class Dataset(DotDict):
         # Pad all digit lists
         padded = np.full((len(digit_lists), max_len), pad_value, dtype=int)
         for i, digits in enumerate(digit_lists):
-            padded[i, :len(digits)] = digits
+            padded[i, : len(digits)] = digits
 
         return padded.reshape((*inter.shape, max_len))
 
@@ -806,7 +806,7 @@ class Dataset(DotDict):
                 continue
 
             # Get valid path IDs for this user and sort them
-            valid_paths = sorted(path_ids[u, :num_paths[u]])
+            valid_paths = sorted(path_ids[u, : num_paths[u]])
             path_signature = tuple(valid_paths)
 
             # Assign hash ID

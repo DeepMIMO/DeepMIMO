@@ -221,7 +221,9 @@ GRID_SIZE_PARAM_NAME = "grid_size"
 GRID_SPACING_PARAM_NAME = "grid_spacing"
 
 # Multipath Lifetime Map (MPLM) parameters
-INTER_VEC_PARAM_NAME = "inter_vec"  # Vectorized interaction codes (n_users, n_paths, max_n_interactions)
+INTER_VEC_PARAM_NAME = (
+    "inter_vec"  # Vectorized interaction codes (n_users, n_paths, max_n_interactions)
+)
 PATH_IDS_PARAM_NAME = "path_ids"  # Unique IDs for paths based on interaction signatures
 PATH_HASH_PARAM_NAME = "path_hash"  # Hash for each user's multipath mix
 
