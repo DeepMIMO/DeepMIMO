@@ -9,6 +9,17 @@ import deepmimo as dm
 
 from tqdm import tqdm
 
+dataset = dm.load('asu_campus_3p5', max_paths=3)
+
+idx_1 = 10
+idx_2 = 11
+
+dataset.plot_rays(idx_1, proj_3D=False)
+dataset.plot_rays(idx_2, proj_3D=False)
+
+dataset.print_rx(idx_1, path_idxs=[0])
+dataset.print_rx(idx_2, path_idxs=[0])
+
 #%% PATH INTERPOLATION 1: FOR ONE PAIR OF USERS
 
 # Make a function that interpolates the path between 2 users
@@ -333,7 +344,7 @@ for i in range(3):
     plt.legend()
     plt.show()
 
-#%%
+#%% plot IQ from H
 
 # Expand to uniform sequences
 # all_seqs_mat_t3 = expand_to_uniform_sequences(all_seqs, target_len=95, stride=1)
