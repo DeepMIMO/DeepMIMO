@@ -36,7 +36,7 @@ Use these entry points to navigate the most common tasks.
 
 - [Installation](installation.md) — install DeepMIMO and its dependencies.
 - [Quickstart](quickstart.md) — run your first dataset generation pipeline.
-- [User Manual](manual.ipynb) — interactive tutorial built with `mkdocs-jupyter`.
+- [User Manual](tutorials/manual.py) — interactive tutorial built with `mkdocs-jupyter`.
 
 ## API Reference
 
@@ -56,7 +56,7 @@ Use these entry points to navigate the most common tasks.
 - [Ray Tracing Guidelines](resources/raytracing_guidelines.md)
 - [Comparing Ray Tracers](resources/comparing_raytracers.md)
 - [Scenario Specs](resources/specs.md)
-- [Converters Capabilities](resources/converters_capabilities.md)
+- [Features](resources/capabilities/v3_vs_v4.md)
 - [Conventions](resources/conventions.md)
 - [Documentation Workflow](resources/workflow.md)
 - [Contributing](resources/contributing.md)

@@ -30,6 +30,8 @@ nav:
       - Visualization: api/visualization.md
       - Database: api/database.md
       - Core Models: api/core.md
+      - Scene: api/scene.md
+      - Materials: api/materials.md
       - Integrations: api/integrations.md
       - Pipelines: api/pipelines.md
       - Utilities: api/utils.md
@@ -38,7 +40,15 @@ nav:
       - Ray Tracing Guidelines: resources/raytracing_guidelines.md
       - Comparing Ray Tracers: resources/comparing_raytracers.md
       - Scenario Specs: resources/specs.md
-      - Converters Capabilities: resources/converters_capabilities.md
+      - Features:
+          - V3 vs V4: resources/capabilities/v3_vs_v4.md
+          - Converters: resources/capabilities/converters.md
+          - Datasets: resources/capabilities/datasets.md
+          - Integrations: resources/capabilities/integrations.md
+          - Exporters: resources/capabilities/exporters.md
+          - Core: resources/capabilities/core.md
+          - API: resources/capabilities/api.md
+          - Pipelines: resources/capabilities/pipelines.md
       - Conventions: resources/conventions.md
       - Contributing: resources/contributing.md
       - Need Help?: resources/need_help.md
@@ -110,6 +120,7 @@ plugins:
       glob:
         - "_build/**"
         - "manual_full.ipynb"
+        - "tutorials/__init__.py"
 
 markdown_extensions:
   - admonition
