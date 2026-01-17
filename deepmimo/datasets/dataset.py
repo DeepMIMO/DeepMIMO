@@ -50,7 +50,7 @@ from deepmimo.datasets.sampling import (
     get_uniform_idxs,
 )
 from deepmimo.datasets.summary import plot_summary
-from deepmimo.datasets.visualization import plot_coverage, plot_rays
+from deepmimo.datasets.visualization import plot_coverage, plot_rays, generate_distinct_colors
 from deepmimo.generator.ant_patterns import AntennaPattern
 from deepmimo.generator.channel import ChannelParameters, _generate_mimo_channel
 from deepmimo.generator.geometry import (
@@ -1283,8 +1283,6 @@ class Dataset(DotDict):
         Returns:
             The matplotlib figure and axes objects.
         """
-        from .visualization import generate_distinct_colors
-
         # Generate color map (excluding users with no paths)
         valid_hashes = np.unique(self.path_hash[self.path_hash != -1])
         colors = generate_distinct_colors(len(valid_hashes))
