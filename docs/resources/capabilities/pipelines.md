@@ -333,7 +333,6 @@ These limitations apply across pipeline operations:
 
 ## Related Documentation
 
-- [Sionna RT README](../../pipelines/sionna_rt/README.md) - Detailed Sionna pipeline guide
-- [Wireless InSite README](../../pipelines/wireless_insite/README.md) - Detailed InSite pipeline guide
+- [Pipelines API Reference](../../api/pipelines.md) - Detailed pipeline API documentation
 - [Converters Capabilities](converters.md) - Converting pipeline outputs to DeepMIMO
 - [Pipeline Tutorial](../../tutorials/manual.py#pipelines) - End-to-end pipeline examples

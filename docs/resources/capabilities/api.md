@@ -288,5 +288,5 @@ These limitations apply across API operations:
 ## Related Documentation
 
 - [Download Tutorial](../../tutorials/1_getting_started.py) - Using download in workflows
-- [Search API Reference](../../api/api.md#search) - Search parameter details
-- [Upload API Reference](../../api/api.md#upload) - Upload parameter details
+- [Search API Reference](../../api/database.md#search) - Search parameter details
+- [Upload API Reference](../../api/database.md#upload) - Upload parameter details

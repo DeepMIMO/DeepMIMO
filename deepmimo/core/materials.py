@@ -22,28 +22,17 @@ class Material:
         name (str): Material name/label
         permittivity (float): Relative permittivity
         conductivity (float): Conductivity in S/m
-
-        # Scattering properties
-        scattering_model (str): Type of scattering model
+        scattering_model (str): Type of scattering model (scattering properties)
         scattering_coefficient (float): Scattering coefficient (0-1)
         cross_polarization_coefficient (float): Cross-polarization ratio
-
-        # Directive scattering parameters
-        alpha_r (float): Real part of scattering exponent
+        alpha_r (float): Real part of scattering exponent (directive scattering)
         alpha_i (float): Imaginary part of scattering exponent
         lambda_param (float): Forward/backward ratio
-
-        # Physical properties
-        roughness (float): Surface roughness in meters
+        roughness (float): Surface roughness in meters (physical properties)
         thickness (float): Material thickness in meters
-
-        # Optional attenuation properties for foliage
-        vertical_attenuation (float): Vertical attenuation in dB/m
+        vertical_attenuation (float): Vertical attenuation in dB/m (foliage)
         horizontal_attenuation (float): Horizontal attenuation in dB/m
-
-        # Optional ITU-R P.2040 parameters for frequency-dependent permittivity
-        # ε = a + b*f^c + j*(d*f^c), where f is frequency in GHz
-        itu_a (float): Constant term in real part
+        itu_a (float): Constant term in real part (ITU-R P.2040 for ε = a + b*f^c + j*(d*f^c))
         itu_b (float): Coefficient of frequency-dependent term in real part
         itu_c (float): Frequency exponent
         itu_d (float): Coefficient of frequency-dependent imaginary part

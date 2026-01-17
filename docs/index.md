@@ -36,7 +36,7 @@ Use these entry points to navigate the most common tasks.
 
 - [Installation](installation.md) — install DeepMIMO and its dependencies.
 - [Quickstart](quickstart.md) — run your first dataset generation pipeline.
-- [User Manual](manual.ipynb) — interactive tutorial built with `mkdocs-jupyter`.
+- [User Manual](tutorials/manual.py) — interactive tutorial built with `mkdocs-jupyter`.
 
 ## API Reference
 

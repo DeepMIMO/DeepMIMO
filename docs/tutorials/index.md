@@ -119,7 +119,7 @@ The tutorials are Python files with cell markers (`# %%`) that work with:
 
 ## Additional Resources
 
-- **Full Manual**: [manual.ipynb](../manual.ipynb) - Comprehensive reference with all examples
+- **Full Manual**: [manual.py](manual.py) - Comprehensive reference with all examples
 - **API Documentation**: [API Reference](../api/generator.md)
 - **GitHub Repository**: [DeepMIMO/DeepMIMO](https://github.com/DeepMIMO/DeepMIMO)
 - **Website**: [deepmimo.net](https://deepmimo.net)

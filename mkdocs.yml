@@ -30,6 +30,8 @@ nav:
       - Visualization: api/visualization.md
       - Database: api/database.md
       - Core Models: api/core.md
+      - Scene: api/scene.md
+      - Materials: api/materials.md
       - Integrations: api/integrations.md
       - Pipelines: api/pipelines.md
       - Utilities: api/utils.md
