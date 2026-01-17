@@ -10,6 +10,28 @@ import deepmimo as dm
 from tqdm import tqdm
 # from api_keys import DEEPMIMO_API_KEY
 
+#%%
+
+import deepmimo as dm
+
+# Load dataset
+dataset = dm.load('asu_campus_3p5', max_paths=3)
+
+# Access lazy-evaluated properties
+path_hash = dataset.path_hash  # Computes on first access
+path_ids = dataset.path_ids
+inter_vec = dataset.inter_vec
+
+# Using aliases
+mplm_hash = dataset.mplm_hash  # Same as path_hash
+multipath_hash = dataset.multipath_hash  # Same as path_hash
+
+# Plot MPLM
+dataset.plot_mplm(dpi=300)
+
+# Or use the full name
+dataset.plot_multipath_lifetime_map(dpi=300, title="My MPLM")
+
 #%% TESTING PATH IDS
 
 # dataset = dm.load('asu_campus_3p5')

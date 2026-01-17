@@ -115,6 +115,9 @@ class Dataset(DotDict):
         aoa_az_rot_fov/aoa_el_rot_fov: Field of view filtered angles of arrival
         aod_az_rot_fov/aod_el_rot_fov: Field of view filtered angles of departure
         fov_mask: Field of view mask
+        inter_vec: Vectorized interaction codes (n_users, n_paths, max_n_interactions)
+        path_ids: Unique IDs for paths based on interaction signatures
+        path_hash: Hash for each user's multipath mix (for MPLM visualization)
 
     TX/RX Information:
         - tx_set_id: ID of the transmitter set
@@ -155,6 +158,9 @@ class Dataset(DotDict):
         "doppler",
         "inter_obj",
         "inter_int",
+        "inter_vec",
+        "path_ids",
+        "path_hash",
     ]
 
     def _wrap_array(self, key: str, value: Any) -> Any:
@@ -701,6 +707,110 @@ class Dataset(DotDict):
 
         return np.vectorize(translate_code)(inter_raw_str)
 
+    def _compute_inter_vec(self) -> np.ndarray:
+        """Compute vectorized interaction codes from integer-encoded interaction types.
+        
+        Converts integer-encoded interaction types (e.g. 121 → [1,2,1])
+        into padded array of shape (n_users, n_paths, max_n_interactions),
+        handling NaN entries properly.
+        
+        Returns:
+            np.ndarray: Expanded interaction codes of shape (n_users, n_paths, max_n_interactions)
+        """
+        inter = self.inter
+        pad_value = -1
+        inter_flat = inter.flatten()
+        
+        digit_lists = []
+        max_len = 0
+        
+        for valid in inter_flat:
+            if np.isnan(valid):
+                digit_lists.append([])  # empty for padding
+            else:
+                digits = [int(d) for d in str(int(valid))]
+                digit_lists.append(digits)
+                max_len = max(max_len, len(digits))
+        
+        # Pad all digit lists
+        padded = np.full((len(digit_lists), max_len), pad_value, dtype=int)
+        for i, digits in enumerate(digit_lists):
+            padded[i, :len(digits)] = digits
+        
+        return padded.reshape((*inter.shape, max_len))
+    
+    def _compute_path_ids(self) -> np.ndarray:
+        """Compute unique IDs for paths based on their interaction signatures.
+        
+        Paths with the same sequence of interactions get the same ID.
+        This considers both the interaction types and the objects involved.
+        
+        Returns:
+            np.ndarray: Path IDs of shape (n_users, n_paths)
+        """
+        inter_typ = self.inter_vec
+        inter_obj = self.inter_obj
+        n_users, n_paths, _ = inter_obj.shape
+        path_ids = np.zeros((n_users, n_paths), dtype=int)
+        path_signature_to_id = {}
+        next_id = 0
+        
+        for u in tqdm(range(n_users), desc='Assigning path IDs'):
+            if self.los[u] == -1:
+                continue
+            
+            n_paths_user = self.num_paths[u]
+            for p in range(n_paths_user):
+                n_interactions = int(self.num_inter[u, p])
+                types = inter_typ[u, p, :n_interactions]  # (n_interactions,)
+                objs = inter_obj[u, p, :n_interactions]  # (n_interactions,)
+                
+                # Combine into ordered list of (type, object)
+                path_signature = tuple((int(t), int(o)) for t, o in zip(types, objs))
+                
+                # Hash or assign ID
+                if path_signature not in path_signature_to_id:
+                    path_signature_to_id[path_signature] = next_id
+                    next_id += 1
+                
+                path_ids[u, p] = path_signature_to_id[path_signature]
+        
+        return path_ids
+    
+    def _compute_path_hash(self) -> np.ndarray:
+        """Compute hash for each user based on their set of path IDs.
+        
+        Users with the same set of paths will get the same hash.
+        This enables identifying regions with similar multipath characteristics.
+        
+        Returns:
+            np.ndarray: Hash IDs of shape (n_users,)
+        """
+        path_ids = self.path_ids
+        num_paths = self.num_paths
+        n_users = path_ids.shape[0]
+        user_signature_to_id = {}
+        user_hashes = np.zeros(n_users, dtype=int)
+        next_hash_id = 0
+        
+        for u in tqdm(range(n_users), desc='Hashing user paths'):
+            if num_paths[u] == 0:  # Skip users with no paths
+                user_hashes[u] = -1
+                continue
+            
+            # Get valid path IDs for this user and sort them
+            valid_paths = sorted(path_ids[u, :num_paths[u]])
+            path_signature = tuple(valid_paths)
+            
+            # Assign hash ID
+            if path_signature not in user_signature_to_id:
+                user_signature_to_id[path_signature] = next_hash_id
+                next_hash_id += 1
+            
+            user_hashes[u] = user_signature_to_id[path_signature]
+        
+        return user_hashes
+
     def _compute_n_ue(self) -> int:
         """Return the number of UEs/receivers in the dataset."""
         return self.rx_pos.shape[0]
@@ -1154,6 +1264,65 @@ class Dataset(DotDict):
         return plot_rays(
             self.rx_pos[idx], self.tx_pos[0], self.inter_pos[idx], self.inter[idx], **default_kwargs
         )
+
+    def plot_mplm(self, **kwargs: Any) -> Any:
+        """Plot the Multipath Lifetime Map (MPLM).
+
+        This visualization colors each receiver location based on its unique multipath
+        signature (combination of paths). Receivers with the same multipath characteristics
+        will have the same color.
+
+        Args:
+            **kwargs: Additional keyword arguments to pass to plot_coverage.
+                Common options include:
+                - dpi: Resolution of the figure (default: 100)
+                - figsize: Size of the figure (default: (6, 4))
+                - title: Title of the plot (default: "Multipath Lifetime Map")
+                - cbar_title: Title for the colorbar (default: "Path Hash")
+
+        Returns:
+            The matplotlib figure and axes objects.
+        """
+        from .visualization import generate_distinct_colors
+
+        # Generate color map (excluding users with no paths)
+        valid_hashes = np.unique(self.path_hash[self.path_hash != -1])
+        colors = generate_distinct_colors(len(valid_hashes))
+        hash_to_color = {h: colors[i] for i, h in enumerate(valid_hashes)}
+        hash_to_color[-1] = [1, 1, 1, 1.0]  # White for invalid users
+
+        # Create color array for all users
+        user_colors = np.array([hash_to_color[h] for h in self.path_hash])
+
+        # Set default kwargs
+        default_kwargs = {
+            "title": "Multipath Lifetime Map",
+            "cbar_title": "Path Hash",
+        }
+        default_kwargs.update(kwargs)
+
+        # Plot coverage map with colors
+        return self.plot_coverage(user_colors, **default_kwargs)
+
+    def plot_multipath_lifetime_map(self, **kwargs: Any) -> Any:
+        """Alias for plot_mplm(). Plot the Multipath Lifetime Map (MPLM).
+
+        This visualization colors each receiver location based on its unique multipath
+        signature (combination of paths). Receivers with the same multipath characteristics
+        will have the same color.
+
+        Args:
+            **kwargs: Additional keyword arguments to pass to plot_coverage.
+                Common options include:
+                - dpi: Resolution of the figure (default: 100)
+                - figsize: Size of the figure (default: (6, 4))
+                - title: Title of the plot (default: "Multipath Lifetime Map")
+                - cbar_title: Title for the colorbar (default: "Path Hash")
+
+        Returns:
+            The matplotlib figure and axes objects.
+        """
+        return self.plot_mplm(**kwargs)
 
     def plot_summary(self, **kwargs: Any) -> Any:
         """Plot the summary of the dataset."""
@@ -1616,6 +1785,9 @@ class Dataset(DotDict):
         c.INTER_STR_PARAM_NAME: "_compute_inter_str",
         c.INTER_INT_PARAM_NAME: "_compute_inter_int",
         c.TXRX_PARAM_NAME: "_get_txrx_sets",
+        c.INTER_VEC_PARAM_NAME: "_compute_inter_vec",
+        c.PATH_IDS_PARAM_NAME: "_compute_path_ids",
+        c.PATH_HASH_PARAM_NAME: "_compute_path_hash",
     }
 
 
