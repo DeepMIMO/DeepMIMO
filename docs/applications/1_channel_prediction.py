@@ -1,4 +1,4 @@
-"""# Channel Prediction: Path Interpolation & Doppler Effects
+"""# Channel Prediction: Path Interpolation & Doppler Effects.
 
 This comprehensive example demonstrates how to create realistic channel sequences for
 channel prediction tasks. We cover a complete progression from simple concepts to
@@ -29,6 +29,15 @@ observations. This is crucial for:
 This example shows: **baseline → interpolation → interpolation + Doppler**, with
 visualizations comparing each stage to understand the impact of each technique.
 """
+
+import subprocess
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm
+
+import deepmimo as dm
 
 # %% [markdown]
 """
@@ -62,18 +71,13 @@ visualizations comparing each stage to understand the impact of each technique.
 """
 
 # %% Imports
-
-import matplotlib.pyplot as plt
-import numpy as np
-from tqdm import tqdm
-
-import deepmimo as dm
+# (Imports are at the top of the file)
 
 # %% [markdown]
 """
 ## Configuration Parameters
 
-Below we set up the main parameters for this example. These can be adjusted based on 
+Below we set up the main parameters for this example. These can be adjusted based on
 your specific needs:
 
 - **RT_SCENARIO**: Ray tracing scenario to use
@@ -106,7 +110,7 @@ TIME_DELTA = 1e-3  # Time between samples [s]
 
 # Visualization
 SEED = 42
-np.random.seed(SEED)
+rng = np.random.default_rng(SEED)
 
 print("Configuration:")
 print(f"  Scenario: {RT_SCENARIO}")
@@ -119,7 +123,7 @@ print(f"  Max Doppler: {MAX_DOPPLER_HZ} Hz")
 """
 ## Load Ray Tracing Dataset
 
-We load the DeepMIMO ray tracing dataset which contains channel parameters for multiple 
+We load the DeepMIMO ray tracing dataset which contains channel parameters for multiple
 user positions. This includes:
 
 - **rx_pos**: Receiver positions in 3D space
@@ -157,12 +161,12 @@ print(f"  TX position: {dataset.tx_pos}")
 ---
 # SECTION 1: Simple Two-User Interpolation
 
-We start with the simplest case: interpolating between just two users. This helps 
+We start with the simplest case: interpolating between just two users. This helps
 understand the interpolation concept before scaling up.
 
 ## The Interpolation Concept
 
-Linear interpolation computes intermediate values between two known points. For wireless 
+Linear interpolation computes intermediate values between two known points. For wireless
 channels, we interpolate:
 - **Positions**: Physical location in space
 - **Channel parameters**: Power, phase, delay, angles
@@ -177,7 +181,9 @@ print("SECTION 1: Simple Two-User Interpolation")
 print("=" * 70)
 
 
-def interpolate_percentage(array1, array2, percents):
+def interpolate_percentage(
+    array1: np.ndarray, array2: np.ndarray, percents: np.ndarray
+) -> np.ndarray:
     """Interpolate between two arrays at specified percentages.
 
     Args:
@@ -204,7 +210,9 @@ def interpolate_percentage(array1, array2, percents):
     return array1 * (1 - percents) + array2 * percents
 
 
-def interpolate_path(dataset, idx_1, idx_2, distances):
+def interpolate_path(
+    dataset: dm.Dataset, idx_1: int, idx_2: int, distances: np.ndarray
+) -> dict[str, np.ndarray | None]:
     """Interpolate all channel parameters between two users at specified distances.
 
     Args:
@@ -295,7 +303,7 @@ plt.gca().set_aspect("equal", adjustable="box")
 plt.title("Two-User Path Interpolation: Position")
 plt.xlabel("X [m]")
 plt.ylabel("Y [m]")
-plt.grid(True, alpha=0.3)
+plt.grid(visible=True, alpha=0.3)
 plt.legend()
 plt.tight_layout()
 plt.show()
@@ -324,7 +332,7 @@ for path_idx in range(min(3, params["power"].shape[1])):
 plt.title("Two-User Path Interpolation: Power")
 plt.xlabel("Sample index")
 plt.ylabel("Power [dBW]")
-plt.grid(True, alpha=0.3)
+plt.grid(visible=True, alpha=0.3)
 plt.legend()
 plt.tight_layout()
 plt.show()
@@ -334,12 +342,12 @@ plt.show()
 ---
 # SECTION 2: Extract All Linear Sequences
 
-Now we scale up: find all consecutive active user paths in the entire scenario. These 
+Now we scale up: find all consecutive active user paths in the entire scenario. These
 sequences represent natural user trajectories along rows and columns of the grid.
 
 ## Why Extract Sequences?
 
-In a ray tracing grid, not all positions have active users (some may be blocked by 
+In a ray tracing grid, not all positions have active users (some may be blocked by
 buildings). We want to find:
 - **Consecutive active users**: Users that form a continuous path
 - **Row and column sweeps**: Natural linear trajectories
@@ -381,9 +389,7 @@ def get_consecutive_active_segments(
     consecutive_arrays = np.split(active_idxs, splits)
 
     # Filter by minimum length
-    consecutive_arrays = [idxs[arr] for arr in consecutive_arrays if len(arr) > min_len]
-
-    return consecutive_arrays
+    return [idxs[arr] for arr in consecutive_arrays if len(arr) > min_len]
 
 
 def get_all_sequences(dataset: dm.Dataset, min_len: int = 1) -> list[np.ndarray]:
@@ -446,7 +452,7 @@ plt.axvline(avg_len_seqs, color="r", linestyle="--", linewidth=2, label=f"Mean: 
 plt.xlabel("Sequence length (number of users)")
 plt.ylabel("Number of sequences")
 plt.title("Distribution of Sequence Lengths")
-plt.grid(True, alpha=0.3)
+plt.grid(visible=True, alpha=0.3)
 plt.legend()
 plt.tight_layout()
 plt.show()
@@ -477,10 +483,10 @@ plt.show()
 ---
 # SECTION 3: Generate Sequence Video (Optional)
 
-Create a video showing all sequences being traced in the scenario. This helps visualize 
+Create a video showing all sequences being traced in the scenario. This helps visualize
 the spatial coverage and understand the geometry of user trajectories.
 
-**Note**: This is computationally expensive and requires ffmpeg. It"s commented out by 
+**Note**: This is computationally expensive and requires ffmpeg. It"s commented out by
 default but available if you need to create visualizations for presentations or papers.
 
 ## What the Video Shows
@@ -496,11 +502,8 @@ print("\n" + "=" * 70)
 print("SECTION 3: Generate Sequence Video (Optional)")
 print("=" * 70)
 
-import os
-import subprocess
 
-
-def make_sequence_video(dataset, folder="sweeps", ffmpeg_fps=60):
+def make_sequence_video(dataset: dm.Dataset, folder: str = "sweeps", ffmpeg_fps: int = 60) -> None:
     """Generate a video visualizing all row/col user sequences in the dataset.
 
     For each row and column, plots the consecutive active user segments and saves as PNGs.
@@ -516,7 +519,7 @@ def make_sequence_video(dataset, folder="sweeps", ffmpeg_fps=60):
         >>> # Creates: sequence_sweeps/output_30fps.mp4
 
     """
-    os.makedirs(folder, exist_ok=True)
+    Path(folder).mkdir(parents=True, exist_ok=True)
     n_cols, n_rows = dataset.grid_size
 
     for row_or_col in ["row", "col"]:
@@ -529,7 +532,7 @@ def make_sequence_video(dataset, folder="sweeps", ffmpeg_fps=60):
             dataset.los.plot()
 
             # Highlight consecutive segments
-            for i, arr in enumerate(consecutive_arrays):
+            for _i, arr in enumerate(consecutive_arrays):
                 plt.scatter(
                     dataset.rx_pos[arr, 0], dataset.rx_pos[arr, 1], color="red", s=2, zorder=10
                 )
@@ -543,8 +546,8 @@ def make_sequence_video(dataset, folder="sweeps", ffmpeg_fps=60):
     # Create video from PNGs using ffmpeg
     print("\nCreating video with ffmpeg...")
     try:
-        subprocess.run(
-            [
+        subprocess.run(  # noqa: S603
+            [  # noqa: S607
                 "ffmpeg",
                 "-y",
                 "-framerate",
@@ -581,7 +584,7 @@ print("Uncomment the make_sequence_video() call above to generate a video.")
 ---
 # SECTION 4: Create Uniform-Length Sequences
 
-ML models need fixed-length inputs. We use a sliding window approach to convert 
+ML models need fixed-length inputs. We use a sliding window approach to convert
 variable-length sequences into uniform windows.
 
 ## Sliding Window Strategy
@@ -634,8 +637,7 @@ def expand_to_uniform_sequences(
     for seq in seq_list:
         if len(seq) < target_len:
             continue
-        for i in range(0, len(seq) - target_len + 1, stride):
-            out.append(seq[i : i + target_len])
+        out.extend(seq[i : i + target_len] for i in range(0, len(seq) - target_len + 1, stride))
 
     if len(out) == 0:
         return np.empty((0, target_len), dtype=int)
@@ -656,8 +658,7 @@ print(f"  Generated {len(all_seqs_mat)} uniform-length sequences")
 
 # Sample a subset for demonstration
 final_samples = min(N_SEQUENCES_SAMPLE, len(all_seqs_mat))
-np.random.seed(SEED)
-sample_idxs = np.random.choice(len(all_seqs_mat), final_samples, replace=False)
+sample_idxs = rng.choice(len(all_seqs_mat), final_samples, replace=False)
 all_seqs_mat_sample = all_seqs_mat[sample_idxs]
 
 print(f"  Sampled {final_samples} sequences for demonstration")
@@ -668,7 +669,7 @@ print(f"  Shape: {all_seqs_mat_sample.shape}")
 ---
 # SECTION 5: Baseline Channels (No Interpolation)
 
-First, we generate channels directly from the ray tracing data without any interpolation. 
+First, we generate channels directly from the ray tracing data without any interpolation.
 This serves as a baseline for comparison.
 
 ## Why Start with Baseline?
@@ -747,7 +748,7 @@ for seq_idx in range(N_COMPARE):
     plt.title(f"Baseline Sequence {seq_idx}: User Positions")
     plt.xlabel("X [m]")
     plt.ylabel("Y [m]")
-    plt.grid(True, alpha=0.3)
+    plt.grid(visible=True, alpha=0.3)
 
     # Plot channel magnitude over time
     plt.subplot(1, 2, 2)
@@ -758,7 +759,7 @@ for seq_idx in range(N_COMPARE):
     plt.title(f"Baseline Sequence {seq_idx}: Channel Magnitude")
     plt.xlabel("User index in sequence")
     plt.ylabel("|H|")
-    plt.grid(True, alpha=0.3)
+    plt.grid(visible=True, alpha=0.3)
     plt.legend()
 
     plt.tight_layout()
@@ -769,7 +770,7 @@ for seq_idx in range(N_COMPARE):
 ---
 # SECTION 6: Interpolated Channels
 
-Now we generate channels with interpolation. This creates smoother channel sequences by 
+Now we generate channels with interpolation. This creates smoother channel sequences by
 adding intermediate points between RT samples.
 
 ## How Interpolation Works
@@ -784,7 +785,7 @@ For each segment (pair of consecutive RT samples):
 
 - **Smoother trajectories**: Continuous channel evolution
 - **Denser sampling**: Better temporal resolution for prediction
-- **More training data**: INTERP_FACTOR × more samples per sequence
+- **More training data**: INTERP_FACTOR x more samples per sequence
 """
 
 # %% Section 6: Interpolated Channels
@@ -794,7 +795,7 @@ print("SECTION 6: Interpolated Channels")
 print("=" * 70)
 
 
-def interpolate_dataset_from_seqs(
+def interpolate_dataset_from_seqs(  # noqa: C901, PLR0912, PLR0915
     dataset: dm.Dataset | dm.MacroDataset,
     sequences: np.ndarray,
     step_meters: float | None = 0.5,
@@ -854,9 +855,10 @@ def interpolate_dataset_from_seqs(
     rx_pos = dataset.rx_pos
 
     # Build flattened segment lists and interpolation weights
+    min_seq_size = 2  # Minimum sequence size for interpolation
     for seq_idx in tqdm(range(sequences.shape[0]), desc="Preparing interpolation"):
         seq = np.asarray(sequences[seq_idx], dtype=int)
-        if seq.size < 2:
+        if seq.size < min_seq_size:
             continue
 
         for k in range(seq.size - 1):
@@ -909,10 +911,7 @@ def interpolate_dataset_from_seqs(
     # Replicate interaction fields (copy from first point of each segment)
     for field in replication_fields:
         base = dataset[field]
-        if start_idx.size > 0:
-            replicated = base[start_idx]
-        else:
-            replicated = base[0:0]
+        replicated = base[start_idx] if start_idx.size > 0 else base[0:0]
         concatenated_data[field] = replicated
 
     # Create new dataset with shared parameters
@@ -947,9 +946,8 @@ interp_dataset = interpolate_dataset_from_seqs(
 
 seq_out_len = (PRE_INTERP_SEQ_LEN - 1) * INTERP_FACTOR + 1
 print(f"  Output: {interp_dataset.n_ue} interpolated points")
-print(
-    f"  Expected: {len(compare_seqs)} sequences x {seq_out_len} points = {len(compare_seqs) * seq_out_len}"
-)
+expected_points = len(compare_seqs) * seq_out_len
+print(f"  Expected: {len(compare_seqs)} sequences x {seq_out_len} points = {expected_points}")
 
 # Compute channels for interpolated dataset
 ch_params.doppler = False  # Still no Doppler
@@ -1013,7 +1011,7 @@ for seq_idx in range(N_COMPARE):
     axes[0, 0].set_title(f"Sequence {seq_idx}: User Positions")
     axes[0, 0].set_xlabel("X [m]")
     axes[0, 0].set_ylabel("Y [m]")
-    axes[0, 0].grid(True, alpha=0.3)
+    axes[0, 0].grid(visible=True, alpha=0.3)
     axes[0, 0].legend()
 
     # Top right: Power (first path)
@@ -1038,7 +1036,7 @@ for seq_idx in range(N_COMPARE):
     axes[0, 1].set_title(f"Sequence {seq_idx}: Power (Path 0)")
     axes[0, 1].set_xlabel("Sample index")
     axes[0, 1].set_ylabel("Power [dBW]")
-    axes[0, 1].grid(True, alpha=0.3)
+    axes[0, 1].grid(visible=True, alpha=0.3)
     axes[0, 1].legend()
 
     # Bottom left: Baseline channel magnitude
@@ -1056,7 +1054,7 @@ for seq_idx in range(N_COMPARE):
     axes[1, 0].set_title("Baseline Channel Magnitude")
     axes[1, 0].set_xlabel("Sample index")
     axes[1, 0].set_ylabel("|H|")
-    axes[1, 0].grid(True, alpha=0.3)
+    axes[1, 0].grid(visible=True, alpha=0.3)
     axes[1, 0].legend()
 
     # Bottom right: Interpolated channel magnitude
@@ -1074,7 +1072,7 @@ for seq_idx in range(N_COMPARE):
     axes[1, 1].set_title("Interpolated Channel Magnitude")
     axes[1, 1].set_xlabel("Sample index")
     axes[1, 1].set_ylabel("|H|")
-    axes[1, 1].grid(True, alpha=0.3)
+    axes[1, 1].grid(visible=True, alpha=0.3)
     axes[1, 1].legend()
 
     plt.tight_layout()
@@ -1085,8 +1083,8 @@ for seq_idx in range(N_COMPARE):
 ---
 # SECTION 7: Interpolation + Doppler
 
-Finally, we add Doppler effects to create realistic time-varying channels. Doppler shift 
-occurs when there"s relative motion between transmitter and receiver, causing the carrier 
+Finally, we add Doppler effects to create realistic time-varying channels. Doppler shift
+occurs when there"s relative motion between transmitter and receiver, causing the carrier
 frequency to shift.
 
 ## Doppler Shift Formula
@@ -1122,12 +1120,15 @@ print("=" * 70)
 
 
 def plot_iq_constellation(
-    H: np.ndarray, sample_idx: int | None = None, rx_idx: int | None = None, title_suffix: str = ""
-):
+    channel_matrix: np.ndarray,
+    sample_idx: int | None = None,
+    rx_idx: int | None = None,
+    title_suffix: str = "",
+) -> tuple[int, int]:
     """Plot IQ constellation diagram for channel gains.
 
     Args:
-        H: Channel array of shape (n_samples, n_rx, n_tx, n_time_steps), complex
+        channel_matrix: Channel array of shape (n_samples, n_rx, n_tx, n_time_steps), complex
         sample_idx: Sample index to plot (random if None)
         rx_idx: RX antenna index to plot (random if None)
         title_suffix: Additional text for title
@@ -1136,13 +1137,13 @@ def plot_iq_constellation(
         Tuple of (sample_idx, rx_idx) used for plotting
 
     """
-    i = np.random.randint(H.shape[0]) if sample_idx is None else sample_idx
-    r = np.random.randint(H.shape[1]) if rx_idx is None else rx_idx
+    i = rng.integers(channel_matrix.shape[0]) if sample_idx is None else sample_idx
+    r = rng.integers(channel_matrix.shape[1]) if rx_idx is None else rx_idx
 
     plt.figure(figsize=(8, 8), dpi=150)
     lim = 0.0
-    for t in range(H.shape[2]):
-        z = H[i, r, t, :]  # complex time series
+    for t in range(channel_matrix.shape[2]):
+        z = channel_matrix[i, r, t, :]  # complex time series
         lim = max(lim, np.max(np.abs(z)))
         plt.plot(z.real, z.imag, "o-", markersize=4, linewidth=1, label=f"TX antenna {t + 1}")
 
@@ -1150,7 +1151,7 @@ def plot_iq_constellation(
     plt.xlim(-lim, lim)
     plt.ylim(-lim, lim)
     plt.gca().set_aspect("equal", adjustable="box")
-    plt.grid(True, alpha=0.3)
+    plt.grid(visible=True, alpha=0.3)
     plt.xlabel("In-Phase")
     plt.ylabel("Quadrature")
     plt.legend()
@@ -1217,8 +1218,8 @@ for config in doppler_configs:
 """
 ## Doppler Effects: IQ Constellation Analysis
 
-IQ (In-phase/Quadrature) constellation diagrams show the complex channel gain in the 
-complex plane. As the user moves and Doppler affects the channel, the constellation 
+IQ (In-phase/Quadrature) constellation diagrams show the complex channel gain in the
+complex plane. As the user moves and Doppler affects the channel, the constellation
 traces a path over time.
 
 **What to observe:**
@@ -1250,14 +1251,14 @@ for config_name, H_result in H_doppler_results.items():
 """
 ## Doppler Effects: Phase Evolution
 
-Let"s examine how Doppler affects the channel magnitude and phase over time. The phase 
+Let"s examine how Doppler affects the channel magnitude and phase over time. The phase
 evolution is particularly telling:
 
 - **No Doppler**: Phase changes only due to spatial variation
 - **With Doppler**: Additional phase rotation proportional to Doppler shift
 - **Phase rate**: $\\frac{d\\phi}{dt} = 2\\pi f_d$
 
-Higher Doppler causes faster phase rotation, which is critical for channel prediction 
+Higher Doppler causes faster phase rotation, which is critical for channel prediction
 models to learn.
 """
 
@@ -1287,7 +1288,7 @@ for seq_idx in range(N_COMPARE):
         ax.set_xlabel("Sample index")
         ax.set_ylabel("Magnitude |H|", color="b")
         ax.tick_params(axis="y", labelcolor="b")
-        ax.grid(True, alpha=0.3)
+        ax.grid(visible=True, alpha=0.3)
 
         # Plot phase
         line2 = ax2.plot(phase, "r-", linewidth=2, alpha=0.7, label="Phase")
@@ -1298,7 +1299,7 @@ for seq_idx in range(N_COMPARE):
 
         # Combined legend
         lines = line1 + line2
-        labels = [l.get_label() for l in lines]
+        labels = [line.get_label() for line in lines]
         ax.legend(lines, labels, loc="upper right")
 
     plt.tight_layout()
@@ -1308,7 +1309,7 @@ for seq_idx in range(N_COMPARE):
 """
 ## Doppler Effects: Magnitude Comparison
 
-Finally, let"s compare channel magnitudes across all Doppler settings on one plot. This 
+Finally, let"s compare channel magnitudes across all Doppler settings on one plot. This
 shows how Doppler affects the overall channel strength variability.
 
 **Key observations:**
@@ -1330,7 +1331,7 @@ for seq_idx in range(N_COMPARE):
     plt.title(f"Sequence {seq_idx}: Channel Magnitude Comparison")
     plt.xlabel("Sample index")
     plt.ylabel("|H|")
-    plt.grid(True, alpha=0.3)
+    plt.grid(visible=True, alpha=0.3)
     plt.legend()
     plt.tight_layout()
     plt.show()
@@ -1340,7 +1341,7 @@ for seq_idx in range(N_COMPARE):
 ---
 # Summary and Key Takeaways
 
-Congratulations! You"ve completed a comprehensive journey through channel prediction data 
+Congratulations! You"ve completed a comprehensive journey through channel prediction data
 generation with interpolation and Doppler effects.
 
 ## What We Covered
@@ -1350,14 +1351,14 @@ generation with interpolation and Doppler effects.
 3. ✅ **Video Generation**: (Optional) tool for spatial coverage visualization
 4. ✅ **Uniform Sequences**: Prepared fixed-length inputs for ML models
 5. ✅ **Baseline Channels**: Computed sparse channels from raw RT data
-6. ✅ **Interpolated Channels**: Generated {interp_factor}× denser, smoother sequences
+6. ✅ **Interpolated Channels**: Generated {interp_factor}x denser, smoother sequences
 7. ✅ **Doppler Effects**: Added realistic time-varying behavior (0-200 Hz)
 
 ## Key Insights
 
 ### Interpolation Benefits
 - **Smoother trajectories**: Continuous channel evolution vs discrete jumps
-- **More training data**: {interp_factor}× samples per sequence
+- **More training data**: {interp_factor}x samples per sequence
 - **Better prediction**: Dense sampling helps models learn temporal patterns
 
 ### Doppler Impact
