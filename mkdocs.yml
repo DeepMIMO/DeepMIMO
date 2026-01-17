@@ -23,6 +23,9 @@ nav:
       - Converters: tutorials/7_converters.py
       - Migration Guide: tutorials/8_migration_guide.py
       - Complete Manual: tutorials/manual.py
+  - Applications:
+      - Overview: applications/index.md
+      - Channel Prediction: applications/1_channel_prediction.py
   - API Reference:
       - Datasets: api/datasets.md
       - Generator: api/generator.md
@@ -121,6 +124,7 @@ plugins:
         - "_build/**"
         - "manual_full.ipynb"
         - "tutorials/__init__.py"
+        - "applications/__init__.py"
 
 markdown_extensions:
   - admonition
