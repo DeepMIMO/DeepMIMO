@@ -50,7 +50,11 @@ from deepmimo.datasets.sampling import (
     get_uniform_idxs,
 )
 from deepmimo.datasets.summary import plot_summary
-from deepmimo.datasets.visualization import plot_coverage, plot_rays, generate_distinct_colors
+from deepmimo.datasets.visualization import (
+    generate_distinct_colors,
+    plot_coverage,
+    plot_rays,
+)
 from deepmimo.generator.ant_patterns import AntennaPattern
 from deepmimo.generator.channel import ChannelParameters, _generate_mimo_channel
 from deepmimo.generator.geometry import (
@@ -709,21 +713,22 @@ class Dataset(DotDict):
 
     def _compute_inter_vec(self) -> np.ndarray:
         """Compute vectorized interaction codes from integer-encoded interaction types.
-        
+
         Converts integer-encoded interaction types (e.g. 121 → [1,2,1])
         into padded array of shape (n_users, n_paths, max_n_interactions),
         handling NaN entries properly.
-        
+
         Returns:
             np.ndarray: Expanded interaction codes of shape (n_users, n_paths, max_n_interactions)
+
         """
         inter = self.inter
         pad_value = -1
         inter_flat = inter.flatten()
-        
+
         digit_lists = []
         max_len = 0
-        
+
         for valid in inter_flat:
             if np.isnan(valid):
                 digit_lists.append([])  # empty for padding
@@ -731,22 +736,23 @@ class Dataset(DotDict):
                 digits = [int(d) for d in str(int(valid))]
                 digit_lists.append(digits)
                 max_len = max(max_len, len(digits))
-        
+
         # Pad all digit lists
         padded = np.full((len(digit_lists), max_len), pad_value, dtype=int)
         for i, digits in enumerate(digit_lists):
             padded[i, :len(digits)] = digits
-        
+
         return padded.reshape((*inter.shape, max_len))
-    
+
     def _compute_path_ids(self) -> np.ndarray:
         """Compute unique IDs for paths based on their interaction signatures.
-        
+
         Paths with the same sequence of interactions get the same ID.
         This considers both the interaction types and the objects involved.
-        
+
         Returns:
             np.ndarray: Path IDs of shape (n_users, n_paths)
+
         """
         inter_typ = self.inter_vec
         inter_obj = self.inter_obj
@@ -754,37 +760,38 @@ class Dataset(DotDict):
         path_ids = np.zeros((n_users, n_paths), dtype=int)
         path_signature_to_id = {}
         next_id = 0
-        
-        for u in tqdm(range(n_users), desc='Assigning path IDs'):
+
+        for u in tqdm(range(n_users), desc="Assigning path IDs"):
             if self.los[u] == -1:
                 continue
-            
+
             n_paths_user = self.num_paths[u]
             for p in range(n_paths_user):
                 n_interactions = int(self.num_inter[u, p])
                 types = inter_typ[u, p, :n_interactions]  # (n_interactions,)
                 objs = inter_obj[u, p, :n_interactions]  # (n_interactions,)
-                
+
                 # Combine into ordered list of (type, object)
-                path_signature = tuple((int(t), int(o)) for t, o in zip(types, objs))
-                
+                path_signature = tuple((int(t), int(o)) for t, o in zip(types, objs, strict=False))
+
                 # Hash or assign ID
                 if path_signature not in path_signature_to_id:
                     path_signature_to_id[path_signature] = next_id
                     next_id += 1
-                
+
                 path_ids[u, p] = path_signature_to_id[path_signature]
-        
+
         return path_ids
-    
+
     def _compute_path_hash(self) -> np.ndarray:
         """Compute hash for each user based on their set of path IDs.
-        
+
         Users with the same set of paths will get the same hash.
         This enables identifying regions with similar multipath characteristics.
-        
+
         Returns:
             np.ndarray: Hash IDs of shape (n_users,)
+
         """
         path_ids = self.path_ids
         num_paths = self.num_paths
@@ -792,23 +799,23 @@ class Dataset(DotDict):
         user_signature_to_id = {}
         user_hashes = np.zeros(n_users, dtype=int)
         next_hash_id = 0
-        
-        for u in tqdm(range(n_users), desc='Hashing user paths'):
+
+        for u in tqdm(range(n_users), desc="Hashing user paths"):
             if num_paths[u] == 0:  # Skip users with no paths
                 user_hashes[u] = -1
                 continue
-            
+
             # Get valid path IDs for this user and sort them
             valid_paths = sorted(path_ids[u, :num_paths[u]])
             path_signature = tuple(valid_paths)
-            
+
             # Assign hash ID
             if path_signature not in user_signature_to_id:
                 user_signature_to_id[path_signature] = next_hash_id
                 next_hash_id += 1
-            
+
             user_hashes[u] = user_signature_to_id[path_signature]
-        
+
         return user_hashes
 
     def _compute_n_ue(self) -> int:
@@ -1282,6 +1289,7 @@ class Dataset(DotDict):
 
         Returns:
             The matplotlib figure and axes objects.
+
         """
         # Generate color map (excluding users with no paths)
         valid_hashes = np.unique(self.path_hash[self.path_hash != -1])
@@ -1319,6 +1327,7 @@ class Dataset(DotDict):
 
         Returns:
             The matplotlib figure and axes objects.
+
         """
         return self.plot_mplm(**kwargs)
 
