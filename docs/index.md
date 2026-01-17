@@ -56,7 +56,7 @@ Use these entry points to navigate the most common tasks.
 - [Ray Tracing Guidelines](resources/raytracing_guidelines.md)
 - [Comparing Ray Tracers](resources/comparing_raytracers.md)
 - [Scenario Specs](resources/specs.md)
-- [Converters Capabilities](resources/converters_capabilities.md)
+- [Features](resources/capabilities/)
 - [Conventions](resources/conventions.md)
 - [Documentation Workflow](resources/workflow.md)
 - [Contributing](resources/contributing.md)
