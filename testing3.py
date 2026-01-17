@@ -2,8 +2,6 @@
 
 # %% Imports
 
-from pathlib import Path
-
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -11,42 +9,6 @@ import deepmimo as dm
 
 from tqdm import tqdm
 # from api_keys import DEEPMIMO_API_KEY
-
-# d_10cm = dm.load('asu_campus_3p5_10cm', filter_matrices=['inter_pos'])
-
-matrices = ['rx_pos', 'tx_pos', 'aoa_az', 'aod_az', 'aoa_el', 'aod_el', 
-            'delay', 'power', 'phase', 'inter']
-# dataset = dm.load('asu_campus_3p5_10cm', matrices=matrices)
-
-dataset = dm.load('asu_campus_3p5')#, matrices=matrices)
-
-idx_1 = 10
-idx_2 = 11
-
-
-
-#%% V4 Conversion
-
-# Example usage
-rt_folder = "./RT_SOURCES/asu_campus"
-
-scen_name = Path(rt_folder).name
-dm.convert(rt_folder, overwrite=True, scenario_name=scen_name, vis_scene=True)
-
-dataset = dm.load('asu_campus_3p5')
-
-# %% AODT Conversion
-
-# aodt_scen_name = 'aerial_2025_6_18_16_43_21'  # new (1 user)
-# aodt_scen_name = 'aerial_2025_6_22_16_10_16' # old (2 users)
-aodt_scen_name = "aerial_2025_6_18_16_43_21_dyn"  # new (1 user, dynamic)
-folder = f"aodt_scripts/{aodt_scen_name}"
-# df = pd.read_parquet(str(Path(folder) / 'db_info.parquet'))
-
-# df.head()
-aodt_scen = dm.convert(folder, overwrite=True)
-
-aodt_scen = dm.load(aodt_scen_name, max_paths=500)
 
 #%% TESTING PATH IDS
 
@@ -58,13 +20,13 @@ dataset = dm.load('asu_campus_3p5', max_paths=3)
 idx_1 = 10
 idx_2 = 11
 
-# dataset.plot_rays(idx_1, proj_3D=False)
-# dataset.plot_rays(idx_2, proj_3D=False)
+dataset.plot_rays(idx_1, proj_3D=False)
+dataset.plot_rays(idx_2, proj_3D=False)
 
-# dataset.print_rx(idx_1, path_idxs=[0])
-# dataset.print_rx(idx_2, path_idxs=[0])
+dataset.print_rx(idx_1, path_idxs=[0])
+dataset.print_rx(idx_2, path_idxs=[0])
 
-#%% Assigning path IDs
+#%% Multipath lifetime map 1: Assigning path IDs
 
 def expand_interaction_codes_vectorized(inter: np.ndarray, pad_value: int = -1) -> np.ndarray:
     """
@@ -142,7 +104,7 @@ def assign_path_ids(dataset: dm.Dataset) -> np.ndarray:
 
 path_ids = assign_path_ids(dataset)
 
-#%% Hashing user paths
+#%% Multipath lifetime map 2: Hashing user paths
 
 def hash_user_paths(path_ids: np.ndarray, num_paths: np.ndarray) -> np.ndarray:
     """
@@ -185,7 +147,7 @@ def hash_user_paths(path_ids: np.ndarray, num_paths: np.ndarray) -> np.ndarray:
 
 user_hashes = hash_user_paths(path_ids, dataset.num_paths)
 
-#%% Plotting coverage map
+#%% Multipath lifetime map 3: Plotting coverage map
 
 # Generate better colors using HSV space for more distinct colors
 import colorsys
@@ -205,8 +167,7 @@ def generate_distinct_colors(n):
 
 # Generate color map (excluding users with no paths)
 valid_hashes = np.unique(user_hashes[user_hashes != -1])
-n_colors = len(valid_hashes)
-colors = generate_distinct_colors(n_colors)
+colors = generate_distinct_colors(len(valid_hashes))
 hash_to_color = {h: colors[i] for i, h in enumerate(valid_hashes)}
 hash_to_color[-1] = [1, 1, 1, 1.0]  # White for invalid users
 
@@ -216,365 +177,7 @@ user_colors = np.array([hash_to_color[h] for h in user_hashes])
 # Plot coverage map with colors and create proper colorbar
 dataset.plot_coverage(user_colors, dpi=300)
 
-#%% Path ID and Hash Analysis
-inter_typ = expand_interaction_codes_vectorized(dataset.inter)
-inter_obj = dataset.inter_obj
-# Analyze path ID frequencies
-path_id_counts = {}
-for u in range(len(dataset.num_paths)):
-    n_paths = dataset.num_paths[u]
-    for p in range(n_paths):
-        pid = path_ids[u, p]
-        if pid not in path_id_counts:
-            path_id_counts[pid] = 0
-        path_id_counts[pid] += 1
-
-# Sort by frequency
-sorted_path_ids = sorted(path_id_counts.items(), key=lambda x: x[1], reverse=True)
-
-print("\nMost common path IDs and their frequencies:")
-for pid, count in sorted_path_ids[:5]:
-    print(f"Path ID {pid}: {count} occurrences")
-
-# Function to get interaction sequence for a path
-def get_path_sequence(dataset, user_idx, path_idx):
-    """Get the full interaction sequence for a specific path."""
-    n_inter = int(dataset.num_inter[user_idx, path_idx])
-    types = inter_typ[user_idx, path_idx, :n_inter]
-    objs = inter_obj[user_idx, path_idx, :n_inter]
-    return list(zip(types, objs))
-
-# Find example users for each common path ID
-print("\nExample interaction sequences for most common paths:")
-for pid, _ in sorted_path_ids[:5]:
-    # Find first user with this path ID
-    for u in range(len(dataset.num_paths)):
-        n_paths = dataset.num_paths[u]
-        for p in range(n_paths):
-            if path_ids[u, p] == pid:
-                sequence = get_path_sequence(dataset, u, p)
-                print(f"\nPath ID {pid}:")
-                print(f"User {u}, Path {p}")
-                print("Sequence:", sequence)
-                break
-        else:
-            continue
-        break
-
-# Analyze hash 3 specifically
-print("\nAnalyzing hash 3:")
-hash_3_users = np.where(user_hashes == 3)[0]
-print(f"Number of users with hash 3: {len(hash_3_users)}")
-
-# Get path IDs for first few users with hash 3
-print("\nPath IDs for first few users with hash 3:")
-for u in hash_3_users[:5]:
-    n_paths = dataset.num_paths[u]
-    print(f"\nUser {u} paths:")
-    for p in range(n_paths):
-        pid = path_ids[u, p]
-        sequence = get_path_sequence(dataset, u, p)
-        print(f"Path {p} (ID {pid}): {sequence}")
-
-# Plot spatial distribution of hash 3 users
-plt.figure(figsize=(10, 6), dpi=300)
-plt.scatter(dataset.rx_pos[hash_3_users, 0], dataset.rx_pos[hash_3_users, 1], 
-           s=1, alpha=0.3, label='Hash 3 Users')
-plt.title('Spatial Distribution of Hash 3 Users')
-plt.xlabel('X Position')
-plt.ylabel('Y Position')
-plt.legend()
-plt.grid(True)
-plt.show()
-
-#%% Create Sequences
-
-# 1) For each hash, get the idxs of the users that have that hash.
-
-# 2) Make a choice of 2 users that have the same hash.
-
-# 3) Connect these 2 users. 
-
-# 4) Sample positions along this connection
-
-# 5) Get the closest user in the hash to each position.
-
-# 6) Obtain a final sequence of users in the hash along the path.
-
-# 7) Save the sequence of users in a hash dictionary.
-
-# 8) Repeat a number of times proportional to the number of users in the hash.
-
-# For one or two hashes, plot the sequences.
-
-# Get indices of users for each hash value
-hash_to_users = {}
-for h in np.unique(user_hashes):
-    if h != -1:  # Skip invalid users
-        hash_to_users[h] = np.where(user_hashes == h)[0]
-
-def sample_positions_between_users(pos1, pos2, n_samples=10):
-    """Sample positions along a straight line between two users."""
-    t = np.linspace(0, 1, n_samples)
-    return np.array([pos1 * (1-ti) + pos2 * ti for ti in t])
-
-def find_closest_user(position, user_positions):
-    """Find the closest user to a given position."""
-    distances = np.linalg.norm(user_positions - position, axis=1)
-    return np.argmin(distances)
-
-def create_user_sequence(user_idxs, dataset, n_samples=10):
-    """Create a sequence of users between two randomly chosen users with the same hash."""
-    if len(user_idxs) < 2:
-        return None
-        
-    # Randomly select two different users
-    u1, u2 = np.random.choice(user_idxs, size=2, replace=False)
-    
-    # Get their positions
-    pos1 = dataset.rx_pos[u1]
-    pos2 = dataset.rx_pos[u2]
-    
-    # Sample positions along the path
-    sampled_positions = sample_positions_between_users(pos1, pos2, n_samples)
-    
-    # Get user positions for this hash
-    hash_user_positions = dataset.rx_pos[user_idxs]
-    
-    # Find closest users to each sampled position
-    sequence = []
-    for pos in sampled_positions:
-        closest_idx = find_closest_user(pos, hash_user_positions)
-        sequence.append(user_idxs[closest_idx])
-        
-    return np.unique(sequence)
-
-# Create sequences for each hash
-sequences_per_hash = {}
-n_sequences_factor = 0.2  # Create sequences for 20% of users in each hash
-
-for hash_val, user_idxs in tqdm(hash_to_users.items(), desc='Creating sequences per hash'):
-    n_users_per_hash = len(user_idxs)
-    n_sequences = max(1, int(n_users_per_hash * n_sequences_factor))
-    sequences = []
-    
-    for _ in range(n_sequences):
-        seq = create_user_sequence(user_idxs, dataset)
-        if seq is not None:
-            sequences.append(seq)
-    
-    sequences_per_hash[hash_val] = sequences
-
-#%% Plotting sequences
-
-# Plot a few example sequences
-plt.figure(figsize=(12, 8))
-
-# # Plot all users in gray first
-# plt.scatter(dataset.rx_pos[:, 0], dataset.rx_pos[:, 1], 
-#            color='lightgray', alpha=0.3, label='All Users')
-
-# Plot sequences for first two hashes with different colors
-colors = ['red', 'blue', 'green', 'purple']
-for i, (hash_val, sequences) in enumerate(list(sequences_per_hash.items())[1758:1762]):
-    color = colors[i]
-    
-    # Plot users with this hash
-    user_idxs = hash_to_users[hash_val]
-    plt.scatter(dataset.rx_pos[user_idxs, 0], dataset.rx_pos[user_idxs, 1],
-               color=color, alpha=0.5, label=f'Hash {hash_val} Users')
-    
-    # Plot sequences
-    for seq in sequences[:2]:  # Plot first two sequences for this hash
-        plt.plot(dataset.rx_pos[seq, 0], dataset.rx_pos[seq, 1],
-                color=color, linestyle='--', alpha=0.8)
-        plt.scatter(dataset.rx_pos[seq, 0], dataset.rx_pos[seq, 1],
-                   color=color, marker='x')
-
-plt.title('User Sequences by Hash')
-plt.xlabel('X Position')
-plt.ylabel('Y Position')
-plt.legend()
-plt.grid(True)
-plt.show()
-
-
-#%% Visualize user hashes first and plot statistics
-
-# Visualize spatial distribution of first 10 hashes
-plt.figure(dpi=300, figsize=(10, 6))
-
-# Plot each hash with a different color
-colors = ['red', 'blue', 'green', 'purple', 'orange', 'brown', 'pink', 'gray', 'olive', 'cyan']
-for i, (hash_val, user_idxs) in enumerate(list(hash_to_users.items())[:10]):
-    positions = dataset.rx_pos[user_idxs]
-    n_users = len(user_idxs)
-    
-    plt.scatter(positions[:, 0], positions[:, 1], 
-               s=.5, alpha=0.6, color=colors[i], 
-               label=f'Hash {hash_val} (n={n_users})')
-
-plt.title('Spatial Distribution of First 10 Hashes')
-plt.xlabel('X Position')
-plt.ylabel('Y Position')
-plt.legend(bbox_to_anchor=(1.0, 1.015), loc='upper left', markerscale=10)
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-
-#%% Plot analysis of number of users per hash
-
-plt.figure(dpi=300, figsize=(10, 6))
-hash_vals = []
-num_users = []
-max_spreads = []
-for hash_val, user_idxs in hash_to_users.items():
-    hash_vals.append(hash_val)
-    num_users.append(len(user_idxs))
-    
-    # Calculate spatial spread
-    if len(user_idxs) > 0:
-        positions = dataset.rx_pos[user_idxs]
-        center = np.mean(positions, axis=0)
-        distances = np.linalg.norm(positions - center, axis=1)
-        max_spreads.append(np.max(distances))
-    else:
-        max_spreads.append(0)
-
-plt.bar(hash_vals, num_users)
-plt.title('Number of Users per Hash')
-plt.xlabel('Hash ID')
-plt.ylabel('Number of Users')
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-plt.bar(hash_vals, max_spreads)
-plt.title('Max Spread of Users per Hash')
-plt.xlabel('Hash ID')
-plt.ylabel('Max Spread')
-plt.grid(True)
-plt.tight_layout()
-plt.show()
-
-#%% Plot top 5 largest hashes
-
-# Get the top 5 hashes by number of users
-hash_counts = {}
-for h in user_hashes:
-    if h != -1:  # Skip invalid users
-        if h not in hash_counts:
-            hash_counts[h] = 0
-        hash_counts[h] += 1
-
-top_5_hashes = sorted(hash_counts.items(), key=lambda x: x[1], reverse=True)[:5]
-
-# Create scatter plot
-plt.figure(figsize=(12, 8), dpi=300)
-
-# Use distinct colors for each hash
-colors = ['#e41a1c', '#377eb8', '#4daf4a', '#984ea3', '#ff7f00']  # Color-blind friendly palette
-
-# Plot each hash
-for i, (hash_val, count) in enumerate(top_5_hashes):
-    # Get users with this hash
-    users = np.where(user_hashes == hash_val)[0]
-    
-    # Get their positions
-    positions = dataset.rx_pos[users]
-    
-    # Calculate spatial statistics
-    center = np.mean(positions, axis=0)
-    distances = np.linalg.norm(positions - center, axis=1)
-    max_spread = np.max(distances)
-    avg_spread = np.mean(distances)
-    
-    # Plot users
-    plt.scatter(positions[:, 0], positions[:, 1], 
-               s=2, alpha=0.4, color=colors[i], 
-               label=f'Hash {hash_val} (n={count}, spread={avg_spread:.1f}m)')
-
-plt.title('Spatial Distribution of Top 5 Largest Hashes')
-plt.xlabel('X Position (m)')
-plt.ylabel('Y Position (m)')
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', markerscale=4)
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.show()
-
-# Print detailed statistics for each hash
-print("\nDetailed statistics for top 5 hashes:")
-for hash_val, count in top_5_hashes:
-    users = np.where(user_hashes == hash_val)[0]
-    positions = dataset.rx_pos[users]
-    center = np.mean(positions, axis=0)
-    distances = np.linalg.norm(positions - center, axis=1)
-    
-    # Get path IDs for first user as example
-    first_user = users[0]
-    n_paths = dataset.num_paths[first_user]
-    path_sequence = []
-    for p in range(n_paths):
-        pid = path_ids[first_user, p]
-        sequence = get_path_sequence(dataset, first_user, p)
-        path_sequence.append((pid, sequence))
-    
-    print(f"\nHash {hash_val}:")
-    print(f"Number of users: {count}")
-    print(f"Average distance from center: {np.mean(distances):.1f}m")
-    print(f"Max distance from center: {np.max(distances):.1f}m")
-    print(f"Center position: ({center[0]:.1f}, {center[1]:.1f})")
-    print("Example path sequence (from first user):")
-    for pid, seq in path_sequence:
-        print(f"  Path ID {pid}: {seq}")
-
-#%% What is the percentage of power in the first X paths?
-
-def calculate_power_percentage(dataset, first_n_paths):
-    """
-    Calculate the percentage of total power contained in the first N paths for each user.
-    
-    Args:
-        dataset: DeepMIMO dataset
-        first_n_paths: Number of first paths to consider
-        
-    Returns:
-        percentages: Array of power percentages for each user
-    """
-    # Convert powers from dBW to linear scale
-    powers_linear = 10 ** (dataset.power / 10)  # Watts
-    
-    # Calculate total power per user (sum across all paths)
-    total_power = np.nansum(powers_linear, axis=1)
-    
-    # Calculate power in first N paths
-    power_first_n = np.nansum(powers_linear[:, :first_n_paths], axis=1)
-    
-    # Calculate percentage (avoiding division by zero)
-    valid_users = total_power > 0
-    percentages = np.zeros_like(total_power)
-    percentages[valid_users] = (power_first_n[valid_users] / total_power[valid_users]) * 100
-    
-    return percentages
-
-# Create coverage maps for different numbers of paths
-max_paths_to_analyze = 5
-
-for i in range(max_paths_to_analyze):
-    n_paths = i + 1
-    
-    # Calculate power percentages
-    power_percentages = calculate_power_percentage(dataset, n_paths)
-    
-    dataset.plot_coverage(power_percentages, dpi=300)
-    plt.show()
-
-# TODO: Measure the Channel NMSE of trimming the paths or not.
-#       If the loss is small (say < -20 dB NMSE), then we can trim the paths.
-#       (99.9% of the power is in the first 3 paths)
-
-#%% PATH INTERPOLATION FOR ONE PAIR OF USERS
+#%% PATH INTERPOLATION 1: FOR ONE PAIR OF USERS
 
 # Make a function that interpolates the path between 2 users
 def interpolate_percentage(array1, array2, percents):
@@ -638,7 +241,7 @@ distances = [0, 0.6, 1]  # meters
 params2 = interpolate_path(dataset, idx_1, idx_2, distances)
 # returns just the interpolated value
 
-#%% Generate all linear sequences in a scenario
+#%% PATH INTERPOLATION 2: Generate all linear sequences in a scenario
 
 def get_consecutive_active_segments(dataset: dm.Dataset, idxs: np.ndarray,
                                     min_len: int = 1) -> list[np.ndarray]:
@@ -661,58 +264,19 @@ def get_consecutive_active_segments(dataset: dm.Dataset, idxs: np.ndarray,
     consecutive_arrays = [idxs[arr] for arr in consecutive_arrays if len(arr) > min_len]
     
     return consecutive_arrays
-    
-#%% Make video of all sequences
 
-folder = 'sweeps'
-os.makedirs(folder, exist_ok=True)
-
-n_cols, n_rows = dataset.grid_size
-
-for row_or_col in ['row', 'col']:
-    for k in range(n_rows if row_or_col == 'row' else n_cols):
-        idx_func = dataset.get_row_idxs if row_or_col == 'row' else dataset.get_col_idxs
-        idxs = idx_func(k)
-        consecutive_arrays = get_consecutive_active_segments(dataset, idxs)
-        
-        print(f"{row_or_col} {k} has {len(consecutive_arrays)} consecutive segments:")
-        dataset.los.plot()
-        for i, arr in enumerate(consecutive_arrays):
-            print(f"Segment {i}: {len(arr)} users")
-            idxs_filtered = idxs[arr]
-            plt.scatter(dataset.rx_pos[idxs_filtered, 0], 
-                        dataset.rx_pos[idxs_filtered, 1], color='red', s=.5)
-        
-        plt.savefig(f'{folder}/asu_campus_3p5_{row_or_col}_{k:04d}.png', 
-                    bbox_inches='tight', dpi=200)
-        plt.close()
-        # break
-
-import subprocess
-
-subprocess.run([
-    "ffmpeg", "-y",
-    "-framerate", "60",
-    "-pattern_type", "glob",
-    "-i", f"{folder}/*.png",
-    "-vf", "crop=in_w:in_h-mod(in_h\\,2)",
-    "-c:v", "libx264",
-    "-pix_fmt", "yuv420p",
-    f"{folder}/output_60fps.mp4"
-])
-
-#%% Create all sequences
+#%% PATH INTERPOLATION 3: Create all sequences
 
 def get_all_sequences(dataset: dm.Dataset, min_len: int = 1) -> list[np.ndarray]:
     n_cols, n_rows = dataset.grid_size
     all_seqs = []
     for k in range(n_rows):
-        idxs = dataset.get_row_idxs(k)
+        idxs = dataset.get_idxs('row', row_idxs=k)
         consecutive_arrays = get_consecutive_active_segments(dataset, idxs, min_len)
         all_seqs += consecutive_arrays
 
     for k in range(n_cols):
-        idxs = dataset.get_col_idxs(k)
+        idxs = dataset.get_idxs('col', col_idxs=k)
         consecutive_arrays = get_consecutive_active_segments(dataset, idxs, min_len)
         all_seqs += consecutive_arrays
 
@@ -727,11 +291,11 @@ avg_len_seqs = sum_len_seqs / len(all_seqs)
 print(f"Number of sequences: {len(all_seqs)}")
 print(f"Average length of sequences: {avg_len_seqs:.1f}")
 
-print(f"Number of active users: {len(dataset.get_active_idxs())}")
+print(f"Number of active users: {len(dataset.get_idxs('active'))}")
 print(f"Total length of sequences: {sum_len_seqs}")
 
 
-#%%
+#%% PATH INTERPOLATION 4: Trim sequences to uniform length
 
 def expand_to_uniform_sequences(sequences: list[np.ndarray] | np.ndarray,
                                 target_len: int,
@@ -759,7 +323,8 @@ def expand_to_uniform_sequences(sequences: list[np.ndarray] | np.ndarray,
 all_seqs_mat_t = expand_to_uniform_sequences(all_seqs, target_len=10, stride=1)
 print(f"all_seqs_mat_t.shape: {all_seqs_mat_t.shape}")
 
-#%%
+#%% PATH INTERPOLATION 5: Build interpolated dataset from sequences
+
 # sample N sequences from all_trimmed_seqs_mat
 N = min(100_000, len(all_seqs_mat_t))
 idxs = np.random.choice(len(all_seqs_mat_t), N, replace=False)
@@ -890,7 +455,7 @@ seq_out_len = (seq_in_len - 1) * pps + 1
 H_seq = H.reshape(example_batch_size, seq_out_len, *H.shape[1:])
 print(f"H_seq.shape: {H_seq.shape}") # (n_seq_batch, seq_len, n_rx_ant, n_tx_ant, subcarriers)
 
-#%% plot interpolation results
+#%% PATH INTERPOLATION 6: Plot interpolation results
 
 # Compare positions before/after interpolation for a few sequences
 n_plot = min(3, example_batch_size)
@@ -913,8 +478,7 @@ for i in range(n_plot):
     plt.legend()
     plt.show()
 
-#%%
-# Compare an example variable (power of first path) before/after interpolation
+#%% Compare an example variable (power of first path) before/after interpolation
 var = 'inter'
 for i in range(3):
     orig_seq = all_seqs_mat_t2[i]
@@ -939,10 +503,6 @@ for i in range(3):
 
 #%%
 
-
-# TODO: Take H_seq and select 100k sequences of L length. This can be done. 
-# 
-
 # Expand to uniform sequences
 # all_seqs_mat_t3 = expand_to_uniform_sequences(all_seqs, target_len=95, stride=1)
 # print(f"all_seqs_mat_t3.shape: {all_seqs_mat_t3.shape}")
@@ -952,8 +512,6 @@ for i in range(3):
 # idxs = np.random.choice(len(all_seqs_mat_t3), N, replace=False)
 # all_seqs_mat_t3 = all_seqs_mat_t3[idxs]
 # print(f"all_seqs_mat_t3.shape: {all_seqs_mat_t3.shape}")
-
-
 
 # Plot H - transform to fit: (n_samples, n_rx_ant, n_tx_ant, seq_len)
 H_3_plot = np.transpose(H_seq[:, :95, :, :, 0], (0, 2, 3, 1))
@@ -985,11 +543,4 @@ def plot_iq_from_H(H: np.ndarray, sample_idx: int | None = None, rx_idx: int | N
 plot_sample_idx, plot_rx_idx = plot_iq_from_H(H_3_plot)
 
 
-
-# If we have sequences 
-
-
-#%%
-
-
-    
+# %%
