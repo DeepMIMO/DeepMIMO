@@ -9,6 +9,7 @@ This module provides visualization utilities for the DeepMIMO dataset, including
 The module uses matplotlib for generating plots and supports both 2D and 3D visualizations.
 """
 
+import colorsys
 import csv
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,31 @@ from tqdm import tqdm
 
 CAT_LABELS_MAX_UNIQUE = 30
 VAL_RANGE_THRESHOLD = 100
+
+
+def generate_distinct_colors(n: int) -> np.ndarray:
+    """Generate n visually distinct colors using HSV color space.
+
+    Uses golden ratio to space hues evenly for maximum color distinction.
+    Varies saturation and value slightly for additional distinction.
+
+    Args:
+        n: Number of distinct colors to generate
+
+    Returns:
+        Array of shape (n, 4) containing RGBA colors, each in range [0, 1]
+
+    """
+    colors = []
+    for i in range(n):
+        # Use golden ratio to space hues evenly
+        hue = (i * 0.618033988749895) % 1
+        # Vary saturation and value slightly for more distinction
+        sat = 0.8 + (i % 3) * 0.1  # Vary between 0.8-1.0
+        val = 0.9 + (i % 2) * 0.1  # Vary between 0.9-1.0
+        rgb = colorsys.hsv_to_rgb(hue, sat, val)
+        colors.append([*list(rgb), 1.0])  # Add alpha=1.0
+    return np.array(colors)
 
 
 def _create_colorbar(  # noqa: PLR0913 - all params needed for flexible colorbar customization

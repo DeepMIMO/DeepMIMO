@@ -220,6 +220,13 @@ ARRAY_RESPONSE_PRODUCT_PARAM_NAME = "array_response_product"
 GRID_SIZE_PARAM_NAME = "grid_size"
 GRID_SPACING_PARAM_NAME = "grid_spacing"
 
+# Multipath Lifetime Map (MPLM) parameters
+INTER_VEC_PARAM_NAME = (
+    "inter_vec"  # Vectorized interaction codes (n_users, n_paths, max_n_interactions)
+)
+PATH_IDS_PARAM_NAME = "path_ids"  # Unique IDs for paths based on interaction signatures
+PATH_HASH_PARAM_NAME = "path_hash"  # Hash for each user's multipath mix
+
 # Rotated angles (after antenna rotation)
 AOA_AZ_ROT_PARAM_NAME = "_aoa_az_rot"  # Azimuth   angles after rotation (radians)
 AOA_EL_ROT_PARAM_NAME = "_aoa_el_rot"  # Elevation angles after rotation (radians)
@@ -337,6 +344,9 @@ DATASET_ALIASES = {
     "inter_obj_ids": INTER_OBJECTS_PARAM_NAME,
     # TxRx aliases
     "tx_rx": TXRX_PARAM_NAME,
+    # Multipath lifetime map aliases
+    "mplm_hash": PATH_HASH_PARAM_NAME,
+    "multipath_hash": PATH_HASH_PARAM_NAME,
 }
 
 # ==============================================================================

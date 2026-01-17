@@ -20,7 +20,7 @@ from .sampling import (
     get_uniform_idxs,
 )
 from .summary import plot_summary, summary
-from .visualization import plot_coverage, plot_power_discarding, plot_rays
+from .visualization import generate_distinct_colors, plot_coverage, plot_power_discarding, plot_rays
 
 __all__ = [
     # Core dataset classes
@@ -32,6 +32,8 @@ __all__ = [
     "dbw2watt",
     # Dataset operations
     "generate",
+    # Color generation
+    "generate_distinct_colors",
     "get_grid_idxs",
     "get_idxs_with_limits",
     # Sampling utilities

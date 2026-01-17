@@ -170,6 +170,52 @@ else:
     print("3D scene not available for this scenario")
 
 # %% [markdown]
+# ## Multipath Lifetime Map (MPLM)
+#
+# Visualize spatial regions with similar multipath characteristics.
+# The MPLM colors each receiver location based on its unique multipath signature.
+# Receivers with the same combination of propagation paths will have the same color.
+
+# %% [markdown]
+# ### Basic MPLM Visualization
+
+# %%
+# Plot the Multipath Lifetime Map
+dataset.plot_mplm(dpi=150)
+plt.show()
+
+# %% [markdown]
+# The MPLM computation involves three lazy-evaluated properties:
+# - `dataset.inter_vec`: Vectorized interaction codes
+# - `dataset.path_ids`: Unique IDs for each path signature
+# - `dataset.path_hash`: Hash for each user's multipath mix
+
+# %%
+# Access the underlying data (computed lazily on first access)
+path_hash = dataset.path_hash
+path_ids = dataset.path_ids
+
+# Statistics
+print(f"Total users: {dataset.n_ue}")
+print(f"Active users (with paths): {(path_hash != -1).sum()}")
+print(f"Unique multipath signatures: {len(np.unique(path_hash[path_hash != -1]))}")
+
+# %% [markdown]
+# ### Analyzing Multipath Zones
+
+# %%
+# Find the most common multipath signatures
+active_hashes = path_hash[path_hash != -1]
+unique_hashes, counts = np.unique(active_hashes, return_counts=True)
+top_5_idx = np.argsort(counts)[-5:]
+
+print("Top 5 most common multipath signatures:")
+for idx in reversed(top_5_idx):
+    hash_val = unique_hashes[idx]
+    count = counts[idx]
+    print(f"  Hash {hash_val}: {count} users ({count / len(active_hashes) * 100:.1f}%)")
+
+# %% [markdown]
 # ---
 #
 # ## Next Steps

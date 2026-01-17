@@ -85,3 +85,5 @@ wheels/
 *.egg
 *.vscode
 *.mp4
+
+*:Zone.Identifier

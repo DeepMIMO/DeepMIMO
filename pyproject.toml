@@ -198,6 +198,9 @@ ignore = [
 "docs/tutorials/*.py" = [
     "N999",    # Allow tutorial names to start with a number
 ]
+"docs/applications/*.py" = [
+    "N999",    # Allow application names to start with a number
+]
 "docs/tutorials/manual.py" = [
     "E402",    # Imports not at top of the file
     "E501",    # Long lines are okay for tables
@@ -211,6 +214,7 @@ norecursedirs = [
     "tests/webtests",
     "tests/webtest",
     "tests/tutorials",
+    "tests/applications",
     "deepmimo_scenarios",
     "docs",
     "scripts",
@@ -219,6 +223,8 @@ norecursedirs = [
 addopts = "-q"
 markers = [
     "tutorial: marks tests as tutorial tests (run with 'pytest -m tutorial' or 'pytest tests/tutorials/')",
+    "application: marks tests as application tests (run with 'pytest -m application' or 'pytest tests/applications/')",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 filterwarnings = [
     "ignore::UserWarning:matplotlib",
