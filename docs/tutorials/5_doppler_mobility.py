@@ -7,9 +7,12 @@
 ---
 
 **Tutorial Overview:**
-- Set Doppler Directly - Configure Doppler shifts manually
-- Set Speeds - Define user/object velocities
-- Set Timestamps - Configure time evolution of the scene
+There are three ways to configure Doppler effects. In order of increasing complexity:
+1. Set Doppler Directly - Configure Doppler shifts (Hz) manually, per user and path
+2. Set Speeds - Define user/object velocities (m/s), which will be converted to Doppler shifts
+per user and path depending on the paths that interact with the user/object.
+3. Set Timestamps - Configure time evolution between scenes - this computes the velocities of
+users/objects across scenes given the timestamps (Note: requires dynamic datasets)
 
 **Related Video:** [Doppler Video](https://youtu.be/xsl6gjTEu2U)
 
@@ -95,23 +98,119 @@ if hasattr(dataset, "doppler"):
     print(f"Computed Doppler shifts: {dataset.doppler[0, :5]} Hz")
 
 # %% [markdown]
-# ## Set Timestamps
+# ## Understanding Dynamic Datasets
 #
-# Configure time evolution for time-varying channels.
+# **Dynamic scenarios** are series of ray-tracing snapshots where at least one element"s
+# properties change between scenes. A scenario is "dynamic" when at least one property of
+# at least one element changes, requiring a new ray-tracing simulation.
+#
+# ### What Can Change Between Scenes?
+#
+# Elements in the scene are either:
+# - **Objects** (no antennas): Properties that affect ray-tracing are **position**,
+#   **orientation**, and **material**
+# - **Transmitters/Receivers**: Properties that affect ray-tracing are **position**,
+#   **orientation**, and **antenna**
+#
+# In practice, **position changes are by far the most common**. Each scene is ray-traced
+# independently after the property changes, capturing how propagation evolves as elements move.
+#
+# ### Ray-Tracing and Time
+#
+# **Ray-tracing has no concept of time—only space.** Ray-tracing is fully deterministic,
+# not stochastic. Dynamic scenarios simply provide consecutive snapshots of a changing scene.
+# When elements move, they interact differently with propagation, and consecutive snapshots
+# capture those changes for more realistic modeling.
+#
+# **Time is a construct you apply in your simulations.** In DeepMIMO, Doppler effects are
+# added afterwards based on configured velocities, providing maximum flexibility without
+# loss of generality.
+#
+# ### When to Use Dynamic vs Static Scenarios
+#
+# Many studies accept using **static scenarios with user sampling along trajectories** as an
+# approximation. For example, if you want to model a user moving between buildings without
+# considering interaction with moving cars, a static scenario is sufficient. This provides
+# a good trade-off between simulation complexity and realism.
+#
+# **Important:** Current dynamic dataset support for channel generation across scenes is
+# limited. **We recommend using static datasets with mobility modeling** (as shown in this
+# tutorial) for most applications including channel prediction, beam tracking, and channel aging.
+#
+# Below is a demonstration of loading a dynamic dataset to visualize position changes.
 
 # %%
-# Note: Timestamp-based channel generation requires dynamic datasets
-# which track temporal changes. For static scenarios, we generate channels
-# with the configured Doppler parameters directly.
+# Example: Load dynamic dataset (demonstration only)
+dyn_scen_name = "asu_campus_3p5_dyn"
 
-print("Note: Time-varying channel generation requires dynamic datasets")
-print("For static scenarios, Doppler is applied based on configured velocities")
+print("Loading dynamic scenario...")
+
+# UNCOMMENT TO RUN. Currently commented to avoid 1.6 GB download during pytests.
+
+# Note: Load only one transmitter to avoid MacroDataset structure
+# which is not fully supported in dynamic scenarios yet
+
+# dataset_dyn = dm.load(dyn_scen_name, tx_sets={1: [0]})
+# print(f"Number of scenes in dynamic dataset: {len(dataset_dyn)}")
+
+dataset_dyn = None
 
 # %% [markdown]
-# ### Visualize Time-Varying Channel
+# ### Visualize Position Changes Across Scenes
 #
-# Note: This section requires dynamic datasets to visualize channel evolution over time.
-# For static scenarios with Doppler, the phase varies but requires explicit time-stepping.
+# Dynamic datasets contain multiple scenes. When timestamps are applied, the velocity
+# between consecutive user positions across scenes will vary based on temporal spacing.
+
+# %%
+# In this dynamic dataset, the property that changes across scenes is the position of one of the
+# transmitters.
+
+if dataset_dyn is not None:
+    # Visualize position evolution for a transmitter across scenes
+    tx1_pos = np.array(dataset_dyn.tx_pos)
+
+    plt.figure(figsize=(10, 6), tight_layout=True)
+    dataset_dyn[0].scene.plot(proj_3D=False)
+    plt.scatter(
+        tx1_pos[:, 0],
+        tx1_pos[:, 1],
+        c="blue",
+        marker="o",
+        s=50,
+        alpha=0.6,
+        label="Transmitter Trajectory",
+    )
+    plt.legend()
+    plt.show()
+    print(f"Transmitter moved across {len(tx1_pos)} scene snapshots")
+
+# %%
+
+# Apply timestamps to compute velocities between scenes
+if dataset_dyn is not None:
+    dataset_dyn.set_timestamps(1)  # 1 second between consecutive scenes
+    # If the position differences between scenes are constant, velocities will be constant too
+    # set_timestamps accepts a list of different time deltas between scenes as well.
+
+    # Timestamps are computed given a constant time delta of 1 second
+    print(f"timestamps: {dataset_dyn.timestamps}")
+    # Constant (zero) rx velocities because rx positions are constant
+    print(f"rx_vel: {dataset_dyn.rx_vel}")
+    # Constant (non-zero) tx velocities due to constant 5 meter position differences between scenes
+    print(f"tx_vel: {dataset_dyn.tx_vel}")
+    # Constant (zero) object velocities - object positions never change across scenes
+    print(f"obj_vel: {[obj.vel for obj in dataset_dyn.scene.objects]}")
+
+    # Note: The Dynamic dataset should not contain MacroDatasets, since tx-rx pair Datasets.
+    # A Dataset will contain a single tx-rx pair, when we pre-load it with tx_sets={1: [0]}.
+    print(f"Transmitter velocity (m/s) in scene 1: {dataset_dyn[1].tx_vel}")
+
+# %% [markdown]
+# **Note:** While dynamic datasets show realistic element movements, for most applications
+# (channel prediction, beam tracking, etc.), **static scenarios with user sampling along
+# trajectories** provide sufficient realism with simpler implementation. See the
+# [user sampling documentation](https://deepmimo.net/docs/manual_full.html#user-sampling)
+# for trajectory-based mobility in static scenarios.
 
 # %% [markdown]
 # ## Doppler Spectrum
