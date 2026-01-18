@@ -171,8 +171,15 @@ if dataset_dyn is not None:
 
     plt.figure(figsize=(10, 6), tight_layout=True)
     dataset_dyn[0].scene.plot(proj_3D=False)
-    plt.scatter(tx1_pos[:, 0], tx1_pos[:, 1], c="blue", marker="o", s=50, alpha=0.6,
-                label="Transmitter Trajectory")
+    plt.scatter(
+        tx1_pos[:, 0],
+        tx1_pos[:, 1],
+        c="blue",
+        marker="o",
+        s=50,
+        alpha=0.6,
+        label="Transmitter Trajectory",
+    )
     plt.legend()
     plt.show()
     print(f"Transmitter moved across {len(tx1_pos)} scene snapshots")
