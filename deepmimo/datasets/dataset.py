@@ -1991,7 +1991,12 @@ class DynamicDataset(MacroDataset):
                 dataset_prev.scene.objects.position
             )
             dataset_curr.rx_vel = rx_pos_diff / time_diff
-            dataset_curr.tx_vel = tx_pos_diff / time_diff
+            # Handle both tx_pos shapes: (3,) and (1, 3)
+            # tx_pos can be 1D (single position) or 2D (array of positions)
+            if tx_pos_diff.ndim > 1:
+                dataset_curr.tx_vel = tx_pos_diff[0] / time_diff
+            else:
+                dataset_curr.tx_vel = tx_pos_diff / time_diff
             dataset_curr.scene.objects.vel = list(obj_pos_diff / time_diff)
             if i == 1:
                 i2 = 0
