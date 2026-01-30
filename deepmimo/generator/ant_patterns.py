@@ -39,7 +39,7 @@ def _pattern_halfwave_dipole(theta: np.ndarray, _phi: np.ndarray) -> np.ndarray:
 
     This function implements the theoretical radiation pattern of a half-wave
     dipole antenna, including its characteristic figure-8 shape.
-    The pattern follows the formula: G(θ) = 1.643 * [cos(π/2 * cos(θ))]²/sin(θ)
+    The pattern follows the formula: G(θ) = max_gain * [cos(π/2 * cos(θ))/sin(θ)]²
     where θ is measured from the dipole axis.
 
     Reference: Balanis, C.A. "Antenna Theory: Analysis and Design", 4th Edition
@@ -70,7 +70,7 @@ def _pattern_halfwave_dipole(theta: np.ndarray, _phi: np.ndarray) -> np.ndarray:
     cos_term = np.cos(np.pi / 2 * np.cos(theta_valid))
 
     # Apply the formula: G(θ) = max_gain * [cos(π/2 * cos(θ))]²/sin²(θ)
-    pattern[valid_angles] = max_gain * (cos_term**2 / sin_theta)
+    pattern[valid_angles] = max_gain * (cos_term / sin_theta) ** 2
 
     return pattern
 

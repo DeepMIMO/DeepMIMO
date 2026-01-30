@@ -40,7 +40,7 @@ def test_single_dipole() -> None:
     Tests the half-wave dipole pattern characteristics:
     1. Maximum gain at 90° (broadside)
     2. Nulls at 0° and 180° (endfire)
-    3. At 45°, gain should be approximately 0.08 relative to maximum
+    3. At 45°, gain should be approximately 0.16 relative to maximum
     """
     pattern = AntennaPattern(tx_pattern="halfwave-dipole", rx_pattern="halfwave-dipole")
 
@@ -50,7 +50,7 @@ def test_single_dipole() -> None:
         (1.0, 90.0, 1.0),  # Maximum gain at 90 degrees (broadside)
         (1.0, 0.0, 0.0),  # Null at 0 degrees (endfire)
         (1.0, 180.0, 0.0),  # Null at 180 degrees (endfire)
-        (1.0, 45.0, 0.08),  # Gain at 45 degrees (~0.08 of maximum)
+        (1.0, 45.0, 0.16),  # Gain at 45 degrees (~0.08 of maximum)
     ]
 
     for power_val, theta_val, expected_rel_gain in test_cases:
@@ -101,7 +101,7 @@ def test_batch_dipole() -> None:
     assert abs(normalized[0, 0] - 1.0) < 0.01, "Unexpected gain at 90 degrees"
     assert abs(normalized[1, 0]) < 1e-10, "Expected zero gain at 0 degrees"
     assert abs(normalized[2, 0]) < 1e-10, "Expected zero gain at 180 degrees"
-    assert abs(normalized[3, 0] - 0.08) < 0.01, "Unexpected gain at 45 degrees"
+    assert abs(normalized[3, 0] - 0.16) < 0.01, "Unexpected gain at 45 degrees"
 
 
 def test_1d_to_2d_conversion() -> None:
