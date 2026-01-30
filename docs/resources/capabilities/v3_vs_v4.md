@@ -13,7 +13,7 @@ Version 4 represents a major evolution of DeepMIMO with comprehensive API access
 | **Advanced Plotting** | Limited | ✓ Ray, coverage maps, scene visualization |
 | **DeepMIMO Arrays** | ✗ | ✓ One-line array plotting |
 | **Decoupled Parameters** | Coupled | ✓ Decoupled Load & Compute |
-| **Integrations** | Implicit (MATLAB) | ✓ Explicit (Matlab 5G Toolbox, Sionna, NeoRadium) |
+| **Integrations** | Implicit (MATLAB) | ✓ Explicit (Sionna & soon MATLAB 5G Toolbox) |
 | **Documentation** | Custom text | ✓ MkDocs-based professional docs |
 | **Tutorials** | Limited | ✓ Many examples, videos & wireless applications |
 | **Testing & Standards** | ✗ | ✓ PyTest coverage with Ruff linting & formatting |
