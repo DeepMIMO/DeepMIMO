@@ -245,6 +245,7 @@ class InSiteTxRxSet:
             num_ant=1 if antenna["polarization"] in ["Vertical", "Horizontal"] else 2,
             dual_pol=antenna["polarization"] == "Both",
             array_orientation=[rotations["bearing"], rotations["pitch"], rotations["roll"]],
+            grid_spacing=self.spacing,
         )
 
 
@@ -394,32 +395,10 @@ def read_txrx(folder: str, *, plot: bool = False) -> dict[str, Any]:
     print(f"Reading xml file: {Path(xml_file).name}")
 
     insite_sets = get_txrx_insite_sets_from_xml(xml_file)
-
-    # Build a mapping from DeepMIMO set id -> original InSite spacing (grid sets only)
-    # This must be done before conversion as convert_sets_to_deepmimo modifies insite_sets in-place
-    spacing_by_id = {}
-    deepmimo_id = 0
-    for insite_set in insite_sets:
-        if insite_set.transmitter and insite_set.receiver:
-            same_antennas = (
-                insite_set.transmitter["antenna"] == insite_set.receiver["antenna"]
-                and insite_set.transmitter["rotations"] == insite_set.receiver["rotations"]
-            )
-            if not same_antennas:
-                spacing_by_id[deepmimo_id] = insite_set.spacing  # TX-only split set
-                deepmimo_id += 1
-        spacing_by_id[deepmimo_id] = insite_set.spacing
-        deepmimo_id += 1
-
-    # Parse TX/RX sets
     txrx_sets, point_locations = convert_sets_to_deepmimo(insite_sets)
 
-    # Create txrx_sets dictionary with idx-based keys, including grid_spacing
-    txrx_dict = {}
-    for obj in txrx_sets:
-        entry = obj.to_dict()
-        entry['grid_spacing'] = spacing_by_id.get(obj.id)
-        txrx_dict[f'txrx_set_{obj.id}'] = entry
+    # Create txrx_sets dictionary with idx-based keys
+    txrx_dict = {f"txrx_set_{obj.id}": obj.to_dict() for obj in txrx_sets}
 
     # Optional visualization
     if plot:
