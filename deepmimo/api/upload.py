@@ -391,23 +391,19 @@ def _format_section(name: str, lines: list) -> dict:
     for subsection in subsections:
         if len(subsection) == 1:  # Single line - use paragraph
             html_parts.append(f"<p>{subsection[0]}</p>")
-        else:  # Multiple lines
-            # Check if first line starts with dash - if so, treat everything as list
-            if subsection[0].startswith("-"):
-                # All items are list items, no header
-                items = [line.lstrip("- ") for line in subsection]
-                html_parts.append("<ul>")
-                html_parts.extend(f"<li>{item}</li>" for item in items)
-                html_parts.append("</ul>")
-            else:
-                # First line is header, rest are list items
-                header = subsection[0]
-                items = [line.lstrip("- ") for line in subsection[1:]]
+        elif subsection[0].startswith("-"):  # All items are list items, no header
+            items = [line.lstrip("- ") for line in subsection]
+            html_parts.append("<ul>")
+            html_parts.extend(f"<li>{item}</li>" for item in items)
+            html_parts.append("</ul>")
+        else:  # First line is header, rest are list items
+            header = subsection[0]
+            items = [line.lstrip("- ") for line in subsection[1:]]
 
-                html_parts.append(f"<h4>{header}</h4>")
-                html_parts.append("<ul>")
-                html_parts.extend(f"<li>{item}</li>" for item in items)
-                html_parts.append("</ul>")
+            html_parts.append(f"<h4>{header}</h4>")
+            html_parts.append("<ul>")
+            html_parts.extend(f"<li>{item}</li>" for item in items)
+            html_parts.append("</ul>")
 
     return {
         "name": name,
