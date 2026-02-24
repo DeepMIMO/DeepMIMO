@@ -42,6 +42,7 @@ class TxRxSet:
         default_factory=lambda: [[0, 0, 0]],
     )  # relative to the center of the antenna
     array_orientation: list = field(default_factory=lambda: [0, 0, 0])  # [azimuth, elevation, roll]
+    grid_spacing: float | None = None  # spacing between points if it is a grid set
 
     def to_dict(self) -> dict:
         """Convert TxRxSet to a dictionary.

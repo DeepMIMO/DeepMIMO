@@ -247,6 +247,14 @@ def _process_params_data(params_dict: dict, extra_metadata: dict | None = None) 
         c.RAYTRACER_NAME_AODT: "AODT",
     }
 
+    # Derive userSpacing from the RX set's grid_spacing saved by the converter
+    rx_grid_sets = [s for s in txrx_sets.values() if s.get("is_rx")]
+    user_spacing = None
+    for s in rx_grid_sets:
+        if s.get("grid_spacing") is not None:
+            user_spacing = s["grid_spacing"]
+            break
+
     # Create base parameter dictionaries
     primary_params = {
         "bands": {
@@ -287,6 +295,7 @@ def _process_params_data(params_dict: dict, extra_metadata: dict | None = None) 
         "digitalTwin": False,
         "dynamic": scene_params.get("num_scenes", 1) > 1,
         "bbCoords": None,
+        "userSpacing": user_spacing,
     }
 
     # Override with extra metadata if provided

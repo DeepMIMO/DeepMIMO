@@ -245,6 +245,7 @@ class InSiteTxRxSet:
             num_ant=1 if antenna["polarization"] in ["Vertical", "Horizontal"] else 2,
             dual_pol=antenna["polarization"] == "Both",
             array_orientation=[rotations["bearing"], rotations["pitch"], rotations["roll"]],
+            grid_spacing=self.spacing,
         )
 
 
@@ -397,9 +398,7 @@ def read_txrx(folder: str, *, plot: bool = False) -> dict[str, Any]:
     txrx_sets, point_locations = convert_sets_to_deepmimo(insite_sets)
 
     # Create txrx_sets dictionary with idx-based keys
-    txrx_dict = {}
-    for obj in txrx_sets:
-        txrx_dict[f"txrx_set_{obj.id}"] = obj.to_dict()
+    txrx_dict = {f"txrx_set_{obj.id}": obj.to_dict() for obj in txrx_sets}
 
     # Optional visualization
     if plot:
