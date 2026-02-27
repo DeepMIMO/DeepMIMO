@@ -490,9 +490,7 @@ def stats(  # noqa: C901, PLR0912, PLR0915
             if not np.any(candidate_mask):
                 continue
 
-            in_poly = MplPath(poly, closed=True).contains_points(
-                rx_xy[candidate_mask], radius=1e-9
-            )
+            in_poly = MplPath(poly, closed=True).contains_points(rx_xy[candidate_mask], radius=1e-9)
             candidate_idxs = np.where(candidate_mask)[0]
             inside_building_mask[candidate_idxs[in_poly]] = True
 
