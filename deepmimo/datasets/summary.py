@@ -39,17 +39,16 @@ from typing import Any
 
 # Third-party imports
 import matplotlib.pyplot as plt
-from matplotlib.path import Path as MplPath
 import numpy as np
+from matplotlib.path import Path as MplPath
 from scipy.spatial import ConvexHull, QhullError
 
 from deepmimo import consts as c
+from deepmimo.utils import get_params_path, load_dict_from_json
 
-# Local imports
-from deepmimo.utils import (
-    get_params_path,
-    load_dict_from_json,
-)
+_MIN_HULL_POINTS_2D = 3
+_MIN_HULL_POINTS_3D = 4
+_MIN_RANK_FOR_VOLUME = 3
 
 
 def summary(scen_name: str, *, print_summary: bool = True) -> str | None:  # noqa: PLR0915
@@ -183,21 +182,23 @@ def summary(scen_name: str, *, print_summary: bool = True) -> str | None:  # noq
     return summary_str
 
 
-def stats(scen_name: str, print_summary: bool = True, bs_idx: int = 0) -> str | None:
-    """
-    Calculate and return a summary of the scenario statistics.
+def stats(  # noqa: C901, PLR0912, PLR0915
+    scen_name: str, *, print_summary: bool = True, bs_idx: int = 0
+) -> str | None:
+    """Calculate and return a summary of the scenario statistics.
 
     Args:
-        scen_name (str): Name of the scenario to summarize
-        print_summary (bool): Whether to print the summary (default: True)
-        bs_idx (int): Base station index for statistics (default: 0, first base station)
+        scen_name (str): Name of the scenario to summarize.
+        print_summary (bool): Whether to print the summary (default: True).
+        bs_idx (int): Base station index for statistics (default: 0, first base station).
 
     Returns:
-        str | None: Summary string if print_summary is False, None otherwise
+        str | None: Summary string if print_summary is False, None otherwise.
+
     """
-    # Import load function here to avoid circular import
-    from .dataset import DynamicDataset, MacroDataset
-    from .load import load
+    # Imported lazily to avoid circular import during package initialization.
+    from .dataset import DynamicDataset, MacroDataset  # noqa: PLC0415
+    from .load import load  # noqa: PLC0415
 
     # Load the dataset for statistics calculation
     print("Calculating scenario statistics...")
@@ -206,7 +207,8 @@ def stats(scen_name: str, print_summary: bool = True, bs_idx: int = 0) -> str | 
     # Handle DynamicDataset -> use first snapshot for summary statistics
     if isinstance(dataset, DynamicDataset):
         if len(dataset) == 0:
-            raise ValueError(f"Dynamic scenario '{scen_name}' contains no snapshots")
+            msg = f"Dynamic scenario '{scen_name}' contains no snapshots"
+            raise ValueError(msg)
         print("Dynamic scenario detected. Using snapshot 1 for statistics.")
         dataset = dataset[0]
 
@@ -214,7 +216,8 @@ def stats(scen_name: str, print_summary: bool = True, bs_idx: int = 0) -> str | 
     if isinstance(dataset, MacroDataset):
         datasets = dataset.datasets
         if len(datasets) == 0:
-            raise ValueError(f"Scenario '{scen_name}' contains no TX/RX dataset pairs")
+            msg = f"Scenario '{scen_name}' contains no TX/RX dataset pairs"
+            raise ValueError(msg)
 
         # MacroDataset may include multiple RX grids per BS.
         # Group by TX position so bs_idx maps to unique BS locations.
@@ -330,7 +333,9 @@ def stats(scen_name: str, print_summary: bool = True, bs_idx: int = 0) -> str | 
             if np.sum(valid_mask) > 1:
                 valid_user_delays = user_delays[valid_mask]
                 valid_user_powers = user_powers[valid_mask]
-                mean_delay = np.sum(valid_user_delays * valid_user_powers) / np.sum(valid_user_powers)
+                mean_delay = np.sum(valid_user_delays * valid_user_powers) / np.sum(
+                    valid_user_powers
+                )
                 rms_delay = np.sqrt(
                     np.sum((valid_user_delays - mean_delay) ** 2 * valid_user_powers)
                     / np.sum(valid_user_powers)
@@ -421,21 +426,21 @@ def stats(scen_name: str, print_summary: bool = True, bs_idx: int = 0) -> str | 
 
         # Compute volume and footprint over all buildings for exact totals
         # Use 2D convex hull area directly here for accuracy.
-        def _exact_footprint_area(obj) -> float:
+        def _exact_footprint_area(obj: Any) -> float:
             points_2d = np.unique(obj.vertices[:, :2], axis=0)
-            if points_2d.shape[0] < 3:
+            if points_2d.shape[0] < _MIN_HULL_POINTS_2D:
                 return 0.0
             try:
                 return float(ConvexHull(points_2d).volume)
             except QhullError:
                 return 0.0
 
-        def _exact_volume(obj) -> float:
+        def _exact_volume(obj: Any) -> float:
             points_3d = np.unique(obj.vertices, axis=0)
-            if points_3d.shape[0] < 4:
+            if points_3d.shape[0] < _MIN_HULL_POINTS_3D:
                 return 0.0
             # Coplanar/collinear point sets are effectively zero-volume.
-            if np.linalg.matrix_rank(points_3d - points_3d[0]) < 3:
+            if np.linalg.matrix_rank(points_3d - points_3d[0]) < _MIN_RANK_FOR_VOLUME:
                 return 0.0
             try:
                 return float(ConvexHull(points_3d).volume)
@@ -443,7 +448,10 @@ def stats(scen_name: str, print_summary: bool = True, bs_idx: int = 0) -> str | 
                 return 0.0
 
         building_volumes = np.array([_exact_volume(obj) for obj in buildings], dtype=float)
-        building_footprints = np.array([_exact_footprint_area(obj) for obj in buildings], dtype=float)
+        building_footprints = np.array(
+            [_exact_footprint_area(obj) for obj in buildings],
+            dtype=float,
+        )
         avg_volume = np.mean(building_volumes)
         avg_footprint = np.mean(building_footprints)
         total_volume = np.sum(building_volumes)
@@ -460,7 +468,7 @@ def stats(scen_name: str, print_summary: bool = True, bs_idx: int = 0) -> str | 
 
         for obj in buildings:
             points_2d = np.unique(obj.vertices[:, :2], axis=0)
-            if points_2d.shape[0] < 3:
+            if points_2d.shape[0] < _MIN_HULL_POINTS_2D:
                 continue
             try:
                 hull = ConvexHull(points_2d)
@@ -502,9 +510,8 @@ def stats(scen_name: str, print_summary: bool = True, bs_idx: int = 0) -> str | 
             )
             summary_str += f"- Average height: {np.mean(terrain_heights):.1f} m\n"
             summary_str += f"- Height std dev: {np.std(terrain_heights):.1f} m\n"
-            summary_str += (
-                f"- Total elevation change: {np.max(terrain_heights) - np.min(terrain_heights):.1f} m\n"
-            )
+            elevation_change = np.max(terrain_heights) - np.min(terrain_heights)
+            summary_str += f"- Total elevation change: {elevation_change:.1f} m\n"
         else:
             summary_str += "- Height range: 0.0 - 0.0 m\n"
             summary_str += "- Average height: 0.0 m\n"
@@ -716,4 +723,4 @@ def plot_summary(
     # ISSUE: LoS is BS specific. Are we going to show the LoS for each BS?
     # Image 3: Line of Sight (LOS) - commented out for now
 
-    return img_paths if img_paths else None
+    return img_paths or None
