@@ -19,7 +19,7 @@ from .sampling import (
     get_linear_idxs,
     get_uniform_idxs,
 )
-from .summary import plot_summary, summary
+from .summary import plot_summary, stats, summary
 from .visualization import generate_distinct_colors, plot_coverage, plot_power_discarding, plot_rays
 
 __all__ = [
@@ -45,6 +45,7 @@ __all__ = [
     "plot_power_discarding",
     "plot_rays",
     "plot_summary",
+    "stats",
     # Summary
     "summary",
     # Validation
