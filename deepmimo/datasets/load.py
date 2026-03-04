@@ -63,10 +63,6 @@ def load(
                 - list: List of matrix names to load
                 - str: 'all' to load all available matrices
 
-            * compat_v3 (bool, optional): If True, apply backward-compat behavior
-                for multi-RX-grid scenarios by merging RX grids and enabling global
-                row/col indexing semantics similar to v3. Defaults to False.
-
     Returns:
         Dataset or MacroDataset: Loaded dataset(s)
 
@@ -149,7 +145,8 @@ def _pad_concat_users(arrays: list[np.ndarray]) -> np.ndarray:
 
 def _rx_rank_map(txrx_dict: dict[str, Any]) -> dict[int, int]:
     """Map RX set IDs to their scenario order rank."""
-    rx_sets = [txrx_dict[key] for key in sorted(txrx_dict.keys()) if txrx_dict[key]["is_rx"]]
+    rx_sets = [txrx_set for txrx_set in txrx_dict.values() if txrx_set["is_rx"]]
+    rx_sets.sort(key=lambda txrx_set: int(txrx_set["id"]))
     rx_set_ids = [int(rx_set["id"]) for rx_set in rx_sets]
     return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
 
@@ -191,7 +188,7 @@ def _compat_grid_spec(
     }
 
 
-def _merge_rx_grids(
+def _merge_rx_grids(  # noqa: C901
     datasets: list[Dataset],
     rx_rank_map: dict[int, int],
 ) -> Dataset:
@@ -201,23 +198,44 @@ def _merge_rx_grids(
         raise ValueError(msg)
 
     merged_data = {}
-    keys = list(datasets[0].keys())
+    keys = []
+    seen = set()
+    for ds in datasets:
+        for key in ds:
+            if key not in seen:
+                seen.add(key)
+                keys.append(key)
+
     for key in keys:
-        values = [ds[key] for ds in datasets]
-        v0 = values[0]
+        present_values = [ds[key] for ds in datasets if ds.hasattr(key)]
+        present_datasets = [ds for ds in datasets if ds.hasattr(key)]
+        if not present_values:
+            continue
+        v0 = present_values[0]
+
+        if len(present_values) != len(datasets):
+            # Key is asymmetric across RX grids; keep first available value safely.
+            merged_data[key] = v0
+            continue
+
         is_per_user_array = (
             isinstance(v0, np.ndarray)
             and v0.ndim > 0
-            and all(isinstance(v, np.ndarray) and v.ndim == v0.ndim for v in values)
-            and all(v.shape[0] == ds.n_ue for v, ds in zip(values, datasets, strict=False))
+            and all(isinstance(v, np.ndarray) and v.ndim == v0.ndim for v in present_values)
+            and all(
+                v.shape[0] == ds.n_ue
+                for v, ds in zip(present_values, present_datasets, strict=False)
+            )
         )
 
         if is_per_user_array:
-            same_tail_shapes = all(v.shape[1:] == values[0].shape[1:] for v in values)
+            same_tail_shapes = all(
+                v.shape[1:] == present_values[0].shape[1:] for v in present_values
+            )
             if same_tail_shapes:
-                merged_data[key] = np.concatenate(values, axis=0)
+                merged_data[key] = np.concatenate(present_values, axis=0)
             else:
-                merged_data[key] = _pad_concat_users(values)
+                merged_data[key] = _pad_concat_users(present_values)
         else:
             merged_data[key] = v0
 

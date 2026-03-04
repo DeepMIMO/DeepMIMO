@@ -53,13 +53,14 @@ class V3CompatDataset(Dataset):
         ue_offsets = np.asarray(self._compat_spec["ue_offsets"], dtype=int)
         grid_sizes = [np.asarray(g, dtype=int) for g in self._compat_spec["grid_sizes"]]
 
+        # Resolve each requested row/col in caller-provided order.
+        # This mirrors get_grid_idxs behavior for single-grid datasets.
+        grid_idxs = np.searchsorted(grid_offsets[1:], idxs_arr, side="right")
         all_ue_idxs = []
-        for grid_idx, grid_axis in enumerate(grid_axes):
-            mask = (idxs_arr >= grid_offsets[grid_idx]) & (idxs_arr < grid_offsets[grid_idx + 1])
-            if not np.any(mask):
-                continue
-            local_idxs = idxs_arr[mask] - grid_offsets[grid_idx]
-            local_ue_idxs = get_grid_idxs(grid_sizes[grid_idx], grid_axis, local_idxs)
+        for idx, grid_idx in zip(idxs_arr, grid_idxs, strict=False):
+            local_idx = int(idx - grid_offsets[grid_idx])
+            grid_axis = grid_axes[grid_idx]
+            local_ue_idxs = get_grid_idxs(grid_sizes[grid_idx], grid_axis, np.array([local_idx]))
             all_ue_idxs.append(local_ue_idxs + ue_offsets[grid_idx])
 
         if not all_ue_idxs:

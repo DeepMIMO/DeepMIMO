@@ -6,7 +6,7 @@ import pytest
 from deepmimo import consts as c
 from deepmimo.datasets.compat_v3 import V3CompatDataset
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
-from deepmimo.datasets.load import _merge_rx_grids
+from deepmimo.datasets.load import _merge_rx_grids, _rx_rank_map
 
 
 @pytest.fixture
@@ -309,3 +309,45 @@ def test_v3_compat_single_nonprimary_grid_reverses_row_col() -> None:
     # col -> row for rank>=1: row 0 in 4x2 grid => [0,1,2,3]
     col_idxs = merged.get_idxs("col", col_idxs=np.array([0]))
     np.testing.assert_array_equal(col_idxs, np.array([0, 1, 2, 3]))
+
+
+def test_v3_compat_preserves_requested_global_row_order() -> None:
+    """Global row resolution should follow caller-provided row index order."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)  # n_ue=6
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)  # n_ue=8
+    g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=0, tx_idx=0, rx_set_id=2)  # n_ue=6
+    merged = _merge_rx_grids([g1, g2, g3], rx_rank_map={0: 0, 1: 1, 2: 2})
+
+    row_idxs = merged.get_idxs("row", row_idxs=np.array([6, 0, 2]))
+
+    # Requested order:
+    # - global row 6 -> g3 col 0 -> [14,16,18]
+    # - global row 0 -> g1 row 0 -> [0,1,2]
+    # - global row 2 -> g2 col 0 -> [6,10]
+    np.testing.assert_array_equal(row_idxs, np.array([14, 16, 18, 0, 1, 2, 6, 10]))
+
+
+def test_rx_rank_map_uses_numeric_set_ids() -> None:
+    """RX rank mapping should sort by numeric RX set id, not key string."""
+    txrx_dict = {
+        "txrx_set_0": {"is_rx": True, "id": 0},
+        "txrx_set_10": {"is_rx": True, "id": 10},
+        "txrx_set_2": {"is_rx": True, "id": 2},
+        "txrx_set_1": {"is_rx": False, "id": 1},
+    }
+    assert _rx_rank_map(txrx_dict) == {0: 0, 2: 1, 10: 2}
+
+
+def test_merge_rx_grids_handles_asymmetric_keys() -> None:
+    """Merging should not fail when RX-grid datasets have non-uniform keys."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    g1["grid1_only"] = np.ones((g1.n_ue, 1), dtype=float)
+    g2["grid2_only"] = np.zeros((g2.n_ue, 1), dtype=float)
+
+    merged = _merge_rx_grids([g1, g2], rx_rank_map={0: 0, 1: 1})
+
+    assert "grid1_only" in merged
+    assert "grid2_only" in merged
+    np.testing.assert_array_equal(merged["grid1_only"], g1["grid1_only"])
+    np.testing.assert_array_equal(merged["grid2_only"], g2["grid2_only"])
