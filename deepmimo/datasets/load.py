@@ -43,6 +43,7 @@ def load(
 
     Args:
         scen_name (str): Name of the scenario to load
+        compat_v3 (bool): Enable v3-compatible row/col behavior across RX grids.
         **load_params: Additional parameters for loading the scenario. Can be passed as a dictionary
             or as keyword arguments. Available parameters are:
 

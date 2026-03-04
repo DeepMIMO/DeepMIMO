@@ -14,6 +14,13 @@ class V3CompatDataset(Dataset):
     """Dataset wrapper that applies v3-style global row/col indexing across RX grids."""
 
     def __init__(self, data: dict[str, Any] | None = None, *, compat_spec: dict[str, Any]) -> None:
+        """Initialize a compatibility dataset with precomputed global grid metadata.
+
+        Args:
+            data: Dataset payload dictionary.
+            compat_spec: Global row/col compatibility metadata used to resolve indices.
+
+        """
         super().__init__(data or {})
         object.__setattr__(self, "_compat_spec", compat_spec)
 
