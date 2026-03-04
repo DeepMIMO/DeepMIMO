@@ -4,6 +4,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import deepmimo as dm
 
 from deepmimo import consts as c
 
@@ -13,6 +14,11 @@ from deepmimo.datasets.summary import plot_summary, summary
 
 class TestSummary(unittest.TestCase):
     """Unit tests for dataset summary reporting."""
+
+    def test_stats_exported(self) -> None:
+        """Ensure stats is available from package exports."""
+        assert callable(dm.stats)
+        assert callable(dm.datasets.stats)
 
     @patch("deepmimo.datasets.summary.load_dict_from_json")
     @patch("deepmimo.datasets.summary.get_params_path")

@@ -19,6 +19,7 @@ import numpy as np
 from deepmimo import consts as c
 from deepmimo.core.materials import MaterialList
 from deepmimo.core.scene import Scene
+from deepmimo.datasets.compat_v3 import V3CompatDataset
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
 from deepmimo.utils import (
     DotDict,
@@ -30,7 +31,12 @@ from deepmimo.utils import (
 )
 
 
-def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
+def load(
+    scen_name: str,
+    *,
+    compat_v3: bool = False,
+    **load_params: Any,
+) -> Dataset | MacroDataset:
     """Load a DeepMIMO scenario.
 
     This function loads raytracing data and creates a Dataset or MacroDataset instance.
@@ -56,6 +62,10 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
                 - list: List of matrix names to load
                 - str: 'all' to load all available matrices
 
+            * compat_v3 (bool, optional): If True, apply backward-compat behavior
+                for multi-RX-grid scenarios by merging RX grids and enabling global
+                row/col indexing semantics similar to v3. Defaults to False.
+
     Returns:
         Dataset or MacroDataset: Loaded dataset(s)
 
@@ -65,7 +75,6 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
     """
     # Convert scenario name to lowercase for robustness
     scen_name = scen_name.lower()
-
     # Handle absolute paths
     if Path(scen_name).is_absolute():
         scen_folder = scen_name
@@ -89,6 +98,7 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
     # Load parameters file
     params_file = get_params_path(scen_name)
     params = load_dict_from_json(params_file)
+    rx_rank_map = _rx_rank_map(params[c.TXRX_PARAM_NAME])
 
     # Load scenario data
     n_snapshots = params[c.SCENE_PARAM_NAME][c.SCENE_PARAM_NUMBER_SCENES]
@@ -99,11 +109,148 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
         for snapshot_i in range(n_snapshots):
             snapshot_folder = str(scen_folder_path / scene_folders[snapshot_i])
             print(f"Scene {snapshot_i + 1}/{n_snapshots}")
-            dataset_list += [_load_dataset(snapshot_folder, params, load_params)]
+            snap_ds = _load_dataset(snapshot_folder, params, load_params)
+            if compat_v3:
+                snap_ds = _apply_v3_compat(snap_ds, rx_rank_map)
+            dataset_list += [snap_ds]
         dataset = DynamicDataset(dataset_list, scen_name)
     else:  # static (single scene)
         dataset = _load_dataset(scen_folder, params, load_params)
+        if compat_v3:
+            dataset = _apply_v3_compat(dataset, rx_rank_map)
     return dataset
+
+
+def _pad_concat_users(arrays: list[np.ndarray]) -> np.ndarray:
+    """Pad per-user arrays to common non-user dimensions, then concatenate on axis 0."""
+    ndim = arrays[0].ndim
+    target_shape = [max(arr.shape[d] for arr in arrays) for d in range(1, ndim)]
+    padded_arrays = []
+    for arr in arrays:
+        arr_to_pad = arr
+        if np.issubdtype(arr_to_pad.dtype, np.integer) or np.issubdtype(arr_to_pad.dtype, np.bool_):
+            arr_to_pad = arr_to_pad.astype(np.float32)
+
+        pad_width = [(0, 0)] + [
+            (0, target_shape[d - 1] - arr_to_pad.shape[d]) for d in range(1, ndim)
+        ]
+        if np.issubdtype(arr_to_pad.dtype, np.complexfloating):
+            pad_value = np.nan + 0j
+        elif np.issubdtype(arr_to_pad.dtype, np.floating):
+            pad_value = np.nan
+        else:
+            pad_value = 0
+        padded_arrays.append(
+            np.pad(arr_to_pad, pad_width, mode="constant", constant_values=pad_value)
+        )
+    return np.concatenate(padded_arrays, axis=0)
+
+
+def _rx_rank_map(txrx_dict: dict[str, Any]) -> dict[int, int]:
+    """Map RX set IDs to their scenario order rank."""
+    rx_sets = [txrx_dict[key] for key in sorted(txrx_dict.keys()) if txrx_dict[key]["is_rx"]]
+    rx_set_ids = [int(rx_set["id"]) for rx_set in rx_sets]
+    return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
+
+
+def _compat_grid_spec(
+    datasets: list[Dataset],
+    rx_rank_map: dict[int, int],
+) -> dict[str, Any]:
+    """Build global row/col indexing metadata for merged multi-grid datasets.
+
+    Backward-compat rule:
+    - RX grid with scenario rank 0 keeps native row/col interpretation.
+    - RX grids with rank >= 1 use reversed row/col interpretation.
+    """
+    grid_sizes = [np.asarray(ds.grid_size, dtype=int) for ds in datasets]
+    ue_offsets = np.cumsum([0, *[int(ds.n_ue) for ds in datasets[:-1]]], dtype=int)
+    rx_set_ids = [int(ds.get("txrx", {}).get("rx_set_id", -1)) for ds in datasets]
+    row_axes = ["row" if rx_rank_map.get(rx_set_id, 0) == 0 else "col" for rx_set_id in rx_set_ids]
+    col_axes = ["col" if rx_rank_map.get(rx_set_id, 0) == 0 else "row" for rx_set_id in rx_set_ids]
+
+    n_rows_per_grid = [
+        int(grid_size[1]) if row_axis == "row" else int(grid_size[0])
+        for grid_size, row_axis in zip(grid_sizes, row_axes, strict=False)
+    ]
+    n_cols_per_grid = [
+        int(grid_size[0]) if col_axis == "col" else int(grid_size[1])
+        for grid_size, col_axis in zip(grid_sizes, col_axes, strict=False)
+    ]
+    row_offsets = np.cumsum([0, *n_rows_per_grid], dtype=int)
+    col_offsets = np.cumsum([0, *n_cols_per_grid], dtype=int)
+
+    return {
+        "ue_offsets": ue_offsets,
+        "grid_sizes": grid_sizes,
+        "row_axes": row_axes,
+        "col_axes": col_axes,
+        "row_offsets": row_offsets,
+        "col_offsets": col_offsets,
+    }
+
+
+def _merge_rx_grids(
+    datasets: list[Dataset],
+    rx_rank_map: dict[int, int],
+) -> Dataset:
+    """Merge RX-grid datasets for one TX into a v3-compat dataset."""
+    if not datasets:
+        msg = "Cannot merge an empty dataset list"
+        raise ValueError(msg)
+
+    merged_data = {}
+    keys = list(datasets[0].keys())
+    for key in keys:
+        values = [ds[key] for ds in datasets]
+        v0 = values[0]
+        is_per_user_array = (
+            isinstance(v0, np.ndarray)
+            and v0.ndim > 0
+            and all(isinstance(v, np.ndarray) and v.ndim == v0.ndim for v in values)
+            and all(v.shape[0] == ds.n_ue for v, ds in zip(values, datasets, strict=False))
+        )
+
+        if is_per_user_array:
+            same_tail_shapes = all(v.shape[1:] == values[0].shape[1:] for v in values)
+            if same_tail_shapes:
+                merged_data[key] = np.concatenate(values, axis=0)
+            else:
+                merged_data[key] = _pad_concat_users(values)
+        else:
+            merged_data[key] = v0
+
+    merged_data["txrx_parts"] = [dict(ds.txrx) for ds in datasets if ds.hasattr("txrx")]
+    if datasets[0].hasattr("txrx"):
+        merged_data["txrx"] = dict(datasets[0].txrx)
+    compat_spec = _compat_grid_spec(datasets, rx_rank_map)
+    return V3CompatDataset(merged_data, compat_spec=compat_spec)
+
+
+def _apply_v3_compat(
+    dataset: Dataset | MacroDataset,
+    rx_rank_map: dict[int, int],
+) -> Dataset | MacroDataset:
+    """Merge multi-RX MacroDatasets into v3-compatible Dataset objects."""
+    if isinstance(dataset, Dataset):
+        return _merge_rx_grids([dataset], rx_rank_map)
+    if not isinstance(dataset, MacroDataset) or len(dataset) <= 1:
+        return dataset
+
+    grouped: dict[tuple[int, int], list[Dataset]] = {}
+    order: list[tuple[int, int]] = []
+    for ds in dataset.datasets:
+        txrx = ds.get("txrx", {})
+        tx_key = (int(txrx.get("tx_set_id", 0)), int(txrx.get("tx_idx", 0)))
+        if tx_key not in grouped:
+            grouped[tx_key] = []
+            order.append(tx_key)
+        grouped[tx_key].append(ds)
+
+    merged_list = [_merge_rx_grids(grouped[key], rx_rank_map) for key in order]
+    if len(merged_list) == 1:
+        return merged_list[0]
+    return MacroDataset(merged_list)
 
 
 def _load_dataset(folder: str, params: dict, load_params: dict) -> Dataset | MacroDataset:

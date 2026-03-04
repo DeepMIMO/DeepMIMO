@@ -4,7 +4,9 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
+from deepmimo.datasets.compat_v3 import V3CompatDataset
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
+from deepmimo.datasets.load import _merge_rx_grids
 
 
 @pytest.fixture
@@ -233,3 +235,77 @@ def test_get_idxs(sample_dataset) -> None:
     # Invalid mode
     with pytest.raises(ValueError, match="Unknown mode"):
         ds.get_idxs("invalid_mode")
+
+
+def _make_grid_dataset(nx: int, ny: int, tx_set_id: int, tx_idx: int, rx_set_id: int) -> Dataset:
+    """Create a synthetic grid dataset with x-fastest ordering."""
+    rx_pos = np.array([[x, y, 0.0] for y in range(ny) for x in range(nx)], dtype=float)
+    n_ue = nx * ny
+    return Dataset(
+        {
+            "rx_pos": rx_pos,
+            "tx_pos": np.array([0.0, 0.0, 10.0], dtype=float),
+            "power": np.zeros((n_ue, 2), dtype=float),
+            "phase": np.zeros((n_ue, 2), dtype=float),
+            "delay": np.zeros((n_ue, 2), dtype=float),
+            "aoa_az": np.zeros((n_ue, 2), dtype=float),
+            "aoa_el": np.zeros((n_ue, 2), dtype=float),
+            "aod_az": np.zeros((n_ue, 2), dtype=float),
+            "aod_el": np.zeros((n_ue, 2), dtype=float),
+            "inter": np.zeros((n_ue, 2), dtype=float),
+            "inter_pos": np.zeros((n_ue, 2, 1, 3), dtype=float),
+            "txrx": {"tx_set_id": tx_set_id, "tx_idx": tx_idx, "rx_set_id": rx_set_id},
+        }
+    )
+
+
+def test_v3_compat_global_row_col_idxs_on_merged_multi_grid() -> None:
+    """Merged compat dataset should resolve global row/col indices across RX grids."""
+    # Grid 1: normal row/col interpretation
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)  # n_ue=6
+    # Grid 2/3: reversed interpretation in compat mode
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)  # n_ue=8
+    g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=0, tx_idx=0, rx_set_id=2)  # n_ue=6
+
+    merged = _merge_rx_grids([g1, g2, g3], rx_rank_map={0: 0, 1: 1, 2: 2})
+    assert isinstance(merged, V3CompatDataset)
+
+    # Global rows:
+    # g1 rows: 2 (offset [0,2))
+    # g2 rows (reversed -> cols): 4 (offset [2,6))
+    # g3 rows (reversed -> cols): 2 (offset [6,8))
+    row_idxs = merged.get_idxs("row", row_idxs=np.array([0, 2, 6]))
+
+    # Expected per selected global row:
+    # - global row 0  -> g1 row 0 -> [0,1,2]
+    # - global row 2  -> g2 col 0 -> [0,4] + 6 offset => [6,10]
+    # - global row 6  -> g3 col 0 -> [0,2,4] + 14 offset => [14,16,18]
+    np.testing.assert_array_equal(row_idxs, np.array([0, 1, 2, 6, 10, 14, 16, 18]))
+
+    # Global cols:
+    # g1 cols: 3 (offset [0,3))
+    # g2 cols (reversed -> rows): 2 (offset [3,5))
+    # g3 cols (reversed -> rows): 3 (offset [5,8))
+    col_idxs = merged.get_idxs("col", col_idxs=np.array([0, 3, 5]))
+
+    # Expected:
+    # - global col 0 -> g1 col 0 -> [0,3]
+    # - global col 3 -> g2 row 0 -> [0,1,2,3] + 6 offset => [6,7,8,9]
+    # - global col 5 -> g3 row 0 -> [0,1] + 14 offset => [14,15]
+    np.testing.assert_array_equal(col_idxs, np.array([0, 3, 6, 7, 8, 9, 14, 15]))
+
+
+def test_v3_compat_single_nonprimary_grid_reverses_row_col() -> None:
+    """Single loaded non-primary RX grid should still use reversed row/col in compat mode."""
+    # Pretend this is RX set rank 1 (e.g., explicit rx_sets=[1])
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    merged = _merge_rx_grids([g2], rx_rank_map={0: 0, 1: 1})
+    assert isinstance(merged, V3CompatDataset)
+
+    # row -> col for rank>=1: col 0 in 4x2 grid => [0,4]
+    row_idxs = merged.get_idxs("row", row_idxs=np.array([0]))
+    np.testing.assert_array_equal(row_idxs, np.array([0, 4]))
+
+    # col -> row for rank>=1: row 0 in 4x2 grid => [0,1,2,3]
+    col_idxs = merged.get_idxs("col", col_idxs=np.array([0]))
+    np.testing.assert_array_equal(col_idxs, np.array([0, 1, 2, 3]))
