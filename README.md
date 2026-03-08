@@ -83,11 +83,11 @@ channels = dataset.compute_channels()  # [n_ue, n_rx, n_tx, n_sub]
 import deepmimo as dm
 
 # Convert Wireless Insite, Sionna, or AODT to DeepMIMO
-converter = dm.convert('path_to_ray_tracing_output')
+scenario_name = dm.convert('path_to_ray_tracing_output')
 
 # Upload a dataset to the DeepMIMO Database (optional)
-dm.upload('my_scenario', 'your-api-key')
-# get key in deepmimo.net -> contribute
+dm.upload(scenario_name, 'api-key')
+# get api key in deepmimo.net -> contribute
 ```
 
 ## Project Structure
