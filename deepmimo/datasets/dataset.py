@@ -1459,10 +1459,10 @@ class Dataset(DotDict):
                 print(f"  Path {path_idx}: No interactions")
                 continue
             print(f"  Path {path_idx} ({n_inter} interactions):")
-            for _i in range(n_inter):
-                print(f"    {p_idx + 1}: {self.inter_pos[idx][path_idx][p_idx]}")
+            for inter in range(n_inter):
+                print(f"    {inter + 1}: {self.inter_pos[idx][path_idx][inter]}")
 
-        if self.hasattr("inter_objects"):
+        if self.hasattr("inter_obj"):
             print("\nInteraction objects:")
             for p_idx, path_idx in enumerate(path_idxs):
                 n_inter = int(self.num_interactions[idx][path_idx])
@@ -1470,8 +1470,8 @@ class Dataset(DotDict):
                     print(f"  Path {path_idx}: No interactions")
                     continue
                 print(f"  Path {path_idx} ({n_inter} interactions):")
-                for _i in range(n_inter):
-                    print(f"    {p_idx + 1}: {self.inter_objects[idx][path_idx][p_idx]}")
+                for inter in range(n_inter):
+                    print(f"    {inter + 1}: {self.inter_obj[idx][path_idx][inter]}")
 
     def print_rx(self, idx: int, path_idxs: np.ndarray | list[int] | None = None) -> None:
         """Print detailed information about a specific user.
