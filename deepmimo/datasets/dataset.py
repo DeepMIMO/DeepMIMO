@@ -1453,7 +1453,7 @@ class Dataset(DotDict):
         print(f"Interaction types: {self.inter[idx][path_idxs]}")
         print(f"Number of interactions: {self.num_interactions[idx][path_idxs]}")
         print("Interaction positions:")
-        for p_idx, path_idx in enumerate(path_idxs):
+        for path_idx in path_idxs:
             n_inter = int(self.num_interactions[idx][path_idx])
             if np.isnan(n_inter):
                 print(f"  Path {path_idx}: No interactions")
@@ -1464,7 +1464,7 @@ class Dataset(DotDict):
 
         if self.hasattr("inter_obj"):
             print("\nInteraction objects:")
-            for p_idx, path_idx in enumerate(path_idxs):
+            for path_idx in path_idxs:
                 n_inter = int(self.num_interactions[idx][path_idx])
                 if np.isnan(n_inter):
                     print(f"  Path {path_idx}: No interactions")
