@@ -268,7 +268,7 @@ def _plot_scenario_summary_2d(  # noqa: C901, PLR0912 - 2D summary requires chec
         # Select users to plot
         max_users_for_grid = 5000
         if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > max_users_for_grid:
-            idxs = rx_grid_dataset.get_uniform_idxs([8, 8])
+            idxs = rx_grid_dataset.get_idxs("uniform", steps=[8, 8])
         else:
             idxs = np.arange(rx_grid_dataset.n_ue)
 
