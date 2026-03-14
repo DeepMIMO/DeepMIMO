@@ -25,9 +25,10 @@ Three functions:
     - Returns None
     - *Provides* the figures for each DeepMIMO scenario page.
 
-3. stats(scen_name)
-    - (coming soon)
-    - Returns a dictionary of statistics about the dataset.
+3. stats(scen_name, print_summary=True, bs_idx=0)
+    - Prints detailed scenario statistics by default.
+    - If print_summary is False, returns a string summary of the stats.
+    - Supports selecting a base station index for multi-BS scenarios.
 
 """
 
@@ -39,14 +40,15 @@ from typing import Any
 # Third-party imports
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.path import Path as MplPath
+from scipy.spatial import ConvexHull, QhullError
 
 from deepmimo import consts as c
+from deepmimo.utils import get_params_path, load_dict_from_json
 
-# Local imports
-from deepmimo.utils import (
-    get_params_path,
-    load_dict_from_json,
-)
+_MIN_HULL_POINTS_2D = 3
+_MIN_HULL_POINTS_3D = 4
+_MIN_RANK_FOR_VOLUME = 3
 
 
 def summary(scen_name: str, *, print_summary: bool = True) -> str | None:  # noqa: PLR0915
@@ -173,6 +175,347 @@ def summary(scen_name: str, *, print_summary: bool = True) -> str | None:  # noq
         summary_str += f"- Max longitude: {rt_params[c.RT_PARAM_GPS_BBOX][3]:.2f}\n"
 
     # Print summary
+    if print_summary:
+        print(summary_str)
+        return None
+
+    return summary_str
+
+
+def stats(  # noqa: C901, PLR0912, PLR0915
+    scen_name: str, *, print_summary: bool = True, bs_idx: int = 0
+) -> str | None:
+    """Calculate and return a summary of the scenario statistics.
+
+    Args:
+        scen_name (str): Name of the scenario to summarize.
+        print_summary (bool): Whether to print the summary (default: True).
+        bs_idx (int): Base station index for statistics (default: 0, first base station).
+
+    Returns:
+        str | None: Summary string if print_summary is False, None otherwise.
+
+    """
+    # Imported lazily to avoid circular import during package initialization.
+    from .dataset import DynamicDataset, MacroDataset  # noqa: PLC0415
+    from .load import load  # noqa: PLC0415
+
+    # Load the dataset for statistics calculation
+    print("Calculating scenario statistics...")
+    dataset = load(scen_name)
+
+    # Handle DynamicDataset -> use first snapshot for summary statistics
+    if isinstance(dataset, DynamicDataset):
+        if len(dataset) == 0:
+            msg = f"Dynamic scenario '{scen_name}' contains no snapshots"
+            raise ValueError(msg)
+        print("Dynamic scenario detected. Using snapshot 1 for statistics.")
+        dataset = dataset[0]
+
+    # Handle MacroDataset vs single Dataset
+    if isinstance(dataset, MacroDataset):
+        datasets = dataset.datasets
+        if len(datasets) == 0:
+            msg = f"Scenario '{scen_name}' contains no TX/RX dataset pairs"
+            raise ValueError(msg)
+
+        # MacroDataset may include multiple RX grids per BS.
+        # Group by TX position so bs_idx maps to unique BS locations.
+        bs_to_pair_indices = {}
+        for pair_idx, pair_ds in enumerate(datasets):
+            tx_pos = np.asarray(pair_ds.tx_pos, dtype=float)
+            tx_vec = tx_pos if tx_pos.ndim == 1 else tx_pos.reshape(-1, tx_pos.shape[-1])[0]
+            tx_key = tuple(np.round(tx_vec, decimals=6))
+            if tx_key not in bs_to_pair_indices:
+                bs_to_pair_indices[tx_key] = []
+            bs_to_pair_indices[tx_key].append(pair_idx)
+
+        bs_pair_groups = list(bs_to_pair_indices.values())
+        n_bs = len(bs_pair_groups)
+        selected_bs_idx = bs_idx if 0 <= bs_idx < n_bs else 0
+        if selected_bs_idx != bs_idx:
+            print(f"Warning: Base Station {bs_idx + 1} not found, using Base Station 1 instead")
+
+        selected_pair_indices = bs_pair_groups[selected_bs_idx]
+        selected_pair_idx = selected_pair_indices[0]
+        stats_dataset = datasets[selected_pair_idx]
+        print(f"Using statistics for Base Station {selected_bs_idx + 1}")
+        if len(selected_pair_indices) > 1:
+            print(
+                f"Note: Base Station {selected_bs_idx + 1} has {len(selected_pair_indices)} "
+                "TX/RX pairs; using the first pair."
+            )
+    else:
+        # Single Dataset case (one base station)
+        stats_dataset = dataset
+        if bs_idx != 0:
+            print(
+                "Warning: This is a single-BS scenario. Base Station "
+                f"{bs_idx + 1} does not exist, using the only available base station"
+            )
+
+    # Calculate path statistics
+    num_paths = stats_dataset.num_paths
+    los_status = stats_dataset.los
+    valid_users = num_paths > 0
+
+    def _robust_stats(values: np.ndarray) -> tuple[float, float, float, float]:
+        """Return median, IQR, p10, p90 for a 1D numeric array."""
+        median = float(np.median(values))
+        p25 = float(np.percentile(values, 25))
+        p75 = float(np.percentile(values, 75))
+        p10 = float(np.percentile(values, 10))
+        p90 = float(np.percentile(values, 90))
+        iqr = p75 - p25
+        return median, iqr, p10, p90
+
+    # Path Statistics
+    summary_str = "\nPath Statistics:\n"
+    summary_str += f"- Average paths per user: {np.mean(num_paths):.1f}\n"
+    summary_str += f"- Max paths per user: {np.max(num_paths)}\n"
+    summary_str += f"- Min paths per user: {np.min(num_paths)}\n"
+
+    # LOS/NLOS/No paths percentages
+    los_users = np.sum(los_status == 1)
+    nlos_users = np.sum(los_status == 0)
+    no_path_users = np.sum(los_status == -1)
+    total_users = len(los_status)
+
+    summary_str += f"- LOS percentage: {100.0 * los_users / total_users:.1f}%\n"
+    summary_str += f"- NLOS percentage: {100.0 * nlos_users / total_users:.1f}%\n"
+    summary_str += f"- No paths percentage: {100.0 * no_path_users / total_users:.1f}%\n"
+
+    # Average and maximum interactions per path
+    num_interactions = stats_dataset.num_interactions
+    valid_interactions = num_interactions[~np.isnan(num_interactions)]
+    if len(valid_interactions) > 0:
+        summary_str += f"- Average interactions per path: {np.mean(valid_interactions):.1f}\n"
+        summary_str += f"- Maximum interactions: {int(np.max(valid_interactions))}\n"
+    else:
+        summary_str += "- Average interactions per path: 0.0\n"
+        summary_str += "- Maximum interactions: 0\n"
+
+    # Power Statistics
+    summary_str += "\nPower Statistics:\n"
+    pathloss = stats_dataset.pathloss
+    valid_pathloss = pathloss[~np.isnan(pathloss)]
+    if len(valid_pathloss) > 0:
+        summary_str += f"- Average pathloss: {np.mean(valid_pathloss):.1f} dB\n"
+        summary_str += f"- Min pathloss: {np.min(valid_pathloss):.1f} dB\n"
+        summary_str += f"- Max pathloss: {np.max(valid_pathloss):.1f} dB\n"
+        pl_median, pl_iqr, pl_p10, pl_p90 = _robust_stats(valid_pathloss)
+        summary_str += f"- Median pathloss: {pl_median:.1f} dB\n"
+        summary_str += f"- Pathloss IQR (p75-p25): {pl_iqr:.1f} dB\n"
+        summary_str += f"- Pathloss p10/p90: {pl_p10:.1f}/{pl_p90:.1f} dB\n"
+    else:
+        summary_str += "- Average pathloss: N/A\n"
+        summary_str += "- Min pathloss: N/A\n"
+        summary_str += "- Max pathloss: N/A\n"
+        summary_str += "- Median pathloss: N/A\n"
+        summary_str += "- Pathloss IQR (p75-p25): N/A\n"
+        summary_str += "- Pathloss p10/p90: N/A\n"
+
+    # Delay Statistics
+    summary_str += "\nDelay Statistics:\n"
+    delays = stats_dataset.delay
+    valid_delays = delays[~np.isnan(delays)]
+    if len(valid_delays) > 0:
+        summary_str += f"- Min delay: {np.min(valid_delays) * 1e9:.1f} ns\n"
+        summary_str += f"- Max delay: {np.max(valid_delays) * 1e9:.1f} ns\n"
+        summary_str += f"- Average delay: {np.mean(valid_delays) * 1e9:.1f} ns\n"
+
+        # Calculate RMS delay spread per user
+        rms_delays = []
+        for i in range(stats_dataset.n_ue):
+            user_delays = delays[i]
+            user_powers = stats_dataset.power_linear[i]
+            valid_mask = ~np.isnan(user_delays) & ~np.isnan(user_powers)
+            if np.sum(valid_mask) > 1:
+                valid_user_delays = user_delays[valid_mask]
+                valid_user_powers = user_powers[valid_mask]
+                mean_delay = np.sum(valid_user_delays * valid_user_powers) / np.sum(
+                    valid_user_powers
+                )
+                rms_delay = np.sqrt(
+                    np.sum((valid_user_delays - mean_delay) ** 2 * valid_user_powers)
+                    / np.sum(valid_user_powers)
+                )
+                rms_delays.append(rms_delay)
+
+        if len(rms_delays) > 0:
+            summary_str += f"- Average RMS delay spread: {np.mean(rms_delays) * 1e9:.1f} ns\n"
+            summary_str += f"- Maximum RMS delay spread: {np.max(rms_delays) * 1e9:.1f} ns\n"
+        else:
+            summary_str += "- Average RMS delay spread: N/A\n"
+            summary_str += "- Maximum RMS delay spread: N/A\n"
+    else:
+        summary_str += "- Min delay: N/A\n"
+        summary_str += "- Max delay: N/A\n"
+        summary_str += "- Average delay: N/A\n"
+        summary_str += "- Average RMS delay spread: N/A\n"
+        summary_str += "- Maximum RMS delay spread: N/A\n"
+
+    # Coverage Statistics
+    summary_str += "\nCoverage Statistics:\n"
+    covered_users = np.sum(valid_users)
+    coverage_pct = 100.0 * covered_users / total_users
+    los_coverage_pct = 100.0 * los_users / total_users
+    summary_str += f"- Coverage percentage: {coverage_pct:.1f}%\n"
+    summary_str += f"- LOS coverage percentage: {los_coverage_pct:.1f}%\n"
+
+    if covered_users > 0:
+        avg_paths_covered = np.mean(num_paths[valid_users])
+        summary_str += f"- Average paths per covered user: {avg_paths_covered:.1f}\n"
+    else:
+        summary_str += "- Average paths per covered user: 0.0\n"
+
+    # Spatial Statistics
+    summary_str += "\nSpatial Statistics:\n"
+    distances = stats_dataset.distance
+    valid_distances = distances[~np.isnan(distances)]
+    if len(valid_distances) > 0:
+        summary_str += f"- Min distance to BS: {np.min(valid_distances):.1f} m\n"
+        summary_str += f"- Max distance to BS: {np.max(valid_distances):.1f} m\n"
+        summary_str += f"- Average distance to BS: {np.mean(valid_distances):.1f} m\n"
+        dist_median, dist_iqr, dist_p10, dist_p90 = _robust_stats(valid_distances)
+        summary_str += f"- Median distance to BS: {dist_median:.1f} m\n"
+        summary_str += f"- Distance IQR (p75-p25): {dist_iqr:.1f} m\n"
+        summary_str += f"- Distance p10/p90: {dist_p10:.1f}/{dist_p90:.1f} m\n"
+    else:
+        summary_str += "- Min distance to BS: N/A\n"
+        summary_str += "- Max distance to BS: N/A\n"
+        summary_str += "- Average distance to BS: N/A\n"
+        summary_str += "- Median distance to BS: N/A\n"
+        summary_str += "- Distance IQR (p75-p25): N/A\n"
+        summary_str += "- Distance p10/p90: N/A\n"
+
+    # Scene Dimensions
+    summary_str += "\nScene Dimensions:\n"
+    scene_bb = stats_dataset.scene.bounding_box
+    summary_str += f"- Width: {scene_bb.width:.1f} m\n"
+    summary_str += f"- Length: {scene_bb.length:.1f} m\n"
+    summary_str += f"- Height: {scene_bb.height:.1f} m\n"
+    summary_str += f"- Total area: {scene_bb.width * scene_bb.length:.1f} m²\n"
+    summary_str += f"- Total volume: {scene_bb.width * scene_bb.length * scene_bb.height:.1f} m³\n"
+
+    # Object Distribution
+    summary_str += "\nObject Distribution:\n"
+    scene_objects = stats_dataset.scene.objects
+    object_counts = {}
+    for obj in scene_objects:
+        label = obj.label
+        object_counts[label] = object_counts.get(label, 0) + 1
+
+    for label, count in object_counts.items():
+        summary_str += f"- {label.capitalize()}: {count}\n"
+
+    # Building Characteristics
+    buildings = [obj for obj in scene_objects if obj.label == "buildings"]
+    if buildings:
+        summary_str += "\nBuilding Characteristics:\n"
+        building_heights = [obj.height for obj in buildings]
+
+        summary_str += f"- Average height: {np.mean(building_heights):.1f} m\n"
+        summary_str += (
+            f"- Height range: {np.min(building_heights):.1f} - {np.max(building_heights):.1f} m\n"
+        )
+        h_median, h_iqr, h_p10, h_p90 = _robust_stats(np.asarray(building_heights, dtype=float))
+        summary_str += f"- Median height: {h_median:.1f} m\n"
+        summary_str += f"- Height IQR (p75-p25): {h_iqr:.1f} m\n"
+        summary_str += f"- Height p10/p90: {h_p10:.1f}/{h_p90:.1f} m\n"
+
+        # Compute volume and footprint over all buildings for exact totals
+        # Use 2D convex hull area directly here for accuracy.
+        def _exact_footprint_area(obj: Any) -> float:
+            points_2d = np.unique(obj.vertices[:, :2], axis=0)
+            if points_2d.shape[0] < _MIN_HULL_POINTS_2D:
+                return 0.0
+            try:
+                return float(ConvexHull(points_2d).volume)
+            except QhullError:
+                return 0.0
+
+        def _exact_volume(obj: Any) -> float:
+            points_3d = np.unique(obj.vertices, axis=0)
+            if points_3d.shape[0] < _MIN_HULL_POINTS_3D:
+                return 0.0
+            # Coplanar/collinear point sets are effectively zero-volume.
+            if np.linalg.matrix_rank(points_3d - points_3d[0]) < _MIN_RANK_FOR_VOLUME:
+                return 0.0
+            try:
+                return float(ConvexHull(points_3d).volume)
+            except QhullError:
+                return 0.0
+
+        building_volumes = np.array([_exact_volume(obj) for obj in buildings], dtype=float)
+        building_footprints = np.array(
+            [_exact_footprint_area(obj) for obj in buildings],
+            dtype=float,
+        )
+        avg_volume = np.mean(building_volumes)
+        avg_footprint = np.mean(building_footprints)
+        total_volume = np.sum(building_volumes)
+        total_footprint = np.sum(building_footprints)
+
+        summary_str += f"- Average volume: {avg_volume:.1f} m³\n"
+        summary_str += f"- Total volume: {total_volume:.1f} m³\n"
+        summary_str += f"- Average footprint: {avg_footprint:.1f} m²\n"
+        summary_str += f"- Total footprint: {total_footprint:.1f} m²\n"
+
+        # Building density over RX users (bounded to [0, 100] and directly comparable to no-path %).
+        rx_xy = np.asarray(stats_dataset.rx_pos)[:, :2]
+        inside_building_mask = np.zeros(rx_xy.shape[0], dtype=bool)
+
+        for obj in buildings:
+            points_2d = np.unique(obj.vertices[:, :2], axis=0)
+            if points_2d.shape[0] < _MIN_HULL_POINTS_2D:
+                continue
+            try:
+                hull = ConvexHull(points_2d)
+            except QhullError:
+                continue
+
+            poly = points_2d[hull.vertices]
+            x_min, y_min = np.min(poly, axis=0)
+            x_max, y_max = np.max(poly, axis=0)
+
+            # Fast bounding-box prefilter before polygon check.
+            candidate_mask = (
+                ~inside_building_mask
+                & (rx_xy[:, 0] >= x_min)
+                & (rx_xy[:, 0] <= x_max)
+                & (rx_xy[:, 1] >= y_min)
+                & (rx_xy[:, 1] <= y_max)
+            )
+            if not np.any(candidate_mask):
+                continue
+
+            in_poly = MplPath(poly, closed=True).contains_points(rx_xy[candidate_mask], radius=1e-9)
+            candidate_idxs = np.where(candidate_mask)[0]
+            inside_building_mask[candidate_idxs[in_poly]] = True
+
+        building_density = 100.0 * np.sum(inside_building_mask) / total_users
+        summary_str += f"- Building density (RX users): {building_density:.1f}%\n"
+
+    # Terrain Characteristics
+    terrain_objects = [obj for obj in scene_objects if obj.label == "terrain"]
+    if terrain_objects:
+        summary_str += "\nTerrain Characteristics:\n"
+        terrain_heights = [obj.height for obj in terrain_objects]
+        if terrain_heights:
+            summary_str += (
+                f"- Height range: {np.min(terrain_heights):.1f} - {np.max(terrain_heights):.1f} m\n"
+            )
+            summary_str += f"- Average height: {np.mean(terrain_heights):.1f} m\n"
+            summary_str += f"- Height std dev: {np.std(terrain_heights):.1f} m\n"
+            elevation_change = np.max(terrain_heights) - np.min(terrain_heights)
+            summary_str += f"- Total elevation change: {elevation_change:.1f} m\n"
+        else:
+            summary_str += "- Height range: 0.0 - 0.0 m\n"
+            summary_str += "- Average height: 0.0 m\n"
+            summary_str += "- Height std dev: 0.0 m\n"
+            summary_str += "- Total elevation change: 0.0 m\n"
+
     if print_summary:
         print(summary_str)
         return None
@@ -378,4 +721,4 @@ def plot_summary(
     # ISSUE: LoS is BS specific. Are we going to show the LoS for each BS?
     # Image 3: Line of Sight (LOS) - commented out for now
 
-    return img_paths if img_paths else None
+    return img_paths or None
