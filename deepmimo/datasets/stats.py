@@ -666,8 +666,9 @@ def _collect_stats(stats_datasets: list[Any]) -> list[str]:
     """Compute and format statistics for each selected TX/RX pair."""
     scene_stats_cache: dict[int, dict[str, Any]] = {}
     section_strs: list[str] = []
+    show_headers = len(stats_datasets) > 1
     for stats_dataset in stats_datasets:
-        header = _stats_pair_header(stats_dataset.get("txrx", {}))
+        header = _stats_pair_header(stats_dataset.get("txrx", {})) if show_headers else ""
         scene_cache_key = id(stats_dataset.scene)
         if scene_cache_key not in scene_stats_cache:
             scene_stats_cache[scene_cache_key] = _compute_scene_stats(stats_dataset)

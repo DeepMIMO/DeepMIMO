@@ -236,8 +236,8 @@ def test_get_idxs(sample_dataset) -> None:
         ds.get_idxs("invalid_mode")
 
 
-def test_validate_txrx_sets_orders_allowed_ids_numerically() -> None:
-    """TX set validation should use numeric set-id ordering."""
+def test_validate_txrx_sets_orders_allowed_ids_deterministically() -> None:
+    """TX set validation should follow the loader's deterministic key ordering."""
     txrx_dict = {
         "txrx_set_10": {"id": 10, "is_tx": True, "is_rx": False, "num_points": 1},
         "txrx_set_3": {"id": 3, "is_tx": True, "is_rx": False, "num_points": 1},
@@ -245,7 +245,7 @@ def test_validate_txrx_sets_orders_allowed_ids_numerically() -> None:
     }
 
     validated = _validate_txrx_sets("all", txrx_dict, "tx")
-    assert list(validated.keys()) == [3, 10]
+    assert list(validated.keys()) == [10, 3]
 
-    with pytest.raises(ValueError, match=r"allowed sets \[3, 10\]"):
+    with pytest.raises(ValueError, match=r"allowed sets \[10, 3\]"):
         _validate_txrx_sets([0], txrx_dict, "tx")
