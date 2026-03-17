@@ -643,8 +643,7 @@ def _filter_stats_datasets(
 
     if not filtered_datasets:
         msg = (
-            f"Scenario '{scen_name}' has no datasets matching "
-            f"tx_sets={tx_sets}, rx_sets={rx_sets}"
+            f"Scenario '{scen_name}' has no datasets matching tx_sets={tx_sets}, rx_sets={rx_sets}"
         )
         raise ValueError(msg)
     return filtered_datasets

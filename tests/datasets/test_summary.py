@@ -242,12 +242,8 @@ class TestSummary(unittest.TestCase):
     ) -> None:
         """Stats should accept multiple TX sets and report each pair separately."""
         shared_scene = object()
-        d1 = Dataset(
-            {"txrx": {"tx_set_id": 4, "tx_idx": 0, "rx_set_id": 0}, "scene": shared_scene}
-        )
-        d2 = Dataset(
-            {"txrx": {"tx_set_id": 5, "tx_idx": 0, "rx_set_id": 0}, "scene": shared_scene}
-        )
+        d1 = Dataset({"txrx": {"tx_set_id": 4, "tx_idx": 0, "rx_set_id": 0}, "scene": shared_scene})
+        d2 = Dataset({"txrx": {"tx_set_id": 5, "tx_idx": 0, "rx_set_id": 0}, "scene": shared_scene})
         mock_load.return_value = MacroDataset([d1, d2])
 
         out = stats("o1_3p5", tx_sets=[4, 5], rx_sets=[0], print_summary=False)
