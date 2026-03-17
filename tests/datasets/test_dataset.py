@@ -5,6 +5,7 @@ import pytest
 
 from deepmimo import consts as c
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
+from deepmimo.datasets.load import _validate_txrx_sets
 
 
 @pytest.fixture
@@ -233,3 +234,18 @@ def test_get_idxs(sample_dataset) -> None:
     # Invalid mode
     with pytest.raises(ValueError, match="Unknown mode"):
         ds.get_idxs("invalid_mode")
+
+
+def test_validate_txrx_sets_orders_allowed_ids_numerically() -> None:
+    """TX set validation should use numeric set-id ordering."""
+    txrx_dict = {
+        "txrx_set_10": {"id": 10, "is_tx": True, "is_rx": False, "num_points": 1},
+        "txrx_set_3": {"id": 3, "is_tx": True, "is_rx": False, "num_points": 1},
+        "txrx_set_1": {"id": 1, "is_tx": False, "is_rx": True, "num_points": 1},
+    }
+
+    validated = _validate_txrx_sets("all", txrx_dict, "tx")
+    assert list(validated.keys()) == [3, 10]
+
+    with pytest.raises(ValueError, match=r"allowed sets \[3, 10\]"):
+        _validate_txrx_sets([0], txrx_dict, "tx")
