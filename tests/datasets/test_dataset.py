@@ -4,9 +4,9 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
-from deepmimo.datasets.compat_v3 import V3CompatDataset
+from deepmimo.core.txrx import TxRxSet
+from deepmimo.datasets.compat_v3 import MergedGridDataset, _rx_rank_map
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
-from deepmimo.datasets.load import _merge_rx_grids, _rx_rank_map
 
 
 @pytest.fixture
@@ -259,16 +259,63 @@ def _make_grid_dataset(nx: int, ny: int, tx_set_id: int, tx_idx: int, rx_set_id:
     )
 
 
-def test_v3_compat_global_row_col_idxs_on_merged_multi_grid() -> None:
+def _make_macro_dataset(*datasets: Dataset, rx_set_ids: list[int] | None = None) -> MacroDataset:
+    """Create a MacroDataset with explicit txrx set metadata for merge tests."""
+    macro = MacroDataset(list(datasets))
+    resolved_rx_set_ids = (
+        rx_set_ids
+        if rx_set_ids is not None
+        else [int(dataset["txrx"]["rx_set_id"]) for dataset in datasets]
+    )
+    macro.txrx_sets = [
+        TxRxSet(name="tx", id=0, is_tx=True, num_points=1),
+        *[
+            TxRxSet(name=f"rx_{rx_set_id}", id=rx_set_id, is_rx=True)
+            for rx_set_id in resolved_rx_set_ids
+        ],
+    ]
+    return macro
+
+
+def test_macro_dataset_multi_index_returns_ordered_subset() -> None:
+    """Selecting multiple indices should return a MacroDataset in the requested order."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=0, tx_idx=0, rx_set_id=2)
+    macro = _make_macro_dataset(g1, g2, g3)
+
+    subset = macro[0, 2, 1]
+
+    assert isinstance(subset, MacroDataset)
+    assert subset[0] is g1
+    assert subset[1] is g3
+    assert subset[2] is g2
+
+
+def test_macro_dataset_merge_native_preserves_selected_grid_order() -> None:
+    """Native merges should use the requested dataset order and native row/col semantics."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    macro = _make_macro_dataset(g1, g2)
+
+    merged = macro[1, 0].merge()
+
+    assert isinstance(merged, MergedGridDataset)
+    row_idxs = merged.get_idxs("row", row_idxs=np.array([0, 2]))
+    np.testing.assert_array_equal(row_idxs, np.array([0, 1, 2, 3, 8, 9, 10]))
+
+
+def test_macro_dataset_merge_v3_global_row_col_idxs_on_multi_grid() -> None:
     """Merged compat dataset should resolve global row/col indices across RX grids."""
     # Grid 1: normal row/col interpretation
     g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)  # n_ue=6
     # Grid 2/3: reversed interpretation in compat mode
     g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)  # n_ue=8
     g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=0, tx_idx=0, rx_set_id=2)  # n_ue=6
+    macro = _make_macro_dataset(g1, g2, g3)
 
-    merged = _merge_rx_grids([g1, g2, g3], rx_rank_map={0: 0, 1: 1, 2: 2})
-    assert isinstance(merged, V3CompatDataset)
+    merged = macro.merge(indexing="v3")
+    assert isinstance(merged, MergedGridDataset)
 
     # Global rows:
     # g1 rows: 2 (offset [0,2))
@@ -295,12 +342,14 @@ def test_v3_compat_global_row_col_idxs_on_merged_multi_grid() -> None:
     np.testing.assert_array_equal(col_idxs, np.array([0, 3, 6, 7, 8, 9, 14, 15]))
 
 
-def test_v3_compat_single_nonprimary_grid_reverses_row_col() -> None:
-    """Single loaded non-primary RX grid should still use reversed row/col in compat mode."""
-    # Pretend this is RX set rank 1 (e.g., explicit rx_sets=[1])
+def test_macro_dataset_single_grid_merge_v3_uses_scenario_rx_rank() -> None:
+    """Single-grid v3 merges should still use the grid's original scenario RX rank."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
     g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
-    merged = _merge_rx_grids([g2], rx_rank_map={0: 0, 1: 1})
-    assert isinstance(merged, V3CompatDataset)
+    macro = _make_macro_dataset(g1, g2)
+
+    merged = macro[1,].merge(indexing="v3")
+    assert isinstance(merged, MergedGridDataset)
 
     # row -> col for rank>=1: col 0 in 4x2 grid => [0,4]
     row_idxs = merged.get_idxs("row", row_idxs=np.array([0]))
@@ -311,12 +360,13 @@ def test_v3_compat_single_nonprimary_grid_reverses_row_col() -> None:
     np.testing.assert_array_equal(col_idxs, np.array([0, 1, 2, 3]))
 
 
-def test_v3_compat_preserves_requested_global_row_order() -> None:
+def test_macro_dataset_merge_v3_preserves_requested_global_row_order() -> None:
     """Global row resolution should follow caller-provided row index order."""
     g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)  # n_ue=6
     g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)  # n_ue=8
     g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=0, tx_idx=0, rx_set_id=2)  # n_ue=6
-    merged = _merge_rx_grids([g1, g2, g3], rx_rank_map={0: 0, 1: 1, 2: 2})
+    macro = _make_macro_dataset(g1, g2, g3)
+    merged = macro.merge(indexing="v3")
 
     row_idxs = merged.get_idxs("row", row_idxs=np.array([6, 0, 2]))
 
@@ -338,16 +388,27 @@ def test_rx_rank_map_uses_numeric_set_ids() -> None:
     assert _rx_rank_map(txrx_dict) == {0: 0, 2: 1, 10: 2}
 
 
-def test_merge_rx_grids_handles_asymmetric_keys() -> None:
+def test_macro_dataset_merge_handles_asymmetric_keys() -> None:
     """Merging should not fail when RX-grid datasets have non-uniform keys."""
     g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
     g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
     g1["grid1_only"] = np.ones((g1.n_ue, 1), dtype=float)
     g2["grid2_only"] = np.zeros((g2.n_ue, 1), dtype=float)
+    macro = _make_macro_dataset(g1, g2)
 
-    merged = _merge_rx_grids([g1, g2], rx_rank_map={0: 0, 1: 1})
+    merged = macro.merge(indexing="v3")
 
     assert "grid1_only" in merged
     assert "grid2_only" in merged
     np.testing.assert_array_equal(merged["grid1_only"], g1["grid1_only"])
     np.testing.assert_array_equal(merged["grid2_only"], g2["grid2_only"])
+
+
+def test_macro_dataset_merge_rejects_multiple_transmitters() -> None:
+    """Merging multiple transmitters should fail until Dataset supports that view explicitly."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=3, ny=2, tx_set_id=1, tx_idx=0, rx_set_id=0)
+    macro = _make_macro_dataset(g1, g2, rx_set_ids=[0])
+
+    with pytest.raises(NotImplementedError, match="multiple transmitters"):
+        macro.merge()
