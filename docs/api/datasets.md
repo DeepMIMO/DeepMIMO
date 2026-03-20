@@ -146,6 +146,10 @@ The `MacroDataset` class is a container for managing multiple datasets, providin
 dataset = macro_dataset[0]  # First dataset
 datasets = macro_dataset[1:3]  # Slice of datasets
 
+# Merge multiple entries into one Dataset
+merged_dataset = macro_dataset.merge()
+merged_slice = macro_dataset[1:3].merge()
+
 # Iterate over datasets
 for dataset in macro_dataset:
     print(f"Dataset has {len(dataset)} users")

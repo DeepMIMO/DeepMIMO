@@ -75,13 +75,14 @@ The tutorials are Python files with cell markers (`# %%`) that work with:
 
 ### 4. User Selection and Dataset Manipulation
 - Dataset trimming and active user filtering
+- MacroDataset merging and slice-based merging
 - Uniform and linear sampling
 - Row/column selection
 - Rectangular zone filtering
 - Path type and depth filtering
 - Field-of-view (FOV) analysis
 
-**Key Functions**: `dataset.get_idxs()`, `dataset.trim()`
+**Key Functions**: `dataset.get_idxs()`, `dataset.trim()`, `macro_dataset.merge()`
 
 ### 5. Doppler and Mobility
 - Setting Doppler shifts directly

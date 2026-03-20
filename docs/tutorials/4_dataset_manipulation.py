@@ -8,6 +8,7 @@
 
 **Tutorial Overview:**
 - Dataset Trimming - Trim dataset based on conditions
+- MacroDataset Merge - Combine multiple dataset slices back into one dataset
 - Uniform Sampling - Uniform user sampling
 - Linear Sampling - Linear user placement
 - Rectangular Zones - Filtering in 3D bounding boxes
@@ -47,6 +48,31 @@ print(f"Number of active users: {len(active_idxs)}")
 # Create a subset with only active users
 active_dataset = dataset.trim(idxs=active_idxs)
 print(f"Active dataset size: {len(active_dataset.power)} users")
+
+# %% [markdown]
+# ## MacroDataset Merge
+#
+# Split one dataset into multiple pieces, then merge them back into a single `Dataset`.
+
+# %%
+merge_sample_count = min(len(active_idxs), 40)
+merge_sample_idxs = active_idxs[:merge_sample_count]
+
+if merge_sample_count >= 2:
+    split_idx = merge_sample_count // 2
+    macro_subset = dm.MacroDataset(
+        [
+            dataset.trim(idxs=merge_sample_idxs[:split_idx]),
+            dataset.trim(idxs=merge_sample_idxs[split_idx:]),
+        ]
+    )
+
+    merged_subset = macro_subset.merge()
+    print(f"MacroDataset parts: {[part.n_ue for part in macro_subset]}")
+    print(f"Merged dataset size: {merged_subset.n_ue} users")
+    print(f"Sliced merge size: {macro_subset[:1].merge().n_ue} users")
+else:
+    print("Not enough active users to demonstrate MacroDataset.merge()")
 
 # %% [markdown]
 # ## Uniform Sampling
