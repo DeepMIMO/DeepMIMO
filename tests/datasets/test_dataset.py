@@ -5,6 +5,7 @@ import pytest
 
 from deepmimo import consts as c
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
+from deepmimo.generator.channel import ChannelParameters
 
 
 @pytest.fixture
@@ -136,6 +137,106 @@ def test_macro_dataset() -> None:
     macro["new_attr"] = 10
     assert ds1.new_attr == 10
     assert ds2.new_attr == 10
+
+
+def test_macro_dataset_slice_returns_macro_dataset() -> None:
+    """Test that slicing preserves MacroDataset behavior."""
+    ds1 = Dataset({"n_ue": 1, "rx_pos": np.zeros((1, 3)), "tx_pos": np.zeros((1, 3))})
+    ds2 = Dataset({"n_ue": 1, "rx_pos": np.ones((1, 3)), "tx_pos": np.ones((1, 3))})
+    ds3 = Dataset({"n_ue": 1, "rx_pos": np.full((1, 3), 2.0), "tx_pos": np.full((1, 3), 2.0)})
+
+    macro = MacroDataset([ds1, ds2, ds3])
+    sliced = macro[1:3]
+
+    assert isinstance(sliced, MacroDataset)
+    assert len(sliced) == 2
+    assert sliced[0] is ds2
+    assert sliced[1] is ds3
+
+
+def test_macro_dataset_merge() -> None:
+    """Test merging a MacroDataset into a single Dataset."""
+    ds1 = Dataset(
+        {
+            "name": "merged_test",
+            "n_ue": 2,
+            "rx_pos": np.array([[0.0, 0.0, 1.5], [1.0, 0.0, 1.5]]),
+            "tx_pos": np.array([[0.0, 0.0, 10.0]]),
+            "power": np.array([[-80.0, -90.0], [-81.0, -91.0]]),
+            "phase": np.array([[0.0, 10.0], [1.0, 11.0]]),
+            "delay": np.array([[1e-9, 2e-9], [3e-9, 4e-9]]),
+            "aoa_az": np.array([[0.0, 1.0], [2.0, 3.0]]),
+            "aoa_el": np.array([[4.0, 5.0], [6.0, 7.0]]),
+            "aod_az": np.array([[8.0, 9.0], [10.0, 11.0]]),
+            "aod_el": np.array([[12.0, 13.0], [14.0, 15.0]]),
+            "inter": np.array([[0.0, 1.0], [0.0, np.nan]]),
+            "inter_pos": np.zeros((2, 2, 1, 3)),
+            "user_ids": np.array([10, 11]),
+        }
+    )
+    ds2 = Dataset(
+        {
+            "name": "merged_test",
+            "n_ue": 1,
+            "rx_pos": np.array([[10.0, 0.0, 1.5]]),
+            "tx_pos": np.array([[20.0, 0.0, 10.0]]),
+            "power": np.array([[-82.0, -92.0]]),
+            "phase": np.array([[2.0, 12.0]]),
+            "delay": np.array([[5e-9, 6e-9]]),
+            "aoa_az": np.array([[16.0, 17.0]]),
+            "aoa_el": np.array([[18.0, 19.0]]),
+            "aod_az": np.array([[20.0, 21.0]]),
+            "aod_el": np.array([[22.0, 23.0]]),
+            "inter": np.array([[1.0, 0.0]]),
+            "inter_pos": np.ones((1, 2, 1, 3)),
+            "user_ids": np.array([12]),
+        }
+    )
+
+    ch_params_1 = ChannelParameters()
+    ch_params_1[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0]])
+    ch_params_1.validate(ds1.n_ue)
+    ds1.ch_params = ch_params_1
+
+    ch_params_2 = ChannelParameters()
+    ch_params_2[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = np.array([[6.0, 7.0, 8.0]])
+    ch_params_2.validate(ds2.n_ue)
+    ds2.ch_params = ch_params_2
+
+    merged = MacroDataset([ds1, ds2]).merge()
+
+    assert merged.n_ue == 3
+    np.testing.assert_allclose(
+        merged.rx_pos,
+        np.array([[0.0, 0.0, 1.5], [1.0, 0.0, 1.5], [10.0, 0.0, 1.5]]),
+    )
+    np.testing.assert_allclose(
+        merged.tx_pos,
+        np.array([[0.0, 0.0, 10.0], [0.0, 0.0, 10.0], [20.0, 0.0, 10.0]]),
+    )
+    np.testing.assert_allclose(merged.distance, np.array([8.5, 8.55862138, 13.12440475]))
+    np.testing.assert_array_equal(merged.user_ids, np.array([10, 11, 12]))
+    np.testing.assert_allclose(
+        merged.ch_params[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION],
+        np.array([[0.0, 1.0, 2.0], [3.0, 4.0, 5.0], [6.0, 7.0, 8.0]]),
+    )
+
+
+def test_macro_dataset_merge_rejects_incompatible_channel_params() -> None:
+    """Test that merge rejects unsupported channel parameter mismatches."""
+    ds1 = Dataset({"n_ue": 1, "rx_pos": np.zeros((1, 3)), "tx_pos": np.zeros((1, 3))})
+    ds2 = Dataset({"n_ue": 1, "rx_pos": np.ones((1, 3)), "tx_pos": np.ones((1, 3))})
+
+    ch_params_1 = ChannelParameters()
+    ch_params_2 = ChannelParameters()
+    ch_params_2[c.PARAMSET_ANT_BS][c.PARAMSET_ANT_ROTATION] = np.array([10.0, 0.0, 0.0])
+    ch_params_1.validate(ds1.n_ue)
+    ch_params_2.validate(ds2.n_ue)
+    ds1.ch_params = ch_params_1
+    ds2.ch_params = ch_params_2
+
+    with pytest.raises(ValueError, match="incompatible channel parameters"):
+        MacroDataset([ds1, ds2]).merge()
 
 
 def test_dynamic_dataset() -> None:

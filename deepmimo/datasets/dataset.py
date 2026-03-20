@@ -421,7 +421,7 @@ class Dataset(DotDict):
             >>> dataset.bs_look_at([100, 200, 10])
 
         """
-        (azimuth_deg, elevation_deg) = self._look_at(self.tx_pos, look_pos)
+        (azimuth_deg, elevation_deg) = self._look_at(self._get_tx_pos_matrix()[0], look_pos)
         (azimuth_deg, elevation_deg) = (azimuth_deg[0], elevation_deg[0])
         current_rotation = np.array(self.ch_params.bs_antenna[c.PARAMSET_ANT_ROTATION])
         z_rot = current_rotation.flat[2] if current_rotation.size > ROTATION_AXES - 1 else 0
@@ -822,9 +822,32 @@ class Dataset(DotDict):
         """Return the number of UEs/receivers in the dataset."""
         return self.rx_pos.shape[0]
 
+    def _get_tx_pos_matrix(self) -> np.ndarray:
+        """Return transmitter positions with a consistent 2-D shape."""
+        tx_pos = np.asarray(self.tx_pos)
+        if tx_pos.ndim == 1:
+            return tx_pos[None, :]
+        if tx_pos.ndim == 2:
+            return tx_pos
+        msg = "tx_pos must be a 1-D or 2-D array"
+        raise ValueError(msg)
+
+    def _get_tx_pos_per_user(self) -> np.ndarray:
+        """Return a transmitter position for each user."""
+        tx_pos = self._get_tx_pos_matrix()
+        if tx_pos.shape[0] == 1:
+            return np.repeat(tx_pos, self.n_ue, axis=0)
+        if tx_pos.shape[0] == self.n_ue:
+            return tx_pos
+        msg = (
+            "tx_pos must have shape (3,), (1, 3), or (n_ue, 3); "
+            f"got {tx_pos.shape} for n_ue={self.n_ue}"
+        )
+        raise ValueError(msg)
+
     def _compute_distances(self) -> np.ndarray:
         """Compute Euclidean distances between receivers and transmitter."""
-        return np.linalg.norm(self.rx_pos - self.tx_pos, axis=1)
+        return np.linalg.norm(self.rx_pos - self._get_tx_pos_per_user(), axis=1)
 
     def _compute_power_linear_ant_gain(
         self,
@@ -1231,9 +1254,8 @@ class Dataset(DotDict):
             **kwargs: Additional keyword arguments to pass to the plot_coverage function.
 
         """
-        return plot_coverage(
-            self.rx_pos, cov_map, bs_pos=self.tx_pos.T, bs_ori=self.tx_ori, **kwargs
-        )
+        tx_pos = np.unique(self._get_tx_pos_per_user(), axis=0)
+        return plot_coverage(self.rx_pos, cov_map, bs_pos=tx_pos.T, bs_ori=self.tx_ori, **kwargs)
 
     def plot_rays(self, idx: int, color_strat: str = "none", **kwargs: Any) -> Any:
         """Plot the rays of the dataset.
@@ -1269,7 +1291,11 @@ class Dataset(DotDict):
                 kwargs["show_cbar"] = True
         default_kwargs.update(kwargs)
         return plot_rays(
-            self.rx_pos[idx], self.tx_pos[0], self.inter_pos[idx], self.inter[idx], **default_kwargs
+            self.rx_pos[idx],
+            self._get_tx_pos_per_user()[idx],
+            self.inter_pos[idx],
+            self.inter[idx],
+            **default_kwargs,
         )
 
     def plot_mplm(self, **kwargs: Any) -> Any:
@@ -1640,13 +1666,14 @@ class Dataset(DotDict):
 
         """
         inter_angles = np.zeros((self.n_ue, self.max_paths, self.max_inter + 1, 3))
+        tx_pos = self._get_tx_pos_per_user()
         for ue_i in tqdm(range(self.n_ue), desc="Computing interaction angles per UE"):
             for path_i in range(self.max_paths):
                 n_inter = self.num_interactions[ue_i, path_i]
                 if np.isnan(n_inter) or n_inter == 0:
                     continue
                 for i in range(-1, int(n_inter)):
-                    pos1 = self.tx_pos if i == -1 else self.inter_pos[ue_i, path_i, i]
+                    pos1 = tx_pos[ue_i] if i == -1 else self.inter_pos[ue_i, path_i, i]
                     if i == n_inter - 1:
                         pos2 = self.rx_pos[ue_i]
                     else:
@@ -1838,6 +1865,63 @@ class MacroDataset:
             raise IndexError(msg)
         return self.datasets[0][key]
 
+    @staticmethod
+    def _values_equal(left: Any, right: Any) -> bool:
+        """Compare values while handling arrays and dot dictionaries."""
+        if isinstance(left, DotDict):
+            left = left.to_dict()
+        if isinstance(right, DotDict):
+            right = right.to_dict()
+        if isinstance(left, dict) and isinstance(right, dict):
+            if left.keys() != right.keys():
+                return False
+            return all(MacroDataset._values_equal(left[key], right[key]) for key in left)
+        if isinstance(left, (list, tuple)) and isinstance(right, (list, tuple)):
+            if len(left) != len(right):
+                return False
+            return all(MacroDataset._values_equal(l_val, r_val) for (l_val, r_val) in zip(left, right))
+        if isinstance(left, np.ndarray) or isinstance(right, np.ndarray):
+            return np.array_equal(np.asarray(left), np.asarray(right), equal_nan=True)
+        return left == right
+
+    def _slice(self, datasets: list[Dataset]) -> MacroDataset:
+        """Create a sliced MacroDataset."""
+        return MacroDataset(datasets)
+
+    @staticmethod
+    def _merge_user_array(attr: str, arrays: list[np.ndarray]) -> np.ndarray:
+        """Validate and concatenate user-aligned arrays."""
+        base_shape = arrays[0].shape[1:]
+        for (dataset_i, array) in enumerate(arrays[1:], start=1):
+            if array.shape[1:] != base_shape:
+                msg = (
+                    f"Dataset {dataset_i} has incompatible shape for '{attr}': "
+                    f"expected (*, {base_shape}), got {array.shape}"
+                )
+                raise ValueError(msg)
+        return np.concatenate(arrays, axis=0)
+
+    @staticmethod
+    def _get_ue_rotations(params: DotDict, n_ue: int) -> np.ndarray:
+        """Normalize UE rotations to one entry per user."""
+        rotations = np.asarray(params[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION])
+        if rotations.ndim == 1:
+            return np.repeat(rotations[None, :], n_ue, axis=0)
+        if rotations.ndim == 2 and rotations.shape[0] == n_ue:
+            return rotations
+        msg = (
+            "UE antenna rotation must have shape (3,) or (n_ue, 3); "
+            f"got {rotations.shape} for n_ue={n_ue}"
+        )
+        raise ValueError(msg)
+
+    @staticmethod
+    def _channel_params_without_ue_rotation(params: DotDict) -> dict[str, Any]:
+        """Return channel parameters without the user-specific UE rotation field."""
+        params_dict = params.to_dict()
+        params_dict[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = None
+        return params_dict
+
     def __getattr__(self, name: Any) -> Any:
         """Propagate any attribute/method access to all datasets.
 
@@ -1877,8 +1961,10 @@ class MacroDataset:
             or list of results if idx is string and there are multiple datasets
 
         """
-        if isinstance(idx, (int, slice)):
+        if isinstance(idx, int):
             return self.datasets[idx]
+        if isinstance(idx, slice):
+            return self._slice(self.datasets[idx])
         if idx in SHARED_PARAMS:
             return self._get_single(idx)
         results = [dataset[idx] for dataset in self.datasets]
@@ -1907,6 +1993,71 @@ class MacroDataset:
 
         """
         self.datasets.append(dataset)
+
+    def merge(self) -> Dataset:
+        """Merge all datasets into a single dataset by concatenating users."""
+        if not self.datasets:
+            msg = "Cannot merge an empty MacroDataset"
+            raise ValueError(msg)
+        if len(self.datasets) == 1:
+            return self.datasets[0]
+
+        base_dataset = self.datasets[0]
+        initial_data = {c.N_UE_PARAM_NAME: sum(dataset.n_ue for dataset in self.datasets)}
+        for param in SHARED_PARAMS:
+            if base_dataset.hasattr(param):
+                initial_data[param] = base_dataset[param]
+
+        merged_dataset = Dataset(initial_data)
+        merged_tx_pos = np.concatenate(
+            [dataset._get_tx_pos_per_user() for dataset in self.datasets], axis=0
+        )
+        if np.allclose(merged_tx_pos, merged_tx_pos[0], equal_nan=True):
+            merged_dataset[c.TX_POS_PARAM_NAME] = merged_tx_pos[:1]
+        else:
+            merged_dataset[c.TX_POS_PARAM_NAME] = merged_tx_pos
+
+        base_items = base_dataset.to_dict()
+        for attr, value in base_items.items():
+            if attr.startswith("_") or attr in [*SHARED_PARAMS, c.N_UE_PARAM_NAME, c.TX_POS_PARAM_NAME]:
+                continue
+            if attr == c.CH_PARAMS_PARAM_NAME:
+                if not all(dataset.hasattr(attr) for dataset in self.datasets):
+                    continue
+                base_params = self._channel_params_without_ue_rotation(base_dataset[attr])
+                for (dataset_i, dataset) in enumerate(self.datasets[1:], start=1):
+                    other_params = self._channel_params_without_ue_rotation(dataset[attr])
+                    if not self._values_equal(base_params, other_params):
+                        msg = f"Dataset {dataset_i} has incompatible channel parameters for merge"
+                        raise ValueError(msg)
+                ch_params = base_dataset[attr].deepcopy()
+                ch_params[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_ROTATION] = np.concatenate(
+                    [self._get_ue_rotations(dataset[attr], dataset.n_ue) for dataset in self.datasets],
+                    axis=0,
+                )
+                merged_dataset[attr] = ch_params
+                continue
+
+            dataset_values = [dataset.to_dict().get(attr) for dataset in self.datasets]
+            if any(dataset_value is None for dataset_value in dataset_values):
+                continue
+            if (
+                isinstance(value, np.ndarray)
+                and value.ndim > 0
+                and all(
+                    isinstance(dataset_value, np.ndarray)
+                    and dataset_value.ndim > 0
+                    and dataset_value.shape[0] == dataset.n_ue
+                    for (dataset, dataset_value) in zip(self.datasets, dataset_values)
+                )
+            ):
+                merged_dataset[attr] = self._merge_user_array(attr, dataset_values)
+                continue
+            if all(self._values_equal(value, dataset_value) for dataset_value in dataset_values[1:]):
+                merged_dataset[attr] = value.copy() if isinstance(value, np.ndarray) else value
+
+        merged_dataset._clear_all_caches()
+        return merged_dataset
 
     def to_binary(self, output_dir: str = "./datasets") -> None:
         """Export all datasets to binary format for web visualizer.
@@ -1955,6 +2106,10 @@ class DynamicDataset(MacroDataset):
         if name == "txrx_sets":
             return get_txrx_sets(self.name)
         return super().__getattr__(name)
+
+    def _slice(self, datasets: list[MacroDataset]) -> DynamicDataset:
+        """Return a DynamicDataset when slicing snapshots."""
+        return DynamicDataset(datasets, self.name)
 
     def set_timestamps(self, timestamps: float | list[int | float] | np.ndarray) -> None:
         """Set the timestamps for the dataset.
