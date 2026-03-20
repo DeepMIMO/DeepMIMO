@@ -1,0 +1,11 @@
+---
+description: Use uv run for Python commands and tests
+alwaysApply: true
+---
+
+# Python Command Runner
+
+- Run Python project commands through `uv run` so they use the repo environment.
+- Prefer `uv run pytest ...` over bare `pytest`.
+- Prefer `uv run python ...` over bare `python` when running scripts or modules.
+- If a command fails because a tool is missing globally, retry it through `uv run` before changing code.
