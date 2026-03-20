@@ -1,4 +1,15 @@
-"""Statistics helpers and public entrypoint for DeepMIMO datasets."""
+"""Compute and format scenario statistics for DeepMIMO datasets.
+
+This module implements the public :func:`stats` entrypoint and the helper logic it
+depends on. It is responsible for:
+
+- defining the subset of dataset matrices that must be loaded for statistics,
+- computing path, power, delay, coverage, spatial, and scene-level metrics,
+- formatting those metrics into the plain-text report returned by :func:`stats`.
+
+The implementation keeps the public API in one file, while still separating the
+numeric computation helpers from the report-formatting helpers at the function level.
+"""
 
 from typing import Any
 
@@ -9,9 +20,21 @@ from deepmimo import consts as c
 
 __all__ = ["stats"]
 
+# Minimum unique XY vertices required for a non-degenerate 2D footprint hull.
 _MIN_POLY_POINTS = 3
+# Minimum unique XYZ vertices required for a non-degenerate 3D convex hull.
 _MIN_HULL_POINTS_3D = 4
+# Minimum point-cloud rank required before attempting 3D volume estimation.
 _MIN_RANK_FOR_VOLUME = 3
+
+# Dataset matrices that stats() requires:
+# - AOA_AZ: used to derive path counts/LOS status through lazy dataset attributes
+# - DELAY: per-path propagation delays
+# - INTERACTIONS: encoded interaction types per path
+# - PHASE: kept aligned with the minimum stats load used by the project/tests
+# - POWER: per-path powers and derived linear powers/pathloss
+# - RX_POS: receiver coordinates and derived distances
+# - TX_POS: transmitter coordinates
 _STATS_REQUIRED_MATRICES = (
     c.AOA_AZ_PARAM_NAME,
     c.DELAY_PARAM_NAME,
@@ -21,6 +44,7 @@ _STATS_REQUIRED_MATRICES = (
     c.RX_POS_PARAM_NAME,
     c.TX_POS_PARAM_NAME,
 )
+# Output-key mapping for descriptive pathloss statistics.
 _POWER_STATS_KEYS = {
     "avg": "avg_pathloss",
     "min": "min_pathloss",
@@ -30,6 +54,7 @@ _POWER_STATS_KEYS = {
     "p10": "pathloss_p10",
     "p90": "pathloss_p90",
 }
+# Output-key mapping for descriptive TX-to-RX distance statistics.
 _SPATIAL_STATS_KEYS = {
     "avg": "avg_distance_bs",
     "min": "min_distance_bs",
@@ -39,6 +64,13 @@ _SPATIAL_STATS_KEYS = {
     "p10": "distance_p10",
     "p90": "distance_p90",
 }
+# _SECTION_SPECS entries are:
+#   (section_key, section_title, line_specs)
+#
+# Each line spec is one of:
+#   ("raw", label, format_template)
+#   ("optional", label, stats_key, unit, precision)
+#   ("pair", label, first_stats_key, second_stats_key, unit, precision)
 _SECTION_SPECS = (
     (
         "path",
@@ -110,6 +142,7 @@ _SECTION_SPECS = (
         ),
     ),
 )
+# Building and terrain specs reuse the line-spec formats documented above.
 _BUILDING_SPECS = (
     ("raw", "Average height", "{avg_height:.1f} m"),
     ("raw", "Height range", "{min_height:.1f} - {max_height:.1f} m"),
@@ -687,7 +720,45 @@ def stats(
     rx_sets: dict[int, list[int] | str] | list[int] | str | None = None,
     print_summary: bool = True,
 ) -> str | None:
-    """Calculate and return scenario statistics for selected TX/RX pairs."""
+    """Calculate descriptive statistics for selected TX/RX pairs in a scenario.
+
+    The function loads only the matrices required for statistics, resolves the
+    selected scenario into one or more TX/RX datasets, computes channel- and
+    scene-level metrics, and formats the result as a plain-text report.
+
+    Reported sections include path, power, delay, coverage, spatial, scene, and
+    object/building/terrain statistics when the corresponding data is available.
+
+    Args:
+        scen_name: Scenario name passed to :func:`deepmimo.datasets.load.load`.
+        tx_sets: Optional transmitter-set selector passed through to the loader.
+            Accepted forms match :func:`deepmimo.datasets.load.load`:
+            ``None`` to use the loader default, a list of TX set IDs, a dict mapping
+            TX set IDs to transmitter indices (or ``"all"``), or a string selector
+            understood by the loader such as ``"all"``.
+        rx_sets: Optional receiver-set selector passed through to the loader.
+            Accepted forms match :func:`deepmimo.datasets.load.load`:
+            ``None`` to preserve the loader default (currently ``"rx_only"``), a
+            list of RX set IDs, a dict mapping RX set IDs to receiver indices (or
+            ``"all"``), or a string selector understood by the loader.
+        print_summary: If ``True``, print the formatted report and return ``None``.
+            If ``False``, return the formatted report as a string.
+
+    Returns:
+        The formatted statistics report when ``print_summary`` is ``False``;
+        otherwise ``None`` after printing the report.
+
+    Raises:
+        ValueError: If ``tx_sets`` or ``rx_sets`` is provided as an empty list/dict,
+            if the scenario cannot be loaded with the requested selectors, or if the
+            requested selectors do not match any resolved TX/RX datasets.
+
+    Notes:
+        Dynamic scenarios are summarized using the first snapshot only. When the
+        selection resolves to multiple TX/RX pairs, the returned report includes a
+        header for each pair.
+
+    """
     from .load import load  # noqa: PLC0415
 
     if isinstance(tx_sets, (list, dict)) and len(tx_sets) == 0:
