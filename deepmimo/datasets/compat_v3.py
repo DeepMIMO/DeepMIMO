@@ -80,6 +80,8 @@ class MergedGridDataset(Dataset):
 # Backward-compatible alias for the initial implementation name.
 V3CompatDataset = MergedGridDataset
 
+_MERGE_EXCLUDED_KEYS = {"n_ue", "grid_size", "grid_spacing"}
+
 
 def _pad_concat_users(arrays: list[np.ndarray]) -> np.ndarray:
     """Pad per-user arrays to common non-user dimensions, then concatenate on axis 0."""
@@ -236,6 +238,8 @@ def merge_datasets(  # noqa: C901, PLR0912
     seen: set[str] = set()
     for dataset in datasets:
         for key in dataset:
+            if key in _MERGE_EXCLUDED_KEYS:
+                continue
             if key in seen:
                 continue
             seen.add(key)

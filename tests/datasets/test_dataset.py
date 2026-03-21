@@ -404,6 +404,23 @@ def test_macro_dataset_merge_handles_asymmetric_keys() -> None:
     np.testing.assert_array_equal(merged["grid2_only"], g2["grid2_only"])
 
 
+def test_macro_dataset_merge_ignores_stale_cached_n_ue() -> None:
+    """Repeated merges should not inherit a stale n_ue key from child dataset caches."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    macro = _make_macro_dataset(g1, g2)
+
+    first_merge = macro.merge()
+    assert first_merge.n_ue == g1.n_ue + g2.n_ue
+
+    second_merge = macro.merge(indexing="v3")
+    assert second_merge.n_ue == g1.n_ue + g2.n_ue
+    assert second_merge.rx_pos.shape[0] == g1.n_ue + g2.n_ue
+
+    subset_merge = macro[0, 1].merge()
+    assert subset_merge.n_ue == g1.n_ue + g2.n_ue
+
+
 def test_macro_dataset_merge_rejects_multiple_transmitters() -> None:
     """Merging multiple transmitters should fail until Dataset supports that view explicitly."""
     g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
