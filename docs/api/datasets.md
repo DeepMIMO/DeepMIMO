@@ -193,14 +193,19 @@ Get dataset summary statistics:
 ```python
 import deepmimo as dm
 
-# Get summary
-summary_dict = dm.summary('scenario_name')
+# Get summary as a string
+summary_str = dm.summary('scenario_name', print_summary=False)
+
+# Get detailed stats for selected TX/RX sets
+stats_str = dm.stats('scenario_name', tx_sets=[4], print_summary=False)
 
 # Plot summary
 dm.plot_summary('scenario_name')
 ```
 
 ::: deepmimo.datasets.summary.summary
+
+::: deepmimo.datasets.summary.stats
 
 ::: deepmimo.datasets.summary.plot_summary
 
@@ -232,4 +237,3 @@ idxs = dm.get_idxs_with_limits(rx_pos, x_min=0, x_max=100, y_min=0, y_max=100)
 ::: deepmimo.datasets.sampling.get_idxs_with_limits
 
 ::: deepmimo.datasets.sampling.dbw2watt
-

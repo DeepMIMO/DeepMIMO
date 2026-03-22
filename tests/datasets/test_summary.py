@@ -4,11 +4,16 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 import numpy as np
+import pytest
 
 from deepmimo import consts as c
-
-# Correctly import functions from the module
-from deepmimo.datasets.summary import plot_summary, summary
+from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
+from deepmimo.datasets.stats import (
+    _STATS_REQUIRED_MATRICES,
+    _compute_delay_stats,
+    _compute_path_stats,
+)
+from deepmimo.datasets.summary import plot_summary, stats, summary
 
 
 class TestSummary(unittest.TestCase):
@@ -121,3 +126,169 @@ class TestSummary(unittest.TestCase):
         mock_ds.scene.plot.assert_called()
         mock_plt.savefig.assert_called()
         mock_mkdir.assert_called_once_with(parents=True, exist_ok=True)
+
+    @patch(
+        "deepmimo.datasets.stats._compute_scene_stats",
+        return_value={"scene": {}, "objects": {}, "buildings": None, "terrain": None},
+    )
+    @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
+    @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
+    @patch("deepmimo.datasets.load.load")
+    def test_stats_calls_targeted_load(
+        self, mock_load, mock_compute, mock_format, mock_scene_stats
+    ) -> None:
+        """Stats should load only the requested TX/RX pair."""
+        mock_load.return_value = Dataset(
+            {"txrx": {"tx_set_id": 4, "tx_idx": 0, "rx_set_id": 1}, "scene": object()}
+        )
+
+        out = stats("o1_3p5", tx_sets=[4], rx_sets=[1], print_summary=False)
+
+        assert out == "formatted stats"
+        mock_load.assert_called_once_with(
+            "o1_3p5",
+            tx_sets=[4],
+            rx_sets=[1],
+            matrices=list(_STATS_REQUIRED_MATRICES),
+        )
+        mock_compute.assert_called_once()
+        mock_format.assert_called_once()
+        mock_scene_stats.assert_called_once()
+
+    @patch(
+        "deepmimo.datasets.stats._compute_scene_stats",
+        return_value={"scene": {}, "objects": {}, "buildings": None, "terrain": None},
+    )
+    @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
+    @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
+    @patch("deepmimo.datasets.load.load")
+    def test_stats_uses_first_dynamic_snapshot(
+        self, mock_load, mock_compute, mock_format, mock_scene_stats
+    ) -> None:
+        """Stats should use snapshot 1 for DynamicDataset inputs."""
+        selected = Dataset(
+            {"txrx": {"tx_set_id": 4, "tx_idx": 0, "rx_set_id": 1}, "scene": object()}
+        )
+        snapshot = MacroDataset([selected])
+        snapshot.name = "snap_0"
+        dynamic = DynamicDataset([snapshot], name="o1_3p5")
+        mock_load.return_value = dynamic
+
+        stats("o1_3p5", tx_sets=[4], rx_sets=[1], print_summary=False)
+
+        compute_arg = mock_compute.call_args[0][0]
+        assert compute_arg is selected
+        mock_format.assert_called_once()
+        mock_scene_stats.assert_called_once()
+
+    @patch(
+        "deepmimo.datasets.stats._compute_scene_stats",
+        return_value={"scene": {}, "objects": {}, "buildings": None, "terrain": None},
+    )
+    @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
+    @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
+    @patch("deepmimo.datasets.load.load")
+    def test_stats_raises_when_no_dataset_matches_selectors(
+        self, mock_load, mock_compute, mock_format, mock_scene_stats
+    ) -> None:
+        """Stats should raise clear error when no pair matches requested selectors."""
+        mock_load.return_value = Dataset(
+            {"txrx": {"tx_set_id": 9, "tx_idx": 1, "rx_set_id": 2}, "scene": object()}
+        )
+
+        with pytest.raises(ValueError, match="has no datasets matching") as exc:
+            stats("o1_3p5", tx_sets=[4], rx_sets=[1], print_summary=False)
+        assert "has no datasets matching" in str(exc.value)
+        mock_compute.assert_not_called()
+        mock_format.assert_not_called()
+        mock_scene_stats.assert_not_called()
+
+    @patch(
+        "deepmimo.datasets.stats._compute_scene_stats",
+        return_value={"scene": {}, "objects": {}, "buildings": None, "terrain": None},
+    )
+    @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
+    @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
+    @patch("deepmimo.datasets.load.load")
+    def test_stats_uses_load_default_rx_sets_when_omitted(
+        self, mock_load, mock_compute, mock_format, mock_scene_stats
+    ) -> None:
+        """Stats should preserve the loader default RX selection when omitted."""
+        mock_load.return_value = Dataset(
+            {"txrx": {"tx_set_id": 4, "tx_idx": 0, "rx_set_id": 3}, "scene": object()}
+        )
+
+        out = stats("o1_3p5", tx_sets=[4], print_summary=False)
+
+        assert out == "formatted stats"
+        mock_load.assert_called_once_with(
+            "o1_3p5",
+            tx_sets=[4],
+            matrices=list(_STATS_REQUIRED_MATRICES),
+        )
+        mock_compute.assert_called_once()
+        mock_format.assert_called_once()
+        mock_scene_stats.assert_called_once()
+
+    @patch(
+        "deepmimo.datasets.stats._compute_scene_stats",
+        return_value={"scene": {}, "objects": {}, "buildings": None, "terrain": None},
+    )
+    @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
+    @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
+    @patch("deepmimo.datasets.load.load")
+    def test_stats_supports_multiple_tx_sets(
+        self, mock_load, mock_compute, mock_format, mock_scene_stats
+    ) -> None:
+        """Stats should accept multiple TX sets and report each pair separately."""
+        shared_scene = object()
+        d1 = Dataset({"txrx": {"tx_set_id": 4, "tx_idx": 0, "rx_set_id": 0}, "scene": shared_scene})
+        d2 = Dataset({"txrx": {"tx_set_id": 5, "tx_idx": 0, "rx_set_id": 0}, "scene": shared_scene})
+        mock_load.return_value = MacroDataset([d1, d2])
+
+        out = stats("o1_3p5", tx_sets=[4, 5], rx_sets=[0], print_summary=False)
+
+        assert "[TXset 4 (tx_idx 0) | RXset 0]" in out
+        assert "[TXset 5 (tx_idx 0) | RXset 0]" in out
+        mock_load.assert_called_once_with(
+            "o1_3p5",
+            tx_sets=[4, 5],
+            rx_sets=[0],
+            matrices=list(_STATS_REQUIRED_MATRICES),
+        )
+        assert mock_compute.call_count == 2
+        assert mock_compute.call_args_list[0][0][0] is d1
+        assert mock_compute.call_args_list[1][0][0] is d2
+        assert mock_format.call_count == 2
+        mock_scene_stats.assert_called_once()
+
+    def test_compute_path_stats_uses_lazy_num_interactions(self) -> None:
+        """Path stats should trigger lazy num_interactions computation."""
+        ds = Dataset(
+            {
+                c.AOA_AZ_PARAM_NAME: np.array([[0.0, 1.0, np.nan]]),
+                c.INTERACTIONS_PARAM_NAME: np.array([[0.0, 12.0, np.nan]]),
+                c.RX_POS_PARAM_NAME: np.array([[0.0, 0.0, 0.0]]),
+                c.TX_POS_PARAM_NAME: np.array([0.0, 0.0, 1.0]),
+            }
+        )
+
+        path_stats, _context = _compute_path_stats(ds)
+
+        assert path_stats["avg_interactions_per_path"] == pytest.approx(1.0)
+        assert path_stats["max_interactions"] == 2
+
+    def test_compute_delay_stats_uses_lazy_power_linear(self) -> None:
+        """Delay stats should trigger lazy power_linear computation for RMS values."""
+        ds = Dataset(
+            {
+                c.DELAY_PARAM_NAME: np.array([[1e-9, 2e-9, np.nan], [5e-9, np.nan, np.nan]]),
+                c.POWER_PARAM_NAME: np.array([[0.0, -3.0, np.nan], [0.0, np.nan, np.nan]]),
+                c.RX_POS_PARAM_NAME: np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]),
+            }
+        )
+
+        delay_stats = _compute_delay_stats(ds)
+
+        assert delay_stats["avg_rms_delay_ns"] == pytest.approx(0.4715905974)
+        assert delay_stats["max_rms_delay_ns"] == pytest.approx(0.4715905974)
