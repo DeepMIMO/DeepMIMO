@@ -101,7 +101,12 @@ plugins:
   - mkdocs-jupyter:
       include_source: true
       ignore_h1_titles: true
-      execute: false
+      execute: true
+      allow_errors: true
+      theme: dark
+      execute_ignore:
+        - "tutorials/manual.py"
+        - "applications/1_channel_prediction.py"
   - mkdocstrings:
       handlers:
         python:
