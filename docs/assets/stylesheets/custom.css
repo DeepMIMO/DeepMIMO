@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap");
 
 :root {
   --dm-hero-gradient: radial-gradient(circle at 15% 20%, rgba(56, 189, 248, 0.3), transparent 42%),
@@ -41,7 +41,7 @@
   --md-default-fg-color: #fbfdff;
   --md-default-fg-color--light: #e5efff;
   --md-code-bg-color: rgba(10, 26, 55, 0.86);
-  --md-code-fg-color: #ffffff;
+  --md-code-fg-color: #e2e8f0;
   --md-typeset-a-color: #e2f0ff;
   --dm-doc-surface: #0c213c;
   --dm-doc-surface-strong: #0f2b50;
@@ -94,28 +94,32 @@ body,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset code,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset tt {
   color: var(--md-code-fg-color);
-  background: rgba(26, 48, 84, 0.95);
-  border: 1px solid rgba(118, 169, 250, 0.5);
+  background: rgba(20, 40, 72, 0.88);
+  border: 1px solid rgba(118, 169, 250, 0.18);
   border-radius: 0.4rem;
-  padding: 0.15rem 0.45rem;
-  box-shadow: 0 6px 14px rgba(4, 12, 26, 0.4);
+  padding: 0.18rem 0.5rem;
 }
 
 [data-md-color-scheme="deepmimo-dark"] .md-typeset pre,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight {
-  background: rgba(14, 26, 48, 0.95);
-  border: 1px solid rgba(118, 169, 250, 0.42);
-  box-shadow: 0 22px 38px rgba(2, 6, 14, 0.58);
+  background: rgba(10, 22, 42, 0.97);
+  border: 1px solid rgba(118, 169, 250, 0.15);
+  box-shadow: 0 4px 16px rgba(2, 6, 14, 0.3);
+  border-radius: 0.75rem;
 }
 
 [data-md-color-scheme="deepmimo-dark"] .md-typeset pre > code {
   color: var(--md-code-fg-color);
+  background: transparent;
+  border: none;
+  padding: 0;
+  box-shadow: none;
 }
 
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .c,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .cm,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .c1 {
-  color: #94a3b8;
+  color: #6A9955;
   font-style: italic;
 }
 
@@ -124,8 +128,7 @@ body,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .kd,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .kn,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .kr {
-  color: #8de2ff;
-  font-weight: 600;
+  color: #569CD6;
 }
 
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .s,
@@ -141,25 +144,113 @@ body,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .sr,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .ss,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .sx {
-  color: #c8f3a0;
+  color: #CE9178;
 }
 
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .m,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .mi,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .mf {
-  color: #fcd34d;
+  color: #B5CEA8;
 }
 
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .nf,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .nt,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .na {
-  color: #a8c5ff;
-  font-weight: 600;
+  color: #DCDCAA;
 }
 
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .bp,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .nb {
-  color: #f1a7ff;
+  color: #4EC9B0;
+}
+
+/* Operators & punctuation */
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .o,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .p {
+  color: #D4D4D4;
+}
+
+/* Variable names & identifiers */
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .n {
+  color: #9CDCFE;
+}
+
+/* Control-flow keywords (if, for, return, etc.) */
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight .ow {
+  color: #C586C0;
+}
+
+/* ── Images: contain bright matplotlib outputs on dark bg ──── */
+[data-md-color-scheme="deepmimo-dark"] .md-typeset img:not(.twemoji):not([src*="logo"]):not(.headerlink) {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(118, 169, 250, 0.12);
+  box-shadow: 0 4px 20px rgba(2, 6, 14, 0.45);
+  background: rgba(8, 18, 36, 0.6);
+  padding: 0.25rem;
+}
+
+/* ── Admonitions (Tip, Note, etc.) for dark mode ───────────── */
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details {
+  background: rgba(10, 24, 48, 0.85);
+  border: 1px solid rgba(118, 169, 250, 0.14);
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 12px rgba(2, 6, 14, 0.25);
+  border-left: 3px solid;
+  overflow: hidden;
+}
+
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition .admonition-title,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details summary {
+  background: rgba(14, 32, 60, 0.7);
+  border-bottom: 1px solid rgba(118, 169, 250, 0.08);
+  font-weight: 600;
+}
+
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition.tip,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details.tip {
+  border-left-color: #22d3ee;
+}
+
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition.tip .admonition-title,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details.tip summary {
+  color: #67e8f9;
+}
+
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition.note,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details.note {
+  border-left-color: #7ac8ff;
+}
+
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition.note .admonition-title,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details.note summary {
+  color: #a3dcff;
+}
+
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition.warning,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details.warning {
+  border-left-color: #fbbf24;
+}
+
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition.warning .admonition-title,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details.warning summary {
+  color: #fcd34d;
+}
+
+/* Admonition body text — explicit light color */
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition p,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition li,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details p,
+[data-md-color-scheme="deepmimo-dark"] .md-typeset details li {
+  color: #e2e8f0;
+}
+
+/* Inline code inside admonitions — more subtle */
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .admonition code {
+  color: #e2e8f0;
+  background: rgba(18, 36, 64, 0.75);
+  border-color: rgba(118, 169, 250, 0.12);
 }
 
 /* mkdocstrings refinements */
@@ -268,14 +359,17 @@ body,
 }
 
 .md-typeset code {
-  font-family: "Space Grotesk", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
   border-radius: 0.4rem;
   padding: 0.15rem 0.35rem;
 }
 
 .md-typeset pre > code {
   border-radius: 0.75rem;
-  box-shadow: 0 16px 35px rgba(15, 23, 42, 0.18);
+  box-shadow: none;
+  padding: 1rem 1.2rem;
+  line-height: 1.75;
+  font-size: 0.82rem;
 }
 
 .hero {
@@ -385,4 +479,64 @@ body,
 
 :target {
   scroll-margin-top: 6.5rem;
+}
+
+/* ── Jupyter notebook rendering ─────────────────────────────── */
+
+/* Dark-mode overrides for Jupyter notebook cells */
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper {
+  --jp-content-font-color1: var(--md-default-fg-color);
+  --jp-content-font-color2: var(--md-default-fg-color--light);
+  --jp-layout-color0: transparent;
+  --jp-layout-color1: transparent;
+  --jp-layout-color2: rgba(10, 26, 55, 0.86);
+  --jp-cell-editor-background: rgba(14, 26, 48, 0.95);
+  --jp-cell-editor-border-color: rgba(118, 169, 250, 0.35);
+  --jp-input-background: rgba(14, 26, 48, 0.95);
+  color: var(--md-default-fg-color);
+}
+
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-RenderedHTMLCommon {
+  color: var(--md-default-fg-color);
+}
+
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-RenderedHTMLCommon h1,
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-RenderedHTMLCommon h2,
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-RenderedHTMLCommon h3,
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-RenderedHTMLCommon h4 {
+  color: var(--md-default-fg-color);
+}
+
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-RenderedHTMLCommon a {
+  color: var(--md-typeset-a-color);
+}
+
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-InputPrompt,
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-OutputPrompt {
+  color: var(--md-default-fg-color--light);
+}
+
+[data-md-color-scheme="deepmimo-dark"] .jupyter-wrapper .jp-Cell-inputWrapper {
+  border-color: rgba(118, 169, 250, 0.25);
+}
+
+/* Light-mode overrides for Jupyter notebook cells */
+[data-md-color-scheme="deepmimo"] .jupyter-wrapper {
+  --jp-content-font-color1: var(--md-default-fg-color);
+  --jp-layout-color0: transparent;
+  --jp-layout-color1: transparent;
+  --jp-cell-editor-background: var(--md-code-bg-color);
+  --jp-cell-editor-border-color: var(--dm-doc-border);
+}
+
+/* Ensure notebook code uses the correct monospace font */
+.jupyter-wrapper .jp-CodeMirrorEditor,
+.jupyter-wrapper .jp-Cell code,
+.jupyter-wrapper .jp-InputArea-editor {
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+/* Notebook markdown cells should inherit docs typography */
+.jupyter-wrapper .jp-RenderedHTMLCommon {
+  font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }

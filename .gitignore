@@ -19,6 +19,7 @@ asu_campus_p2m/*
 
 # Artifacts
 site/
+.cache/
 **/osm_root/*
 **/blender_addons/*
 manuals/*
