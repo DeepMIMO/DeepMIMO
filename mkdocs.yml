@@ -7,6 +7,9 @@ repo_url: https://github.com/DeepMIMO/DeepMIMO
 edit_uri: edit/mkdocs/docs/
 docs_dir: docs
 
+hooks:
+  - docs/tutorials/__init__.py
+
 nav:
   - Home: index.md
   - Getting Started:
