@@ -1,27 +1,28 @@
-"""DeepMIMO Examples Manual.
-
-Comprehensive reference manual with all DeepMIMO examples.
-
-Open in Colab:
-https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
-
-Open on GitHub:
-https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
-
-This manual covers:
-- Migration from v3 to v4
-- Installation (Python and MATLAB)
-- Loading datasets
-- Scenario information
-- Visualization
-- Channel generation
-- Basic and advanced operations
-- Scene and materials
-- User sampling
-- Beamforming
-- Converting from other ray tracers
-- Uploading scenarios
-"""
+"""DeepMIMO Examples Manual."""
+# %% [markdown]
+# DeepMIMO Examples Manual.
+#
+# Comprehensive reference manual with all DeepMIMO examples.
+#
+# Open in Colab:
+# https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
+#
+# Open on GitHub:
+# https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
+#
+# This manual covers:
+# - Migration from v3 to v4
+# - Installation (Python and MATLAB)
+# - Loading datasets
+# - Scenario information
+# - Visualization
+# - Channel generation
+# - Basic and advanced operations
+# - Scene and materials
+# - User sampling
+# - Beamforming
+# - Converting from other ray tracers
+# - Uploading scenarios
 
 
 # %% [markdown]

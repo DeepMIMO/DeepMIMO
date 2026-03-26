@@ -1,20 +1,21 @@
-"""# Beamforming.
-
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/6_beamforming.py)
-&nbsp;
-[![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/6_beamforming.py)
-
----
-
-**Tutorial Overview:**
-- Computing Beamformers - Calculate received power with beamforming
-- Steering Vectors - Generate steering vectors for different angles
-- Beamforming Visualization - Visualize beamforming patterns and performance
-
-**Related Video:** [Beamforming Video](https://youtu.be/IPVnIW2vGLE)
-
----
-"""
+"""Beamforming tutorial."""
+# %% [markdown]
+# # Beamforming.
+#
+# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/6_beamforming.py)
+# &nbsp;
+# [![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/6_beamforming.py)
+#
+# ---
+#
+# **Tutorial Overview:**
+# - Computing Beamformers - Calculate received power with beamforming
+# - Steering Vectors - Generate steering vectors for different angles
+# - Beamforming Visualization - Visualize beamforming patterns and performance
+#
+# **Related Video:** [Beamforming Video](https://youtu.be/IPVnIW2vGLE)
+#
+# ---
 
 # %%
 import matplotlib.pyplot as plt

@@ -1,23 +1,24 @@
-"""# User Selection and Dataset Manipulation.
-
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/4_dataset_manipulation.py)
-&nbsp;
-[![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/4_dataset_manipulation.py)
-
----
-
-**Tutorial Overview:**
-- Dataset Trimming - Trim dataset based on conditions
-- Uniform Sampling - Uniform user sampling
-- Linear Sampling - Linear user placement
-- Rectangular Zones - Filtering in 3D bounding boxes
-- Path Type/Depth Filtering - Trim by path characteristics
-- Field-of-View - FoV analysis for receivers
-
-**Related Video:** [User Sampling Video](https://youtu.be/KV0LLp0jOFc)
-
----
-"""
+"""User Selection and Dataset Manipulation tutorial."""
+# %% [markdown]
+# # User Selection and Dataset Manipulation.
+#
+# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/4_dataset_manipulation.py)
+# &nbsp;
+# [![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/4_dataset_manipulation.py)
+#
+# ---
+#
+# **Tutorial Overview:**
+# - Dataset Trimming - Trim dataset based on conditions
+# - Uniform Sampling - Uniform user sampling
+# - Linear Sampling - Linear user placement
+# - Rectangular Zones - Filtering in 3D bounding boxes
+# - Path Type/Depth Filtering - Trim by path characteristics
+# - Field-of-View - FoV analysis for receivers
+#
+# **Related Video:** [User Sampling Video](https://youtu.be/KV0LLp0jOFc)
+#
+# ---
 
 # %%
 import matplotlib.pyplot as plt

@@ -1,23 +1,24 @@
-"""# Doppler and Mobility.
-
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/5_doppler_mobility.py)
-&nbsp;
-[![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/5_doppler_mobility.py)
-
----
-
-**Tutorial Overview:**
-There are three ways to configure Doppler effects. In order of increasing complexity:
-1. Set Doppler Directly - Configure Doppler shifts (Hz) manually, per user and path
-2. Set Speeds - Define user/object velocities (m/s), which will be converted to Doppler shifts
-per user and path depending on the paths that interact with the user/object.
-3. Set Timestamps - Configure time evolution between scenes - this computes the velocities of
-users/objects across scenes given the timestamps (Note: requires dynamic datasets)
-
-**Related Video:** [Doppler Video](https://youtu.be/xsl6gjTEu2U)
-
----
-"""
+"""Doppler and Mobility tutorial."""
+# %% [markdown]
+# # Doppler and Mobility.
+#
+# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/5_doppler_mobility.py)
+# &nbsp;
+# [![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/5_doppler_mobility.py)
+#
+# ---
+#
+# **Tutorial Overview:**
+# There are three ways to configure Doppler effects. In order of increasing complexity:
+# 1. Set Doppler Directly - Configure Doppler shifts (Hz) manually, per user and path
+# 2. Set Speeds - Define user/object velocities (m/s), which will be converted to Doppler shifts
+# per user and path depending on the paths that interact with the user/object.
+# 3. Set Timestamps - Configure time evolution between scenes - this computes the velocities of
+# users/objects across scenes given the timestamps (Note: requires dynamic datasets)
+#
+# **Related Video:** [Doppler Video](https://youtu.be/xsl6gjTEu2U)
+#
+# ---
 
 # %%
 import matplotlib.pyplot as plt

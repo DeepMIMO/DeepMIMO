@@ -1,22 +1,23 @@
-"""# Migration Guide: DeepMIMO v3 to v4.
-
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/8_migration_guide.py)
-&nbsp;
-[![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/8_migration_guide.py)
-
----
-
-**Tutorial Overview:**
-- Key differences between v3 and v4
-- Channel generation changes
-- Data access and format changes
-- User selection changes
-- Best practices for migration
-
-**Related Video:** [Migration Video](https://youtu.be/15nQWS15h3k)
-
----
-"""
+"""Migration Guide: DeepMIMO v3 to v4."""
+# %% [markdown]
+# # Migration Guide: DeepMIMO v3 to v4.
+#
+# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/8_migration_guide.py)
+# &nbsp;
+# [![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/8_migration_guide.py)
+#
+# ---
+#
+# **Tutorial Overview:**
+# - Key differences between v3 and v4
+# - Channel generation changes
+# - Data access and format changes
+# - User selection changes
+# - Best practices for migration
+#
+# **Related Video:** [Migration Video](https://youtu.be/15nQWS15h3k)
+#
+# ---
 
 import deepmimo as dm
 

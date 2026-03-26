@@ -1,35 +1,37 @@
-"""# Channel Prediction: Path Interpolation & Doppler Effects.
+"""Channel Prediction: Path Interpolation & Doppler Effects."""
+# %% [markdown]
+# # Channel Prediction: Path Interpolation & Doppler Effects.
+#
+# This comprehensive example demonstrates how to create realistic channel sequences for
+# channel prediction tasks. We cover a complete progression from simple concepts to
+# production-ready workflows.
+#
+# ## What You'll Learn
+#
+# 1. **Simple Two-User Interpolation**: Understanding the basics of path interpolation
+# 2. **Extracting All Linear Sequences**: Finding all consecutive user paths in a scenario
+# 3. **Generating Sequence Videos**: Visualizing spatial coverage (optional)
+# 4. **Creating Uniform-Length Sequences**: Preparing data for ML models
+# 5. **Baseline Channels (No Interpolation)**: Computing channels from raw RT data
+# 6. **Interpolated Channels**: Generating smoother channel sequences
+# 7. **Interpolation + Doppler**: Adding realistic mobility effects
+#
+# ## Why Channel Prediction?
+#
+# Channel prediction involves forecasting future wireless channel states based on past
+# observations. This is crucial for:
+#
+# - **Beamforming**: Proactive beam steering in mobile scenarios
+# - **Resource Allocation**: Optimizing spectrum usage based on predicted conditions
+# - **Handover Management**: Anticipating channel degradation
+# - **Link Adaptation**: Adjusting modulation and coding schemes preemptively
+#
+# ## The Progression
+#
+# This example shows: **baseline → interpolation → interpolation + Doppler**, with
+# visualizations comparing each stage to understand the impact of each technique.
 
-This comprehensive example demonstrates how to create realistic channel sequences for
-channel prediction tasks. We cover a complete progression from simple concepts to
-production-ready workflows.
-
-## What You"ll Learn
-
-1. **Simple Two-User Interpolation**: Understanding the basics of path interpolation
-2. **Extracting All Linear Sequences**: Finding all consecutive user paths in a scenario
-3. **Generating Sequence Videos**: Visualizing spatial coverage (optional)
-4. **Creating Uniform-Length Sequences**: Preparing data for ML models
-5. **Baseline Channels (No Interpolation)**: Computing channels from raw RT data
-6. **Interpolated Channels**: Generating smoother channel sequences
-7. **Interpolation + Doppler**: Adding realistic mobility effects
-
-## Why Channel Prediction?
-
-Channel prediction involves forecasting future wireless channel states based on past
-observations. This is crucial for:
-
-- **Beamforming**: Proactive beam steering in mobile scenarios
-- **Resource Allocation**: Optimizing spectrum usage based on predicted conditions
-- **Handover Management**: Anticipating channel degradation
-- **Link Adaptation**: Adjusting modulation and coding schemes preemptively
-
-## The Progression
-
-This example shows: **baseline → interpolation → interpolation + Doppler**, with
-visualizations comparing each stage to understand the impact of each technique.
-"""
-
+# %%
 import subprocess
 from pathlib import Path
 
