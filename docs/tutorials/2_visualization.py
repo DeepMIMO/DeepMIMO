@@ -1,22 +1,23 @@
-"""# Visualization and Scene.
-
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/2_visualization.py)
-&nbsp;
-[![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/2_visualization.py)
-
----
-
-**Tutorial Overview:**
-- Coverage Maps - Visualizing signal coverage
-- Rays - Ray propagation visualization
-- Path Plots - Visualization of different path components
-- Scene & Materials - 3D scene and material visualization
-- Plot Overlays - Combining different visualizations
-
-**Related Video:** [Visualization Video](https://youtu.be/MO7h2shBhsc)
-
----
-"""
+"""Visualization and Scene tutorial."""
+# %% [markdown]
+# # Visualization and Scene.
+#
+# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/2_visualization.py)
+# &nbsp;
+# [![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/2_visualization.py)
+#
+# ---
+#
+# **Tutorial Overview:**
+# - Coverage Maps - Visualizing signal coverage
+# - Rays - Ray propagation visualization
+# - Path Plots - Visualization of different path components
+# - Scene & Materials - 3D scene and material visualization
+# - Plot Overlays - Combining different visualizations
+#
+# **Related Video:** [Visualization Video](https://youtu.be/MO7h2shBhsc)
+#
+# ---
 
 # %%
 # Import libraries

@@ -100,12 +100,27 @@ body,
   padding: 0.18rem 0.5rem;
 }
 
-[data-md-color-scheme="deepmimo-dark"] .md-typeset pre,
 [data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight {
   background: rgba(10, 22, 42, 0.97);
   border: 1px solid rgba(118, 169, 250, 0.15);
   box-shadow: 0 4px 16px rgba(2, 6, 14, 0.3);
-  border-radius: 0.75rem;
+  border-radius: 0.5rem;
+}
+
+[data-md-color-scheme="deepmimo-dark"] .md-typeset .highlight pre {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  margin: 0;
+}
+
+/* Standalone pre (not inside .highlight) */
+[data-md-color-scheme="deepmimo-dark"] .md-typeset pre:not(.highlight pre) {
+  background: rgba(10, 22, 42, 0.97);
+  border: 1px solid rgba(118, 169, 250, 0.15);
+  box-shadow: 0 4px 16px rgba(2, 6, 14, 0.3);
+  border-radius: 0.5rem;
 }
 
 [data-md-color-scheme="deepmimo-dark"] .md-typeset pre > code {
@@ -365,7 +380,7 @@ body,
 }
 
 .md-typeset pre > code {
-  border-radius: 0.75rem;
+  border-radius: 0.35rem;
   box-shadow: none;
   padding: 1rem 1.2rem;
   line-height: 1.75;
@@ -520,6 +535,22 @@ body,
   border-color: rgba(118, 169, 250, 0.25);
 }
 
+/* Remove outer box on notebook input/output areas to fix double-box */
+.jupyter-wrapper .jp-Cell {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+}
+
+.jupyter-wrapper .jp-Cell-inputWrapper,
+.jupyter-wrapper .jp-Cell-outputWrapper {
+  border-radius: 0.4rem;
+}
+
+.jupyter-wrapper .jp-InputArea-editor {
+  border-radius: 0.35rem;
+}
+
 /* Light-mode overrides for Jupyter notebook cells */
 [data-md-color-scheme="deepmimo"] .jupyter-wrapper {
   --jp-content-font-color1: var(--md-default-fg-color);
@@ -527,6 +558,11 @@ body,
   --jp-layout-color1: transparent;
   --jp-cell-editor-background: var(--md-code-bg-color);
   --jp-cell-editor-border-color: var(--dm-doc-border);
+}
+
+/* Hide stderr output (tqdm progress bars become one-line-per-update spam in static HTML) */
+.jupyter-wrapper .jp-RenderedText[data-mime-type="application/vnd.jupyter.stderr"] {
+  display: none;
 }
 
 /* Ensure notebook code uses the correct monospace font */

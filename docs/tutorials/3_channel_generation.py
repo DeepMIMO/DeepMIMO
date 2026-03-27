@@ -1,21 +1,22 @@
-"""# Detailed Channel Generation.
-
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/3_channel_generation.py)
-&nbsp;
-[![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/3_channel_generation.py)
-
----
-
-**Tutorial Overview:**
-- Channel Parameters - Configuring channel generation
-- Time Domain - Generate time-domain channel responses
-- Frequency Domain (OFDM) - Generate OFDM channel responses
-- Antenna Rotation - Adjust antenna orientations
-
-**Related Video:** [Channel Generation Video](https://youtu.be/xsl6gjTEu2U)
-
----
-"""
+"""Detailed Channel Generation tutorial."""
+# %% [markdown]
+# # Detailed Channel Generation.
+#
+# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/3_channel_generation.py)
+# &nbsp;
+# [![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/3_channel_generation.py)
+#
+# ---
+#
+# **Tutorial Overview:**
+# - Channel Parameters - Configuring channel generation
+# - Time Domain - Generate time-domain channel responses
+# - Frequency Domain (OFDM) - Generate OFDM channel responses
+# - Antenna Rotation - Adjust antenna orientations
+#
+# **Related Video:** [Channel Generation Video](https://youtu.be/xsl6gjTEu2U)
+#
+# ---
 
 # %%
 import matplotlib.pyplot as plt
