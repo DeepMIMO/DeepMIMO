@@ -1,23 +1,24 @@
-"""# Convert & Upload Ray-tracing Dataset.
-
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/7_converters.py)
-&nbsp;
-[![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/7_converters.py)
-
----
-
-**Tutorial Overview:**
-- From Wireless InSite - Convert from Wireless InSite ray tracer
-- From Sionna RT - Convert from Sionna RT
-- From AODT - Convert from AODT format
-- Upload to DeepMIMO - Upload your datasets to the DeepMIMO database
-
-**Related Videos:**
-- [Convert Video](https://youtu.be/kXY2bMWeDgg)
-- [Upload Video](https://youtu.be/tNF6TN_ueU4)
-
----
-"""
+"""Convert & Upload Ray-tracing Dataset tutorial."""
+# %% [markdown]
+# # Convert & Upload Ray-tracing Dataset.
+#
+# [![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/7_converters.py)
+# &nbsp;
+# [![GitHub](https://img.shields.io/badge/Open_on-GitHub-181717?logo=github&style=for-the-badge)](https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/7_converters.py)
+#
+# ---
+#
+# **Tutorial Overview:**
+# - From Wireless InSite - Convert from Wireless InSite ray tracer
+# - From Sionna RT - Convert from Sionna RT
+# - From AODT - Convert from AODT format
+# - Upload to DeepMIMO - Upload your datasets to the DeepMIMO database
+#
+# **Related Videos:**
+# - [Convert Video](https://youtu.be/kXY2bMWeDgg)
+# - [Upload Video](https://youtu.be/tNF6TN_ueU4)
+#
+# ---
 
 # %%
 

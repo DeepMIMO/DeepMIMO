@@ -25,9 +25,10 @@ Three functions:
     - Returns None
     - *Provides* the figures for each DeepMIMO scenario page.
 
-3. stats(scen_name)
-    - (coming soon)
-    - Returns a dictionary of statistics about the dataset.
+3. stats(scen_name, ...)
+    - Prints detailed scenario statistics by default.
+    - If print_summary is False, returns a string summary of the stats.
+    - Implemented in deepmimo.datasets.stats.
 
 """
 
@@ -41,12 +42,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from deepmimo import consts as c
+from deepmimo.utils import get_params_path, load_dict_from_json
 
-# Local imports
-from deepmimo.utils import (
-    get_params_path,
-    load_dict_from_json,
-)
+from .stats import stats
+
+__all__ = ["plot_summary", "stats", "summary"]
 
 
 def summary(scen_name: str, *, print_summary: bool = True) -> str | None:  # noqa: PLR0915
@@ -268,7 +268,7 @@ def _plot_scenario_summary_2d(  # noqa: C901, PLR0912 - 2D summary requires chec
         # Select users to plot
         max_users_for_grid = 5000
         if rx_grid_dataset.has_valid_grid() and rx_grid_dataset.n_ue > max_users_for_grid:
-            idxs = rx_grid_dataset.get_uniform_idxs([8, 8])
+            idxs = rx_grid_dataset.get_idxs("uniform", steps=[8, 8])
         else:
             idxs = np.arange(rx_grid_dataset.n_ue)
 
@@ -378,4 +378,4 @@ def plot_summary(
     # ISSUE: LoS is BS specific. Are we going to show the LoS for each BS?
     # Image 3: Line of Sight (LOS) - commented out for now
 
-    return img_paths if img_paths else None
+    return img_paths or None

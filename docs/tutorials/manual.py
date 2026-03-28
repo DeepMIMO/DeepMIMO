@@ -1,27 +1,28 @@
-"""DeepMIMO Examples Manual.
-
-Comprehensive reference manual with all DeepMIMO examples.
-
-Open in Colab:
-https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
-
-Open on GitHub:
-https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
-
-This manual covers:
-- Migration from v3 to v4
-- Installation (Python and MATLAB)
-- Loading datasets
-- Scenario information
-- Visualization
-- Channel generation
-- Basic and advanced operations
-- Scene and materials
-- User sampling
-- Beamforming
-- Converting from other ray tracers
-- Uploading scenarios
-"""
+"""DeepMIMO Examples Manual."""
+# %% [markdown]
+# DeepMIMO Examples Manual.
+#
+# Comprehensive reference manual with all DeepMIMO examples.
+#
+# Open in Colab:
+# https://colab.research.google.com/github/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
+#
+# Open on GitHub:
+# https://github.com/DeepMIMO/DeepMIMO/blob/main/docs/tutorials/manual.py
+#
+# This manual covers:
+# - Migration from v3 to v4
+# - Installation (Python and MATLAB)
+# - Loading datasets
+# - Scenario information
+# - Visualization
+# - Channel generation
+# - Basic and advanced operations
+# - Scene and materials
+# - User sampling
+# - Beamforming
+# - Converting from other ray tracers
+# - Uploading scenarios
 
 
 # %% [markdown]
@@ -342,8 +343,6 @@ for key in other_keys:
 # > **data integrity**: to ensure that the available paths in the dataset match
 # > those used for channel generation.
 #
-# ----
-#
 # To further enable separation of concerns, DeepMIMO v4 introduces a clean
 # 3-step workflow:
 #
@@ -362,12 +361,12 @@ for key in other_keys:
 #
 # The result is **more user sampling functions in DeepMIMOv4**:
 #
-# - `dataset.get_idxs("row", row_idxs=...)`
-# - `dataset.get_idxs("col", col_idxs=...)`
-# - `dataset.get_idxs("uniform", steps=...)`
-# - `dataset.get_idxs("limits", x_min=..., x_max=..., ...)`
-# - `dataset.get_idxs("active")`
-# - `dataset.get_idxs("linear", start_pos=..., end_pos=..., n_steps=...)`
+# - **dataset.get_idxs("row", row_idxs=...)**
+# - **dataset.get_idxs("col", col_idxs=...)**
+# - **dataset.get_idxs("uniform", steps=...)**
+# - **dataset.get_idxs("limits", x_min=..., x_max=..., ...)**
+# - **dataset.get_idxs("active")**
+# - **dataset.get_idxs("linear", start_pos=..., end_pos=..., n_steps=...)**
 #
 # These functions return user indices for trimming. Only the first function is
 # supported in DeepMIMOv3.

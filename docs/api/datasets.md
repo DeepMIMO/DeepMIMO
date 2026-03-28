@@ -215,14 +215,19 @@ Get dataset summary statistics:
 ```python
 import deepmimo as dm
 
-# Get summary
-summary_dict = dm.summary("scenario_name")
+# Get scenario summary
+dm.summary('scenario_name')
+
+# Get detailed stats for selected TX/RX sets
+dm.stats('scenario_name', tx_sets=[4])
 
 # Plot summary
 dm.plot_summary("scenario_name")
 ```
 
 ::: deepmimo.datasets.summary.summary
+
+::: deepmimo.datasets.summary.stats
 
 ::: deepmimo.datasets.summary.plot_summary
 

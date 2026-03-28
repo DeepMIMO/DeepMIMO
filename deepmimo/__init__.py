@@ -48,7 +48,7 @@ from .datasets.sampling import (
 )
 
 # Summary (moved to datasets/)
-from .datasets.summary import plot_summary, summary
+from .datasets.summary import plot_summary, stats, summary
 from .datasets.visualization import (
     plot_coverage,
     plot_power_discarding,
@@ -144,6 +144,7 @@ __all__ = [
     "plot_summary",
     "print_available_txrx_pair_ids",
     "search",
+    "stats",
     # Beamforming utils
     "steering_vec",
     # General utilities
