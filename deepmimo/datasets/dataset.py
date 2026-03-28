@@ -1864,21 +1864,46 @@ class MacroDataset:
         results = [getattr(dataset, name) for dataset in self.datasets]
         return results[0] if len(results) == 1 else results
 
+    def _subset(self, idxs: list[int]) -> MacroDataset:
+        """Return a MacroDataset view preserving the requested dataset order."""
+        subset = MacroDataset([self.datasets[idx] for idx in idxs])
+        for attr, value in self.__dict__.items():
+            if attr != "datasets":
+                setattr(subset, attr, value)
+        return subset
+
+    def _normalize_dataset_indices(self, idx: Any) -> list[int]:
+        """Normalize multi-index selection into an ordered list of dataset indices."""
+        if isinstance(idx, tuple):
+            idx = list(idx)
+        if isinstance(idx, list):
+            return [int(i) for i in idx]
+        if isinstance(idx, np.ndarray):
+            if idx.dtype == bool:
+                return np.flatnonzero(idx).tolist()
+            return np.asarray(idx, dtype=int).ravel().tolist()
+        msg = "MacroDataset indices must be int, slice, str, or an ordered collection of integers"
+        raise TypeError(msg)
+
     def __getitem__(self, idx: Any) -> Any:
-        """Get dataset at specified index if idx is integer, otherwise propagate to all datasets.
+        """Get one dataset, a dataset subset, or a propagated attribute.
 
         Args:
-            idx: Integer index to get specific dataset, or string key to get attribute
-                from all datasets
+            idx: Integer index to get a specific dataset, slice/sequence of indices to
+                get a MacroDataset subset, or string key to get an attribute from all
+                datasets.
 
         Returns:
-            Dataset instance if idx is integer,
-            single value if idx is in SHARED_PARAMS or if there is only one dataset,
-            or list of results if idx is string and there are multiple datasets
+            Dataset instance if idx is integer, MacroDataset subset if idx selects
+            multiple datasets, or propagated attribute values for string keys.
 
         """
-        if isinstance(idx, (int, slice)):
-            return self.datasets[idx]
+        if isinstance(idx, (int, np.integer)):
+            return self.datasets[int(idx)]
+        if isinstance(idx, slice):
+            return self._subset(list(range(*idx.indices(len(self.datasets)))))
+        if isinstance(idx, (tuple, list, np.ndarray)):
+            return self._subset(self._normalize_dataset_indices(idx))
         if idx in SHARED_PARAMS:
             return self._get_single(idx)
         results = [dataset[idx] for dataset in self.datasets]
@@ -1907,6 +1932,27 @@ class MacroDataset:
 
         """
         self.datasets.append(dataset)
+
+    def merge(self, *, indexing: str = "native") -> Dataset:
+        """Merge selected datasets into one explicit merged-grid dataset.
+
+        Args:
+            indexing: Row/column indexing convention for the merged dataset.
+                Use ``"native"`` to keep v4 row/column definitions and ``"v3"`` to
+                reproduce v3 row/column behavior across RX grids.
+
+        Returns:
+            Dataset: The merged dataset view.
+
+        """
+        # Imported lazily to avoid a circular dependency between dataset and compat helpers.
+        from .compat_v3 import merge_datasets  # noqa: PLC0415
+
+        txrx_sets = self.__dict__.get("txrx_sets")
+        if txrx_sets is None and self.datasets:
+            with contextlib.suppress(AttributeError, KeyError, OSError, ValueError):
+                txrx_sets = self.datasets[0].txrx_sets
+        return merge_datasets(self.datasets, indexing=indexing, txrx_sets=txrx_sets)
 
     def to_binary(self, output_dir: str = "./datasets") -> None:
         """Export all datasets to binary format for web visualizer.

@@ -65,7 +65,6 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
     """
     # Convert scenario name to lowercase for robustness
     scen_name = scen_name.lower()
-
     # Handle absolute paths
     if Path(scen_name).is_absolute():
         scen_folder = scen_name

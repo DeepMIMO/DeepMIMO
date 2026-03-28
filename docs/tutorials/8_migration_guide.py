@@ -224,6 +224,22 @@ print("v4 user selection (post-loading):")
 print(f"  Selected {len(row_idxs)} users")
 
 # %% [markdown]
+# ### v4: Explicit Merge for Multi-Grid Compatibility
+#
+# For scenarios with multiple RX grids, DeepMIMO keeps each grid separate after
+# loading. If you want one merged view, merge the selected datasets explicitly.
+# Use `indexing="v3"` when you need the legacy v3 row/column convention across
+# the merged grids.
+
+# %%
+multi_grid = dm.load("O1_60", tx_sets=[0], rx_sets=[0, 1, 2])
+merged_v3 = multi_grid[0, 1, 2].merge(indexing="v3")
+
+merged_row_idxs = merged_v3.get_idxs(mode="row", row_idxs=[0, 2, 6])
+print("v4 explicit merge with v3 indexing:")
+print(f"  Selected {len(merged_row_idxs)} users from merged rows")
+
+# %% [markdown]
 # ## Parameter Names
 #
 # Many parameter names have changed.
