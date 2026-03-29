@@ -5,7 +5,7 @@ import pytest
 
 from deepmimo import consts as c
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset, MergedGridDataset
-from deepmimo.datasets.load import _validate_txrx_sets
+from deepmimo.datasets.load import _apply_v3_compat, _validate_txrx_sets
 
 
 @pytest.fixture
@@ -283,16 +283,6 @@ def _make_macro_dataset(*datasets: Dataset) -> MacroDataset:
     return MacroDataset(list(datasets))
 
 
-def _make_txrx_sets_dict() -> dict[str, dict[str, int | bool]]:
-    """Create synthetic TX/RX set metadata with deterministic numeric ids."""
-    return {
-        "txrx_set_0": {"id": 0, "is_tx": False, "is_rx": True},
-        "txrx_set_1": {"id": 1, "is_tx": False, "is_rx": True},
-        "txrx_set_2": {"id": 2, "is_tx": False, "is_rx": True},
-        "txrx_set_3": {"id": 3, "is_tx": True, "is_rx": False},
-    }
-
-
 def test_macro_dataset_multi_index_returns_ordered_subset() -> None:
     """Selecting multiple indices should return a MacroDataset in the requested order."""
     g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
@@ -366,40 +356,49 @@ def test_macro_dataset_merge_rejects_multiple_transmitters() -> None:
         macro.merge()
 
 
-def test_get_idxs_legacy_v3_keeps_primary_rx_grid_native() -> None:
-    """Primary RX grids should keep native row/column semantics in legacy mode."""
-    dataset = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
-    dataset.name = "o1_3p4"
-    dataset.txrx_sets = _make_txrx_sets_dict()
+def test_apply_v3_compat_merges_rx_grids_per_tx_with_global_row_col_semantics() -> None:
+    """compat_v3 should merge RX grids per TX and apply v3 global row/col indexing."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=0, tx_idx=0, rx_set_id=2)
+    compat = _apply_v3_compat(_make_macro_dataset(g1, g2, g3), rx_rank_map={0: 0, 1: 1, 2: 2})
 
-    row_idxs = dataset.get_idxs("legacy_v3", row_idxs=np.array([0]))
-    col_idxs = dataset.get_idxs("legacy_v3", col_idxs=np.array([0]))
+    assert isinstance(compat, MergedGridDataset)
+    row_idxs = compat.get_idxs("row", row_idxs=np.array([0, 2, 6]))
+    col_idxs = compat.get_idxs("col", col_idxs=np.array([0, 3, 5]))
 
-    np.testing.assert_array_equal(row_idxs, np.array([0, 1, 2]))
-    np.testing.assert_array_equal(col_idxs, np.array([0, 3]))
+    np.testing.assert_array_equal(row_idxs, np.array([0, 1, 2, 6, 10, 14, 16, 18]))
+    np.testing.assert_array_equal(col_idxs, np.array([0, 3, 6, 7, 8, 9, 14, 15]))
 
 
-def test_get_idxs_legacy_v3_swaps_non_primary_rx_grids() -> None:
-    """Non-primary RX grids should reproduce the old v3 row/column convention."""
+def test_apply_v3_compat_single_nonprimary_grid_swaps_row_col() -> None:
+    """compat_v3 should wrap explicit non-primary RX loads with swapped row/col semantics."""
     dataset = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
-    dataset.name = "o1_3p4"
-    dataset.txrx_sets = _make_txrx_sets_dict()
 
-    row_idxs = dataset.get_idxs("legacy_v3", row_idxs=np.array([0]))
-    col_idxs = dataset.get_idxs("legacy_v3", col_idxs=np.array([0]))
+    compat = _apply_v3_compat(dataset, rx_rank_map={0: 0, 1: 1})
 
-    np.testing.assert_array_equal(row_idxs, np.array([0, 4]))
-    np.testing.assert_array_equal(col_idxs, np.array([0, 1, 2, 3]))
+    assert isinstance(compat, MergedGridDataset)
+    np.testing.assert_array_equal(compat.get_idxs("row", row_idxs=np.array([0])), np.array([0, 4]))
+    np.testing.assert_array_equal(
+        compat.get_idxs("col", col_idxs=np.array([0])),
+        np.array([0, 1, 2, 3]),
+    )
 
 
-def test_get_idxs_legacy_v3_rejects_non_legacy_scenarios() -> None:
-    """Legacy mode should be explicit and unavailable on regular v4 scenarios."""
-    dataset = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
-    dataset.name = "asu_campus_3p5"
-    dataset.txrx_sets = _make_txrx_sets_dict()
+def test_apply_v3_compat_returns_one_merged_dataset_per_transmitter() -> None:
+    """compat_v3 should group child datasets by TX before merging receiver grids."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=1, tx_idx=0, rx_set_id=0)
+    g4 = _make_grid_dataset(nx=2, ny=2, tx_set_id=1, tx_idx=0, rx_set_id=1)
 
-    with pytest.raises(ValueError, match="known legacy scenarios"):
-        dataset.get_idxs("legacy_v3", row_idxs=np.array([0]))
+    compat = _apply_v3_compat(_make_macro_dataset(g1, g2, g3, g4), rx_rank_map={0: 0, 1: 1})
+
+    assert isinstance(compat, MacroDataset)
+    assert len(compat) == 2
+    assert all(isinstance(child, MergedGridDataset) for child in compat.datasets)
+    assert compat[0].n_ue == g1.n_ue + g2.n_ue
+    assert compat[1].n_ue == g3.n_ue + g4.n_ue
 
 
 def test_validate_txrx_sets_orders_allowed_ids_deterministically() -> None:

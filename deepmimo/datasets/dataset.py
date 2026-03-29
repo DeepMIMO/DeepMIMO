@@ -81,8 +81,6 @@ SHARED_PARAMS = [
     c.RT_PARAMS_PARAM_NAME,
 ]
 
-LEGACY_V3_INDEXING_SCENARIO_PREFIXES = ("boston", "o1_3p4", "o1_3p5")
-
 
 class Dataset(DotDict):
     """Class for managing DeepMIMO datasets.
@@ -974,69 +972,6 @@ class Dataset(DotDict):
         """
         return get_grid_idxs(self.grid_size, "col", col_idxs)
 
-    def _uses_legacy_v3_indexing(self) -> bool:
-        """Return whether this dataset belongs to a known legacy v3 scenario."""
-        scenario_name = str(self.get("parent_name", self.get("name", ""))).lower()
-        return any(
-            scenario_name.startswith(prefix) for prefix in LEGACY_V3_INDEXING_SCENARIO_PREFIXES
-        )
-
-    def _get_rx_rank_map(self) -> dict[int, int]:
-        """Map RX set ids to their scenario-order rank using numeric sorting."""
-        txrx_sets = self._data.get("txrx_sets")
-        if txrx_sets is None:
-            with contextlib.suppress(AttributeError, KeyError, OSError, ValueError):
-                txrx_sets = self.txrx_sets
-        if txrx_sets is None:
-            return {}
-
-        values = txrx_sets.values() if hasattr(txrx_sets, "values") else txrx_sets
-        rx_set_ids = []
-        for txrx_set in values:
-            if hasattr(txrx_set, "get"):
-                is_rx = txrx_set.get("is_rx", False)
-                rx_set_id = txrx_set.get("id")
-            else:
-                is_rx = txrx_set.is_rx
-                rx_set_id = txrx_set.id
-            if not is_rx:
-                continue
-            rx_set_ids.append(int(rx_set_id))
-
-        rx_set_ids.sort()
-        return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
-
-    def _get_legacy_v3_idxs(
-        self,
-        *,
-        row_idxs: int | list[int] | np.ndarray | None = None,
-        col_idxs: int | list[int] | np.ndarray | None = None,
-    ) -> np.ndarray:
-        """Return row/col indices following the legacy v3 convention."""
-        if not self._uses_legacy_v3_indexing():
-            msg = (
-                "`legacy_v3` indexing is only supported for known legacy scenarios "
-                "(for example Boston and O1 legacy releases)."
-            )
-            raise ValueError(msg)
-
-        if (row_idxs is None) == (col_idxs is None):
-            msg = "`legacy_v3` mode requires exactly one of row_idxs or col_idxs."
-            raise ValueError(msg)
-
-        txrx = self.get("txrx")
-        if txrx is None or "rx_set_id" not in txrx:
-            msg = "`legacy_v3` mode requires dataset TX/RX metadata."
-            raise ValueError(msg)
-
-        rx_rank = self._get_rx_rank_map().get(int(txrx["rx_set_id"]), 0)
-        if row_idxs is not None:
-            axis = "row" if rx_rank == 0 else "col"
-            return get_grid_idxs(self.grid_size, axis, row_idxs)
-
-        axis = "col" if rx_rank == 0 else "row"
-        return get_grid_idxs(self.grid_size, axis, col_idxs)
-
     def get_idxs(self, mode: str, **kwargs: Any) -> np.ndarray:
         """Unified dispatcher for user index selection.
 
@@ -1046,7 +981,6 @@ class Dataset(DotDict):
             - 'uniform': grid sampling: requires steps=[x_step, y_step]
             - 'row': row selection: requires row_idxs
             - 'col': column selection: requires col_idxs
-            - 'legacy_v3': legacy row/column compatibility on known v3 scenarios
             - 'limits': position bounds: requires x_min, x_max, y_min, y_max, z_min, z_max
             - 'id': user IDs selection: requires user_ids
 
@@ -1072,11 +1006,6 @@ class Dataset(DotDict):
                 result = self._get_row_idxs(kwargs[key])
             else:
                 result = self._get_col_idxs(kwargs[key])
-        elif m == "legacy_v3":
-            result = self._get_legacy_v3_idxs(
-                row_idxs=kwargs.get("row_idxs"),
-                col_idxs=kwargs.get("col_idxs"),
-            )
         elif m == "limits":
             result = get_idxs_with_limits(self.rx_pos, **kwargs)
         else:
@@ -1896,8 +1825,16 @@ class MergedGridDataset(Dataset):
 
         if axis == "row":
             grid_offsets = np.asarray(self._merge_spec["row_offsets"], dtype=int)
+            grid_axes = self._merge_spec.get(
+                "row_axes",
+                ["row"] * len(self._merge_spec["grid_sizes"]),
+            )
         elif axis == "col":
             grid_offsets = np.asarray(self._merge_spec["col_offsets"], dtype=int)
+            grid_axes = self._merge_spec.get(
+                "col_axes",
+                ["col"] * len(self._merge_spec["grid_sizes"]),
+            )
         else:
             msg = f"Invalid axis '{axis}', must be 'row' or 'col'"
             raise ValueError(msg)
@@ -1916,7 +1853,8 @@ class MergedGridDataset(Dataset):
         all_ue_idxs = []
         for idx, grid_idx in zip(idxs_arr, grid_idxs, strict=False):
             local_idx = int(idx - grid_offsets[grid_idx])
-            local_ue_idxs = get_grid_idxs(grid_sizes[grid_idx], axis, np.array([local_idx]))
+            local_axis = grid_axes[grid_idx]
+            local_ue_idxs = get_grid_idxs(grid_sizes[grid_idx], local_axis, np.array([local_idx]))
             all_ue_idxs.append(local_ue_idxs + ue_offsets[grid_idx])
 
         return np.concatenate(all_ue_idxs).astype(int)
@@ -1970,27 +1908,109 @@ def _missing_user_array(n_ue: int, tail_shape: tuple[int, ...], dtype: np.dtype)
     return np.full((n_ue, *tail_shape), fill_value, dtype=array_dtype)
 
 
-def _merged_grid_spec(datasets: list[Dataset]) -> dict[str, Any]:
+def _rx_rank_map(txrx_sets: list[Any] | dict[str, Any]) -> dict[int, int]:
+    """Map RX set IDs to their scenario order rank using numeric sorting."""
+    values = txrx_sets.values() if hasattr(txrx_sets, "values") else txrx_sets
+    rx_set_ids = []
+    for txrx_set in values:
+        if hasattr(txrx_set, "get"):
+            is_rx = txrx_set.get("is_rx", False)
+            rx_set_id = txrx_set.get("id")
+        else:
+            is_rx = txrx_set.is_rx
+            rx_set_id = txrx_set.id
+        if not is_rx:
+            continue
+        rx_set_ids.append(int(rx_set_id))
+
+    rx_set_ids.sort()
+    return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
+
+
+def _resolve_rx_rank_map(
+    datasets: list[Dataset],
+    *,
+    rx_rank_map: dict[int, int] | None = None,
+    txrx_sets: list[Any] | dict[str, Any] | None = None,
+) -> dict[int, int]:
+    """Resolve RX rank metadata from explicit input, scenario metadata, or dataset contents."""
+    if rx_rank_map is not None:
+        return rx_rank_map
+    if txrx_sets is not None:
+        return _rx_rank_map(txrx_sets)
+    if datasets:
+        with contextlib.suppress(AttributeError, KeyError, OSError, ValueError):
+            return _rx_rank_map(datasets[0].txrx_sets)
+
+    rx_set_ids = sorted(
+        {
+            int(dataset.get("txrx", {}).get("rx_set_id", -1))
+            for dataset in datasets
+            if dataset.hasattr("txrx")
+        }
+    )
+    return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
+
+
+def _merged_grid_spec(
+    datasets: list[Dataset],
+    *,
+    indexing: str = "native",
+    rx_rank_map: dict[int, int] | None = None,
+) -> dict[str, Any]:
     """Build global row/col indexing metadata for merged multi-grid datasets."""
     grid_sizes = [np.asarray(ds.grid_size, dtype=int) for ds in datasets]
     ue_offsets = np.cumsum([0, *[int(ds.n_ue) for ds in datasets[:-1]]], dtype=int)
-    n_rows_per_grid = [int(grid_size[1]) for grid_size in grid_sizes]
-    n_cols_per_grid = [int(grid_size[0]) for grid_size in grid_sizes]
+    rx_set_ids = [int(ds.get("txrx", {}).get("rx_set_id", -1)) for ds in datasets]
+
+    if indexing == "native":
+        row_axes = ["row"] * len(datasets)
+        col_axes = ["col"] * len(datasets)
+    elif indexing == "v3":
+        resolved_rx_rank_map = rx_rank_map or {}
+        row_axes = [
+            "row" if resolved_rx_rank_map.get(rx_set_id, 0) == 0 else "col"
+            for rx_set_id in rx_set_ids
+        ]
+        col_axes = [
+            "col" if resolved_rx_rank_map.get(rx_set_id, 0) == 0 else "row"
+            for rx_set_id in rx_set_ids
+        ]
+    else:
+        msg = f"Unknown indexing mode '{indexing}'. Expected 'native' or 'v3'."
+        raise ValueError(msg)
+
+    n_rows_per_grid = [
+        int(grid_size[1]) if row_axis == "row" else int(grid_size[0])
+        for grid_size, row_axis in zip(grid_sizes, row_axes, strict=False)
+    ]
+    n_cols_per_grid = [
+        int(grid_size[0]) if col_axis == "col" else int(grid_size[1])
+        for grid_size, col_axis in zip(grid_sizes, col_axes, strict=False)
+    ]
     return {
         "ue_offsets": ue_offsets,
         "grid_sizes": grid_sizes,
+        "row_axes": row_axes,
+        "col_axes": col_axes,
         "row_offsets": np.cumsum([0, *n_rows_per_grid], dtype=int),
         "col_offsets": np.cumsum([0, *n_cols_per_grid], dtype=int),
     }
 
 
-def merge_datasets(datasets: list[Dataset]) -> Dataset:  # noqa: C901, PLR0912
+def merge_datasets(  # noqa: C901, PLR0912
+    datasets: list[Dataset],
+    *,
+    indexing: str = "native",
+    rx_rank_map: dict[int, int] | None = None,
+    txrx_sets: list[Any] | dict[str, Any] | None = None,
+) -> Dataset:
     """Merge datasets that share one transmitter into an explicit merged-grid dataset."""
     if not datasets:
         msg = "Cannot merge an empty dataset list"
         raise ValueError(msg)
 
-    if len(datasets) == 1:
+    if len(datasets) == 1 and indexing == "native":
         return datasets[0]
 
     tx_keys = {
@@ -2077,7 +2097,19 @@ def merge_datasets(datasets: list[Dataset]) -> Dataset:  # noqa: C901, PLR0912
     if datasets[0].hasattr("txrx"):
         merged_data["txrx"] = dict(datasets[0].txrx)
 
-    return MergedGridDataset(merged_data, merge_spec=_merged_grid_spec(datasets))
+    resolved_rx_rank_map = _resolve_rx_rank_map(
+        datasets,
+        rx_rank_map=rx_rank_map,
+        txrx_sets=txrx_sets,
+    )
+    return MergedGridDataset(
+        merged_data,
+        merge_spec=_merged_grid_spec(
+            datasets,
+            indexing=indexing,
+            rx_rank_map=resolved_rx_rank_map,
+        ),
+    )
 
 
 class MacroDataset:

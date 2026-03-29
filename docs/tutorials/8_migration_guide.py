@@ -227,19 +227,20 @@ print(f"  Selected {len(row_idxs)} users")
 # %% [markdown]
 # ### Matching Legacy v3 Row/Column Results
 #
-# DeepMIMO v4 keeps the native grid geometry of the scenario. For a small set of
-# legacy multi-grid scenarios, DeepMIMO v3 interpreted row/column indexing
-# differently on non-primary RX grids. If you need to reproduce those exact v3
-# row/column selections during migration, use `legacy_v3` explicitly.
+# DeepMIMO v4 keeps the native grid geometry of the scenario. In DeepMIMO v3,
+# some multi-grid scenarios behaved like one merged RX grid per transmitter, and
+# row/column indexing could change direction on non-primary RX grids. If you
+# need to reproduce those exact v3 selections during migration, load the
+# scenario with `compat_v3=True`.
 
 # %%
 legacy_v3_selection = """
-# Only for known legacy scenarios when reproducing old v3 row/column results
-dataset = dm.load("o1_3p4", tx_sets=[3], rx_sets=[1])
+# Migration-only: reproduce the old v3 merged-grid indexing behavior
+dataset = dm.load("o1_3p4", tx_sets=[3], compat_v3=True)
 
-# Match the old v3 interpretation of rows/columns on this RX grid
-legacy_rows = dataset.get_idxs("legacy_v3", row_idxs=[0, 10, 20])
-legacy_cols = dataset.get_idxs("legacy_v3", col_idxs=[0, 5, 10])
+# `compat_v3=True` merges RX grids per TX and restores v3-style row/col indexing
+legacy_rows = dataset.get_idxs("row", row_idxs=[0, 10, 20])
+legacy_cols = dataset.get_idxs("col", col_idxs=[0, 5, 10])
 
 subset = dataset.trim(idxs=legacy_rows)
 """
@@ -289,7 +290,7 @@ print("  - Average size reduction: ~50%")
 # - [ ] Replace `generate_data()` with `dataset.compute_channels()`
 # - [ ] Update data access from `dataset[bs]["user"]["param"]` to `dataset.param`
 # - [ ] Move user selection from params to `dataset.get_idxs()` and `dataset.trim()`
-# - [ ] Use `get_idxs("legacy_v3", ...)` only when reproducing exact old v3 indexing
+# - [ ] Use `dm.load(..., compat_v3=True)` only when reproducing exact old v3 indexing
 # - [ ] Update parameter names (DoA/DoD -> aoa/aod, etc.)
 # - [ ] Update antenna configuration to ChannelParameters
 # - [ ] Test thoroughly with your existing workflows
