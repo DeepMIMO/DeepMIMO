@@ -1798,7 +1798,7 @@ class Dataset(DotDict):
     }
 
 
-_MERGE_EXCLUDED_KEYS = {"n_ue", "grid_size", "grid_spacing"}
+_MERGE_EXCLUDED_KEYS = {"n_ue", "grid_size", "grid_spacing", "txrx"}
 
 
 class MergedGridDataset(Dataset):
@@ -1880,6 +1880,21 @@ def _pad_concat_users(arrays: list[np.ndarray]) -> np.ndarray:
     return np.concatenate(padded_arrays, axis=0)
 
 
+def _missing_user_array(n_ue: int, tail_shape: tuple[int, ...], dtype: np.dtype) -> np.ndarray:
+    """Return a padded placeholder for a missing per-user array."""
+    array_dtype = np.dtype(dtype)
+    if np.issubdtype(array_dtype, np.integer) or np.issubdtype(array_dtype, np.bool_):
+        array_dtype = np.dtype(np.float32)
+
+    if np.issubdtype(array_dtype, np.complexfloating):
+        fill_value = np.nan + 0j
+    elif np.issubdtype(array_dtype, np.floating):
+        fill_value = np.nan
+    else:
+        fill_value = 0
+    return np.full((n_ue, *tail_shape), fill_value, dtype=array_dtype)
+
+
 def _merged_grid_spec(datasets: list[Dataset]) -> dict[str, Any]:
     """Build global row/col indexing metadata for merged multi-grid datasets."""
     grid_sizes = [np.asarray(ds.grid_size, dtype=int) for ds in datasets]
@@ -1938,10 +1953,6 @@ def merge_datasets(datasets: list[Dataset]) -> Dataset:  # noqa: C901, PLR0912
             continue
         first_value = present_values[0]
 
-        if len(present_values) != len(datasets):
-            merged_data[key] = first_value
-            continue
-
         is_per_user_array = (
             isinstance(first_value, np.ndarray)
             and first_value.ndim > 0
@@ -1954,6 +1965,25 @@ def merge_datasets(datasets: list[Dataset]) -> Dataset:  # noqa: C901, PLR0912
                 for value, dataset in zip(present_values, present_datasets, strict=False)
             )
         )
+
+        if len(present_values) != len(datasets):
+            if is_per_user_array:
+                tail_shape = tuple(
+                    max(value.shape[dim] for value in present_values)
+                    for dim in range(1, first_value.ndim)
+                )
+                aligned_values = []
+                for dataset in datasets:
+                    if dataset.hasattr(key):
+                        aligned_values.append(dataset[key])
+                    else:
+                        aligned_values.append(
+                            _missing_user_array(int(dataset.n_ue), tail_shape, first_value.dtype)
+                        )
+                merged_data[key] = _pad_concat_users(aligned_values)
+            else:
+                merged_data[key] = first_value
+            continue
 
         if is_per_user_array:
             same_tail_shapes = all(
@@ -2043,7 +2073,14 @@ class MacroDataset:
 
     def _subset(self, idxs: list[int]) -> MacroDataset:
         """Return a MacroDataset view preserving the requested dataset order."""
-        subset = MacroDataset([self.datasets[idx] for idx in idxs])
+        subset_datasets = [self.datasets[idx] for idx in idxs]
+        if isinstance(self, DynamicDataset):
+            subset = DynamicDataset(subset_datasets, self.name)
+            if hasattr(self, "timestamps"):
+                subset.timestamps = np.asarray(self.timestamps)[idxs]
+            return subset
+
+        subset = MacroDataset(subset_datasets)
         for attr, value in self.__dict__.items():
             if attr != "datasets":
                 setattr(subset, attr, value)

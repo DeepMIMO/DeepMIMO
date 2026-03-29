@@ -194,6 +194,26 @@ def test_dynamic_dataset() -> None:
     assert np.allclose(ds1.rx_vel, 1.0)
 
 
+def test_dynamic_dataset_subset_preserves_dynamic_type() -> None:
+    """Selecting multiple snapshots should preserve the DynamicDataset wrapper."""
+    snapshot1 = MacroDataset([Dataset({"rx_pos": np.zeros((1, 3)), "tx_pos": np.zeros((1, 3))})])
+    snapshot2 = MacroDataset([Dataset({"rx_pos": np.ones((1, 3)), "tx_pos": np.ones((1, 3))})])
+    snapshot3 = MacroDataset(
+        [Dataset({"rx_pos": np.full((1, 3), 2.0), "tx_pos": np.zeros((1, 3))})]
+    )
+    snapshot1.name = "s1"
+    snapshot2.name = "s2"
+    snapshot3.name = "s3"
+    dyn = DynamicDataset([snapshot1, snapshot2, snapshot3], name="test_dyn")
+    dyn.timestamps = np.array([0.0, 1.0, 2.0])
+
+    subset = dyn[0:2]
+
+    assert isinstance(subset, DynamicDataset)
+    assert subset.n_scenes == 2
+    np.testing.assert_array_equal(subset.timestamps, np.array([0.0, 1.0]))
+
+
 def test_compute_num_interactions() -> None:
     """Test interactions computation logic."""
     ds = Dataset({"n_ue": 2})  # Need n_ue for Dataset
@@ -302,8 +322,10 @@ def test_macro_dataset_merge_handles_asymmetric_keys() -> None:
 
     assert "grid1_only" in merged
     assert "grid2_only" in merged
-    np.testing.assert_array_equal(merged["grid1_only"], g1["grid1_only"])
-    np.testing.assert_array_equal(merged["grid2_only"], g2["grid2_only"])
+    np.testing.assert_array_equal(merged["grid1_only"][: g1.n_ue], g1["grid1_only"])
+    np.testing.assert_array_equal(merged["grid2_only"][g1.n_ue :], g2["grid2_only"])
+    assert np.all(np.isnan(merged["grid1_only"][g1.n_ue :]))
+    assert np.all(np.isnan(merged["grid2_only"][: g1.n_ue]))
 
 
 def test_macro_dataset_merge_ignores_stale_cached_n_ue() -> None:

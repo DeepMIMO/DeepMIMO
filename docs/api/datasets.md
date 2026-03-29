@@ -156,11 +156,11 @@ into one merged-grid view:
 ```python
 raw = dm.load("O1_60", tx_sets=[0], rx_sets=[0, 1, 2])
 
-merged = raw[0, 1, 2].merge()
+# Merge all loaded datasets
+merged_all = raw.merge()
 
-# Global merged row/column indexing follows the selected dataset order
-row_idxs = merged.get_idxs("row", row_idxs=[0, 2, 6])
-col_idxs = merged.get_idxs("col", col_idxs=[0, 3, 5])
+# Merge only a selected subset, preserving the requested order
+merged_subset = raw[0, 2].merge()
 ```
 
 ::: deepmimo.datasets.dataset.MacroDataset
