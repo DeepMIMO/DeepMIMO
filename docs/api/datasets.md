@@ -19,7 +19,7 @@ deepmimo/datasets/
 import deepmimo as dm
 
 # Load a scenario
-dataset = dm.load('asu_campus_3p5')
+dataset = dm.load("asu_campus_3p5")
 ```
 
 !!! tip "Detailed load examples"
@@ -37,9 +37,9 @@ import deepmimo as dm
 
 # Generate dataset with custom parameters
 dataset = dm.generate(
-    'asu_campus_3p5',
-    load_params={'tx_sets': [0], 'rx_sets': [0]},
-    ch_params={'bs_antenna': {'shape': [8, 1]}}
+    "asu_campus_3p5",
+    load_params={"tx_sets": [0], "rx_sets": [0]},
+    ch_params={"bs_antenna": {"shape": [8, 1]}},
 )
 ```
 
@@ -54,7 +54,7 @@ The `Dataset` class represents a single dataset within DeepMIMO, containing tran
 import deepmimo as dm
 
 # Load a dataset
-dataset = dm.load('scenario_name')
+dataset = dm.load("scenario_name")
 
 # Access transmitter data
 tx_locations = dataset.tx_locations
@@ -91,13 +91,13 @@ channels = dataset.channels  # If already computed
 Unified index selection (dispatcher):
 ```python
 # Uniform sampling on the grid
-uniform_idxs = dataset.get_idxs('uniform', steps=[2, 2])
+uniform_idxs = dataset.get_idxs("uniform", steps=[2, 2])
 
 # Active users (paths > 0)
-active_idxs = dataset.get_idxs('active')
+active_idxs = dataset.get_idxs("active")
 
 # Users along a line
-linear_idxs = dataset.get_idxs('linear', start_pos=[0,0,0], end_pos=[100,0,0], n_steps=50)
+linear_idxs = dataset.get_idxs("linear", start_pos=[0, 0, 0], end_pos=[100, 0, 0], n_steps=50)
 ```
 
 Create trimmed datasets (physical trimming):
@@ -109,12 +109,7 @@ dataset2 = dataset.trim(idxs=uniform_idxs)
 dataset_fov = dataset.trim(bs_fov=[90, 90])  # optional: ue_fov=[...]
 
 # Combine trims efficiently (order: idxs -> FoV -> path depth -> path type)
-dataset_t = dataset.trim(
-    idxs=active_idxs,
-    bs_fov=[90, 90],
-    path_depth=1,
-    path_types=['LoS', 'R']
-)
+dataset_t = dataset.trim(idxs=active_idxs, bs_fov=[90, 90], path_depth=1, path_types=["LoS", "R"])
 ```
 
 !!! tip "User sampling and subsets"
@@ -145,6 +140,7 @@ The `MacroDataset` class is a container for managing multiple datasets, providin
 # Access individual datasets
 dataset = macro_dataset[0]  # First dataset
 datasets = macro_dataset[1:3]  # Slice of datasets
+ordered_subset = macro_dataset[0, 2, 1]  # Preserve explicit dataset order
 
 # Iterate over datasets
 for dataset in macro_dataset:
@@ -152,6 +148,19 @@ for dataset in macro_dataset:
 
 # Batch operations
 channels = macro_dataset.compute_channels()
+```
+
+For scenarios with multiple RX grids, you can explicitly merge selected datasets
+into one merged-grid view:
+
+```python
+raw = dm.load("O1_60", tx_sets=[0], rx_sets=[0, 1, 2])
+
+# Merge all loaded datasets
+merged_all = raw.merge()
+
+# Merge only a selected subset, preserving the requested order
+merged_subset = raw[0, 2].merge()
 ```
 
 ::: deepmimo.datasets.dataset.MacroDataset
@@ -162,10 +171,12 @@ The `DynamicDataset` class extends `MacroDataset` to handle multiple time snapsh
 
 ```python
 # Convert a dynamic dataset
-dm.convert(rt_folder) # rt_folder must contain individual folders of ray tracing results
+dm.convert(rt_folder)  # rt_folder must contain individual folders of ray tracing results
 
 # Load a dynamic dataset
-dynamic_dataset = dm.load('scenario_name')  # Returns DynamicDataset if multiple time snapshots exist
+dynamic_dataset = dm.load(
+    "scenario_name"
+)  # Returns DynamicDataset if multiple time snapshots exist
 
 # Access individual time snapshots
 snapshot = dynamic_dataset[0]  # First time snapshot
@@ -193,14 +204,14 @@ Get dataset summary statistics:
 ```python
 import deepmimo as dm
 
-# Get summary as a string
-summary_str = dm.summary('scenario_name', print_summary=False)
+# Get scenario summary
+dm.summary('scenario_name')
 
 # Get detailed stats for selected TX/RX sets
-stats_str = dm.stats('scenario_name', tx_sets=[4], print_summary=False)
+dm.stats('scenario_name', tx_sets=[4])
 
 # Plot summary
-dm.plot_summary('scenario_name')
+dm.plot_summary("scenario_name")
 ```
 
 ::: deepmimo.datasets.summary.summary
@@ -219,7 +230,7 @@ Utilities for selecting user indices:
 idxs = dm.get_uniform_idxs(n_ue=1000, grid_size=[10, 10], steps=[2, 2])
 
 # Linear sampling
-idxs = dm.get_linear_idxs(rx_pos, start_pos=[0,0,0], end_pos=[100,0,0], n_steps=50)
+idxs = dm.get_linear_idxs(rx_pos, start_pos=[0, 0, 0], end_pos=[100, 0, 0], n_steps=50)
 
 # Grid sampling
 idxs = dm.get_grid_idxs(grid_size=[10, 10], rows=[0, 1, 2], cols=[0, 1, 2])

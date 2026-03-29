@@ -10,6 +10,7 @@
 #
 # **Tutorial Overview:**
 # - Dataset Trimming - Trim dataset based on conditions
+# - Merging RX Grids - Combine selected datasets into one merged-grid view
 # - Uniform Sampling - Uniform user sampling
 # - Linear Sampling - Linear user placement
 # - Rectangular Zones - Filtering in 3D bounding boxes
@@ -33,6 +34,44 @@ dm.download(scen_name)
 dataset = dm.load(scen_name)
 
 print(f"Original dataset size: {len(dataset.power)} users")
+
+# %% [markdown]
+# ## Merging RX Grids
+#
+# Some scenarios load as a `MacroDataset`, where each element corresponds to one
+# TX/RX pair. When multiple receiver grids share the same transmitter, you can
+# merge them into one explicit merged-grid dataset.
+
+# %%
+multi_grid_scen = "city_0_newyork_3p5"
+dm.download(multi_grid_scen)
+
+multi_grid = dm.load(
+    multi_grid_scen,
+    tx_sets=[1],
+    rx_sets="all",
+    matrices=["rx_pos", "tx_pos", "power", "phase", "delay", "aoa_az", "inter", "inter_pos"],
+)
+
+print(f"Loaded object type: {type(multi_grid).__name__}")
+print(f"Loaded TX/RX pairs: {len(multi_grid)}")
+print(f"Pair IDs: {multi_grid.txrx}")
+
+# %%
+# Merge all loaded datasets
+merged_all = multi_grid.merge()
+print(f"Merged-all type: {type(merged_all).__name__}")
+print(f"Merged-all users: {merged_all.n_ue}")
+print(f"Merged-all grid size: {merged_all.grid_size}")
+
+# %%
+# Merge only a selected subset, preserving the requested order
+merged_subset = multi_grid[0, 2].merge()
+subset_row_idxs = merged_subset.get_idxs("row", row_idxs=[0])
+
+print(f"Merged-subset users: {merged_subset.n_ue}")
+print(f"Merged-subset grid size: {merged_subset.grid_size}")
+print(f"Users in first merged row: {len(subset_row_idxs)}")
 
 # %% [markdown]
 # ## Dataset Trimming
