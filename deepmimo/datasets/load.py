@@ -127,6 +127,7 @@ def load(
     )
     return dataset
 
+
 def _load_dataset(folder: str, params: dict, load_params: dict) -> Dataset | MacroDataset:
     """Load a single dataset from a scenario folder.
 
