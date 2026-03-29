@@ -2,7 +2,7 @@
 
 Steps to run a pipeline:
 
-1. pip install --pre deepmimo
+1. pip install deepmimo
 
 2. Install dependencies
 	- install miniforge (https://github.com/conda-forge/miniforge)

@@ -92,10 +92,10 @@ print(f"Channel shape: {channels.shape}")
 
 # %%
 # v3: pip install deepmimov3
-# v4: pip install --pre deepmimo
+# v4: pip install deepmimo
 
 print("v3: pip install DeepMIMOv3")
-print("v4: pip install --pre deepmimo")
+print("v4: pip install deepmimo")
 
 # %% [markdown]
 # ### 2. Import Statements
@@ -294,7 +294,7 @@ print("  - Average size reduction: ~50%")
 #
 # Use this checklist when migrating your code:
 #
-# - [ ] Update installation: `pip install --pre deepmimo`
+# - [ ] Update installation: `pip install deepmimo`
 # - [ ] Change import: `import deepmimo as dm`
 # - [ ] Replace `default_params()` with `dm.load()`
 # - [ ] Replace `generate_data()` with `dataset.compute_channels()`

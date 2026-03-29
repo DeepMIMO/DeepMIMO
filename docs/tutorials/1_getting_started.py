@@ -26,7 +26,7 @@
 
 # %%
 # Install DeepMIMO (if not already installed)
-# %pip install --pre deepmimo
+# %pip install deepmimo
 
 # %%
 # Import necessary libraries

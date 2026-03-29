@@ -120,7 +120,7 @@ Conversion from AODT (Aerial Optical Digital Twin) involves 2 steps:
 
 AODT support requires additional dependencies. Install them using:
 ```bash
-pip install --pre deepmimo[aodt]
+pip install deepmimo[aodt]
 ```
 
 ### Exporting

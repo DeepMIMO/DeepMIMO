@@ -22,7 +22,7 @@ Welcome to the DeepMIMO tutorials! These step-by-step guides will help you maste
 
 1. Install DeepMIMO:
    ```bash
-   pip install --pre deepmimo
+   pip install deepmimo
    ```
 
 2. Download a tutorial:

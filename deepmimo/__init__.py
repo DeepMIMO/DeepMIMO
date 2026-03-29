@@ -1,6 +1,6 @@
 """DeepMIMO Python Package."""
 
-__version__ = "4.0.0b11"
+__version__ = "4.0.0"
 
 # Core functionality
 # Import immediate modules

@@ -36,14 +36,14 @@
 #
 # ---
 # **How to use this script**:
-# 1. Install DeepMIMO: `pip install --pre deepmimo`
+# 1. Install DeepMIMO: `pip install deepmimo`
 # 2. Run sections interactively in your IDE
 # 3. Jump to the section of interest (see table below)
 # 4. Watch the video explaining the section in detail
 
 # %%
 # Install DeepMIMO (run this in your terminal or uncomment to run here)
-# pip install --pre deepmimo
+# pip install deepmimo
 
 # Import manual-wide dependencies
 
@@ -70,7 +70,7 @@ pydoc.pager = pydoc.plainpager  # when calling help(function), print instead of 
 # | [Migrating from v3](#migrating-from-v3) | [Video](https://youtu.be/15nQWS15h3k) | [Generating v3 Dataset](#generating-v3-dataset) | Usual workflow with DeepMIMO v2/v3 | pip install DeepMIMOv3, default_params(), generate_data() |
 # | | | [Generating v4 Dataset](#generating-v4-dataset) | Usual workflow with DeepMIMO v4 | dm.load(), dataset.compute_channels() |
 # | | | [Comparing v3 & v4](#comparing-v3--v4) | Understand and adapt to new design | dataset.get_row_idxs() |
-# | [Install DeepMIMO](#install-deepmimo) | [Video](https://youtu.be/Mx2aXu9J0pA) | [Python](#python) | Setup in Python using mamba and pip| pip install --pre deepmimo |
+# | [Install DeepMIMO](#install-deepmimo) | [Video](https://youtu.be/Mx2aXu9J0pA) | [Python](#python) | Setup in Python using mamba and pip| pip install deepmimo |
 # | | | [Matlab](#matlab) | Setup in Matlab using pyenv | pyenv, pyrun, pyrunfile |
 # | [Load Dataset](#load-dataset) | [Video](https://youtu.be/LDG6IPEHY54) | [Simple](#simple) | Basic dataset loading method | dm.download(), dm.load() |
 # | | | [Detailed](#detailed) | Advanced dataset loading options | dm.load() with tx_sets, rx_sets, matrices |
@@ -434,7 +434,7 @@ _ = dataset_t.channel.shape
 #   1. `mamba create -n deepmimo_env python=3.11 expat=2.5.0`
 #   2. `mamba activate deepmimo_env`
 # 4. Install DeepMIMO:
-#   - For Users: `pip install --pre deepmimo`
+#   - For Users: `pip install deepmimo`
 #   - For Developers: clone [DeepMIMO](https://github.com/DeepMIMO/DeepMIMO),
 #     go into folder, `pip install -e .`
 
@@ -1895,7 +1895,7 @@ for key in main_keys:
 
 # %%
 # Install DeepMIMO in the Notebook (with AODT dependencies)
-# pip install --pre deepmimo[aodt]
+# pip install deepmimo[aodt]
 
 # %%
 try:
