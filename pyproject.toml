@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "DeepMIMO"
-version = "4.0.0b11"
+version = "4.0.0"
 authors = [
     { name = "João Morais" },
     { name = "Umut Demirhan" },
@@ -17,7 +17,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 keywords = ["MIMO", "ray tracing", "dataset", "DeepMIMO", "raytracing", "wireless"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Telecommunications Industry",
     "Operating System :: OS Independent"

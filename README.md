@@ -2,7 +2,7 @@
   <h1>DeepMIMO</h1>
   <p><i>Bridging ray tracers and 5G/6G simulators with shareable, site-specific datasets</i></p>
   <p>
-    <a href="https://pypi.org/project/deepmimo/"><img alt="PyPI 4.0.0b" src="https://img.shields.io/badge/PyPI-4.0.0b-blue"></a>
+    <a href="https://pypi.org/project/deepmimo/"><img alt="PyPI 4.0.0" src="https://img.shields.io/badge/PyPI-4.0.0-blue"></a>
     <a href="https://www.python.org/"><img alt="Python 3.11+" src="https://img.shields.io/badge/Python-3.11%2B-blue"></a>
     <a href="https://deepmimo.net"><img alt="Docs" src="https://img.shields.io/badge/docs-deepmimo.net-brightgreen"></a>
     <a href="LICENSE"><img alt="License" src="https://img.shields.io/github/license/DeepMIMO/DeepMIMO.svg"></a>
@@ -56,7 +56,7 @@
 ### Install
 ```bash
 # From PyPI
-pip install --pre deepmimo
+pip install deepmimo
 
 # From GitHub
 git clone https://github.com/DeepMIMO/DeepMIMO.git
