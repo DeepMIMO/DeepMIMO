@@ -1798,6 +1798,183 @@ class Dataset(DotDict):
     }
 
 
+_MERGE_EXCLUDED_KEYS = {"n_ue", "grid_size", "grid_spacing"}
+
+
+class MergedGridDataset(Dataset):
+    """Dataset wrapper that resolves global row/col indexing across merged RX grids."""
+
+    def __init__(self, data: dict[str, Any] | None = None, *, merge_spec: dict[str, Any]) -> None:
+        """Initialize a merged dataset with precomputed global grid metadata."""
+        super().__init__(data or {})
+        object.__setattr__(self, "_merge_spec", merge_spec)
+
+    def _resolve_global_grid_idxs(
+        self,
+        axis: str,
+        idxs: int | list[int] | np.ndarray,
+    ) -> np.ndarray:
+        """Resolve global merged-grid row/column indices into user indices."""
+        idxs_arr = np.asarray([idxs] if isinstance(idxs, int) else idxs, dtype=int).ravel()
+        if idxs_arr.size == 0:
+            return np.array([], dtype=int)
+
+        if axis == "row":
+            grid_offsets = np.asarray(self._merge_spec["row_offsets"], dtype=int)
+        elif axis == "col":
+            grid_offsets = np.asarray(self._merge_spec["col_offsets"], dtype=int)
+        else:
+            msg = f"Invalid axis '{axis}', must be 'row' or 'col'"
+            raise ValueError(msg)
+
+        if np.any(idxs_arr < 0) or np.any(idxs_arr >= grid_offsets[-1]):
+            msg = (
+                f"{axis}_idxs must be in range [0, {grid_offsets[-1]}), "
+                f"but got min={idxs_arr.min()}, max={idxs_arr.max()}"
+            )
+            raise IndexError(msg)
+
+        ue_offsets = np.asarray(self._merge_spec["ue_offsets"], dtype=int)
+        grid_sizes = [np.asarray(g, dtype=int) for g in self._merge_spec["grid_sizes"]]
+
+        grid_idxs = np.searchsorted(grid_offsets[1:], idxs_arr, side="right")
+        all_ue_idxs = []
+        for idx, grid_idx in zip(idxs_arr, grid_idxs, strict=False):
+            local_idx = int(idx - grid_offsets[grid_idx])
+            local_ue_idxs = get_grid_idxs(grid_sizes[grid_idx], axis, np.array([local_idx]))
+            all_ue_idxs.append(local_ue_idxs + ue_offsets[grid_idx])
+
+        return np.concatenate(all_ue_idxs).astype(int)
+
+    def _get_row_idxs(self, row_idxs: int | list[int] | np.ndarray) -> np.ndarray:
+        """Return indices of users in global merged rows."""
+        return self._resolve_global_grid_idxs("row", row_idxs)
+
+    def _get_col_idxs(self, col_idxs: int | list[int] | np.ndarray) -> np.ndarray:
+        """Return indices of users in global merged columns."""
+        return self._resolve_global_grid_idxs("col", col_idxs)
+
+
+def _pad_concat_users(arrays: list[np.ndarray]) -> np.ndarray:
+    """Pad per-user arrays to common non-user dimensions, then concatenate on axis 0."""
+    ndim = arrays[0].ndim
+    target_shape = [max(arr.shape[d] for arr in arrays) for d in range(1, ndim)]
+    padded_arrays = []
+    for arr in arrays:
+        arr_to_pad = arr
+        if np.issubdtype(arr_to_pad.dtype, np.integer) or np.issubdtype(arr_to_pad.dtype, np.bool_):
+            arr_to_pad = arr_to_pad.astype(np.float32)
+
+        pad_width = [(0, 0)] + [
+            (0, target_shape[d - 1] - arr_to_pad.shape[d]) for d in range(1, ndim)
+        ]
+        if np.issubdtype(arr_to_pad.dtype, np.complexfloating):
+            pad_value = np.nan + 0j
+        elif np.issubdtype(arr_to_pad.dtype, np.floating):
+            pad_value = np.nan
+        else:
+            pad_value = 0
+        padded_arrays.append(
+            np.pad(arr_to_pad, pad_width, mode="constant", constant_values=pad_value)
+        )
+    return np.concatenate(padded_arrays, axis=0)
+
+
+def _merged_grid_spec(datasets: list[Dataset]) -> dict[str, Any]:
+    """Build global row/col indexing metadata for merged multi-grid datasets."""
+    grid_sizes = [np.asarray(ds.grid_size, dtype=int) for ds in datasets]
+    ue_offsets = np.cumsum([0, *[int(ds.n_ue) for ds in datasets[:-1]]], dtype=int)
+    n_rows_per_grid = [int(grid_size[1]) for grid_size in grid_sizes]
+    n_cols_per_grid = [int(grid_size[0]) for grid_size in grid_sizes]
+    return {
+        "ue_offsets": ue_offsets,
+        "grid_sizes": grid_sizes,
+        "row_offsets": np.cumsum([0, *n_rows_per_grid], dtype=int),
+        "col_offsets": np.cumsum([0, *n_cols_per_grid], dtype=int),
+    }
+
+
+def merge_datasets(datasets: list[Dataset]) -> Dataset:  # noqa: C901, PLR0912
+    """Merge datasets that share one transmitter into an explicit merged-grid dataset."""
+    if not datasets:
+        msg = "Cannot merge an empty dataset list"
+        raise ValueError(msg)
+
+    if len(datasets) == 1:
+        return datasets[0]
+
+    tx_keys = {
+        (
+            int(dataset.get("txrx", {}).get("tx_set_id", -1)),
+            int(dataset.get("txrx", {}).get("tx_idx", -1)),
+        )
+        for dataset in datasets
+    }
+    rx_set_ids = {int(dataset.get("txrx", {}).get("rx_set_id", -1)) for dataset in datasets}
+    if len(tx_keys) != 1:
+        if len(rx_set_ids) == 1:
+            msg = (
+                "Merging datasets across multiple transmitters is not supported yet because "
+                "Dataset operations assume a single transmitter view."
+            )
+            raise NotImplementedError(msg)
+        msg = "Selected datasets must share the same transmitter or the same receiver grid"
+        raise ValueError(msg)
+
+    merged_data: dict[str, Any] = {}
+    keys: list[str] = []
+    seen: set[str] = set()
+    for dataset in datasets:
+        for key in dataset:
+            if key in _MERGE_EXCLUDED_KEYS or key in seen:
+                continue
+            seen.add(key)
+            keys.append(key)
+
+    for key in keys:
+        present_values = [dataset[key] for dataset in datasets if dataset.hasattr(key)]
+        present_datasets = [dataset for dataset in datasets if dataset.hasattr(key)]
+        if not present_values:
+            continue
+        first_value = present_values[0]
+
+        if len(present_values) != len(datasets):
+            merged_data[key] = first_value
+            continue
+
+        is_per_user_array = (
+            isinstance(first_value, np.ndarray)
+            and first_value.ndim > 0
+            and all(
+                isinstance(value, np.ndarray) and value.ndim == first_value.ndim
+                for value in present_values
+            )
+            and all(
+                value.shape[0] == dataset.n_ue
+                for value, dataset in zip(present_values, present_datasets, strict=False)
+            )
+        )
+
+        if is_per_user_array:
+            same_tail_shapes = all(
+                value.shape[1:] == present_values[0].shape[1:] for value in present_values
+            )
+            if same_tail_shapes:
+                merged_data[key] = np.concatenate(present_values, axis=0)
+            else:
+                merged_data[key] = _pad_concat_users(present_values)
+        else:
+            merged_data[key] = first_value
+
+    merged_data["txrx_parts"] = [
+        dict(dataset.txrx) for dataset in datasets if dataset.hasattr("txrx")
+    ]
+    if datasets[0].hasattr("txrx"):
+        merged_data["txrx"] = dict(datasets[0].txrx)
+
+    return MergedGridDataset(merged_data, merge_spec=_merged_grid_spec(datasets))
+
+
 class MacroDataset:
     """Container holding multiple datasets and propagating operations to each.
 
@@ -1864,21 +2041,46 @@ class MacroDataset:
         results = [getattr(dataset, name) for dataset in self.datasets]
         return results[0] if len(results) == 1 else results
 
+    def _subset(self, idxs: list[int]) -> MacroDataset:
+        """Return a MacroDataset view preserving the requested dataset order."""
+        subset = MacroDataset([self.datasets[idx] for idx in idxs])
+        for attr, value in self.__dict__.items():
+            if attr != "datasets":
+                setattr(subset, attr, value)
+        return subset
+
+    def _normalize_dataset_indices(self, idx: Any) -> list[int]:
+        """Normalize multi-index selection into an ordered list of dataset indices."""
+        if isinstance(idx, tuple):
+            idx = list(idx)
+        if isinstance(idx, list):
+            return [int(i) for i in idx]
+        if isinstance(idx, np.ndarray):
+            if idx.dtype == bool:
+                return np.flatnonzero(idx).tolist()
+            return np.asarray(idx, dtype=int).ravel().tolist()
+        msg = "MacroDataset indices must be int, slice, str, or an ordered collection of integers"
+        raise TypeError(msg)
+
     def __getitem__(self, idx: Any) -> Any:
-        """Get dataset at specified index if idx is integer, otherwise propagate to all datasets.
+        """Get one dataset, a dataset subset, or a propagated attribute.
 
         Args:
-            idx: Integer index to get specific dataset, or string key to get attribute
-                from all datasets
+            idx: Integer index to get a specific dataset, slice/sequence of indices to
+                get a MacroDataset subset, or string key to get an attribute from all
+                datasets.
 
         Returns:
-            Dataset instance if idx is integer,
-            single value if idx is in SHARED_PARAMS or if there is only one dataset,
-            or list of results if idx is string and there are multiple datasets
+            Dataset instance if idx is integer, MacroDataset subset if idx selects
+            multiple datasets, or propagated attribute values for string keys.
 
         """
-        if isinstance(idx, (int, slice)):
-            return self.datasets[idx]
+        if isinstance(idx, (int, np.integer)):
+            return self.datasets[int(idx)]
+        if isinstance(idx, slice):
+            return self._subset(list(range(*idx.indices(len(self.datasets)))))
+        if isinstance(idx, (tuple, list, np.ndarray)):
+            return self._subset(self._normalize_dataset_indices(idx))
         if idx in SHARED_PARAMS:
             return self._get_single(idx)
         results = [dataset[idx] for dataset in self.datasets]
@@ -1907,6 +2109,19 @@ class MacroDataset:
 
         """
         self.datasets.append(dataset)
+
+    def merge(self) -> Dataset:
+        """Merge selected datasets into one explicit merged-grid dataset.
+
+        The selected datasets must currently share the same transmitter. The merge
+        preserves the caller-provided dataset order and creates global row/column
+        indexing across the merged receiver grids.
+
+        Returns:
+            Dataset: The merged dataset view.
+
+        """
+        return merge_datasets(self.datasets)
 
     def to_binary(self, output_dir: str = "./datasets") -> None:
         """Export all datasets to binary format for web visualizer.

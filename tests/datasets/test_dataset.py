@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
-from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
+from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset, MergedGridDataset
 from deepmimo.datasets.load import _validate_txrx_sets
 
 
@@ -234,6 +234,103 @@ def test_get_idxs(sample_dataset) -> None:
     # Invalid mode
     with pytest.raises(ValueError, match="Unknown mode"):
         ds.get_idxs("invalid_mode")
+
+
+def _make_grid_dataset(nx: int, ny: int, tx_set_id: int, tx_idx: int, rx_set_id: int) -> Dataset:
+    """Create a synthetic grid dataset with x-fastest ordering."""
+    rx_pos = np.array([[x, y, 0.0] for y in range(ny) for x in range(nx)], dtype=float)
+    n_ue = nx * ny
+    return Dataset(
+        {
+            "rx_pos": rx_pos,
+            "tx_pos": np.array([0.0, 0.0, 10.0], dtype=float),
+            "power": np.zeros((n_ue, 2), dtype=float),
+            "phase": np.zeros((n_ue, 2), dtype=float),
+            "delay": np.zeros((n_ue, 2), dtype=float),
+            "aoa_az": np.zeros((n_ue, 2), dtype=float),
+            "aoa_el": np.zeros((n_ue, 2), dtype=float),
+            "aod_az": np.zeros((n_ue, 2), dtype=float),
+            "aod_el": np.zeros((n_ue, 2), dtype=float),
+            "inter": np.zeros((n_ue, 2), dtype=float),
+            "inter_pos": np.zeros((n_ue, 2, 1, 3), dtype=float),
+            "txrx": {"tx_set_id": tx_set_id, "tx_idx": tx_idx, "rx_set_id": rx_set_id},
+        }
+    )
+
+
+def _make_macro_dataset(*datasets: Dataset) -> MacroDataset:
+    """Create a MacroDataset for merge tests."""
+    return MacroDataset(list(datasets))
+
+
+def test_macro_dataset_multi_index_returns_ordered_subset() -> None:
+    """Selecting multiple indices should return a MacroDataset in the requested order."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=0, tx_idx=0, rx_set_id=2)
+    macro = _make_macro_dataset(g1, g2, g3)
+
+    subset = macro[0, 2, 1]
+
+    assert isinstance(subset, MacroDataset)
+    assert subset[0] is g1
+    assert subset[1] is g3
+    assert subset[2] is g2
+
+
+def test_macro_dataset_merge_native_preserves_selected_grid_order() -> None:
+    """Native merges should use the requested dataset order and native row/col semantics."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    macro = _make_macro_dataset(g1, g2)
+
+    merged = macro[1, 0].merge()
+
+    assert isinstance(merged, MergedGridDataset)
+    row_idxs = merged.get_idxs("row", row_idxs=np.array([0, 2]))
+    np.testing.assert_array_equal(row_idxs, np.array([0, 1, 2, 3, 8, 9, 10]))
+
+def test_macro_dataset_merge_handles_asymmetric_keys() -> None:
+    """Merging should not fail when RX-grid datasets have non-uniform keys."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    g1["grid1_only"] = np.ones((g1.n_ue, 1), dtype=float)
+    g2["grid2_only"] = np.zeros((g2.n_ue, 1), dtype=float)
+    macro = _make_macro_dataset(g1, g2)
+
+    merged = macro.merge()
+
+    assert "grid1_only" in merged
+    assert "grid2_only" in merged
+    np.testing.assert_array_equal(merged["grid1_only"], g1["grid1_only"])
+    np.testing.assert_array_equal(merged["grid2_only"], g2["grid2_only"])
+
+
+def test_macro_dataset_merge_ignores_stale_cached_n_ue() -> None:
+    """Repeated merges should not inherit a stale n_ue key from child dataset caches."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    macro = _make_macro_dataset(g1, g2)
+
+    first_merge = macro.merge()
+    assert first_merge.n_ue == g1.n_ue + g2.n_ue
+
+    second_merge = macro.merge()
+    assert second_merge.n_ue == g1.n_ue + g2.n_ue
+    assert second_merge.rx_pos.shape[0] == g1.n_ue + g2.n_ue
+
+    subset_merge = macro[0, 1].merge()
+    assert subset_merge.n_ue == g1.n_ue + g2.n_ue
+
+
+def test_macro_dataset_merge_rejects_multiple_transmitters() -> None:
+    """Merging multiple transmitters should fail until Dataset supports that view explicitly."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=3, ny=2, tx_set_id=1, tx_idx=0, rx_set_id=0)
+    macro = _make_macro_dataset(g1, g2)
+
+    with pytest.raises(NotImplementedError, match="multiple transmitters"):
+        macro.merge()
 
 
 def test_validate_txrx_sets_orders_allowed_ids_deterministically() -> None:
