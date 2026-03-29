@@ -4,7 +4,13 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
-from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset, MergedGridDataset
+from deepmimo.datasets.compat_v3 import _apply_v3_compat, _merge_rx_grids_v3, _rx_rank_map
+from deepmimo.datasets.dataset import (
+    Dataset,
+    DynamicDataset,
+    MacroDataset,
+    MergedGridDataset,
+)
 from deepmimo.datasets.load import _validate_txrx_sets
 
 
@@ -354,6 +360,71 @@ def test_macro_dataset_merge_rejects_multiple_transmitters() -> None:
 
     with pytest.raises(NotImplementedError, match="multiple transmitters"):
         macro.merge()
+
+
+def test_apply_v3_compat_merges_rx_grids_per_tx_with_global_row_col_semantics() -> None:
+    """compat_v3 should merge RX grids per TX and apply v3 global row/col indexing."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=0, tx_idx=0, rx_set_id=2)
+    compat = _apply_v3_compat(_make_macro_dataset(g1, g2, g3), rx_rank_map={0: 0, 1: 1, 2: 2})
+
+    assert isinstance(compat, MergedGridDataset)
+    row_idxs = compat.get_idxs("row", row_idxs=np.array([0, 2, 6]))
+    col_idxs = compat.get_idxs("col", col_idxs=np.array([0, 3, 5]))
+
+    np.testing.assert_array_equal(row_idxs, np.array([0, 1, 2, 6, 10, 14, 16, 18]))
+    np.testing.assert_array_equal(col_idxs, np.array([0, 3, 6, 7, 8, 9, 14, 15]))
+
+
+def test_apply_v3_compat_single_nonprimary_grid_swaps_row_col() -> None:
+    """compat_v3 should wrap explicit non-primary RX loads with swapped row/col semantics."""
+    dataset = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+
+    compat = _apply_v3_compat(dataset, rx_rank_map={0: 0, 1: 1})
+
+    assert isinstance(compat, MergedGridDataset)
+    np.testing.assert_array_equal(compat.get_idxs("row", row_idxs=np.array([0])), np.array([0, 4]))
+    np.testing.assert_array_equal(
+        compat.get_idxs("col", col_idxs=np.array([0])),
+        np.array([0, 1, 2, 3]),
+    )
+
+
+def test_apply_v3_compat_returns_one_merged_dataset_per_transmitter() -> None:
+    """compat_v3 should group child datasets by TX before merging receiver grids."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    g3 = _make_grid_dataset(nx=2, ny=3, tx_set_id=1, tx_idx=0, rx_set_id=0)
+    g4 = _make_grid_dataset(nx=2, ny=2, tx_set_id=1, tx_idx=0, rx_set_id=1)
+
+    compat = _apply_v3_compat(_make_macro_dataset(g1, g2, g3, g4), rx_rank_map={0: 0, 1: 1})
+
+    assert isinstance(compat, MacroDataset)
+    assert len(compat) == 2
+    assert all(isinstance(child, MergedGridDataset) for child in compat.datasets)
+    assert compat[0].n_ue == g1.n_ue + g2.n_ue
+    assert compat[1].n_ue == g3.n_ue + g4.n_ue
+
+
+def test_merge_rx_grids_v3_requires_rx_rank_metadata() -> None:
+    """Direct v3 compatibility helpers should fail loudly without RX rank metadata."""
+    dataset = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+
+    with pytest.raises(ValueError, match="requires RX rank metadata"):
+        _merge_rx_grids_v3([dataset], rx_rank_map={})
+
+
+def test_rx_rank_map_uses_numeric_set_ids() -> None:
+    """RX rank mapping should sort by numeric RX set id, not key string."""
+    txrx_dict = {
+        "txrx_set_10": {"id": 10, "is_tx": False, "is_rx": True},
+        "txrx_set_2": {"id": 2, "is_tx": False, "is_rx": True},
+        "txrx_set_0": {"id": 0, "is_tx": False, "is_rx": True},
+        "txrx_set_3": {"id": 3, "is_tx": True, "is_rx": False},
+    }
+
+    assert _rx_rank_map(txrx_dict) == {0: 0, 2: 1, 10: 2}
 
 
 def test_validate_txrx_sets_orders_allowed_ids_deterministically() -> None:

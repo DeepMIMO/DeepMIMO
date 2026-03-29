@@ -990,24 +990,26 @@ class Dataset(DotDict):
         """
         m = mode.lower()
         if m == "active":
-            return self._get_active_idxs()
-        if m == "linear":
-            return self._get_linear_idxs(
+            result = self._get_active_idxs()
+        elif m == "linear":
+            result = self._get_linear_idxs(
                 kwargs["start_pos"],
                 kwargs["end_pos"],
                 kwargs["n_steps"],
                 filter_repeated=kwargs.get("filter_repeated", True),
             )
-        if m == "uniform":
-            return self._get_uniform_idxs(kwargs["steps"])
-        if m == "row":
-            return self._get_row_idxs(kwargs["row_idxs"])
-        if m == "col":
-            return self._get_col_idxs(kwargs["col_idxs"])
-        if m == "limits":
-            return get_idxs_with_limits(self.rx_pos, **kwargs)
-        msg = f"Unknown mode: {mode}"
-        raise ValueError(msg)
+        elif m == "uniform":
+            result = self._get_uniform_idxs(kwargs["steps"])
+        elif m == "row":
+            result = self._get_row_idxs(kwargs["row_idxs"])
+        elif m == "col":
+            result = self._get_col_idxs(kwargs["col_idxs"])
+        elif m == "limits":
+            result = get_idxs_with_limits(self.rx_pos, **kwargs)
+        else:
+            msg = f"Unknown mode: {mode}"
+            raise ValueError(msg)
+        return result
 
     def _trim_by_path(self, path_mask: np.ndarray) -> Dataset:
         """Trim paths based on a boolean mask.
@@ -1821,8 +1823,16 @@ class MergedGridDataset(Dataset):
 
         if axis == "row":
             grid_offsets = np.asarray(self._merge_spec["row_offsets"], dtype=int)
+            grid_axes = self._merge_spec.get(
+                "row_axes",
+                ["row"] * len(self._merge_spec["grid_sizes"]),
+            )
         elif axis == "col":
             grid_offsets = np.asarray(self._merge_spec["col_offsets"], dtype=int)
+            grid_axes = self._merge_spec.get(
+                "col_axes",
+                ["col"] * len(self._merge_spec["grid_sizes"]),
+            )
         else:
             msg = f"Invalid axis '{axis}', must be 'row' or 'col'"
             raise ValueError(msg)
@@ -1841,7 +1851,8 @@ class MergedGridDataset(Dataset):
         all_ue_idxs = []
         for idx, grid_idx in zip(idxs_arr, grid_idxs, strict=False):
             local_idx = int(idx - grid_offsets[grid_idx])
-            local_ue_idxs = get_grid_idxs(grid_sizes[grid_idx], axis, np.array([local_idx]))
+            local_axis = grid_axes[grid_idx]
+            local_ue_idxs = get_grid_idxs(grid_sizes[grid_idx], local_axis, np.array([local_idx]))
             all_ue_idxs.append(local_ue_idxs + ue_offsets[grid_idx])
 
         return np.concatenate(all_ue_idxs).astype(int)
@@ -1895,27 +1906,51 @@ def _missing_user_array(n_ue: int, tail_shape: tuple[int, ...], dtype: np.dtype)
     return np.full((n_ue, *tail_shape), fill_value, dtype=array_dtype)
 
 
-def _merged_grid_spec(datasets: list[Dataset]) -> dict[str, Any]:
+def _merged_grid_spec(
+    datasets: list[Dataset],
+    *,
+    row_axes: list[str] | None = None,
+    col_axes: list[str] | None = None,
+) -> dict[str, Any]:
     """Build global row/col indexing metadata for merged multi-grid datasets."""
     grid_sizes = [np.asarray(ds.grid_size, dtype=int) for ds in datasets]
     ue_offsets = np.cumsum([0, *[int(ds.n_ue) for ds in datasets[:-1]]], dtype=int)
-    n_rows_per_grid = [int(grid_size[1]) for grid_size in grid_sizes]
-    n_cols_per_grid = [int(grid_size[0]) for grid_size in grid_sizes]
+    resolved_row_axes = ["row"] * len(datasets) if row_axes is None else list(row_axes)
+    resolved_col_axes = ["col"] * len(datasets) if col_axes is None else list(col_axes)
+    if len(resolved_row_axes) != len(datasets) or len(resolved_col_axes) != len(datasets):
+        msg = "Merged-grid axis overrides must match the number of datasets."
+        raise ValueError(msg)
+
+    n_rows_per_grid = [
+        int(grid_size[1]) if row_axis == "row" else int(grid_size[0])
+        for grid_size, row_axis in zip(grid_sizes, resolved_row_axes, strict=False)
+    ]
+    n_cols_per_grid = [
+        int(grid_size[0]) if col_axis == "col" else int(grid_size[1])
+        for grid_size, col_axis in zip(grid_sizes, resolved_col_axes, strict=False)
+    ]
     return {
         "ue_offsets": ue_offsets,
         "grid_sizes": grid_sizes,
+        "row_axes": resolved_row_axes,
+        "col_axes": resolved_col_axes,
         "row_offsets": np.cumsum([0, *n_rows_per_grid], dtype=int),
         "col_offsets": np.cumsum([0, *n_cols_per_grid], dtype=int),
     }
 
 
-def merge_datasets(datasets: list[Dataset]) -> Dataset:  # noqa: C901, PLR0912
+def merge_datasets(  # noqa: C901, PLR0912
+    datasets: list[Dataset],
+    *,
+    row_axes: list[str] | None = None,
+    col_axes: list[str] | None = None,
+) -> Dataset:
     """Merge datasets that share one transmitter into an explicit merged-grid dataset."""
     if not datasets:
         msg = "Cannot merge an empty dataset list"
         raise ValueError(msg)
 
-    if len(datasets) == 1:
+    if len(datasets) == 1 and row_axes is None and col_axes is None:
         return datasets[0]
 
     tx_keys = {
@@ -2002,7 +2037,14 @@ def merge_datasets(datasets: list[Dataset]) -> Dataset:  # noqa: C901, PLR0912
     if datasets[0].hasattr("txrx"):
         merged_data["txrx"] = dict(datasets[0].txrx)
 
-    return MergedGridDataset(merged_data, merge_spec=_merged_grid_spec(datasets))
+    return MergedGridDataset(
+        merged_data,
+        merge_spec=_merged_grid_spec(
+            datasets,
+            row_axes=row_axes,
+            col_axes=col_axes,
+        ),
+    )
 
 
 class MacroDataset:

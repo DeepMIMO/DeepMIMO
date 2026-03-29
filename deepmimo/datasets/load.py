@@ -19,6 +19,7 @@ import numpy as np
 from deepmimo import consts as c
 from deepmimo.core.materials import MaterialList
 from deepmimo.core.scene import Scene
+from deepmimo.datasets.compat_v3 import _apply_v3_compat, _rx_rank_map
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
 from deepmimo.utils import (
     DotDict,
@@ -30,13 +31,20 @@ from deepmimo.utils import (
 )
 
 
-def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
+def load(
+    scen_name: str,
+    *,
+    compat_v3: bool = False,
+    **load_params: Any,
+) -> Dataset | MacroDataset:
     """Load a DeepMIMO scenario.
 
     This function loads raytracing data and creates a Dataset or MacroDataset instance.
 
     Args:
         scen_name (str): Name of the scenario to load
+        compat_v3 (bool): If True, merge RX grids per TX and expose v3-style
+            global row/column indexing semantics for static scenarios.
         **load_params: Additional parameters for loading the scenario. Can be passed as a dictionary
             or as keyword arguments. Available parameters are:
 
@@ -55,6 +63,10 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
                 Defaults to 'all'. Can be:
                 - list: List of matrix names to load
                 - str: 'all' to load all available matrices
+
+            * compat_v3 (bool, optional): If True, merge RX grids per TX and
+                expose v3-style global row/column indexing semantics for static
+                scenarios. Defaults to False.
 
     Returns:
         Dataset or MacroDataset: Loaded dataset(s)
@@ -89,10 +101,14 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
     # Load parameters file
     params_file = get_params_path(scen_name)
     params = load_dict_from_json(params_file)
+    rx_rank_map = _rx_rank_map(params[c.TXRX_PARAM_NAME])
 
     # Load scenario data
     n_snapshots = params[c.SCENE_PARAM_NAME][c.SCENE_PARAM_NUMBER_SCENES]
     if n_snapshots > 1:  # dynamic (multiple scenes)
+        if compat_v3:
+            msg = "`compat_v3=True` is only supported for static scenarios."
+            raise ValueError(msg)
         dataset_list = []
         scen_folder_path = Path(scen_folder)
         scene_folders = sorted([d.name for d in scen_folder_path.iterdir() if d.is_dir()])
@@ -103,6 +119,12 @@ def load(scen_name: str, **load_params: Any) -> Dataset | MacroDataset:
         dataset = DynamicDataset(dataset_list, scen_name)
     else:  # static (single scene)
         dataset = _load_dataset(scen_folder, params, load_params)
+        if compat_v3:
+            dataset = _apply_v3_compat(dataset, rx_rank_map)
+
+    dataset[c.LOAD_PARAMS_PARAM_NAME] = DotDict(
+        {**dataset[c.LOAD_PARAMS_PARAM_NAME], "compat_v3": compat_v3},
+    )
     return dataset
 
 

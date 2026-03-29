@@ -13,6 +13,7 @@
 # - Channel generation changes
 # - Data access and format changes
 # - User selection changes
+# - Legacy v3 row/column compatibility
 # - Best practices for migration
 #
 # **Related Video:** [Migration Video](https://youtu.be/15nQWS15h3k)
@@ -224,6 +225,40 @@ print("v4 user selection (post-loading):")
 print(f"  Selected {len(row_idxs)} users")
 
 # %% [markdown]
+# ### Matching Legacy v3 Row/Column Results
+#
+# DeepMIMO v4 keeps the native grid geometry of the scenario. In DeepMIMO v3,
+# some multi-grid scenarios behaved like one merged RX grid per transmitter, and
+# row/column indexing could change direction on non-primary RX grids. If you
+# need to reproduce those exact v3 selections during migration, load the
+# scenario with `compat_v3=True`.
+#
+# When `compat_v3=True` in `dm.load(...)`, DeepMIMO applies the old merged-grid
+# indexing view:
+# - RX grids are merged per transmitter
+# - the primary RX grid (rank 0) keeps normal row/column behavior
+# - non-primary RX grids (rank >= 1) swap row/column semantics
+#
+# This is intended only for reproducing backward-compatible user selection
+# behavior during migration, including workflows where `rx_sets` is explicitly
+# provided for a non-primary grid.
+
+# %%
+legacy_v3_selection = """
+# Migration-only: reproduce the old v3 merged-grid indexing behavior
+dataset = dm.load("o1_3p4", tx_sets=[3], compat_v3=True)
+
+# `compat_v3=True` merges RX grids per TX and restores v3-style row/col indexing
+legacy_rows = dataset.get_idxs("row", row_idxs=[0, 10, 20])
+legacy_cols = dataset.get_idxs("col", col_idxs=[0, 5, 10])
+
+subset = dataset.trim(idxs=legacy_rows)
+"""
+
+print("v4 legacy v3 compatibility (migration-only):")
+print(legacy_v3_selection)
+
+# %% [markdown]
 # ## Parameter Names
 #
 # Many parameter names have changed.
@@ -265,6 +300,7 @@ print("  - Average size reduction: ~50%")
 # - [ ] Replace `generate_data()` with `dataset.compute_channels()`
 # - [ ] Update data access from `dataset[bs]["user"]["param"]` to `dataset.param`
 # - [ ] Move user selection from params to `dataset.get_idxs()` and `dataset.trim()`
+# - [ ] Use `dm.load(..., compat_v3=True)` only when reproducing exact old v3 indexing
 # - [ ] Update parameter names (DoA/DoD -> aoa/aod, etc.)
 # - [ ] Update antenna configuration to ChannelParameters
 # - [ ] Test thoroughly with your existing workflows
