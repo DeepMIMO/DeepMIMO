@@ -310,6 +310,7 @@ def test_macro_dataset_merge_native_preserves_selected_grid_order() -> None:
     row_idxs = merged.get_idxs("row", row_idxs=np.array([0, 2]))
     np.testing.assert_array_equal(row_idxs, np.array([0, 1, 2, 3, 8, 9, 10]))
 
+
 def test_macro_dataset_merge_handles_asymmetric_keys() -> None:
     """Merging should not fail when RX-grid datasets have non-uniform keys."""
     g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
