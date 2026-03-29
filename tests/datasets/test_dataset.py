@@ -4,7 +4,13 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
-from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset, MergedGridDataset
+from deepmimo.datasets.dataset import (
+    Dataset,
+    DynamicDataset,
+    MacroDataset,
+    MergedGridDataset,
+    merge_datasets,
+)
 from deepmimo.datasets.load import _apply_v3_compat, _validate_txrx_sets
 
 
@@ -399,6 +405,14 @@ def test_apply_v3_compat_returns_one_merged_dataset_per_transmitter() -> None:
     assert all(isinstance(child, MergedGridDataset) for child in compat.datasets)
     assert compat[0].n_ue == g1.n_ue + g2.n_ue
     assert compat[1].n_ue == g3.n_ue + g4.n_ue
+
+
+def test_merge_datasets_v3_requires_rx_rank_metadata() -> None:
+    """Direct v3 merged indexing should fail loudly when RX rank metadata is unavailable."""
+    dataset = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+
+    with pytest.raises(ValueError, match="requires RX rank metadata"):
+        merge_datasets([dataset], indexing="v3")
 
 
 def test_validate_txrx_sets_orders_allowed_ids_deterministically() -> None:

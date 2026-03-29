@@ -1000,12 +1000,10 @@ class Dataset(DotDict):
             )
         elif m == "uniform":
             result = self._get_uniform_idxs(kwargs["steps"])
-        elif m in {"row", "col"}:
-            key = "row_idxs" if m == "row" else "col_idxs"
-            if m == "row":
-                result = self._get_row_idxs(kwargs[key])
-            else:
-                result = self._get_col_idxs(kwargs[key])
+        elif m == "row":
+            result = self._get_row_idxs(kwargs["row_idxs"])
+        elif m == "col":
+            result = self._get_col_idxs(kwargs["col_idxs"])
         elif m == "limits":
             result = get_idxs_with_limits(self.rx_pos, **kwargs)
         else:
@@ -1941,15 +1939,7 @@ def _resolve_rx_rank_map(
     if datasets:
         with contextlib.suppress(AttributeError, KeyError, OSError, ValueError):
             return _rx_rank_map(datasets[0].txrx_sets)
-
-    rx_set_ids = sorted(
-        {
-            int(dataset.get("txrx", {}).get("rx_set_id", -1))
-            for dataset in datasets
-            if dataset.hasattr("txrx")
-        }
-    )
-    return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
+    return {}
 
 
 def _merged_grid_spec(
@@ -1998,7 +1988,7 @@ def _merged_grid_spec(
     }
 
 
-def merge_datasets(  # noqa: C901, PLR0912
+def merge_datasets(  # noqa: C901, PLR0912, PLR0915
     datasets: list[Dataset],
     *,
     indexing: str = "native",
@@ -2102,6 +2092,12 @@ def merge_datasets(  # noqa: C901, PLR0912
         rx_rank_map=rx_rank_map,
         txrx_sets=txrx_sets,
     )
+    if indexing == "v3" and not resolved_rx_rank_map:
+        msg = (
+            "V3 merged indexing requires RX rank metadata. Pass `rx_rank_map` or "
+            "`txrx_sets`, or load the dataset through `dm.load(..., compat_v3=True)`."
+        )
+        raise ValueError(msg)
     return MergedGridDataset(
         merged_data,
         merge_spec=_merged_grid_spec(
