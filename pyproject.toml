@@ -20,6 +20,8 @@ classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Telecommunications Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
     "Operating System :: OS Independent"
 ]
 dependencies = [
@@ -35,7 +37,11 @@ include = ["deepmimo*"]
 exclude = ["deepmimo_v3*", "deepmimo_v3.*"]
 
 [project.urls]
-Homepage = "https://deepmimo.net/" 
+Homepage = "https://deepmimo.net/"
+Documentation = "https://deepmimo.net/documentation"
+Repository = "https://github.com/DeepMIMO/DeepMIMO"
+Issues = "https://github.com/DeepMIMO/DeepMIMO/issues"
+Releases = "https://github.com/DeepMIMO/DeepMIMO/releases"
 
 [project.optional-dependencies]
 
