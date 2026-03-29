@@ -81,6 +81,8 @@ SHARED_PARAMS = [
     c.RT_PARAMS_PARAM_NAME,
 ]
 
+LEGACY_V3_INDEXING_SCENARIO_PREFIXES = ("boston", "o1_3p4", "o1_3p5")
+
 
 class Dataset(DotDict):
     """Class for managing DeepMIMO datasets.
@@ -972,6 +974,69 @@ class Dataset(DotDict):
         """
         return get_grid_idxs(self.grid_size, "col", col_idxs)
 
+    def _uses_legacy_v3_indexing(self) -> bool:
+        """Return whether this dataset belongs to a known legacy v3 scenario."""
+        scenario_name = str(self.get("parent_name", self.get("name", ""))).lower()
+        return any(
+            scenario_name.startswith(prefix) for prefix in LEGACY_V3_INDEXING_SCENARIO_PREFIXES
+        )
+
+    def _get_rx_rank_map(self) -> dict[int, int]:
+        """Map RX set ids to their scenario-order rank using numeric sorting."""
+        txrx_sets = self._data.get("txrx_sets")
+        if txrx_sets is None:
+            with contextlib.suppress(AttributeError, KeyError, OSError, ValueError):
+                txrx_sets = self.txrx_sets
+        if txrx_sets is None:
+            return {}
+
+        values = txrx_sets.values() if hasattr(txrx_sets, "values") else txrx_sets
+        rx_set_ids = []
+        for txrx_set in values:
+            if hasattr(txrx_set, "get"):
+                is_rx = txrx_set.get("is_rx", False)
+                rx_set_id = txrx_set.get("id")
+            else:
+                is_rx = txrx_set.is_rx
+                rx_set_id = txrx_set.id
+            if not is_rx:
+                continue
+            rx_set_ids.append(int(rx_set_id))
+
+        rx_set_ids.sort()
+        return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
+
+    def _get_legacy_v3_idxs(
+        self,
+        *,
+        row_idxs: int | list[int] | np.ndarray | None = None,
+        col_idxs: int | list[int] | np.ndarray | None = None,
+    ) -> np.ndarray:
+        """Return row/col indices following the legacy v3 convention."""
+        if not self._uses_legacy_v3_indexing():
+            msg = (
+                "`legacy_v3` indexing is only supported for known legacy scenarios "
+                "(for example Boston and O1 legacy releases)."
+            )
+            raise ValueError(msg)
+
+        if (row_idxs is None) == (col_idxs is None):
+            msg = "`legacy_v3` mode requires exactly one of row_idxs or col_idxs."
+            raise ValueError(msg)
+
+        txrx = self.get("txrx")
+        if txrx is None or "rx_set_id" not in txrx:
+            msg = "`legacy_v3` mode requires dataset TX/RX metadata."
+            raise ValueError(msg)
+
+        rx_rank = self._get_rx_rank_map().get(int(txrx["rx_set_id"]), 0)
+        if row_idxs is not None:
+            axis = "row" if rx_rank == 0 else "col"
+            return get_grid_idxs(self.grid_size, axis, row_idxs)
+
+        axis = "col" if rx_rank == 0 else "row"
+        return get_grid_idxs(self.grid_size, axis, col_idxs)
+
     def get_idxs(self, mode: str, **kwargs: Any) -> np.ndarray:
         """Unified dispatcher for user index selection.
 
@@ -981,6 +1046,7 @@ class Dataset(DotDict):
             - 'uniform': grid sampling: requires steps=[x_step, y_step]
             - 'row': row selection: requires row_idxs
             - 'col': column selection: requires col_idxs
+            - 'legacy_v3': legacy row/column compatibility on known v3 scenarios
             - 'limits': position bounds: requires x_min, x_max, y_min, y_max, z_min, z_max
             - 'id': user IDs selection: requires user_ids
 
@@ -990,24 +1056,33 @@ class Dataset(DotDict):
         """
         m = mode.lower()
         if m == "active":
-            return self._get_active_idxs()
-        if m == "linear":
-            return self._get_linear_idxs(
+            result = self._get_active_idxs()
+        elif m == "linear":
+            result = self._get_linear_idxs(
                 kwargs["start_pos"],
                 kwargs["end_pos"],
                 kwargs["n_steps"],
                 filter_repeated=kwargs.get("filter_repeated", True),
             )
-        if m == "uniform":
-            return self._get_uniform_idxs(kwargs["steps"])
-        if m == "row":
-            return self._get_row_idxs(kwargs["row_idxs"])
-        if m == "col":
-            return self._get_col_idxs(kwargs["col_idxs"])
-        if m == "limits":
-            return get_idxs_with_limits(self.rx_pos, **kwargs)
-        msg = f"Unknown mode: {mode}"
-        raise ValueError(msg)
+        elif m == "uniform":
+            result = self._get_uniform_idxs(kwargs["steps"])
+        elif m in {"row", "col"}:
+            key = "row_idxs" if m == "row" else "col_idxs"
+            if m == "row":
+                result = self._get_row_idxs(kwargs[key])
+            else:
+                result = self._get_col_idxs(kwargs[key])
+        elif m == "legacy_v3":
+            result = self._get_legacy_v3_idxs(
+                row_idxs=kwargs.get("row_idxs"),
+                col_idxs=kwargs.get("col_idxs"),
+            )
+        elif m == "limits":
+            result = get_idxs_with_limits(self.rx_pos, **kwargs)
+        else:
+            msg = f"Unknown mode: {mode}"
+            raise ValueError(msg)
+        return result
 
     def _trim_by_path(self, path_mask: np.ndarray) -> Dataset:
         """Trim paths based on a boolean mask.

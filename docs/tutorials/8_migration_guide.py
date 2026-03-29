@@ -13,6 +13,7 @@
 # - Channel generation changes
 # - Data access and format changes
 # - User selection changes
+# - Legacy v3 row/column compatibility
 # - Best practices for migration
 #
 # **Related Video:** [Migration Video](https://youtu.be/15nQWS15h3k)
@@ -224,6 +225,29 @@ print("v4 user selection (post-loading):")
 print(f"  Selected {len(row_idxs)} users")
 
 # %% [markdown]
+# ### Matching Legacy v3 Row/Column Results
+#
+# DeepMIMO v4 keeps the native grid geometry of the scenario. For a small set of
+# legacy multi-grid scenarios, DeepMIMO v3 interpreted row/column indexing
+# differently on non-primary RX grids. If you need to reproduce those exact v3
+# row/column selections during migration, use `legacy_v3` explicitly.
+
+# %%
+legacy_v3_selection = """
+# Only for known legacy scenarios when reproducing old v3 row/column results
+dataset = dm.load("o1_3p4", tx_sets=[3], rx_sets=[1])
+
+# Match the old v3 interpretation of rows/columns on this RX grid
+legacy_rows = dataset.get_idxs("legacy_v3", row_idxs=[0, 10, 20])
+legacy_cols = dataset.get_idxs("legacy_v3", col_idxs=[0, 5, 10])
+
+subset = dataset.trim(idxs=legacy_rows)
+"""
+
+print("v4 legacy v3 compatibility (migration-only):")
+print(legacy_v3_selection)
+
+# %% [markdown]
 # ## Parameter Names
 #
 # Many parameter names have changed.
@@ -265,6 +289,7 @@ print("  - Average size reduction: ~50%")
 # - [ ] Replace `generate_data()` with `dataset.compute_channels()`
 # - [ ] Update data access from `dataset[bs]["user"]["param"]` to `dataset.param`
 # - [ ] Move user selection from params to `dataset.get_idxs()` and `dataset.trim()`
+# - [ ] Use `get_idxs("legacy_v3", ...)` only when reproducing exact old v3 indexing
 # - [ ] Update parameter names (DoA/DoD -> aoa/aod, etc.)
 # - [ ] Update antenna configuration to ChannelParameters
 # - [ ] Test thoroughly with your existing workflows

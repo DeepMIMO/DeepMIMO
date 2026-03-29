@@ -283,6 +283,16 @@ def _make_macro_dataset(*datasets: Dataset) -> MacroDataset:
     return MacroDataset(list(datasets))
 
 
+def _make_txrx_sets_dict() -> dict[str, dict[str, int | bool]]:
+    """Create synthetic TX/RX set metadata with deterministic numeric ids."""
+    return {
+        "txrx_set_0": {"id": 0, "is_tx": False, "is_rx": True},
+        "txrx_set_1": {"id": 1, "is_tx": False, "is_rx": True},
+        "txrx_set_2": {"id": 2, "is_tx": False, "is_rx": True},
+        "txrx_set_3": {"id": 3, "is_tx": True, "is_rx": False},
+    }
+
+
 def test_macro_dataset_multi_index_returns_ordered_subset() -> None:
     """Selecting multiple indices should return a MacroDataset in the requested order."""
     g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
@@ -354,6 +364,42 @@ def test_macro_dataset_merge_rejects_multiple_transmitters() -> None:
 
     with pytest.raises(NotImplementedError, match="multiple transmitters"):
         macro.merge()
+
+
+def test_get_idxs_legacy_v3_keeps_primary_rx_grid_native() -> None:
+    """Primary RX grids should keep native row/column semantics in legacy mode."""
+    dataset = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    dataset.name = "o1_3p4"
+    dataset.txrx_sets = _make_txrx_sets_dict()
+
+    row_idxs = dataset.get_idxs("legacy_v3", row_idxs=np.array([0]))
+    col_idxs = dataset.get_idxs("legacy_v3", col_idxs=np.array([0]))
+
+    np.testing.assert_array_equal(row_idxs, np.array([0, 1, 2]))
+    np.testing.assert_array_equal(col_idxs, np.array([0, 3]))
+
+
+def test_get_idxs_legacy_v3_swaps_non_primary_rx_grids() -> None:
+    """Non-primary RX grids should reproduce the old v3 row/column convention."""
+    dataset = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    dataset.name = "o1_3p4"
+    dataset.txrx_sets = _make_txrx_sets_dict()
+
+    row_idxs = dataset.get_idxs("legacy_v3", row_idxs=np.array([0]))
+    col_idxs = dataset.get_idxs("legacy_v3", col_idxs=np.array([0]))
+
+    np.testing.assert_array_equal(row_idxs, np.array([0, 4]))
+    np.testing.assert_array_equal(col_idxs, np.array([0, 1, 2, 3]))
+
+
+def test_get_idxs_legacy_v3_rejects_non_legacy_scenarios() -> None:
+    """Legacy mode should be explicit and unavailable on regular v4 scenarios."""
+    dataset = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    dataset.name = "asu_campus_3p5"
+    dataset.txrx_sets = _make_txrx_sets_dict()
+
+    with pytest.raises(ValueError, match="known legacy scenarios"):
+        dataset.get_idxs("legacy_v3", row_idxs=np.array([0]))
 
 
 def test_validate_txrx_sets_orders_allowed_ids_deterministically() -> None:
