@@ -232,6 +232,16 @@ print(f"  Selected {len(row_idxs)} users")
 # row/column indexing could change direction on non-primary RX grids. If you
 # need to reproduce those exact v3 selections during migration, load the
 # scenario with `compat_v3=True`.
+#
+# When `compat_v3=True` in `dm.load(...)`, DeepMIMO applies the old merged-grid
+# indexing view:
+# - RX grids are merged per transmitter
+# - the primary RX grid (rank 0) keeps normal row/column behavior
+# - non-primary RX grids (rank >= 1) swap row/column semantics
+#
+# This is intended only for reproducing backward-compatible user selection
+# behavior during migration, including workflows where `rx_sets` is explicitly
+# provided for a non-primary grid.
 
 # %%
 legacy_v3_selection = """
