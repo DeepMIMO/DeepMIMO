@@ -4,14 +4,14 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
+from deepmimo.datasets.compat_v3 import _apply_v3_compat, _merge_rx_grids_v3, _rx_rank_map
 from deepmimo.datasets.dataset import (
     Dataset,
     DynamicDataset,
     MacroDataset,
     MergedGridDataset,
-    merge_datasets,
 )
-from deepmimo.datasets.load import _apply_v3_compat, _validate_txrx_sets
+from deepmimo.datasets.load import _validate_txrx_sets
 
 
 @pytest.fixture
@@ -407,12 +407,24 @@ def test_apply_v3_compat_returns_one_merged_dataset_per_transmitter() -> None:
     assert compat[1].n_ue == g3.n_ue + g4.n_ue
 
 
-def test_merge_datasets_v3_requires_rx_rank_metadata() -> None:
-    """Direct v3 merged indexing should fail loudly when RX rank metadata is unavailable."""
+def test_merge_rx_grids_v3_requires_rx_rank_metadata() -> None:
+    """Direct v3 compatibility helpers should fail loudly without RX rank metadata."""
     dataset = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
 
     with pytest.raises(ValueError, match="requires RX rank metadata"):
-        merge_datasets([dataset], indexing="v3")
+        _merge_rx_grids_v3([dataset], rx_rank_map={})
+
+
+def test_rx_rank_map_uses_numeric_set_ids() -> None:
+    """RX rank mapping should sort by numeric RX set id, not key string."""
+    txrx_dict = {
+        "txrx_set_10": {"id": 10, "is_tx": False, "is_rx": True},
+        "txrx_set_2": {"id": 2, "is_tx": False, "is_rx": True},
+        "txrx_set_0": {"id": 0, "is_tx": False, "is_rx": True},
+        "txrx_set_3": {"id": 3, "is_tx": True, "is_rx": False},
+    }
+
+    assert _rx_rank_map(txrx_dict) == {0: 0, 2: 1, 10: 2}
 
 
 def test_validate_txrx_sets_orders_allowed_ids_deterministically() -> None:

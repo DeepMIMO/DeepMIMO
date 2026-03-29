@@ -19,7 +19,8 @@ import numpy as np
 from deepmimo import consts as c
 from deepmimo.core.materials import MaterialList
 from deepmimo.core.scene import Scene
-from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset, merge_datasets
+from deepmimo.datasets.compat_v3 import _apply_v3_compat, _rx_rank_map
+from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
 from deepmimo.utils import (
     DotDict,
     get_mat_filename,
@@ -43,7 +44,7 @@ def load(
     Args:
         scen_name (str): Name of the scenario to load
         compat_v3 (bool): If True, merge RX grids per TX and expose v3-style
-            global row/column indexing semantics.
+            global row/column indexing semantics for static scenarios.
         **load_params: Additional parameters for loading the scenario. Can be passed as a dictionary
             or as keyword arguments. Available parameters are:
 
@@ -64,8 +65,8 @@ def load(
                 - str: 'all' to load all available matrices
 
             * compat_v3 (bool, optional): If True, merge RX grids per TX and
-                expose v3-style global row/column indexing semantics. Defaults
-                to False.
+                expose v3-style global row/column indexing semantics for static
+                scenarios. Defaults to False.
 
     Returns:
         Dataset or MacroDataset: Loaded dataset(s)
@@ -105,14 +106,16 @@ def load(
     # Load scenario data
     n_snapshots = params[c.SCENE_PARAM_NAME][c.SCENE_PARAM_NUMBER_SCENES]
     if n_snapshots > 1:  # dynamic (multiple scenes)
+        if compat_v3:
+            msg = "`compat_v3=True` is only supported for static scenarios."
+            raise ValueError(msg)
         dataset_list = []
         scen_folder_path = Path(scen_folder)
         scene_folders = sorted([d.name for d in scen_folder_path.iterdir() if d.is_dir()])
         for snapshot_i in range(n_snapshots):
             snapshot_folder = str(scen_folder_path / scene_folders[snapshot_i])
             print(f"Scene {snapshot_i + 1}/{n_snapshots}")
-            snapshot = _load_dataset(snapshot_folder, params, load_params)
-            dataset_list += [_apply_v3_compat(snapshot, rx_rank_map) if compat_v3 else snapshot]
+            dataset_list += [_load_dataset(snapshot_folder, params, load_params)]
         dataset = DynamicDataset(dataset_list, scen_name)
     else:  # static (single scene)
         dataset = _load_dataset(scen_folder, params, load_params)
@@ -123,41 +126,6 @@ def load(
         {**dataset[c.LOAD_PARAMS_PARAM_NAME], "compat_v3": compat_v3},
     )
     return dataset
-
-
-def _rx_rank_map(txrx_dict: dict[str, Any]) -> dict[int, int]:
-    """Map RX set IDs to their scenario order rank using numeric sorting."""
-    rx_sets = [txrx_dict[key] for key in sorted(txrx_dict.keys()) if txrx_dict[key]["is_rx"]]
-    rx_set_ids = sorted(int(rx_set["id"]) for rx_set in rx_sets)
-    return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
-
-
-def _apply_v3_compat(
-    dataset: Dataset | MacroDataset,
-    rx_rank_map: dict[int, int],
-) -> Dataset | MacroDataset:
-    """Return a loader-level v3 compatibility view with RX grids merged per TX."""
-    if isinstance(dataset, Dataset):
-        return merge_datasets([dataset], indexing="v3", rx_rank_map=rx_rank_map)
-    if len(dataset) <= 1:
-        return merge_datasets(dataset.datasets, indexing="v3", rx_rank_map=rx_rank_map)
-
-    grouped: dict[tuple[int, int], list[Dataset]] = {}
-    ordered_tx_keys: list[tuple[int, int]] = []
-    for child in dataset.datasets:
-        txrx = child.get("txrx", {})
-        tx_key = (int(txrx.get("tx_set_id", -1)), int(txrx.get("tx_idx", -1)))
-        if tx_key not in grouped:
-            grouped[tx_key] = []
-            ordered_tx_keys.append(tx_key)
-        grouped[tx_key].append(child)
-
-    merged = [
-        merge_datasets(grouped[tx_key], indexing="v3", rx_rank_map=rx_rank_map)
-        for tx_key in ordered_tx_keys
-    ]
-    return merged[0] if len(merged) == 1 else MacroDataset(merged)
-
 
 def _load_dataset(folder: str, params: dict, load_params: dict) -> Dataset | MacroDataset:
     """Load a single dataset from a scenario folder.

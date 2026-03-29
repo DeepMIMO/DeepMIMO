@@ -1906,101 +1906,51 @@ def _missing_user_array(n_ue: int, tail_shape: tuple[int, ...], dtype: np.dtype)
     return np.full((n_ue, *tail_shape), fill_value, dtype=array_dtype)
 
 
-def _rx_rank_map(txrx_sets: list[Any] | dict[str, Any]) -> dict[int, int]:
-    """Map RX set IDs to their scenario order rank using numeric sorting."""
-    values = txrx_sets.values() if hasattr(txrx_sets, "values") else txrx_sets
-    rx_set_ids = []
-    for txrx_set in values:
-        if hasattr(txrx_set, "get"):
-            is_rx = txrx_set.get("is_rx", False)
-            rx_set_id = txrx_set.get("id")
-        else:
-            is_rx = txrx_set.is_rx
-            rx_set_id = txrx_set.id
-        if not is_rx:
-            continue
-        rx_set_ids.append(int(rx_set_id))
-
-    rx_set_ids.sort()
-    return {rx_set_id: rank for rank, rx_set_id in enumerate(rx_set_ids)}
-
-
-def _resolve_rx_rank_map(
-    datasets: list[Dataset],
-    *,
-    rx_rank_map: dict[int, int] | None = None,
-    txrx_sets: list[Any] | dict[str, Any] | None = None,
-) -> dict[int, int]:
-    """Resolve RX rank metadata from explicit input, scenario metadata, or dataset contents."""
-    if rx_rank_map is not None:
-        return rx_rank_map
-    if txrx_sets is not None:
-        return _rx_rank_map(txrx_sets)
-    if datasets:
-        with contextlib.suppress(AttributeError, KeyError, OSError, ValueError):
-            return _rx_rank_map(datasets[0].txrx_sets)
-    return {}
-
-
 def _merged_grid_spec(
     datasets: list[Dataset],
     *,
-    indexing: str = "native",
-    rx_rank_map: dict[int, int] | None = None,
+    row_axes: list[str] | None = None,
+    col_axes: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build global row/col indexing metadata for merged multi-grid datasets."""
     grid_sizes = [np.asarray(ds.grid_size, dtype=int) for ds in datasets]
     ue_offsets = np.cumsum([0, *[int(ds.n_ue) for ds in datasets[:-1]]], dtype=int)
-    rx_set_ids = [int(ds.get("txrx", {}).get("rx_set_id", -1)) for ds in datasets]
-
-    if indexing == "native":
-        row_axes = ["row"] * len(datasets)
-        col_axes = ["col"] * len(datasets)
-    elif indexing == "v3":
-        resolved_rx_rank_map = rx_rank_map or {}
-        row_axes = [
-            "row" if resolved_rx_rank_map.get(rx_set_id, 0) == 0 else "col"
-            for rx_set_id in rx_set_ids
-        ]
-        col_axes = [
-            "col" if resolved_rx_rank_map.get(rx_set_id, 0) == 0 else "row"
-            for rx_set_id in rx_set_ids
-        ]
-    else:
-        msg = f"Unknown indexing mode '{indexing}'. Expected 'native' or 'v3'."
+    resolved_row_axes = ["row"] * len(datasets) if row_axes is None else list(row_axes)
+    resolved_col_axes = ["col"] * len(datasets) if col_axes is None else list(col_axes)
+    if len(resolved_row_axes) != len(datasets) or len(resolved_col_axes) != len(datasets):
+        msg = "Merged-grid axis overrides must match the number of datasets."
         raise ValueError(msg)
 
     n_rows_per_grid = [
         int(grid_size[1]) if row_axis == "row" else int(grid_size[0])
-        for grid_size, row_axis in zip(grid_sizes, row_axes, strict=False)
+        for grid_size, row_axis in zip(grid_sizes, resolved_row_axes, strict=False)
     ]
     n_cols_per_grid = [
         int(grid_size[0]) if col_axis == "col" else int(grid_size[1])
-        for grid_size, col_axis in zip(grid_sizes, col_axes, strict=False)
+        for grid_size, col_axis in zip(grid_sizes, resolved_col_axes, strict=False)
     ]
     return {
         "ue_offsets": ue_offsets,
         "grid_sizes": grid_sizes,
-        "row_axes": row_axes,
-        "col_axes": col_axes,
+        "row_axes": resolved_row_axes,
+        "col_axes": resolved_col_axes,
         "row_offsets": np.cumsum([0, *n_rows_per_grid], dtype=int),
         "col_offsets": np.cumsum([0, *n_cols_per_grid], dtype=int),
     }
 
 
-def merge_datasets(  # noqa: C901, PLR0912, PLR0915
+def merge_datasets(  # noqa: C901, PLR0912
     datasets: list[Dataset],
     *,
-    indexing: str = "native",
-    rx_rank_map: dict[int, int] | None = None,
-    txrx_sets: list[Any] | dict[str, Any] | None = None,
+    row_axes: list[str] | None = None,
+    col_axes: list[str] | None = None,
 ) -> Dataset:
     """Merge datasets that share one transmitter into an explicit merged-grid dataset."""
     if not datasets:
         msg = "Cannot merge an empty dataset list"
         raise ValueError(msg)
 
-    if len(datasets) == 1 and indexing == "native":
+    if len(datasets) == 1 and row_axes is None and col_axes is None:
         return datasets[0]
 
     tx_keys = {
@@ -2087,23 +2037,12 @@ def merge_datasets(  # noqa: C901, PLR0912, PLR0915
     if datasets[0].hasattr("txrx"):
         merged_data["txrx"] = dict(datasets[0].txrx)
 
-    resolved_rx_rank_map = _resolve_rx_rank_map(
-        datasets,
-        rx_rank_map=rx_rank_map,
-        txrx_sets=txrx_sets,
-    )
-    if indexing == "v3" and not resolved_rx_rank_map:
-        msg = (
-            "V3 merged indexing requires RX rank metadata. Pass `rx_rank_map` or "
-            "`txrx_sets`, or load the dataset through `dm.load(..., compat_v3=True)`."
-        )
-        raise ValueError(msg)
     return MergedGridDataset(
         merged_data,
         merge_spec=_merged_grid_spec(
             datasets,
-            indexing=indexing,
-            rx_rank_map=resolved_rx_rank_map,
+            row_axes=row_axes,
+            col_axes=col_axes,
         ),
     )
 
