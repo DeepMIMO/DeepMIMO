@@ -10,12 +10,23 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-# Skip the entire module if Sionna is not available
-sionna_rt = pytest.importorskip("sionna.rt", reason="sionna-rt not installed")
+# Skip the entire module if the *real* sionna-rt is not installed.
+# We can't rely on pytest.importorskip alone because test_sionna_exporter.py
+# may have injected a MagicMock into sys.modules["sionna.rt"] before this
+# module is collected, which fools importorskip into not skipping.
+# A real module always has __file__ as a str; a MagicMock does not.
+try:
+    import sionna.rt as _sionna_rt_probe
 
-from sionna.rt import PathSolver, PlanarArray, Receiver, Transmitter  # noqa: E402
+    if not isinstance(getattr(_sionna_rt_probe, "__file__", None), str):
+        pytest.skip("sionna.rt is a mock, not the real package", allow_module_level=True)
+    import sionna.rt as sionna_rt
+except ImportError:
+    pytest.skip("sionna-rt not installed", allow_module_level=True)
 
-from deepmimo.exporters.sionna_exporter import (  # noqa: E402
+from sionna.rt import PathSolver, PlanarArray, Receiver, Transmitter
+
+from deepmimo.exporters.sionna_exporter import (
     _get_scene_objects,
     export_paths,
     export_scene_buildings,
@@ -23,7 +34,7 @@ from deepmimo.exporters.sionna_exporter import (  # noqa: E402
     export_scene_rt_params,
     sionna_exporter,
 )
-from deepmimo.utils import load_pickle  # noqa: E402
+from deepmimo.utils import load_pickle
 
 # ---------------------------------------------------------------------------
 # Fixtures
