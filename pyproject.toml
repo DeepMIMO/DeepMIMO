@@ -246,3 +246,17 @@ filterwarnings = [
     "ignore::UserWarning:matplotlib",
     "ignore:FigureCanvasAgg is non-interactive",
 ]
+
+[tool.coverage.run]
+source = ["deepmimo"]
+# Pipelines require external tools (Sionna, Blender, InSite) — exclude from coverage
+omit = [
+    "deepmimo/pipelines/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
