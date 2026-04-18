@@ -8,6 +8,8 @@ from deepmimo.generator.channel import (
     ChannelParameters,
     _convert_lists_to_arrays,
     _generate_mimo_channel,
+    _validate_ant_rad_pat,
+    _validate_ant_rot,
 )
 
 
@@ -162,3 +164,351 @@ def test_doppler_progression() -> None:
     # a_pt = sqrt(P) * exp(j(phi + 2pi fD t))
     assert np.isclose(ch_t0, 1.0 + 0j)
     assert np.isclose(ch_t1, 0.0 + 1j, atol=1e-5)
+
+
+def test_validate_ant_rot_none_returns_zero_vector() -> None:
+    """None rotation should return a zero vector."""
+    result = _validate_ant_rot(None)
+    np.testing.assert_array_equal(result, [0, 0, 0])
+
+
+def test_validate_ant_rot_1d_vector() -> None:
+    """A 3-element 1D vector should pass unchanged."""
+    rot = np.array([10.0, 20.0, 30.0])
+    result = _validate_ant_rot(rot)
+    np.testing.assert_array_equal(result, rot)
+
+
+def test_validate_ant_rot_3x2_range_matrix() -> None:
+    """A 3x2 matrix (random ranges) should pass unchanged."""
+    rot = np.array([[0.0, 10.0], [0.0, 5.0], [-5.0, 5.0]])
+    result = _validate_ant_rot(rot)
+    np.testing.assert_array_equal(result, rot)
+
+
+def test_validate_ant_rot_per_user() -> None:
+    """An (n_ues, 3) matrix should pass when n_ues is provided."""
+    rot = np.zeros((4, 3))
+    result = _validate_ant_rot(rot, n_ues=4)
+    np.testing.assert_array_equal(result, rot)
+
+
+def test_validate_ant_rot_invalid_raises() -> None:
+    """Invalid shapes should raise ValueError."""
+    with pytest.raises(ValueError, match="antenna rotation"):
+        _validate_ant_rot(np.array([1.0, 2.0]))  # 2-element vector
+
+
+def test_validate_ant_rad_pat_none_returns_default() -> None:
+    """None pattern should return the first valid pattern (isotropic)."""
+    result = _validate_ant_rad_pat(None)
+    assert result == c.PARAMSET_ANT_RAD_PAT_VALS[0]
+
+
+def test_validate_ant_rad_pat_valid() -> None:
+    """All defined valid patterns should pass through unchanged."""
+    for pat in c.PARAMSET_ANT_RAD_PAT_VALS:
+        assert _validate_ant_rad_pat(pat) == pat
+
+
+def test_validate_ant_rad_pat_invalid_raises() -> None:
+    """Unknown pattern strings should raise ValueError."""
+    with pytest.raises(ValueError, match="antenna radiation pattern"):
+        _validate_ant_rad_pat("omni_magic")
+
+
+# ---------------------------------------------------------------------------
+# Additional coverage tests for channel.py
+# ---------------------------------------------------------------------------
+
+from copy import deepcopy  # noqa: E402
+
+from deepmimo.generator.channel import (  # noqa: E402
+    OFDMPathGenerator,
+    _check_ofdm_compatibility,
+    _compute_single_freq_channel,
+    _compute_single_time_channel,
+)
+
+# ── ChannelParameters.__init__ with data dict (line 198) ───────────────────
+
+
+def test_channel_parameters_init_with_data_dict() -> None:
+    """Passing a data dict should deep-merge with defaults."""
+    params = ChannelParameters({"bs_antenna": {"shape": [4, 4]}})
+    bs = params[c.PARAMSET_ANT_BS]
+    # shape should be overridden to [4, 4]
+    assert list(bs[c.PARAMSET_ANT_SHAPE]) == [4, 4]
+    # spacing should remain at default value
+    assert bs[c.PARAMSET_ANT_SPACING] == 0.5
+
+
+def test_channel_parameters_init_with_kwargs() -> None:
+    """Passing kwargs should deep-merge with defaults."""
+    params = ChannelParameters(bs_antenna={"shape": [2, 2]})
+    bs = params[c.PARAMSET_ANT_BS]
+    assert list(bs[c.PARAMSET_ANT_SHAPE]) == [2, 2]
+    # Other defaults should survive
+    assert bs[c.PARAMSET_ANT_SPACING] == 0.5
+
+
+def test_channel_parameters_init_data_and_kwargs() -> None:
+    """Data dict and kwargs should both be applied."""
+    params = ChannelParameters({"doppler": 1}, ue_antenna={"shape": [2, 1]})
+    assert params[c.PARAMSET_DOPPLER_EN] == 1
+    assert list(params[c.PARAMSET_ANT_UE][c.PARAMSET_ANT_SHAPE]) == [2, 1]
+
+
+# ── _validate_antenna_params without rotation key (line 214) ───────────────
+
+
+def test_validate_antenna_params_missing_rotation_sets_default() -> None:
+    """Missing rotation key should default to [0, 0, 0]."""
+    cp = ChannelParameters()
+    bs_params = deepcopy(dict(cp[c.PARAMSET_ANT_BS]))
+    del bs_params[c.PARAMSET_ANT_ROTATION]
+
+    cp._validate_antenna_params(bs_params)  # noqa: SLF001
+
+    np.testing.assert_array_equal(bs_params[c.PARAMSET_ANT_ROTATION], [0, 0, 0])
+
+
+def test_validate_antenna_params_missing_rad_pat_sets_default() -> None:
+    """Missing radiation_pattern key should default to first valid pattern."""
+    cp = ChannelParameters()
+    bs_params = deepcopy(dict(cp[c.PARAMSET_ANT_BS]))
+    del bs_params[c.PARAMSET_ANT_RAD_PAT]
+
+    cp._validate_antenna_params(bs_params)  # noqa: SLF001
+
+    assert bs_params[c.PARAMSET_ANT_RAD_PAT] == c.PARAMSET_ANT_RAD_PAT_VALS[0]
+
+
+# ── _validate_ofdm_subcarriers edge cases (lines 233-248) ──────────────────
+
+
+def test_validate_ofdm_subcarriers_2d_array_raises() -> None:
+    """A 2-D array for selected_subcarriers should raise ValueError."""
+    cp = ChannelParameters()
+    bad_ofdm = {
+        c.PARAMSET_OFDM_SC_SAMP: np.array([[0, 1], [2, 3]]),
+        c.PARAMSET_OFDM_SC_NUM: 512,
+    }
+    with pytest.raises(ValueError, match="1-D array"):
+        cp._validate_ofdm_subcarriers(bad_ofdm)  # noqa: SLF001
+
+
+def test_validate_ofdm_subcarriers_empty_array_raises() -> None:
+    """An empty array for selected_subcarriers should raise ValueError."""
+    cp = ChannelParameters()
+    bad_ofdm = {
+        c.PARAMSET_OFDM_SC_SAMP: np.array([]),
+        c.PARAMSET_OFDM_SC_NUM: 512,
+    }
+    with pytest.raises(ValueError, match="non-empty"):
+        cp._validate_ofdm_subcarriers(bad_ofdm)  # noqa: SLF001
+
+
+def test_validate_ofdm_subcarriers_float_converted_to_int() -> None:
+    """Float-valued selected_subcarriers should be silently cast to int."""
+    cp = ChannelParameters()
+    ofdm = {
+        c.PARAMSET_OFDM_SC_SAMP: np.array([0.0, 1.0, 2.0]),
+        c.PARAMSET_OFDM_SC_NUM: 512,
+    }
+    cp._validate_ofdm_subcarriers(ofdm)  # noqa: SLF001
+
+    assert np.issubdtype(ofdm[c.PARAMSET_OFDM_SC_SAMP].dtype, np.integer)
+    np.testing.assert_array_equal(ofdm[c.PARAMSET_OFDM_SC_SAMP], [0, 1, 2])
+
+
+# ── validate() with extra keys prints warning (lines 286-287) ──────────────
+
+
+def test_validate_extra_keys_prints_warning(capsys) -> None:
+    """Unknown top-level keys should trigger a printed warning."""
+    cp = ChannelParameters()
+    cp["totally_unknown_param"] = "some_value"
+
+    cp.validate(10)
+
+    captured = capsys.readouterr()
+    assert "unnecessary" in captured.out
+    assert "totally_unknown_param" in captured.out
+
+
+# ── _check_ofdm_compatibility when delay exceeds OFDM duration (lines 421-438)
+
+
+def test_check_ofdm_compatibility_excess_delay_prints_warning(capsys) -> None:
+    """Delays exceeding the OFDM symbol duration should print a warning."""
+    ofdm_params = deepcopy(ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM])
+    n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]  # 512
+    bandwidth = ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]  # 10 MHz
+    ts = 1.0 / bandwidth
+    symbol_duration = n_sc * ts  # ~51.2 µs
+
+    # Delay more than one symbol duration
+    delays = np.array([[symbol_duration * 2.0]])
+
+    _check_ofdm_compatibility(ofdm_params, delays)
+
+    captured = capsys.readouterr()
+    assert "Warning" in captured.out
+    assert "symbol duration" in captured.out
+
+
+def test_check_ofdm_compatibility_no_warning_when_within_budget(capsys) -> None:
+    """Delays within the OFDM symbol duration should produce no output."""
+    ofdm_params = deepcopy(ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM])
+    n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]
+    bandwidth = ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
+    ts = 1.0 / bandwidth
+    symbol_duration = n_sc * ts
+
+    delays = np.array([[symbol_duration * 0.5]])  # well within budget
+
+    _check_ofdm_compatibility(ofdm_params, delays)
+
+    captured = capsys.readouterr()
+    assert captured.out == ""
+
+
+# ── OFDMPathGenerator.generate - 'over' condition zeros power (lines 379-381)
+
+
+def test_ofdm_path_generator_over_clips_to_zero() -> None:
+    """Paths with delay_n >= n_subcarriers should have zeroed-out power."""
+    ofdm_params = deepcopy(ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM])
+    n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]  # 512
+    bandwidth = ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
+    ts = 1.0 / bandwidth
+    symbol_duration = n_sc * ts
+
+    subcarriers = np.array([0, 1, 2])
+    gen = OFDMPathGenerator(ofdm_params, subcarriers)
+
+    # Two paths: first exceeds OFDM window, second is normal
+    pwr = np.array([1.0, 0.5])
+    toa = np.array([symbol_duration + 1e-9, 0.0])  # path 0: over; path 1: ok
+    phs = np.array([0.0, 0.0])
+    dopplers = np.array([0.0, 0.0])
+
+    h = gen.generate(pwr, toa, phs, ts, dopplers, times=0.0)
+
+    # First path (over) should be all zeros
+    np.testing.assert_allclose(np.abs(h[0]), 0.0, atol=1e-10)
+    # Second path should be non-zero
+    assert np.any(np.abs(h[1]) > 0)
+
+
+# ── OFDMPathGenerator.generate with LPF=True (lines 393-396) ───────────────
+
+
+def test_ofdm_path_generator_lpf_true_returns_correct_shape() -> None:
+    """LPF=True path should return the same shape as the non-LPF path."""
+    ofdm_params_no_lpf = deepcopy(ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM])
+    ofdm_params_lpf = deepcopy(ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM])
+    ofdm_params_lpf[c.PARAMSET_OFDM_LPF] = True
+
+    subcarriers = np.array([0, 1, 2])
+
+    gen_no_lpf = OFDMPathGenerator(ofdm_params_no_lpf, subcarriers)
+    gen_lpf = OFDMPathGenerator(ofdm_params_lpf, subcarriers)
+
+    ts = 1.0 / ofdm_params_no_lpf[c.PARAMSET_OFDM_BANDWIDTH]
+    pwr = np.array([1.0])
+    toa = np.array([0.0])
+    phs = np.array([0.0])
+    dopplers = np.array([0.0])
+
+    h_no_lpf = gen_no_lpf.generate(pwr, toa, phs, ts, dopplers, times=0.0)
+    h_lpf = gen_lpf.generate(pwr, toa, phs, ts, dopplers, times=0.0)
+
+    assert h_no_lpf.shape == h_lpf.shape
+
+
+def test_ofdm_path_generator_lpf_true_nonzero_output() -> None:
+    """LPF branch should produce non-zero gains for a valid path."""
+    ofdm_params = deepcopy(ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM])
+    ofdm_params[c.PARAMSET_OFDM_LPF] = True
+    subcarriers = np.array([0, 1, 2])
+    gen = OFDMPathGenerator(ofdm_params, subcarriers)
+    ts = 1.0 / ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
+
+    h = gen.generate(
+        pwr=np.array([1.0]),
+        toa=np.array([0.0]),
+        phs=np.array([0.0]),
+        ts=ts,
+        dopplers=np.array([0.0]),
+        times=0.0,
+    )
+    assert np.any(np.abs(h) > 0)
+
+
+# ── _compute_single_freq_channel (lines 441-466) ────────────────────────────
+
+
+def test_compute_single_freq_channel_squeeze_time() -> None:
+    """squeeze_time=True with N_t=1 should drop the time dimension."""
+    array_product = np.ones((2, 3, 4), dtype=complex)  # [M_rx, M_tx, P]
+    path_gains = np.ones((4, 5, 1), dtype=complex)  # [P, K, N_t=1]
+
+    result = _compute_single_freq_channel(array_product, path_gains, squeeze_time=True)
+
+    assert result.shape == (2, 3, 5)
+    assert result.dtype == np.complex64
+
+
+def test_compute_single_freq_channel_no_squeeze() -> None:
+    """squeeze_time=False should keep the time dimension even with N_t=1."""
+    array_product = np.ones((2, 3, 4), dtype=complex)
+    path_gains = np.ones((4, 5, 1), dtype=complex)
+
+    result = _compute_single_freq_channel(array_product, path_gains, squeeze_time=False)
+
+    assert result.shape == (2, 3, 5, 1)
+
+
+def test_compute_single_freq_channel_multi_time() -> None:
+    """Multiple time samples should produce output with the time dimension."""
+    n_t = 4
+    array_product = np.ones((2, 3, 4), dtype=complex)
+    path_gains = np.ones((4, 5, n_t), dtype=complex)
+
+    result = _compute_single_freq_channel(array_product, path_gains, squeeze_time=True)
+
+    # N_t > 1: squeeze_time has no effect, time dim preserved
+    assert result.shape == (2, 3, 5, n_t)
+
+
+# ── _compute_single_time_channel (line 576 via _generate_mimo_channel) ──────
+
+
+def test_compute_single_time_channel_squeeze() -> None:
+    """squeeze_time=True with N_t=1 should return [M_rx, M_tx, P_max]."""
+    array_product = np.ones((2, 3, 4), dtype=complex)  # [M_rx, M_tx, P]
+    path_gains = np.ones((4, 1), dtype=complex)  # [P, N_t=1]
+    p_max = 6
+
+    result = _compute_single_time_channel(array_product, path_gains, p_max, squeeze_time=True)
+
+    assert result.shape == (2, 3, p_max)
+    assert result.dtype == np.complex64
+    # First 4 paths filled, remaining 2 zero-padded
+    assert np.all(result[..., :4] != 0)
+    np.testing.assert_allclose(np.abs(result[..., 4:]), 0.0)
+
+
+def test_compute_single_time_channel_no_squeeze() -> None:
+    """squeeze_time=False should return [M_rx, M_tx, P_max, N_t]."""
+    n_t = 3
+    array_product = np.ones((2, 3, 4), dtype=complex)
+    path_gains = np.ones((4, n_t), dtype=complex)
+    p_max = 5
+
+    result = _compute_single_time_channel(array_product, path_gains, p_max, squeeze_time=False)
+
+    assert result.shape == (2, 3, p_max, n_t)
+    assert result.dtype == np.complex64

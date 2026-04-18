@@ -28,7 +28,7 @@ nav:
       - Complete Manual: tutorials/manual.py
   - Applications:
       - Overview: applications/index.md
-      - Channel Prediction: applications/1_channel_prediction.py
+      - Channel Prediction: applications/1_channel_prediction.ipynb
       - Sionna RT → DeepMIMO: applications/2_sionna_rt_downstream.ipynb
       - DeepMIMO → Sionna: applications/3_sionna_upstream.ipynb
       - OSM → Sionna RT → DeepMIMO: applications/4_osm_pipeline.ipynb
@@ -141,6 +141,7 @@ plugins:
         - "tutorials/6_beamforming.py"
         - "tutorials/7_converters.py"
         - "tutorials/8_migration_guide.py"
+        - "applications/1_channel_prediction.py"
         - "applications/2_sionna_rt_downstream.py"
         - "applications/3_sionna_upstream.py"
         - "applications/4_osm_pipeline.py"

@@ -440,3 +440,1020 @@ def test_validate_txrx_sets_orders_allowed_ids_deterministically() -> None:
 
     with pytest.raises(ValueError, match=r"allowed sets \[10, 3\]"):
         _validate_txrx_sets([0], txrx_dict, "tx")
+
+
+# ===========================================================================
+# Helpers shared by new tests
+# ===========================================================================
+
+
+def _make_minimal_path_dataset(n_ue: int = 2, n_paths: int = 2) -> Dataset:
+    """Return a Dataset with all path arrays populated (for compute_channels etc.)."""
+    rng = np.random.default_rng(42)
+    data = {
+        "rx_pos": rng.uniform(-100, 100, (n_ue, 3)).astype(np.float32),
+        "tx_pos": np.array([0.0, 0.0, 10.0], dtype=np.float32),
+        "power": rng.uniform(-100, -60, (n_ue, n_paths)).astype(np.float32),
+        "phase": rng.uniform(0, 360, (n_ue, n_paths)).astype(np.float32),
+        "delay": rng.uniform(1e-8, 1e-6, (n_ue, n_paths)).astype(np.float32),
+        "aoa_az": rng.uniform(-180, 180, (n_ue, n_paths)).astype(np.float32),
+        "aoa_el": rng.uniform(-90, 90, (n_ue, n_paths)).astype(np.float32),
+        "aod_az": rng.uniform(-180, 180, (n_ue, n_paths)).astype(np.float32),
+        "aod_el": rng.uniform(-90, 90, (n_ue, n_paths)).astype(np.float32),
+        "inter": np.zeros((n_ue, n_paths), dtype=np.float32),  # LOS paths
+        "inter_pos": np.zeros((n_ue, n_paths, 1, 3), dtype=np.float32),
+    }
+    ds = Dataset(data)
+
+    # Give it a trivial scene with objects that have .vel
+    class _MockObject:
+        def __init__(self):
+            self.vel = np.zeros(3)
+
+    class _MockScene:
+        def __init__(self):
+            self.objects = [_MockObject()]
+
+    ds.scene = _MockScene()
+    return ds
+
+
+def _make_minimal_path_dataset_with_ch_params(n_ue: int = 2, n_paths: int = 2) -> Dataset:
+    """Return a path dataset that also has valid ChannelParameters attached."""
+    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
+
+    ds = _make_minimal_path_dataset(n_ue=n_ue, n_paths=n_paths)
+    params = ChannelParameters(freq_domain=False, num_paths=n_paths)
+    ds.set_channel_params(params)
+    return ds
+
+
+# ===========================================================================
+# __dir__ includes computed attribute names
+# ===========================================================================
+
+
+def test_dir_includes_computed_attributes() -> None:
+    """__dir__ must expose all computed attribute names."""
+    ds = Dataset({"rx_pos": np.zeros((3, 3)), "tx_pos": np.zeros(3)})
+    d = dir(ds)
+    from deepmimo.datasets.dataset import Dataset as _Dataset  # noqa: PLC0415
+
+    for attr in _Dataset._computed_attributes:  # noqa: SLF001
+        assert attr in d, f"Expected '{attr}' in dir(dataset)"
+
+
+def test_dir_includes_aliases() -> None:
+    """__dir__ must also expose alias names defined in consts.DATASET_ALIASES."""
+    from deepmimo import consts as c  # noqa: PLC0415
+
+    ds = Dataset({"rx_pos": np.zeros((3, 3)), "tx_pos": np.zeros(3)})
+    d = dir(ds)
+    for alias in c.DATASET_ALIASES:
+        assert alias in d, f"Expected alias '{alias}' in dir(dataset)"
+
+
+# ===========================================================================
+# Alias resolution
+# ===========================================================================
+
+
+def test_alias_pwr_resolves_to_power() -> None:
+    """Accessing ds.pwr should return the same data as ds.power."""
+    ds = _make_minimal_path_dataset()
+    np.testing.assert_array_equal(np.array(ds.pwr), np.array(ds.power))
+
+
+def test_alias_pl_resolves_to_pathloss() -> None:
+    """Accessing ds.pl should compute and return pathloss."""
+    ds = _make_minimal_path_dataset()
+    pl = ds.pl
+    assert pl is not None
+    assert pl.shape == (ds.n_ue,)
+
+
+def test_alias_dist_resolves_to_distance() -> None:
+    """Accessing ds.dist should return per-user distances."""
+    ds = _make_minimal_path_dataset()
+    d1 = np.array(ds.dist)
+    d2 = np.array(ds.distance)
+    np.testing.assert_array_equal(d1, d2)
+    assert d1.shape == (ds.n_ue,)
+
+
+def test_alias_n_paths_resolves_to_num_paths() -> None:
+    """Accessing ds.n_paths should return the same array as ds.num_paths."""
+    ds = _make_minimal_path_dataset()
+    np.testing.assert_array_equal(np.array(ds.n_paths), np.array(ds.num_paths))
+
+
+def test_alias_toa_resolves_to_delay() -> None:
+    """Accessing ds.toa should return the same array as ds.delay."""
+    ds = _make_minimal_path_dataset()
+    np.testing.assert_array_equal(np.array(ds.toa), np.array(ds.delay))
+
+
+# ===========================================================================
+# Lazy computed properties
+# ===========================================================================
+
+
+def test_computed_num_paths() -> None:
+    """num_paths should count non-NaN entries in aoa_az per user."""
+    ds = _make_minimal_path_dataset(n_ue=3, n_paths=4)
+    # Manually NaN some paths
+    ds.aoa_az[1, 2:] = np.nan
+    ds.aoa_az[2, :] = np.nan
+    # Clear any cached value to force recompute
+    ds.clear_all_caches()
+    np_arr = np.array(ds.num_paths)
+    assert np_arr[0] == 4
+    assert np_arr[1] == 2
+    assert np_arr[2] == 0
+
+
+def test_computed_los() -> None:
+    """_compute_los should yield 1 for LoS, 0 for NLoS, -1 for no paths."""
+    ds = _make_minimal_path_dataset(n_ue=3, n_paths=2)
+    # User 0: LOS (first inter == 0)
+    ds.inter[0] = [0.0, 1.0]
+    # User 1: NLOS (first inter != 0)
+    ds.inter[1] = [1.0, 2.0]
+    # User 2: no paths (all NaN)
+    ds.aoa_az[2] = np.nan
+    ds.inter[2] = np.nan
+    ds.clear_all_caches()
+    los = np.array(ds.los)
+    assert los[0] == 1
+    assert los[1] == 0
+    assert los[2] == -1
+
+
+def test_computed_distance() -> None:
+    """Distance should be Euclidean norm of (rx_pos - tx_pos)."""
+    ds = Dataset(
+        {
+            "rx_pos": np.array([[3.0, 4.0, 0.0]]),
+            "tx_pos": np.array([0.0, 0.0, 0.0]),
+        }
+    )
+    dist = np.array(ds.distance)
+    assert dist[0] == pytest.approx(5.0)
+
+
+def test_computed_power_linear() -> None:
+    """power_linear should equal 10^(power/10)."""
+    ds = _make_minimal_path_dataset(n_ue=1, n_paths=1)
+    ds.power[0, 0] = -10.0  # -10 dB => 0.1 linear
+    ds.clear_all_caches()
+    pl = np.array(ds.power_linear)
+    assert pl[0, 0] == pytest.approx(0.1, rel=1e-4)
+
+
+def test_computed_pathloss() -> None:
+    """Pathloss should be a finite negative value for non-empty users."""
+    ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
+    pl = np.array(ds.pathloss)
+    assert pl.shape == (2,)
+    assert np.all(np.isfinite(pl))
+
+
+# ===========================================================================
+# set_channel_params - rotation cache cleared when rotation changes
+# ===========================================================================
+
+
+def test_set_channel_params_updates_params_on_rotation_change() -> None:
+    """Calling set_channel_params twice with different rotations updates the stored params."""
+    from deepmimo import consts as c  # noqa: PLC0415
+    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
+
+    ds = _make_minimal_path_dataset()
+
+    params1 = ChannelParameters(freq_domain=False)
+    params1.bs_antenna[c.PARAMSET_ANT_ROTATION] = np.array([0.0, 0.0, 0.0])
+    ds.set_channel_params(params1)
+
+    # Force computation and caching of rotated angles
+    _ = ds[c.AOD_AZ_ROT_PARAM_NAME]
+
+    # Change rotation - new params should be stored
+    params2 = ChannelParameters(freq_domain=False)
+    params2.bs_antenna[c.PARAMSET_ANT_ROTATION] = np.array([45.0, 0.0, 0.0])
+    ds.set_channel_params(params2)
+
+    # New params should be reflected in ch_params
+    np.testing.assert_array_equal(
+        ds.ch_params.bs_antenna[c.PARAMSET_ANT_ROTATION], [45.0, 0.0, 0.0]
+    )
+
+
+def test_set_channel_params_no_cache_clear_if_same_rotation() -> None:
+    """Calling set_channel_params twice with identical rotations must NOT clear the cache."""
+    from deepmimo import consts as c  # noqa: PLC0415
+    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
+
+    ds = _make_minimal_path_dataset()
+
+    params1 = ChannelParameters(freq_domain=False)
+    ds.set_channel_params(params1)
+
+    _ = ds[c.AOD_AZ_ROT_PARAM_NAME]
+    assert c.AOD_AZ_ROT_PARAM_NAME in ds.keys()  # noqa: SIM118
+
+    params2 = ChannelParameters(freq_domain=False)
+    ds.set_channel_params(params2)
+
+    # Params updated - new rotation is identical so ch_params should reflect it
+    np.testing.assert_array_equal(
+        ds.ch_params.bs_antenna[c.PARAMSET_ANT_ROTATION],
+        params2.bs_antenna[c.PARAMSET_ANT_ROTATION],
+    )
+
+
+def test_set_channel_params_none_uses_defaults() -> None:
+    """Calling set_channel_params(None) should install default ChannelParameters."""
+    ds = _make_minimal_path_dataset()
+    returned = ds.set_channel_params(None)
+    assert returned is not None
+    assert ds.ch_params is not None
+
+
+# ===========================================================================
+# compute_channels - minimal time-domain channel
+# ===========================================================================
+
+
+def test_compute_channels_returns_correct_shape() -> None:
+    """compute_channels in time-domain should return shape (n_ue, n_rx, n_tx, n_paths)."""
+    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
+
+    n_ue, n_paths = 2, 2
+    ds = _make_minimal_path_dataset(n_ue=n_ue, n_paths=n_paths)
+    params = ChannelParameters(
+        freq_domain=False,
+        num_paths=n_paths,
+        bs_antenna={"shape": [1, 1]},
+        ue_antenna={"shape": [1, 1]},
+    )
+    ch = ds.compute_channels(params=params)
+    # shape: (n_ue, n_rx_ant=1, n_tx_ant=1, n_paths=2)
+    assert ch.shape[0] == n_ue
+    assert ch.shape[1] == 1  # 1 RX antenna
+    assert ch.shape[2] == 1  # 1 TX antenna
+
+
+def test_compute_channels_stored_in_dataset() -> None:
+    """After compute_channels, the result should be cached under 'channel'."""
+    from deepmimo import consts as c  # noqa: PLC0415
+    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
+
+    ds = _make_minimal_path_dataset()
+    params = ChannelParameters(
+        freq_domain=False, bs_antenna={"shape": [1, 1]}, ue_antenna={"shape": [1, 1]}
+    )
+    ch = ds.compute_channels(params=params)
+    assert c.CHANNEL_PARAM_NAME in ds
+    np.testing.assert_array_equal(np.array(ds[c.CHANNEL_PARAM_NAME]), ch)
+
+
+def test_compute_channels_with_kwargs() -> None:
+    """compute_channels should accept kwargs to construct ChannelParameters inline."""
+    ds = _make_minimal_path_dataset()
+    # Passing kwargs should build a ChannelParameters object from them
+    ch = ds.compute_channels(
+        freq_domain=False, bs_antenna={"shape": [1, 1]}, ue_antenna={"shape": [1, 1]}
+    )
+    assert ch is not None
+
+
+# ===========================================================================
+# ue_look_at error paths
+# ===========================================================================
+
+
+def test_ue_look_at_shape_mismatch_raises_value_error(sample_dataset) -> None:
+    """ue_look_at with (m, 3) positions where m != n_ue must raise ValueError."""
+    ds = sample_dataset
+    wrong_pos = np.zeros((ds.n_ue + 1, 3))
+    with pytest.raises(ValueError, match="must match number of users"):
+        ds.ue_look_at(wrong_pos)
+
+
+def test_ue_look_at_3d_array_raises_value_error(sample_dataset) -> None:
+    """ue_look_at with a 3-D array must raise ValueError."""
+    ds = sample_dataset
+    bad_pos = np.zeros((ds.n_ue, 3, 1))
+    with pytest.raises(ValueError, match="1D or 2D"):
+        ds.ue_look_at(bad_pos)
+
+
+def test_ue_look_at_single_row_2d_broadcasts(sample_dataset) -> None:
+    """ue_look_at with shape (1, 3) should broadcast to all UEs without error."""
+    ds = sample_dataset
+    look_pos = np.array([[0.0, 0.0, 10.0]])
+    ds.ue_look_at(look_pos)  # should not raise
+    rots = ds.ch_params.ue_antenna[c.PARAMSET_ANT_ROTATION]
+    assert rots.shape == (ds.n_ue, 3)
+
+
+# ===========================================================================
+# trim with bool mask
+# ===========================================================================
+
+
+def test_trim_with_bool_idxs(sample_dataset) -> None:
+    """trim(idxs=...) should work when passed a boolean mask converted to integer indices."""
+    ds = sample_dataset
+    bool_mask = np.array([True, False, True, False, True])
+    int_idxs = np.where(bool_mask)[0]
+    trimmed = ds.trim(idxs=int_idxs)
+    assert trimmed.n_ue == 3
+    np.testing.assert_array_equal(trimmed.rx_pos[0], ds.rx_pos[0])
+    np.testing.assert_array_equal(trimmed.rx_pos[1], ds.rx_pos[2])
+    np.testing.assert_array_equal(trimmed.rx_pos[2], ds.rx_pos[4])
+
+
+# ===========================================================================
+# has_valid_grid
+# ===========================================================================
+
+
+def test_has_valid_grid_true() -> None:
+    """A regular 2x3 grid should report has_valid_grid=True."""
+    nx, ny = 3, 2
+    rx_pos = np.array([[x, y, 0.0] for y in range(ny) for x in range(nx)], dtype=float)
+    ds = Dataset({"rx_pos": rx_pos, "tx_pos": np.zeros(3)})
+    assert ds.has_valid_grid()
+
+
+def test_has_valid_grid_false() -> None:
+    """Irregular positions should report has_valid_grid=False."""
+    # use 4 points where unique x vals = 2, unique y vals = 3, product=6 != 4
+    rx_pos2 = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 2, 0]], dtype=float)
+    ds2 = Dataset({"rx_pos": rx_pos2, "tx_pos": np.zeros(3)})
+    # grid_size: x has 2 unique (0,1), y has 3 unique (0,1,2), product=6 != 4
+    assert not ds2.has_valid_grid()
+
+
+# ===========================================================================
+# get_idxs row/col on Dataset with regular grid
+# ===========================================================================
+
+
+def test_get_idxs_row_on_dataset() -> None:
+    """get_idxs('row') on a plain Dataset should return correct row indices."""
+    nx, ny = 4, 3
+    rx_pos = np.array([[x, y, 0.0] for y in range(ny) for x in range(nx)], dtype=float)
+    ds = Dataset({"rx_pos": rx_pos, "tx_pos": np.zeros(3)})
+    # Row 0 = y=0 in native grid (x-fastest): first nx points
+    row_idxs = ds.get_idxs("row", row_idxs=np.array([0]))
+    assert set(row_idxs.tolist()) == set(range(nx))
+
+
+def test_get_idxs_col_on_dataset() -> None:
+    """get_idxs('col') on a plain Dataset should return correct column indices."""
+    nx, ny = 4, 3
+    rx_pos = np.array([[x, y, 0.0] for y in range(ny) for x in range(nx)], dtype=float)
+    ds = Dataset({"rx_pos": rx_pos, "tx_pos": np.zeros(3)})
+    # Col 0 = x=0: every ny-th point starting at 0
+    col_idxs = ds.get_idxs("col", col_idxs=np.array([0]))
+    expected = np.array([0, nx, 2 * nx])
+    np.testing.assert_array_equal(np.sort(col_idxs), np.sort(expected))
+
+
+# ===========================================================================
+# get_idxs row/col on MergedGridDataset
+# ===========================================================================
+
+
+def test_merged_grid_dataset_get_idxs_row() -> None:
+    """MergedGridDataset.get_idxs('row') resolves global rows to user indices."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    macro = MacroDataset([g1, g2])
+    merged = macro.merge()
+
+    # Row 0 of g1 (nx=3, ny=2, native 'row' = y-axis => 3 users)
+    row0 = merged.get_idxs("row", row_idxs=np.array([0]))
+    assert len(row0) == 3  # nx=3 users in row 0 of g1
+
+    # Row 2 corresponds to first row of g2 (offset by g1.n_ue=6)
+    row2 = merged.get_idxs("row", row_idxs=np.array([2]))
+    assert len(row2) == 4  # nx=4 users in row 0 of g2
+    assert np.all(row2 >= g1.n_ue)  # They are in the g2 portion
+
+
+def test_merged_grid_dataset_get_idxs_col() -> None:
+    """MergedGridDataset.get_idxs('col') resolves global columns to user indices."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    macro = MacroDataset([g1, g2])
+    merged = macro.merge()
+
+    col0 = merged.get_idxs("col", col_idxs=np.array([0]))
+    assert len(col0) == 2  # ny=2 rows in col 0 of g1
+
+
+def test_merged_grid_dataset_row_idx_out_of_range_raises() -> None:
+    """Requesting an out-of-range global row should raise IndexError."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    merged = MacroDataset([g1, g2]).merge()
+    assert isinstance(merged, MergedGridDataset)
+    with pytest.raises(IndexError):
+        merged.get_idxs("row", row_idxs=np.array([999]))
+
+
+def test_merged_grid_dataset_invalid_axis_raises() -> None:
+    """Passing invalid axis to _resolve_global_grid_idxs should raise ValueError."""
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=4, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
+    merged = MacroDataset([g1, g2]).merge()
+    assert isinstance(merged, MergedGridDataset)
+    with pytest.raises(ValueError, match="Invalid axis"):
+        merged._resolve_global_grid_idxs("diagonal", np.array([0]))  # noqa: SLF001
+
+
+# ===========================================================================
+# rx_vel / tx_vel setters - error paths
+# ===========================================================================
+
+
+def test_rx_vel_wrong_1d_length_raises() -> None:
+    """Setting rx_vel with a 1-D array of wrong length should raise ValueError."""
+    ds = _make_minimal_path_dataset(n_ue=2)
+    with pytest.raises(ValueError, match="cartesian coordinates"):
+        ds.rx_vel = np.array([1.0, 2.0])  # should be 3 elements
+
+
+def test_rx_vel_wrong_2d_columns_raises() -> None:
+    """Setting rx_vel with (n_ue, 2) array should raise ValueError."""
+    ds = _make_minimal_path_dataset(n_ue=2)
+    with pytest.raises(ValueError, match="cartesian coordinates"):
+        ds.rx_vel = np.zeros((2, 2))
+
+
+def test_rx_vel_wrong_n_ue_raises() -> None:
+    """Setting rx_vel with mismatched n_ue should raise ValueError."""
+    ds = _make_minimal_path_dataset(n_ue=2)
+    with pytest.raises(ValueError, match="Number of users"):
+        ds.rx_vel = np.zeros((5, 3))
+
+
+def test_rx_vel_1d_broadcasts_to_all_ues() -> None:
+    """Setting rx_vel with shape (3,) should broadcast to all UEs."""
+    ds = _make_minimal_path_dataset(n_ue=3)
+    vel = np.array([1.0, 2.0, 3.0])
+    ds.rx_vel = vel
+    assert ds.rx_vel.shape == (3, 3)
+    np.testing.assert_array_equal(ds.rx_vel[0], vel)
+    np.testing.assert_array_equal(ds.rx_vel[2], vel)
+
+
+def test_rx_vel_list_is_accepted() -> None:
+    """Setting rx_vel as a list should work."""
+    ds = _make_minimal_path_dataset(n_ue=2)
+    ds.rx_vel = [0.0, 0.0, 1.0]
+    assert ds.rx_vel.shape == (2, 3)
+
+
+def test_rx_vel_default_is_zeros() -> None:
+    """Accessing rx_vel without setting it should return zeros."""
+    ds = _make_minimal_path_dataset(n_ue=3)
+    vel = ds.rx_vel
+    assert vel.shape == (3, 3)
+    assert np.all(vel == 0)
+
+
+def test_tx_vel_wrong_ndim_raises() -> None:
+    """Setting tx_vel with a 2-D array should raise ValueError."""
+    ds = _make_minimal_path_dataset(n_ue=2)
+    with pytest.raises(ValueError, match="single cartesian coordinate"):
+        ds.tx_vel = np.zeros((1, 3))
+
+
+def test_tx_vel_1d_is_accepted() -> None:
+    """Setting tx_vel with a valid (3,) array should work."""
+    ds = _make_minimal_path_dataset(n_ue=2)
+    ds.tx_vel = np.array([5.0, 0.0, 0.0])
+    np.testing.assert_array_equal(ds.tx_vel, np.array([5.0, 0.0, 0.0]))
+
+
+def test_tx_vel_default_is_zeros() -> None:
+    """Accessing tx_vel without setting it should return zeros."""
+    ds = _make_minimal_path_dataset(n_ue=2)
+    vel = ds.tx_vel
+    assert vel.shape == (3,)
+    assert np.all(vel == 0)
+
+
+# ===========================================================================
+# _validate_rx_index
+# ===========================================================================
+
+
+def test_validate_rx_index_out_of_range_raises() -> None:
+    """_validate_rx_index with an idx out of range should raise IndexError."""
+    ds = _make_minimal_path_dataset(n_ue=3, n_paths=2)
+    with pytest.raises(IndexError, match="out of range"):
+        ds._validate_rx_index(10, None)  # noqa: SLF001
+
+
+def test_validate_rx_index_negative_raises() -> None:
+    """_validate_rx_index with negative idx should raise IndexError."""
+    ds = _make_minimal_path_dataset(n_ue=3, n_paths=2)
+    with pytest.raises(IndexError, match="out of range"):
+        ds._validate_rx_index(-1, None)  # noqa: SLF001
+
+
+def test_validate_rx_index_none_path_returns_all() -> None:
+    """_validate_rx_index with path_idxs=None should return all valid path indices."""
+    ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
+    result = ds._validate_rx_index(0, None)  # noqa: SLF001
+    assert len(result) == int(ds.num_paths[0])
+
+
+def test_validate_rx_index_bad_path_idx_raises() -> None:
+    """_validate_rx_index with out-of-range path index should raise IndexError."""
+    ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
+    with pytest.raises(IndexError, match="Path indices must be in range"):
+        ds._validate_rx_index(0, [999])  # noqa: SLF001
+
+
+# ===========================================================================
+# _compute_inter_str / _compute_inter_int / _compute_inter_vec
+# ===========================================================================
+
+
+def test_compute_inter_str() -> None:
+    """_compute_inter_str should translate numeric codes to string labels."""
+    ds = Dataset({"n_ue": 2})
+    ds.inter = np.array([[0.0, 1.0], [2.0, np.nan]])
+    result = ds._compute_inter_str()  # noqa: SLF001
+    # Code 0 -> '' (LOS, no translation), code 1 -> 'R'
+    # The translate_code logic: s[:-2] removes last two chars (decimal ".0"), then translates
+    assert result[0, 0] == ""  # LOS -> empty string after mapping '0' -> ''
+    assert result[0, 1] == "R"  # Reflection
+    assert result[1, 0] == "D"  # Diffraction
+    assert result[1, 1] == "n"  # NaN -> "n"
+
+
+def test_compute_inter_int() -> None:
+    """_compute_inter_int should replace NaN with -1 and return int array."""
+    ds = Dataset({"n_ue": 2})
+    ds.inter = np.array([[0.0, np.nan], [1.0, 2.0]])
+    result = ds._compute_inter_int()  # noqa: SLF001
+    assert result.dtype == int or np.issubdtype(result.dtype, np.integer)
+    assert result[0, 1] == -1
+    assert result[1, 0] == 1
+    assert result[1, 1] == 2
+
+
+def test_compute_inter_vec() -> None:
+    """_compute_inter_vec should expand integer codes into digit arrays."""
+    ds = Dataset({"n_ue": 1})
+    ds.inter = np.array([[121.0, np.nan]])
+    result = ds._compute_inter_vec()  # noqa: SLF001
+    # Shape: (1, 2, max_len), 121 has 3 digits
+    assert result.shape[0] == 1
+    assert result.shape[1] == 2
+    assert result.shape[2] >= 3
+    # First path: digits of 121 = [1, 2, 1]
+    np.testing.assert_array_equal(result[0, 0, :3], [1, 2, 1])
+    # Second path (NaN): all -1
+    assert np.all(result[0, 1] == -1)
+
+
+# ===========================================================================
+# _compute_num_paths / _compute_max_paths
+# ===========================================================================
+
+
+def test_compute_max_paths() -> None:
+    """max_paths should equal the maximum of num_paths."""
+    ds = _make_minimal_path_dataset(n_ue=3, n_paths=4)
+    ds.aoa_az[1, 3] = np.nan  # user 1 has 3 paths
+    ds.aoa_az[2, :] = np.nan  # user 2 has 0 paths
+    ds.clear_all_caches()
+    assert int(ds.max_paths) == 4
+
+
+# ===========================================================================
+# n_ue computed attribute
+# ===========================================================================
+
+
+def test_n_ue_computed_from_rx_pos() -> None:
+    """n_ue should be computed from rx_pos.shape[0]."""
+    ds = Dataset({"rx_pos": np.zeros((7, 3))})
+    assert ds.n_ue == 7
+
+
+# ===========================================================================
+# _compute_power_linear
+# ===========================================================================
+
+
+def test_compute_power_linear_values() -> None:
+    """power_linear should be 10^(power/10)."""
+    ds = Dataset({"rx_pos": np.zeros((2, 3))})
+    ds.power = np.array([[-20.0, -10.0], [0.0, -30.0]])
+    pwr_lin = np.array(ds.power_linear)
+    expected = 10 ** (ds.power / 10)
+    np.testing.assert_allclose(pwr_lin, expected, rtol=1e-5)
+
+
+# ===========================================================================
+# compute_pathloss edge cases
+# ===========================================================================
+
+
+def test_compute_pathloss_inactive_user_is_nan() -> None:
+    """Pathloss should be NaN for users with all-NaN power (no paths)."""
+    ds = Dataset({"rx_pos": np.zeros((2, 3))})
+    ds.power = np.array([[-10.0, -20.0], [np.nan, np.nan]])
+    ds.phase = np.array([[0.0, 0.0], [0.0, 0.0]])
+    pl = ds.compute_pathloss()
+    assert np.isfinite(pl[0])
+    assert np.isnan(pl[1])
+
+
+# ===========================================================================
+# _compute_los with edge cases
+# ===========================================================================
+
+
+def test_compute_los_handles_mixed_users() -> None:
+    """_compute_los should correctly classify mixed LOS/NLOS/inactive users."""
+    n_ue = 4
+    ds = Dataset({"rx_pos": np.zeros((n_ue, 3))})
+    ds.inter = np.array(
+        [
+            [0.0, np.nan],  # LOS -> 1
+            [1.0, np.nan],  # NLOS -> 0
+            [0.0, 1.0],  # LOS (first path is LOS) -> 1
+            [np.nan, np.nan],  # no paths -> -1
+        ]
+    )
+    ds.aoa_az = np.array(
+        [
+            [1.0, np.nan],
+            [1.0, np.nan],
+            [1.0, 1.0],
+            [np.nan, np.nan],
+        ]
+    )
+    los = ds._compute_los()  # noqa: SLF001
+    assert los[0] == 1
+    assert los[1] == 0
+    assert los[2] == 1
+    assert los[3] == -1
+
+
+# ===========================================================================
+# set_doppler
+# ===========================================================================
+
+
+def test_set_doppler_scalar_broadcasts() -> None:
+    """set_doppler with scalar should fill entire (n_ue, max_paths) array."""
+    ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
+    # Manually set max_paths to avoid computing from data
+    ds["max_paths"] = 2
+    ds.set_doppler(5.0)
+    assert ds.doppler.shape == (2, 2)
+    assert np.all(np.array(ds.doppler) == 5.0)
+
+
+def test_set_doppler_per_user_broadcasts() -> None:
+    """set_doppler with (n_ue,) array should broadcast to (n_ue, max_paths)."""
+    ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
+    ds["max_paths"] = 2
+    ds.set_doppler(np.array([1.0, 2.0]))
+    doppler = np.array(ds.doppler)
+    assert doppler.shape == (2, 2)
+
+
+def test_set_doppler_invalid_shape_raises() -> None:
+    """set_doppler with invalid shape should raise ValueError."""
+    ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
+    ds["max_paths"] = 2
+    with pytest.raises(ValueError, match="Invalid doppler shape"):
+        ds.set_doppler(np.zeros((3, 5)))
+
+
+# ===========================================================================
+# Grid info
+# ===========================================================================
+
+
+def test_compute_grid_info_regular_grid() -> None:
+    """_compute_grid_info should return correct size and spacing for a regular grid."""
+    nx, ny = 5, 4
+    rx_pos = np.array([[x, y, 0.0] for y in range(ny) for x in range(nx)], dtype=float)
+    ds = Dataset({"rx_pos": rx_pos, "tx_pos": np.zeros(3)})
+    info = ds.compute_grid_info()
+    np.testing.assert_array_equal(info["grid_size"], [nx, ny])
+    np.testing.assert_allclose(info["grid_spacing"], [1.0, 1.0])
+
+
+def test_compute_grid_info_single_point() -> None:
+    """_compute_grid_info for a single point should return spacing of 0."""
+    ds = Dataset({"rx_pos": np.array([[1.0, 2.0, 0.0]]), "tx_pos": np.zeros(3)})
+    info = ds.compute_grid_info()
+    np.testing.assert_array_equal(info["grid_size"], [1, 1])
+    np.testing.assert_array_equal(info["grid_spacing"], [0, 0])
+
+
+# ===========================================================================
+# _compute_distances edge case
+# ===========================================================================
+
+
+def test_compute_distances_matches_linalg_norm() -> None:
+    """_compute_distances should match numpy linalg norm."""
+    rng = np.random.default_rng(7)
+    rx_pos = rng.uniform(0, 100, (5, 3))
+    tx_pos = rng.uniform(0, 100, (3,))
+    ds = Dataset({"rx_pos": rx_pos, "tx_pos": tx_pos})
+    expected = np.linalg.norm(rx_pos - tx_pos, axis=1)
+    np.testing.assert_allclose(np.array(ds.distance), expected, rtol=1e-5)
+
+
+# ===========================================================================
+# MacroDataset.__getattr__ propagation
+# ===========================================================================
+
+
+def test_macro_dataset_attr_propagation() -> None:
+    """MacroDataset attribute access should return list from all child datasets."""
+    ds1 = Dataset({"n_ue": 2, "rx_pos": np.zeros((2, 3))})
+    ds2 = Dataset({"n_ue": 3, "rx_pos": np.ones((3, 3))})
+    macro = MacroDataset([ds1, ds2])
+
+    # n_ue is per-dataset, not shared
+    n_ues = macro.n_ue
+    assert isinstance(n_ues, list)
+    assert n_ues[0] == 2
+    assert n_ues[1] == 3
+
+
+def test_macro_dataset_single_child_returns_scalar() -> None:
+    """MacroDataset with one child returns value directly instead of list."""
+    ds = Dataset({"n_ue": 4, "rx_pos": np.zeros((4, 3))})
+    macro = MacroDataset([ds])
+    assert macro.n_ue == 4
+
+
+# ===========================================================================
+# MacroDataset.append
+# ===========================================================================
+
+
+def test_macro_dataset_append() -> None:
+    """MacroDataset.append should add a dataset to the collection."""
+    macro = MacroDataset([])
+    ds = Dataset({"n_ue": 2})
+    macro.append(ds)
+    assert len(macro) == 1
+    assert macro[0] is ds
+
+
+# ===========================================================================
+# MacroDataset._get_single on empty MacroDataset
+# ===========================================================================
+
+
+def test_macro_dataset_get_single_empty_raises() -> None:
+    """_get_single on an empty MacroDataset should raise IndexError."""
+    macro = MacroDataset([])
+    with pytest.raises(IndexError, match="empty"):
+        macro._get_single("scene")  # noqa: SLF001
+
+
+# ===========================================================================
+# clear_all_caches
+# ===========================================================================
+
+
+def test_clear_all_caches_removes_computed_keys() -> None:
+    """clear_all_caches should remove cached core computed arrays."""
+    from deepmimo import consts as c  # noqa: PLC0415
+
+    ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
+    # Trigger computation of cached values that are removed by _clear_cache_core
+    _ = ds.num_paths
+    _ = ds.los
+
+    ds.clear_all_caches()
+
+    # After clearing, core cached keys should be gone from the underlying dict.
+    # Note: `key in ds` also matches computed attributes so we check ds.keys() directly.
+    assert c.NUM_PATHS_PARAM_NAME not in ds.keys()  # noqa: SIM118
+    assert c.LOS_PARAM_NAME not in ds.keys()  # noqa: SIM118
+
+    # Also verify rotated angles are cleared
+    _ = ds[c.AOD_AZ_ROT_PARAM_NAME]
+    ds.clear_all_caches()
+    assert c.AOD_AZ_ROT_PARAM_NAME not in ds.keys()  # noqa: SIM118
+
+
+# ===========================================================================
+# _trim_by_index edge cases
+# ===========================================================================
+
+
+def test_trim_by_index_preserves_scalar_attrs() -> None:
+    """Trimming by index should keep scalar (non-array) attributes unchanged."""
+    ds = _make_minimal_path_dataset(n_ue=4)
+    ds["my_scalar"] = 42
+    trimmed = ds._trim_by_index(np.array([0, 2]))  # noqa: SLF001
+    assert trimmed["my_scalar"] == 42
+
+
+def test_trim_by_index_slices_per_user_arrays() -> None:
+    """Trimming by index should slice arrays that have shape[0] == n_ue."""
+    ds = _make_minimal_path_dataset(n_ue=4, n_paths=2)
+    original_rx_pos = ds.rx_pos.copy()
+    trimmed = ds._trim_by_index(np.array([1, 3]))  # noqa: SLF001
+    np.testing.assert_array_equal(trimmed.rx_pos[0], original_rx_pos[1])
+    np.testing.assert_array_equal(trimmed.rx_pos[1], original_rx_pos[3])
+
+
+# ===========================================================================
+# resolve_key / alias with stored value
+# ===========================================================================
+
+
+def test_resolve_key_alias_with_stored_value() -> None:
+    """Alias should resolve to a pre-stored value without triggering computation."""
+    ds = Dataset({"rx_pos": np.zeros((2, 3)), "tx_pos": np.zeros(3)})
+    # Store power directly (no computation needed)
+    ds["power"] = np.array([[-10.0, -20.0], [-30.0, -40.0]])
+    result = ds["pwr"]  # 'pwr' is alias for 'power'
+    np.testing.assert_array_equal(np.array(result), ds.power)
+
+
+# ===========================================================================
+# _compute_rotated_angles
+# ===========================================================================
+
+
+def test_compute_rotated_angles_returns_four_keys() -> None:
+    """_compute_rotated_angles should return dict with 4 angle keys."""
+    from deepmimo import consts as c  # noqa: PLC0415
+    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
+
+    ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
+    ds.set_channel_params(ChannelParameters(freq_domain=False))
+    result = ds._compute_rotated_angles()  # noqa: SLF001
+    expected_keys = {
+        c.AOD_EL_ROT_PARAM_NAME,
+        c.AOD_AZ_ROT_PARAM_NAME,
+        c.AOA_EL_ROT_PARAM_NAME,
+        c.AOA_AZ_ROT_PARAM_NAME,
+    }
+    assert set(result.keys()) == expected_keys
+    for v in result.values():
+        assert v.shape == (2, 2)
+
+
+# ===========================================================================
+# DynamicDataset - timestamp validation
+# ===========================================================================
+
+
+def test_dynamic_dataset_wrong_timestamp_count_raises() -> None:
+    """set_timestamps with wrong number of entries should raise ValueError."""
+
+    class _MockObj:
+        def __init__(self):
+            self.vel = np.zeros(3)
+            self.position = np.zeros(3)
+
+    class _MockScene:
+        def __init__(self):
+            self.objects = _MockObjList()
+
+    class _MockObjList:
+        def __init__(self):
+            self._objs = [_MockObj()]
+
+        @property
+        def position(self):
+            return [o.position for o in self._objs]
+
+        @property
+        def vel(self):
+            return [o.vel for o in self._objs]
+
+        @vel.setter
+        def vel(self, v):
+            for i, o in enumerate(self._objs):
+                o.vel = v[i]
+
+        def __getitem__(self, idx):
+            return self._objs[idx]
+
+    ds1 = Dataset({"rx_pos": np.zeros((2, 3)), "tx_pos": np.zeros(3), "name": "s1"})
+    ds2 = Dataset({"rx_pos": np.ones((2, 3)), "tx_pos": np.zeros(3), "name": "s2"})
+    ds1.scene = _MockScene()
+    ds2.scene = _MockScene()
+    dyn = DynamicDataset([ds1, ds2], name="test")
+
+    with pytest.raises(ValueError, match="single value or a list"):
+        dyn.set_timestamps([0.0, 1.0, 2.0])  # 3 timestamps for 2 scenes
+
+
+# ===========================================================================
+# _wrap_array
+# ===========================================================================
+
+
+def test_wrap_array_scalar_not_wrapped() -> None:
+    """0-dim arrays should not be wrapped with DeepMIMOArray."""
+    ds = Dataset({"rx_pos": np.zeros((3, 3))})
+    scalar_array = np.array(42.0)
+    result = ds._wrap_array("power", scalar_array)  # noqa: SLF001
+    assert not hasattr(result, "_dataset")  # DeepMIMOArray has _dataset
+    assert result == 42.0
+
+
+def test_wrap_array_non_wrappable_key_not_wrapped() -> None:
+    """Arrays with keys not in WRAPPABLE_ARRAYS should be returned as-is."""
+    ds = Dataset({"rx_pos": np.zeros((3, 3))})
+    arr = np.ones((3, 5))
+    result = ds._wrap_array("some_unknown_key", arr)  # noqa: SLF001
+    assert type(result) is np.ndarray  # not a DeepMIMOArray
+
+
+# ===========================================================================
+# MacroDataset bool-array indexing
+# ===========================================================================
+
+
+def test_macro_dataset_bool_array_indexing() -> None:
+    """MacroDataset should accept boolean arrays as indices."""
+    ds1 = Dataset({"n_ue": 2})
+    ds2 = Dataset({"n_ue": 3})
+    ds3 = Dataset({"n_ue": 4})
+    macro = MacroDataset([ds1, ds2, ds3])
+
+    mask = np.array([True, False, True])
+    subset = macro[mask]
+    assert isinstance(subset, MacroDataset)
+    assert len(subset) == 2
+    assert subset[0] is ds1
+    assert subset[1] is ds3
+
+
+# ===========================================================================
+# MacroDataset slice indexing
+# ===========================================================================
+
+
+def test_macro_dataset_slice_indexing() -> None:
+    """MacroDataset should support slice indexing."""
+    ds1 = Dataset({"n_ue": 2})
+    ds2 = Dataset({"n_ue": 3})
+    ds3 = Dataset({"n_ue": 4})
+    macro = MacroDataset([ds1, ds2, ds3])
+
+    subset = macro[0:2]
+    assert isinstance(subset, MacroDataset)
+    assert len(subset) == 2
+    assert subset[0] is ds1
+    assert subset[1] is ds2
+
+
+# ===========================================================================
+# merge_datasets edge cases
+# ===========================================================================
+
+
+def test_merge_single_dataset_returns_same() -> None:
+    """Merging a single dataset without axis overrides returns it unchanged."""
+    from deepmimo.datasets.dataset import merge_datasets  # noqa: PLC0415
+
+    g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    result = merge_datasets([g1])
+    assert result is g1
+
+
+def test_merge_empty_dataset_list_raises() -> None:
+    """merge_datasets with empty list should raise ValueError."""
+    from deepmimo.datasets.dataset import merge_datasets  # noqa: PLC0415
+
+    with pytest.raises(ValueError, match="empty"):
+        merge_datasets([])
+
+
+def test_merge_same_rx_set_different_tx_raises() -> None:
+    """Merging datasets with different TX sets but same RX set raises NotImplementedError."""
+    from deepmimo.datasets.dataset import merge_datasets  # noqa: PLC0415
+
+    g1 = _make_grid_dataset(nx=2, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
+    g2 = _make_grid_dataset(nx=2, ny=2, tx_set_id=1, tx_idx=0, rx_set_id=0)
+    with pytest.raises(NotImplementedError, match="multiple transmitters"):
+        merge_datasets([g1, g2])

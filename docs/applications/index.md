@@ -4,7 +4,7 @@ This section contains advanced, real-world examples and applications of DeepMIMO
 
 ## Available Applications
 
-- **[Channel Prediction](1_channel_prediction.py)**: Complete workflow for creating realistic channel sequences for ML-based channel prediction, covering interpolation techniques, Doppler effects, and comparative analysis.
+- **[Channel Prediction](1_channel_prediction.ipynb)**: Complete workflow for creating realistic channel sequences for ML-based channel prediction, covering interpolation techniques, Doppler effects, and comparative analysis.
 - **[Sionna RT → DeepMIMO](2_sionna_rt_downstream.ipynb)**: Run Sionna RT 2.0 ray tracing on a built-in scene, export with `sionna_exporter`, convert with `dm.convert`, and load the resulting dataset. Requires `deepmimo[sionna]`.
 - **[DeepMIMO → Sionna](3_sionna_upstream.ipynb)**: Load a DeepMIMO scenario, adapt channels to Sionna's `(a, tau)` format via `SionnaAdapter`, build an OFDM channel matrix, and compute spectral efficiency.
 
