@@ -1,23 +1,15 @@
 """Sionna Ray Tracing Exporter.
 
 This module provides functionality to export Sionna ray tracing data.
-This is necessary because Sionna (as of v0.19.1) does not provide sufficient built-in
-tools for saving ray tracing results to disk.
+Sionna does not provide sufficient built-in tools for saving ray tracing results to
+disk, so this module handles exporting Paths and Scene objects into serialisable
+dictionary formats. This allows ray tracing results to be saved and reused without
+re-running computationally expensive simulations.
 
-The module handles exporting Paths and Scene objects from Sionna's ray tracer
-into dictionary formats that can be serialized. This allows ray tracing
-results to be saved and reused without re-running computationally expensive
-ray tracing simulations.
+Requires Sionna RT 2.0+. Import explicitly — DeepMIMO does not require sionna:
 
-This has been tested with Sionna v0.19.1 and may work with earlier versions.
-
-DeepMIMO does not require sionna to be installed.
-To keep it this way AND use this module, you need to import it explicitly:
-
-# Import the module:
-from deepmimo.exporters import sionna_exporter
-
-sionna_exporter(scene, path_list, my_compute_path_params, save_folder)
+    from deepmimo.exporters import sionna_exporter
+    sionna_exporter(scene, path_list, my_compute_path_params, save_folder)
 
 """
 
@@ -27,20 +19,19 @@ from typing import Any
 
 import numpy as np
 
-from deepmimo.consts import SUPPORTED_SIONNA_VERSIONS
 from deepmimo.utils import save_pickle
 
 try:
     import sionna.rt
 
-    from deepmimo.pipelines.sionna_rt.sionna_utils import get_sionna_version, is_sionna_v1
+    from deepmimo.pipelines.sionna_rt.sionna_utils import get_sionna_version
 
     Paths = sionna.rt.Paths
     Scene = sionna.rt.Scene
 except ImportError:
     msg = (
         "Sionna ray tracing functionality requires additional dependencies. "
-        "Please install them using: pip install 'deepmimo[sionna1]' or 'deepmimo[sionna019]'"
+        "Please install them using: pip install 'deepmimo[sionna]'"
     )
     raise ImportError(msg) from None
 
@@ -52,7 +43,7 @@ def _get_scene_objects(scene: Scene) -> dict[str, Any]:
     return getattr(scene, "scene_objects", getattr(scene, "_scene_objects", {}))
 
 
-def _paths_to_dict(paths: Paths) -> list[dict]:
+def _paths_to_dict(paths: Paths) -> dict[str, Any]:
     """Export paths to a filtered dictionary with only selected keys."""
     members_names = dir(paths)
     members_objects = [getattr(paths, attr) for attr in members_names]
@@ -79,13 +70,11 @@ def export_paths(path_list: Paths | list[Paths]) -> list[dict[str, Any]]:
         Shared fields: tau, phi_r, phi_t, theta_r, theta_t, sources, targets, vertices,
         rx_array, tx_array.
 
-        Sionna 0.x: ``a`` is complex, ``types`` holds interaction types.
-
-        Sionna 1.x: ``a`` is (real, imag) tuple, ``interactions`` holds interaction types,
-        and targets/sources are transposed.
+        ``a`` is exported as a complex array from the (real, imag) tensor pair.
+        ``interactions`` holds per-depth interaction bitflags (Sionna 2.0).
+        targets/sources are transposed to (N, 3) on export.
 
     """
-    sionna_v1 = is_sionna_v1()
     relevant_keys = [
         "sources",
         "targets",
@@ -95,8 +84,8 @@ def export_paths(path_list: Paths | list[Paths]) -> list[dict[str, Any]]:
         "theta_r",
         "theta_t",
         "vertices",
+        "interactions",
     ]
-    relevant_keys += ["interactions"] if sionna_v1 else ["types"]
 
     path_list = [path_list] if not isinstance(path_list, list) else path_list
     paths_dict_list = []
@@ -104,16 +93,12 @@ def export_paths(path_list: Paths | list[Paths]) -> list[dict[str, Any]]:
         path_dict = _paths_to_dict(path_obj)
         dict_filtered = {key: path_dict[key].numpy() for key in relevant_keys}
 
-        # Process a (complex) array independently
-        if sionna_v1:
-            dict_filtered["a"] = path_dict["a"][0].numpy() + 1j * path_dict["a"][1].numpy()
-        else:
-            dict_filtered["a"] = path_dict["a"].numpy()
+        # a is a (real, imag) tensor pair in Sionna 1.x/2.0
+        dict_filtered["a"] = path_dict["a"][0].numpy() + 1j * path_dict["a"][1].numpy()
 
-        # Transpose targets and sources for Sionna 1.x
-        if sionna_v1:
-            for key in ["targets", "sources"]:
-                dict_filtered[key] = path_dict[key].numpy().T
+        # Transpose targets and sources to (N, 3)
+        for key in ["targets", "sources"]:
+            dict_filtered[key] = path_dict[key].numpy().T
 
         paths_dict_list += [dict_filtered]
     return paths_dict_list
@@ -140,20 +125,9 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
     obj_mat_indices = np.zeros(n_objs, dtype=int)
     for obj_idx, obj_mat in enumerate(obj_materials):
         obj_mat_indices[obj_idx] = unique_mat_names.index(obj_mat.name)
-    # Do some light processing to add dictionaries to a list in a pickable format
     materials_dict_list = []
     for material in unique_materials:
-        # Use 1.0 if relative_permeability is missing (Sionna RT >=1.0)
-        if hasattr(material, "relative_permeability"):
-            rel_perm = material.relative_permeability.numpy()
-        else:
-            rel_perm = 1.0
-        # Safely access scattering_pattern attributes; not all patterns have alpha_r/alpha_i/lambda_
-        alpha_r = getattr(
-            material.scattering_pattern,
-            "alpha_r",
-            None,
-        )  # LambertianPattern etc. may not have this
+        alpha_r = getattr(material.scattering_pattern, "alpha_r", None)
         alpha_i = getattr(material.scattering_pattern, "alpha_i", None)
         lambda_ = (
             material.scattering_pattern.lambda_.numpy()
@@ -163,13 +137,13 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
         materials_dict = {
             "name": material.name,
             "conductivity": material.conductivity.numpy(),
-            "relative_permeability": rel_perm,
+            "relative_permeability": 1.0,  # removed in Sionna RT >=1.0
             "relative_permittivity": material.relative_permittivity.numpy(),
             "scattering_coefficient": material.scattering_coefficient.numpy(),
             "scattering_pattern": type(material.scattering_pattern).__name__,
-            "alpha_r": alpha_r,  # May be None if not present
-            "alpha_i": alpha_i,  # May be None if not present
-            "lambda_": lambda_,  # May be None if not present
+            "alpha_r": alpha_r,
+            "alpha_i": alpha_i,
+            "lambda_": lambda_,
             "xpd_coefficient": material.xpd_coefficient.numpy(),
         }
         materials_dict_list += [materials_dict]
@@ -177,7 +151,7 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
 
 
 def _scene_to_dict(scene: Scene) -> dict[str, Any]:
-    """Export a Sionna Scene to a dictionary, like to Paths.to_dict()."""
+    """Export a Sionna Scene to a dictionary."""
     members_names = dir(scene)
     bug_attrs = ["paths_solver"]
     members_objects = [getattr(scene, attr) for attr in members_names if attr not in bug_attrs]
@@ -191,11 +165,11 @@ def _scene_to_dict(scene: Scene) -> dict[str, Any]:
 
 
 def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[str, Any]:
-    """Extract ray-tracing parameters from a Scene and ``compute_paths`` arguments.
+    """Extract ray-tracing parameters from a Scene and ``PathSolver`` call arguments.
 
     Args:
         scene (Scene): Sionna Scene object.
-        **compute_paths_kwargs: Keyword arguments passed to ``compute_paths``.
+        **compute_paths_kwargs: Keyword arguments passed to ``PathSolver.__call__``.
 
     Returns:
         dict[str, Any]: Consolidated ray-tracing parameters.
@@ -203,19 +177,12 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[st
     """
     scene_dict = _scene_to_dict(scene)
 
-    # Safely get antenna positions for rx_array and tx_array
     rx_array = scene_dict["rx_array"]
     tx_array = scene_dict["tx_array"]
-    sionna_v1 = is_sionna_v1()
-    if sionna_v1:
-        wavelength = scene.wavelength
-        rx_array_ant_pos = rx_array.positions(wavelength).numpy()
-        tx_array_ant_pos = tx_array.positions(wavelength).numpy()
-    else:
-        rx_array_ant_pos = rx_array.positions.numpy()
-        tx_array_ant_pos = tx_array.positions.numpy()
+    wavelength = scene.wavelength
+    rx_array_ant_pos = rx_array.positions(wavelength).numpy()
+    tx_array_ant_pos = tx_array.positions(wavelength).numpy()
 
-    # Safely get synthetic_array option (from scene_dict or compute_paths_kwargs)
     synthetic_array = scene_dict.get(
         "synthetic_array",
         compute_paths_kwargs.get("synthetic_array", False),
@@ -224,59 +191,39 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[st
     rt_params_dict = {
         "bandwidth": scene_dict["bandwidth"].numpy(),
         "frequency": scene_dict["frequency"].numpy(),
-        "rx_array_size": rx_array.array_size,  # dual-pol if diff than num_ant
+        "rx_array_size": rx_array.array_size,
         "rx_array_num_ant": rx_array.num_ant,
-        "rx_array_ant_pos": rx_array_ant_pos,  # relative to ref.
+        "rx_array_ant_pos": rx_array_ant_pos,
         "tx_array_size": tx_array.array_size,
         "tx_array_num_ant": tx_array.num_ant,
         "tx_array_ant_pos": tx_array_ant_pos,
-        "synthetic_array": synthetic_array,  # record the option used
-        # custom
+        "synthetic_array": synthetic_array,
         "raytracer_version": get_sionna_version(),
     }
 
-    if sionna_v1:
-        default_compute_paths_params = {  # Sionna 1.x default values
-            "max_depth": 3,
-            "max_num_paths_per_src": 1000000,
-            "samples_per_src": 1000000,
-            "synthetic_array": True,
-            "los": True,
-            "specular_reflection": True,
-            "diffuse_reflection": False,
-            "refraction": True,
-            "seed": 42,
-        }
-    else:
-        default_compute_paths_params = {  # Sionna 0.x default values
-            "max_depth": 3,
-            "method": "fibonacci",
-            "num_samples": 1000000,
-            "los": True,
-            "reflection": True,
-            "diffraction": False,
-            "scattering": False,
-            "scat_keep_prob": 0.001,
-            "edge_diffraction": False,
-            "scat_random_phases": True,
-        }
-
+    default_compute_paths_params = {
+        "max_depth": 3,
+        "max_num_paths_per_src": 1000000,
+        "samples_per_src": 1000000,
+        "synthetic_array": True,
+        "los": True,
+        "specular_reflection": True,
+        "diffuse_reflection": False,
+        "refraction": True,
+        "seed": 42,
+    }
     default_compute_paths_params.update(compute_paths_kwargs)
     raw_params = {**rt_params_dict, **default_compute_paths_params}
 
-    # Mapping from Sionna 1.0.2 to common (0.19 / DeepMIMO) parameters
-    newer_params_mapping = (
-        {
-            "num_samples": raw_params["samples_per_src"],
-            "reflection": bool(raw_params["specular_reflection"]),
-            "diffraction": False,  # bool(raw_params['diffraction']),
-            "scattering": bool(raw_params["diffuse_reflection"]),
-        }
-        if sionna_v1
-        else {}
-    )
+    # Aliases used by the converter's sionna_rt_params reader
+    aliases = {
+        "num_samples": raw_params["samples_per_src"],
+        "reflection": bool(raw_params["specular_reflection"]),
+        "diffraction": False,
+        "scattering": bool(raw_params["diffuse_reflection"]),
+    }
 
-    return {**raw_params, **newer_params_mapping}
+    return {**raw_params, **aliases}
 
 
 def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
@@ -291,45 +238,30 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
 
     """
     all_vertices = []
-    obj_index_map = {}  # Stores the name and starting index of each object
+    obj_index_map = {}
 
     vertex_offset = 0
 
-    sionna_v1 = is_sionna_v1()
     scene_objects = _get_scene_objects(scene)
     for obj_name, obj in scene_objects.items():
-        # Get vertices
-        shape = obj._mi_shape  # noqa: SLF001  (necessary)
+        shape = obj._mi_shape  # noqa: SLF001
         n_v = shape.vertex_count()
-        obj_vertices = np.array(shape.vertex_position(np.arange(n_v)))
-        if sionna_v1:
-            obj_vertices = obj_vertices.T
+        obj_vertices = np.array(shape.vertex_position(np.arange(n_v))).T
 
-        # Robust shape check: skip empty
         if obj_vertices.size == 0:
             continue
-        # Ensure 2D
         if obj_vertices.ndim == 1:
             obj_vertices = obj_vertices.reshape(1, -1)
-        # If more than 3 columns, take only first 3 (x, y, z)
         if obj_vertices.shape[1] > COORD_DIM:
             obj_vertices = obj_vertices[:, :COORD_DIM]
-        # If less than 3 columns, pad with zeros
         if obj_vertices.shape[1] < COORD_DIM:
             pad_width = COORD_DIM - obj_vertices.shape[1]
             obj_vertices = np.pad(obj_vertices, ((0, 0), (0, pad_width)), "constant")
-        # Now shape is (N, 3)
 
-        # Append vertices to global list
         all_vertices.append(obj_vertices)
-
-        # Store object index range
         obj_index_map[obj_name] = (vertex_offset, vertex_offset + obj_vertices.shape[0])
-
-        # Update vertex offset
         vertex_offset += obj_vertices.shape[0]
 
-    # Convert lists to numpy arrays
     vertice_matrix = np.zeros((0, 3)) if len(all_vertices) == 0 else np.vstack(all_vertices)
 
     return vertice_matrix, obj_index_map
@@ -353,23 +285,11 @@ def sionna_exporter(
     Args:
         scene (Scene): Sionna Scene containing the simulation environment.
         path_list (list[Paths] | Paths): Ray paths from Sionna's ray tracer (single or multi TX).
-        my_compute_path_params (dict): Parameters passed to ``compute_paths`` (Sionna does not
-            persist them internally).
+        my_compute_path_params (dict): Parameters passed to ``PathSolver.__call__`` (Sionna does
+            not persist them internally).
         save_folder (str): Directory to write the exported files.
 
-    Notes:
-        - Tested with Sionna v0.19.1 and v1.0.2.
-        - In Sionna 1.x, paths are exported during RT, so they may already be serialized.
-
     """
-    if get_sionna_version() not in SUPPORTED_SIONNA_VERSIONS:
-        msg = (
-            f"Sionna version {get_sionna_version()} not supported. "
-            f"Supported versions: {SUPPORTED_SIONNA_VERSIONS}"
-        )
-        raise ValueError(
-            msg,
-        )
     paths_dict_list = path_list if isinstance(path_list[0], dict) else export_paths(path_list)
     materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
@@ -378,7 +298,6 @@ def sionna_exporter(
     os.makedirs(save_folder, exist_ok=True)  # noqa: PTH103
 
     save_vars_dict = {
-        # filename: variable_to_save
         "sionna_paths.pkl": paths_dict_list,
         "sionna_materials.pkl": materials_dict_list,
         "sionna_material_indices.pkl": material_indices,
@@ -391,5 +310,4 @@ def sionna_exporter(
         save_pickle(variable, str(Path(save_folder) / filename))
 
 
-# Explicitly declare what should be imported when using 'from .sionna_exporter import *'
 __all__ = ["sionna_exporter"]

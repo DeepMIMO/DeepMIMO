@@ -82,7 +82,7 @@ def sionna_rt_converter(  # noqa: PLR0913
     txrx_dict = read_txrx(rt_params)
 
     # Read Paths (.paths)
-    read_paths(rt_folder, temp_folder, txrx_dict, rt_params["raytracer_version"])
+    read_paths(rt_folder, temp_folder, txrx_dict)
 
     # Read Materials (.materials)
     materials_dict, material_indices = read_materials(rt_folder)
@@ -127,5 +127,5 @@ if __name__ == "__main__":
 
     rt_params = read_rt_params(rt_folder)
     txrx_dict = read_txrx(rt_params)
-    read_paths(rt_folder, temp_folder)
-    read_materials(rt_folder, temp_folder)
+    read_paths(rt_folder, temp_folder, txrx_dict)
+    read_materials(rt_folder)
