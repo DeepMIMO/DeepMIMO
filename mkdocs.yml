@@ -46,6 +46,7 @@ nav:
       - Utilities: api/utils.md
       - Configuration: api/config.md
   - Resources:
+      - Data Generation Pipeline: resources/data_generation.md
       - Ray Tracing Guidelines: resources/raytracing_guidelines.md
       - Comparing Ray Tracers: resources/comparing_raytracers.md
       - Scenario Specs: resources/specs.md
