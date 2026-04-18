@@ -68,7 +68,6 @@ def _compute_paths(
 
     """
     paths = p_solver(scene=scene, **compute_paths_rt_params)
-    paths.normalize_delays = False
     if path_inspection_func is not None:
         path_inspection_func(paths)
     if cpu_offload:

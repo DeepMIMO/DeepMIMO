@@ -6,6 +6,7 @@ This module contains utility functions for Sionna.
 import sionna
 import sionna.rt as sionna_rt
 from sionna.rt import (
+    BackscatteringPattern,
     PlanarArray,
     RadioMaterial,
     Scene,
@@ -34,7 +35,9 @@ def set_materials(scene: Scene) -> Scene:
         if mat_name == "itu_concrete":
             scene.objects[obj.name].radio_material.scattering_coefficient = 0.4
             scene.objects[obj.name].radio_material.xpd_coefficient = 0.4
-            scene.objects[obj.name].radio_material.scattering_pattern = "backscattering"
+            scene.objects[obj.name].radio_material.scattering_pattern = BackscatteringPattern(
+                alpha_r=4, alpha_i=4, lambda_=0.75
+            )
         elif mat_name in ["itu_wet_ground", "itu_brick"]:
             continue
         else:
@@ -76,5 +79,4 @@ def create_base_scene(scene_path: str, center_frequency: float) -> Scene:
         polarization="V",
     )
     scene.rx_array = scene.tx_array
-    scene.synthetic_array = True
     return scene

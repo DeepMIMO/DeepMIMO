@@ -244,7 +244,7 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
 
     scene_objects = _get_scene_objects(scene)
     for obj_name, obj in scene_objects.items():
-        shape = obj._mi_shape  # noqa: SLF001
+        shape = obj.mi_mesh
         n_v = shape.vertex_count()
         obj_vertices = np.array(shape.vertex_position(np.arange(n_v))).T
 
@@ -290,6 +290,9 @@ def sionna_exporter(
         save_folder (str): Directory to write the exported files.
 
     """
+    # Normalise to list before checking element type
+    if not isinstance(path_list, list):
+        path_list = [path_list]
     paths_dict_list = path_list if isinstance(path_list[0], dict) else export_paths(path_list)
     materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)

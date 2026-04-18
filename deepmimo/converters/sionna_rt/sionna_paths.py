@@ -13,14 +13,21 @@ from deepmimo import consts as c
 from deepmimo.converters.converter_utils import compress_path_data
 from deepmimo.utils import get_mat_filename, load_pickle, save_mat
 
-# Sionna 2.0 interaction bitflags
-SIONNA_INTERACTION_SPECULAR = 1
-SIONNA_INTERACTION_DIFFUSE = 2
-SIONNA_INTERACTION_REFRACTION = 4
-SIONNA_INTERACTION_DIFFRACTION = 8
+# Sionna 2.0 InteractionType values (sionna.rt.constants.InteractionType)
+SIONNA_INTERACTION_NONE = 0        # padding / LoS (no bounce at this depth)
+SIONNA_INTERACTION_SPECULAR = 1    # specular reflection
+SIONNA_INTERACTION_DIFFUSE = 2     # diffuse scattering
+SIONNA_INTERACTION_REFRACTION = 4  # refraction / transmission
+SIONNA_INTERACTION_DIFFRACTION = 8 # edge diffraction
 
-# DeepMIMO interaction type map (used for LoS detection)
-SIONNA_TYPE_LOS = 0
+# Map from Sionna 2.0 InteractionType → DeepMIMO interaction code
+# DeepMIMO: LOS=0, REFLECTION=1, DIFFRACTION=2, SCATTERING=3, TRANSMISSION=4
+_SIONNA_TO_DEEPMIMO: dict[int, int] = {
+    SIONNA_INTERACTION_SPECULAR:    c.INTERACTION_REFLECTION,
+    SIONNA_INTERACTION_DIFFUSE:     c.INTERACTION_SCATTERING,
+    SIONNA_INTERACTION_REFRACTION:  c.INTERACTION_TRANSMISSION,
+    SIONNA_INTERACTION_DIFFRACTION: c.INTERACTION_DIFFRACTION,
+}
 
 MULTI_ANT_NDIM = 3
 TWO_D = 2
@@ -62,24 +69,24 @@ def _get_path_key(
 
 
 def _transform_interaction_types(types: np.ndarray) -> np.ndarray:
-    """Transform a (n_paths, max_depth) per-depth interaction array into DeepMIMO codes.
+    """Transform a (n_paths, max_depth) per-depth Sionna 2.0 interaction array into DeepMIMO codes.
 
-    Each element of the result is an integer formed by concatenating the non-zero
-    interaction type digits along the depth dimension.
+    Sionna 2.0 per-depth values: NONE=0, SPECULAR=1, DIFFUSE=2, REFRACTION=4, DIFFRACTION=8.
+    These are remapped to DeepMIMO codes: LOS=0, REFLECTION=1, DIFFRACTION=2, SCATTERING=3,
+    TRANSMISSION=4, then concatenated as digits to form the path code.
 
     Args:
-        types: Array of shape (n_paths, max_depth) with per-depth interaction types.
-               0 = LoS/padding, 1 = Reflection, 2 = Diffraction, 3 = Scattering.
+        types: Array of shape (n_paths, max_depth) with Sionna 2.0 InteractionType values.
 
     Returns:
         np.ndarray: Shape (n_paths,) where each element encodes the interaction sequence.
 
-    Example::
+    Example (after remapping SPECULAR=1→1, DIFFRACTION=8→2, DIFFUSE=2→3)::
 
         [[0, 0, 0],   ->  [0,    # LoS
-         [1, 1, 0],        11,   # Two reflections
-         [1, 3, 0],        13,   # Reflection then scattering
-         [2, 0, 0]]         2]   # Single diffraction
+         [1, 1, 0],        11,   # Two specular reflections
+         [1, 2, 0],        13,   # Reflection then scattering (DIFFUSE=2 → code 3)
+         [8, 0, 0]]         2]   # Single diffraction (DIFFRACTION=8 → code 2)
 
     """
     n_paths = types.shape[0]
@@ -94,8 +101,12 @@ def _transform_interaction_types(types: np.ndarray) -> np.ndarray:
         non_zero_mask = path != 0
         if np.any(non_zero_mask):
             non_zero_indices = np.where(non_zero_mask)[0]
-            valid_interactions = path[: non_zero_indices[-1] + 1]
-            interaction_str = "".join(str(int(x)) for x in valid_interactions if x != 0)
+            valid_raw = path[: non_zero_indices[-1] + 1]
+            # Remap Sionna 2.0 values to DeepMIMO codes
+            remapped = [
+                _SIONNA_TO_DEEPMIMO.get(int(x), int(x)) for x in valid_raw if x != 0
+            ]
+            interaction_str = "".join(str(v) for v in remapped)
             result[i] = float(interaction_str)
 
     return result
