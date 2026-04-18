@@ -49,7 +49,6 @@ from deepmimo.datasets.sampling import (
     get_linear_idxs,
     get_uniform_idxs,
 )
-from deepmimo.datasets.summary import plot_summary
 from deepmimo.datasets.visualization import (
     generate_distinct_colors,
     plot_coverage,
@@ -1335,6 +1334,8 @@ class Dataset(DotDict):
 
     def plot_summary(self, **kwargs: Any) -> Any:
         """Plot the summary of the dataset."""
+        from deepmimo.datasets.summary import plot_summary  # noqa: PLC0415
+
         return plot_summary(dataset=self, **kwargs)
 
     @property

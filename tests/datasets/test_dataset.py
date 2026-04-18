@@ -1,17 +1,25 @@
 """Dataset tests for DeepMIMO generator."""
 
+from unittest.mock import patch
+
 import numpy as np
 import pytest
 
 from deepmimo import consts as c
 from deepmimo.datasets.compat_v3 import _apply_v3_compat, _merge_rx_grids_v3, _rx_rank_map
 from deepmimo.datasets.dataset import (
+    SHARED_PARAMS,
     Dataset,
+    DelegatingList,
     DynamicDataset,
     MacroDataset,
     MergedGridDataset,
+    _missing_user_array,
+    _pad_concat_users,
+    merge_datasets,
 )
 from deepmimo.datasets.load import _validate_txrx_sets
+from deepmimo.generator.channel import ChannelParameters
 
 
 @pytest.fixture
@@ -480,8 +488,6 @@ def _make_minimal_path_dataset(n_ue: int = 2, n_paths: int = 2) -> Dataset:
 
 def _make_minimal_path_dataset_with_ch_params(n_ue: int = 2, n_paths: int = 2) -> Dataset:
     """Return a path dataset that also has valid ChannelParameters attached."""
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset(n_ue=n_ue, n_paths=n_paths)
     params = ChannelParameters(freq_domain=False, num_paths=n_paths)
     ds.set_channel_params(params)
@@ -497,16 +503,13 @@ def test_dir_includes_computed_attributes() -> None:
     """__dir__ must expose all computed attribute names."""
     ds = Dataset({"rx_pos": np.zeros((3, 3)), "tx_pos": np.zeros(3)})
     d = dir(ds)
-    from deepmimo.datasets.dataset import Dataset as _Dataset  # noqa: PLC0415
 
-    for attr in _Dataset._computed_attributes:  # noqa: SLF001
+    for attr in Dataset._computed_attributes:  # noqa: SLF001
         assert attr in d, f"Expected '{attr}' in dir(dataset)"
 
 
 def test_dir_includes_aliases() -> None:
     """__dir__ must also expose alias names defined in consts.DATASET_ALIASES."""
-    from deepmimo import consts as c  # noqa: PLC0415
-
     ds = Dataset({"rx_pos": np.zeros((3, 3)), "tx_pos": np.zeros(3)})
     d = dir(ds)
     for alias in c.DATASET_ALIASES:
@@ -625,9 +628,6 @@ def test_computed_pathloss() -> None:
 
 def test_set_channel_params_updates_params_on_rotation_change() -> None:
     """Calling set_channel_params twice with different rotations updates the stored params."""
-    from deepmimo import consts as c  # noqa: PLC0415
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset()
 
     params1 = ChannelParameters(freq_domain=False)
@@ -650,9 +650,6 @@ def test_set_channel_params_updates_params_on_rotation_change() -> None:
 
 def test_set_channel_params_no_cache_clear_if_same_rotation() -> None:
     """Calling set_channel_params twice with identical rotations must NOT clear the cache."""
-    from deepmimo import consts as c  # noqa: PLC0415
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset()
 
     params1 = ChannelParameters(freq_domain=False)
@@ -686,8 +683,6 @@ def test_set_channel_params_none_uses_defaults() -> None:
 
 def test_compute_channels_returns_correct_shape() -> None:
     """compute_channels in time-domain should return shape (n_ue, n_rx, n_tx, n_paths)."""
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     n_ue, n_paths = 2, 2
     ds = _make_minimal_path_dataset(n_ue=n_ue, n_paths=n_paths)
     params = ChannelParameters(
@@ -705,9 +700,6 @@ def test_compute_channels_returns_correct_shape() -> None:
 
 def test_compute_channels_stored_in_dataset() -> None:
     """After compute_channels, the result should be cached under 'channel'."""
-    from deepmimo import consts as c  # noqa: PLC0415
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset()
     params = ChannelParameters(
         freq_domain=False, bs_antenna={"shape": [1, 1]}, ue_antenna={"shape": [1, 1]}
@@ -1239,8 +1231,6 @@ def test_macro_dataset_get_single_empty_raises() -> None:
 
 def test_clear_all_caches_removes_computed_keys() -> None:
     """clear_all_caches should remove cached core computed arrays."""
-    from deepmimo import consts as c  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
     # Trigger computation of cached values that are removed by _clear_cache_core
     _ = ds.num_paths
@@ -1302,9 +1292,6 @@ def test_resolve_key_alias_with_stored_value() -> None:
 
 def test_compute_rotated_angles_returns_four_keys() -> None:
     """_compute_rotated_angles should return dict with 4 angle keys."""
-    from deepmimo import consts as c  # noqa: PLC0415
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
     ds.set_channel_params(ChannelParameters(freq_domain=False))
     result = ds._compute_rotated_angles()  # noqa: SLF001
@@ -1434,8 +1421,6 @@ def test_macro_dataset_slice_indexing() -> None:
 
 def test_merge_single_dataset_returns_same() -> None:
     """Merging a single dataset without axis overrides returns it unchanged."""
-    from deepmimo.datasets.dataset import merge_datasets  # noqa: PLC0415
-
     g1 = _make_grid_dataset(nx=3, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
     result = merge_datasets([g1])
     assert result is g1
@@ -1443,16 +1428,12 @@ def test_merge_single_dataset_returns_same() -> None:
 
 def test_merge_empty_dataset_list_raises() -> None:
     """merge_datasets with empty list should raise ValueError."""
-    from deepmimo.datasets.dataset import merge_datasets  # noqa: PLC0415
-
     with pytest.raises(ValueError, match="empty"):
         merge_datasets([])
 
 
 def test_merge_same_rx_set_different_tx_raises() -> None:
     """Merging datasets with different TX sets but same RX set raises NotImplementedError."""
-    from deepmimo.datasets.dataset import merge_datasets  # noqa: PLC0415
-
     g1 = _make_grid_dataset(nx=2, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
     g2 = _make_grid_dataset(nx=2, ny=2, tx_set_id=1, tx_idx=0, rx_set_id=0)
     with pytest.raises(NotImplementedError, match="multiple transmitters"):
@@ -1466,8 +1447,6 @@ def test_merge_same_rx_set_different_tx_raises() -> None:
 
 def test_compute_channels_with_num_timestamps() -> None:
     """compute_channels with num_timestamps should build time vector from OFDM params."""
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
     params = ChannelParameters(
         freq_domain=True,
@@ -1501,9 +1480,6 @@ def test_rx_ori_and_ue_ori_equal() -> None:
 
 def test_tx_ori_converts_degrees_to_radians() -> None:
     """tx_ori should convert rotation degrees to radians."""
-    from deepmimo import consts as c  # noqa: PLC0415
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset()
     params = ChannelParameters(freq_domain=False)
     params.bs_antenna[c.PARAMSET_ANT_ROTATION] = np.array([180.0, 0.0, 0.0])
@@ -1519,8 +1495,6 @@ def test_tx_ori_converts_degrees_to_radians() -> None:
 
 def test_ue_look_at_none_rx_pos_prints_warning(capsys) -> None:
     """ue_look_at should print a warning and return early if rx_pos is None."""
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = Dataset({"rx_pos": np.zeros((2, 3)), "n_ue": 2})
     params = ChannelParameters(freq_domain=False)
     ds.set_channel_params(params)
@@ -1555,9 +1529,6 @@ def test_ue_look_at_per_user_positions(sample_dataset) -> None:
 
 def test_compute_rotated_angles_random_bs_rotation() -> None:
     """When bs rotation is given as (3,2) range, it should be sampled randomly."""
-    from deepmimo import consts as c  # noqa: PLC0415
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
     params = ChannelParameters(freq_domain=False)
     # Set bs rotation as (3, 2) range: [[min, max], [min, max], [min, max]]
@@ -1573,9 +1544,6 @@ def test_compute_rotated_angles_random_bs_rotation() -> None:
 
 def test_compute_rotated_angles_random_ue_rotation() -> None:
     """When ue rotation is given as (3,2) range, it should be sampled per UE."""
-    from deepmimo import consts as c  # noqa: PLC0415
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     n_ue = 3
     ds = _make_minimal_path_dataset(n_ue=n_ue, n_paths=2)
     params = ChannelParameters(freq_domain=False)
@@ -1857,8 +1825,6 @@ def test_set_obj_vel_ndarray_2d_input() -> None:
 
 def test_compute_channels_uses_doppler_when_set() -> None:
     """compute_channels should use pre-set doppler shifts if present."""
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
     ds["max_paths"] = 2
     ds.set_doppler(10.0)
@@ -1880,8 +1846,6 @@ def test_compute_channels_uses_doppler_when_set() -> None:
 
 def test_compute_channels_no_doppler_warning(capsys) -> None:
     """compute_channels should warn when doppler is enabled but all velocities are zero."""
-    from deepmimo.generator.channel import ChannelParameters  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset(n_ue=2, n_paths=2)
     params = ChannelParameters(
         freq_domain=False,
@@ -1902,8 +1866,6 @@ def test_compute_channels_no_doppler_warning(capsys) -> None:
 
 def test_info_with_alias_prints_resolution(capsys) -> None:
     """info() called with an alias should print the alias resolution and then help."""
-    from deepmimo import consts as c  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset()
     # Pick any valid alias key
     alias_key = next(iter(c.DATASET_ALIASES))
@@ -1919,8 +1881,6 @@ def test_info_with_alias_prints_resolution(capsys) -> None:
 
 def test_to_binary_uses_name_attribute(tmp_path) -> None:
     """to_binary should use the dataset's name attribute for the file name."""
-    from unittest.mock import patch  # noqa: PLC0415
-
     ds = _make_minimal_path_dataset()
     ds.name = "my_test_dataset"
 
@@ -1964,8 +1924,6 @@ def test_merged_grid_dataset_single_int_idx() -> None:
 
 def test_merge_datasets_pads_different_tail_shapes() -> None:
     """Merging datasets with arrays of different n_paths should pad with NaN."""
-    from deepmimo.datasets.dataset import merge_datasets  # noqa: PLC0415
-
     g1 = _make_grid_dataset(nx=2, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
     g2 = _make_grid_dataset(nx=2, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
     # Give g2 more paths than g1
@@ -1985,8 +1943,6 @@ def test_merge_datasets_pads_different_tail_shapes() -> None:
 
 def test_merge_datasets_keeps_first_scalar() -> None:
     """Merging datasets where a key holds a scalar keeps the first dataset's value."""
-    from deepmimo.datasets.dataset import merge_datasets  # noqa: PLC0415
-
     g1 = _make_grid_dataset(nx=2, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
     g2 = _make_grid_dataset(nx=2, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
     g1["scalar_key"] = 42
@@ -2002,8 +1958,6 @@ def test_merge_datasets_keeps_first_scalar() -> None:
 
 def test_macro_dataset_string_key_returns_shared_param() -> None:
     """MacroDataset[string] should return shared parameter from first dataset."""
-    from deepmimo.datasets.dataset import SHARED_PARAMS  # noqa: PLC0415
-
     g1 = _make_grid_dataset(nx=2, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=0)
     g2 = _make_grid_dataset(nx=2, ny=2, tx_set_id=0, tx_idx=0, rx_set_id=1)
     g1["scene"] = "scene_val"
@@ -2036,7 +1990,6 @@ def test_macro_dataset_info_propagates_to_first_only() -> None:
 
 def test_dynamic_dataset_get_single_scene() -> None:
     """DynamicDataset._get_single('scene') should return a DelegatingList of scenes."""
-    from deepmimo.datasets.dataset import DelegatingList  # noqa: PLC0415
 
     class _MockScene:
         pass
@@ -2063,8 +2016,6 @@ def test_dynamic_dataset_get_single_scene() -> None:
 
 def test_dynamic_dataset_txrx_sets_calls_get_txrx_sets() -> None:
     """DynamicDataset.txrx_sets should call get_txrx_sets with the scenario name."""
-    from unittest.mock import patch  # noqa: PLC0415
-
     ds1 = Dataset({"rx_pos": np.zeros((2, 3)), "tx_pos": np.zeros(3)})
     ds1.name = "s1"
     dyn = DynamicDataset([ds1], name="dyn_scenario")
@@ -2180,8 +2131,6 @@ def test_dynamic_dataset_compute_speeds_last_scene() -> None:
 
 def test_pad_concat_users_integer_arrays() -> None:
     """_pad_concat_users should cast integer arrays to float32 and pad with NaN."""
-    from deepmimo.datasets.dataset import _pad_concat_users  # noqa: PLC0415
-
     arr1 = np.array([[1, 2]], dtype=np.int32)  # shape (1, 2)
     arr2 = np.array([[3, 4, 5]], dtype=np.int32)  # shape (1, 3) - different tail
     result = _pad_concat_users([arr1, arr2])
@@ -2196,8 +2145,6 @@ def test_pad_concat_users_integer_arrays() -> None:
 
 def test_missing_user_array_integer_dtype() -> None:
     """_missing_user_array with integer dtype should return float32 NaN array."""
-    from deepmimo.datasets.dataset import _missing_user_array  # noqa: PLC0415
-
     result = _missing_user_array(3, (2,), dtype=np.int32)
     assert result.dtype == np.float32
     assert np.all(np.isnan(result))
@@ -2205,8 +2152,6 @@ def test_missing_user_array_integer_dtype() -> None:
 
 def test_missing_user_array_complex_dtype() -> None:
     """_missing_user_array with complex dtype should return complex NaN array."""
-    from deepmimo.datasets.dataset import _missing_user_array  # noqa: PLC0415
-
     result = _missing_user_array(2, (3,), dtype=np.complex64)
     assert np.issubdtype(result.dtype, np.complexfloating)
     assert np.all(np.isnan(result.real))

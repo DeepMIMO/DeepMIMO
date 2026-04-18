@@ -42,6 +42,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from deepmimo import consts as c
+from deepmimo.datasets.load import load
 from deepmimo.utils import get_params_path, load_dict_from_json
 
 from .stats import stats
@@ -340,9 +341,6 @@ def plot_summary(
         List of paths to generated images
 
     """
-    # Import load function here to avoid circular import
-    from .load import load  # noqa: PLC0415
-
     # Create figures directory if it doesn't exist
     temp_dir = "./figures"
     if save_imgs:

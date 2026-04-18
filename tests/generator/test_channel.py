@@ -1,11 +1,17 @@
 """Channel generation tests for DeepMIMO."""
 
+from copy import deepcopy
+
 import numpy as np
 import pytest
 
 from deepmimo import consts as c
 from deepmimo.generator.channel import (
     ChannelParameters,
+    OFDMPathGenerator,
+    _check_ofdm_compatibility,
+    _compute_single_freq_channel,
+    _compute_single_time_channel,
     _convert_lists_to_arrays,
     _generate_mimo_channel,
     _validate_ant_rad_pat,
@@ -220,15 +226,6 @@ def test_validate_ant_rad_pat_invalid_raises() -> None:
 # ---------------------------------------------------------------------------
 # Additional coverage tests for channel.py
 # ---------------------------------------------------------------------------
-
-from copy import deepcopy  # noqa: E402
-
-from deepmimo.generator.channel import (  # noqa: E402
-    OFDMPathGenerator,
-    _check_ofdm_compatibility,
-    _compute_single_freq_channel,
-    _compute_single_time_channel,
-)
 
 # ── ChannelParameters.__init__ with data dict (line 198) ───────────────────
 
@@ -512,3 +509,43 @@ def test_compute_single_time_channel_no_squeeze() -> None:
 
     assert result.shape == (2, 3, p_max, n_t)
     assert result.dtype == np.complex64
+
+
+# ── _generate_mimo_channel: zero-path user skipped (line 576) ────────────────
+
+
+def test_generate_mimo_channel_all_nan_user_skipped() -> None:
+    """User with all-NaN powers should be skipped (channel row stays zero)."""
+    ofdm_params = deepcopy(ChannelParameters.DEFAULT_PARAMS[c.PARAMSET_OFDM])
+
+    n_users, m_rx, m_tx, p_max = 2, 1, 1, 2
+    array_response = np.ones((n_users, m_rx, m_tx, p_max), dtype=complex)
+
+    power = np.array([[np.nan, np.nan], [1.0, 1.0]])
+    delay = np.zeros((n_users, p_max))
+    phase = np.zeros((n_users, p_max))
+    doppler = np.zeros((n_users, p_max))
+
+    channel = _generate_mimo_channel(
+        array_response_product=array_response,
+        power=power,
+        delay=delay,
+        phase=phase,
+        doppler=doppler,
+        ofdm_params=ofdm_params,
+        times=0.0,
+        freq_domain=False,
+    )
+
+    # User 0 (all-NaN paths) must remain zero; user 1 must be non-zero.
+    np.testing.assert_allclose(np.abs(channel[0]), 0.0)
+    assert np.any(np.abs(channel[1]) > 0)
+
+
+# ── _validate_ofdm_subcarriers: missing keys early-return (line 233) ─────────
+
+
+def test_validate_ofdm_subcarriers_missing_keys_returns_early() -> None:
+    """Params without SC_SAMP/SC_NUM keys should return without raising."""
+    cp = ChannelParameters()
+    cp._validate_ofdm_subcarriers({})  # noqa: SLF001

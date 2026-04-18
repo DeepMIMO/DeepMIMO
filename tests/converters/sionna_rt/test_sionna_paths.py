@@ -14,6 +14,7 @@ import pytest
 from deepmimo import consts as c
 from deepmimo.converters.sionna_rt import sionna_paths
 from deepmimo.converters.sionna_rt.sionna_paths import (
+    _SIONNA_TO_DEEPMIMO,
     SIONNA_INTERACTION_DIFFRACTION,
     SIONNA_INTERACTION_DIFFUSE,
     SIONNA_INTERACTION_NONE,
@@ -165,8 +166,6 @@ def test_sionna_interaction_constants() -> None:
 
 def test_remapping_table_completeness() -> None:
     """Every non-NONE Sionna 2.0 type maps to a known DeepMIMO code."""
-    from deepmimo.converters.sionna_rt.sionna_paths import _SIONNA_TO_DEEPMIMO  # noqa: PLC0415
-
     sionna_types = {
         SIONNA_INTERACTION_SPECULAR,
         SIONNA_INTERACTION_DIFFUSE,

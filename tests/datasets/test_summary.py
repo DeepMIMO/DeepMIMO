@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+from scipy.spatial import QhullError
 
 from deepmimo import consts as c
 from deepmimo.datasets.dataset import Dataset, DynamicDataset, MacroDataset
@@ -22,6 +23,7 @@ from deepmimo.datasets.stats import (
     _compute_power_stats,
     _compute_rms_delays,
     _compute_scene_stats,
+    _compute_stats,
     _compute_terrain_stats,
     _empty_descriptive_stats,
     _empty_path_stats_and_context,
@@ -31,7 +33,9 @@ from deepmimo.datasets.stats import (
     _format_optional_pair,
     _format_section_lines,
     _format_stats,
+    _resolve_stats_datasets,
     _robust_stats,
+    _selector_matches_id,
     stats,
 )
 from deepmimo.datasets.summary import plot_summary, summary
@@ -154,7 +158,7 @@ class TestSummary(unittest.TestCase):
     )
     @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
     @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
-    @patch("deepmimo.datasets.load.load")
+    @patch("deepmimo.datasets.stats.load")
     def test_stats_calls_targeted_load(
         self, mock_load, mock_compute, mock_format, mock_scene_stats
     ) -> None:
@@ -182,7 +186,7 @@ class TestSummary(unittest.TestCase):
     )
     @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
     @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
-    @patch("deepmimo.datasets.load.load")
+    @patch("deepmimo.datasets.stats.load")
     def test_stats_uses_first_dynamic_snapshot(
         self, mock_load, mock_compute, mock_format, mock_scene_stats
     ) -> None:
@@ -208,7 +212,7 @@ class TestSummary(unittest.TestCase):
     )
     @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
     @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
-    @patch("deepmimo.datasets.load.load")
+    @patch("deepmimo.datasets.stats.load")
     def test_stats_raises_when_no_dataset_matches_selectors(
         self, mock_load, mock_compute, mock_format, mock_scene_stats
     ) -> None:
@@ -230,7 +234,7 @@ class TestSummary(unittest.TestCase):
     )
     @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
     @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
-    @patch("deepmimo.datasets.load.load")
+    @patch("deepmimo.datasets.stats.load")
     def test_stats_uses_load_default_rx_sets_when_omitted(
         self, mock_load, mock_compute, mock_format, mock_scene_stats
     ) -> None:
@@ -257,7 +261,7 @@ class TestSummary(unittest.TestCase):
     )
     @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
     @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
-    @patch("deepmimo.datasets.load.load")
+    @patch("deepmimo.datasets.stats.load")
     def test_stats_supports_multiple_tx_sets(
         self, mock_load, mock_compute, mock_format, mock_scene_stats
     ) -> None:
@@ -1105,7 +1109,7 @@ def test_stats_empty_rx_sets_dict_raises() -> None:
 # ---------------------------------------------------------------------------
 
 
-@patch("deepmimo.datasets.load.load")
+@patch("deepmimo.datasets.stats.load")
 def test_stats_load_raises_value_error_is_reraised(mock_load) -> None:
     """ValueError from load() should be caught and re-raised with context info."""
     mock_load.side_effect = ValueError("scenario not found")
@@ -1113,7 +1117,7 @@ def test_stats_load_raises_value_error_is_reraised(mock_load) -> None:
         stats("missing_scenario", print_summary=False)
 
 
-@patch("deepmimo.datasets.load.load")
+@patch("deepmimo.datasets.stats.load")
 def test_stats_load_raises_includes_original_message(mock_load) -> None:
     """Reraised ValueError should contain the original load error message."""
     mock_load.side_effect = ValueError("disk read error")
@@ -1132,7 +1136,7 @@ def test_stats_load_raises_includes_original_message(mock_load) -> None:
 )
 @patch("deepmimo.datasets.stats._format_stats", return_value="STATS OUTPUT")
 @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
-@patch("deepmimo.datasets.load.load")
+@patch("deepmimo.datasets.stats.load")
 def test_stats_print_summary_true_prints_and_returns_none(
     mock_load,
     _mock_compute,  # noqa: PT019
@@ -1157,7 +1161,7 @@ def test_stats_print_summary_true_prints_and_returns_none(
 )
 @patch("deepmimo.datasets.stats._format_stats", return_value="STATS OUTPUT")
 @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
-@patch("deepmimo.datasets.load.load")
+@patch("deepmimo.datasets.stats.load")
 def test_stats_print_summary_false_returns_string_no_print(
     mock_load,
     _mock_compute,  # noqa: PT019
@@ -1181,7 +1185,7 @@ def test_stats_print_summary_false_returns_string_no_print(
 )
 @patch("deepmimo.datasets.stats._format_stats", return_value="formatted stats")
 @patch("deepmimo.datasets.stats._compute_stats", return_value={"path": {}})
-@patch("deepmimo.datasets.load.load")
+@patch("deepmimo.datasets.stats.load")
 def test_stats_print_summary_prints_dynamic_snapshot_message(
     mock_load,
     _mock_compute,  # noqa: PT019
@@ -1205,8 +1209,6 @@ def test_stats_print_summary_prints_dynamic_snapshot_message(
 # ---------------------------------------------------------------------------
 # Additional coverage: _resolve_stats_datasets error paths (lines 629-630, 635-637)
 # ---------------------------------------------------------------------------
-
-from deepmimo.datasets.stats import _resolve_stats_datasets  # noqa: E402
 
 
 def test_resolve_stats_datasets_empty_dynamic_raises() -> None:
@@ -1245,8 +1247,6 @@ def test_resolve_stats_datasets_macro_returns_message() -> None:
 # Additional coverage: _selector_matches_id branches (lines 652, 654)
 # ---------------------------------------------------------------------------
 
-from deepmimo.datasets.stats import _selector_matches_id  # noqa: E402
-
 
 def test_selector_matches_id_none_selector_returns_true() -> None:
     """None selector should match any set_id."""
@@ -1284,8 +1284,6 @@ def test_selector_matches_id_list_selector_match() -> None:
 # Additional coverage: _compute_stats with cached_scene_stats=None (lines 691-695)
 # ---------------------------------------------------------------------------
 
-from deepmimo.datasets.stats import _compute_stats  # noqa: E402
-
 
 @patch("deepmimo.datasets.stats._compute_scene_stats")
 @patch("deepmimo.datasets.stats._compute_channel_stats")
@@ -1319,10 +1317,6 @@ def test_compute_stats_does_not_recompute_scene_when_cached(mock_channel, mock_s
 
 def test_building_volume_qhull_error_returns_zero() -> None:
     """When ConvexHull raises QhullError, _building_volume should return 0.0."""
-    from unittest.mock import patch as mock_patch  # noqa: PLC0415
-
-    from scipy.spatial import QhullError  # noqa: PLC0415
-
     obj = MagicMock()
     # Provide enough non-coplanar unique points so we pass the rank check,
     # but patch ConvexHull to raise QhullError anyway.
@@ -1334,6 +1328,6 @@ def test_building_volume_qhull_error_returns_zero() -> None:
             [0.0, 0.0, 1.0],
         ]
     )
-    with mock_patch("deepmimo.datasets.stats.ConvexHull", side_effect=QhullError("forced")):
+    with patch("deepmimo.datasets.stats.ConvexHull", side_effect=QhullError("forced")):
         result = _building_volume(obj)
     assert result == pytest.approx(0.0)

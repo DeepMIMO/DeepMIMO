@@ -9,10 +9,16 @@ import pytest
 from deepmimo import consts as c
 from deepmimo.datasets import generate as generate_func
 from deepmimo.datasets import load as load_func
+from deepmimo.datasets.dataset import Dataset
 from deepmimo.datasets.load import (
+    DynamicDataset,
+    MacroDataset,
+    _load_raytracing_scene,
+    _load_tx_rx_raydata,
     _process_dict_sets,
     _process_list_sets,
     _process_str_sets,
+    _validate_txrx_sets,
     validate_txrx_sets,
 )
 
@@ -221,14 +227,6 @@ def test_process_str_sets_invalid_raises() -> None:
 # ---------------------------------------------------------------------------
 
 
-from deepmimo.datasets.load import (  # noqa: E402
-    DynamicDataset,
-    MacroDataset,
-    _load_raytracing_scene,
-    _load_tx_rx_raydata,
-    _validate_txrx_sets,
-)
-
 _PARAMS_SINGLE = {
     c.SCENE_PARAM_NAME: {c.SCENE_PARAM_NUMBER_SCENES: 1},
     c.TXRX_PARAM_NAME: {
@@ -375,8 +373,6 @@ def test_load_raytracing_scene_multiple_tx_returns_macro() -> None:
 
 def test_load_raytracing_scene_single_tx_returns_dataset() -> None:
     """A single TX index should return a plain Dataset (not MacroDataset)."""
-    from deepmimo.datasets.dataset import Dataset  # noqa: PLC0415
-
     txrx_dict = {
         "txrx_set_0": {"id": 0, "is_tx": True, "is_rx": False, "num_points": 1},
         "txrx_set_1": {"id": 1, "is_tx": False, "is_rx": True, "num_points": 3},
