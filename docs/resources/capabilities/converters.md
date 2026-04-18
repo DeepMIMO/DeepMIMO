@@ -195,4 +195,4 @@ dataset = dm.load(scenario_name)
 - [Comparing Ray Tracers](../comparing_raytracers.md) - Ray-tracer feature comparison
 - [Ray-Tracing Guidelines](../raytracing_guidelines.md) - Best practices
 - [Exporters Capabilities](exporters.md) - Exporting data before conversion
-- [Converter Tutorial](../../tutorials/7_converters.py) - Converter usage examples
+- [Converter Tutorial](../../tutorials/7_converters.ipynb) - Converter usage examples

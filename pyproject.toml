@@ -63,6 +63,10 @@ dev = [
     "mkdocs-jupyter>=0.25",
     "pymdown-extensions>=10.0",
     "mkdocs-material-extensions>=1.3",
+    # pygments 2.20 broke mkdocstrings: pymdownx passes filename=None for
+    # untitled code blocks and html.escape(None) raises AttributeError.
+    # Remove upper bound once pymdownx or pygments ships a fix.
+    "pygments>=2.19.2,<2.20",
 
     # MkDocs API docs
     "mkdocstrings[python]>=0.25",
