@@ -109,13 +109,13 @@ sionna = [
     "lxml",              # To be replaced by built-in (see insite_raytracer.py)
     "pandas",
     "shapely",           # Used to create building polygons (see pipeline_csv_gen.py)
-    "bpy==3.6.0; python_version == '3.10'",
-    "bpy==4.4.0; python_version == '3.11'",
-    "numpy<2.0; python_version == '3.11'",
+    "bpy==4.4.0",
     "ipykernel",
 
-    # Sionna 1.0
-    "sionna-rt==1.0.2",  # Sionna Ray Tracer (pins "mitsuba==3.6.2")
+    # Sionna 2.0 (requires Python 3.11+, mitsuba 3.8.0, drjit 1.3.1)
+    "sionna-rt>=2.0.1",
+    "mitsuba==3.8.0",
+    "drjit==1.3.1",
 
     # Development
     "jupyter"
@@ -125,20 +125,20 @@ sionna = [
 # Combination of [dev], [sionna], [insite] and [aodt]
 all = [
     # Common ray tracing pipeline tools
-    "utm",               
-    "lxml",              
-    "pandas",            
-    "shapely",           
-    "bpy==3.6.0; python_version == '3.10'",
-    "bpy==4.4.0; python_version == '3.11'",
-    "numpy<2.0; python_version == '3.11'",
+    "utm",
+    "lxml",
+    "pandas",
+    "shapely",
+    "bpy==4.4.0",
     "ipykernel",
 
     # InSite
-    "plyfile",           
-    
-    # Sionna
-    "sionna-rt==1.0.2",
+    "plyfile",
+
+    # Sionna 2.0
+    "sionna-rt>=2.0.1",
+    "mitsuba==3.8.0",
+    "drjit==1.3.1",
 
     # AODT
     "pyarrow",
