@@ -17,7 +17,7 @@ except ImportError:
     mock_sionna = MagicMock()
     mock_sionna.rt.Paths = MagicMock
     mock_sionna.rt.Scene = MagicMock
-    sys.modules["sionna"]    = mock_sionna
+    sys.modules["sionna"] = mock_sionna
     sys.modules["sionna.rt"] = mock_sionna.rt
 
 from deepmimo.exporters import sionna_exporter

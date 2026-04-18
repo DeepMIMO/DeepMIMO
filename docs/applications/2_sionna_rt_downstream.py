@@ -53,33 +53,33 @@ from deepmimo.exporters.sionna_exporter import sionna_exporter
 # on a rooftop; receivers are placed at street level.
 
 # %%
-CARRIER_FREQ = 3.5e9   # 3.5 GHz
-MAX_DEPTH    = 3       # Maximum reflection/refraction bounces
-N_SAMPLES    = 2_000_000  # Monte-Carlo rays per source
+CARRIER_FREQ = 3.5e9  # 3.5 GHz
+MAX_DEPTH = 3  # Maximum reflection/refraction bounces
+N_SAMPLES = 2_000_000  # Monte-Carlo rays per source
 
 # Transmitter position (rooftop)
 TX_POS = [-210.0, 73.0, 105.0]
 
 # Street-level receiver positions (x, y, z)
 RX_POSITIONS = [
-    [ 40.0,  20.0, 1.5],
-    [ 20.0,  10.0, 1.5],
-    [ 20.0,  50.0, 1.5],
-    [ 10.0,  40.0, 1.5],
-    [ 30.0,  60.0, 1.5],
-    [-10.0,  30.0, 1.5],
-    [  0.0,  60.0, 1.5],
-    [ 50.0,  50.0, 1.5],
+    [40.0, 20.0, 1.5],
+    [20.0, 10.0, 1.5],
+    [20.0, 50.0, 1.5],
+    [10.0, 40.0, 1.5],
+    [30.0, 60.0, 1.5],
+    [-10.0, 30.0, 1.5],
+    [0.0, 60.0, 1.5],
+    [50.0, 50.0, 1.5],
 ]
 
 # Ray-tracing parameters forwarded to PathSolver
 RT_PARAMS = {
-    "max_depth":           MAX_DEPTH,
-    "los":                 True,
+    "max_depth": MAX_DEPTH,
+    "los": True,
     "specular_reflection": True,
-    "diffuse_reflection":  False,
-    "refraction":          True,
-    "samples_per_src":     N_SAMPLES,
+    "diffuse_reflection": False,
+    "refraction": True,
+    "samples_per_src": N_SAMPLES,
 }
 
 # %% [markdown]
@@ -117,8 +117,8 @@ print(f"Added {len(RX_POSITIONS)} receivers at street level")
 p_solver = PathSolver()
 paths = p_solver(scene=scene, **RT_PARAMS)
 
-n_rx   = paths.tau.shape[0]
-n_tx   = paths.tau.shape[1]
+n_rx = paths.tau.shape[0]
+n_tx = paths.tau.shape[1]
 n_paths = paths.tau.shape[2]
 print(f"Paths found: {n_paths} (across {n_rx} RX x {n_tx} TX)")
 print(f"Channel coeff shape (a[0]):  {paths.a[0].shape}")

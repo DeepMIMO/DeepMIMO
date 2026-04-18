@@ -29,15 +29,19 @@ from deepmimo.utils import load_pickle  # noqa: E402
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def simple_scene():
     """Build a minimal Sionna floor_wall scene with 1 TX and 3 RX."""
     scene = sionna_rt.load_scene(sionna_rt.scene.floor_wall)
     scene.frequency = 3.5e9
     ant = PlanarArray(
-        num_rows=1, num_cols=1,
-        vertical_spacing=0.5, horizontal_spacing=0.5,
-        pattern="iso", polarization="V",
+        num_rows=1,
+        num_cols=1,
+        vertical_spacing=0.5,
+        horizontal_spacing=0.5,
+        pattern="iso",
+        polarization="V",
     )
     scene.tx_array = ant
     scene.rx_array = ant
@@ -66,6 +70,7 @@ def computed_paths(simple_scene):
 # export_paths
 # ---------------------------------------------------------------------------
 
+
 class TestExportPaths:
     """export_paths must convert Sionna Paths to well-formed dicts."""
 
@@ -82,8 +87,18 @@ class TestExportPaths:
 
     def test_required_keys_present(self, computed_paths) -> None:
         """All required keys must be present in the exported dict."""
-        required = {"a", "tau", "phi_r", "phi_t", "theta_r", "theta_t",
-                    "vertices", "interactions", "sources", "targets"}
+        required = {
+            "a",
+            "tau",
+            "phi_r",
+            "phi_t",
+            "theta_r",
+            "theta_t",
+            "vertices",
+            "interactions",
+            "sources",
+            "targets",
+        }
         result = export_paths(computed_paths)[0]
         assert required.issubset(result.keys())
 
@@ -113,6 +128,7 @@ class TestExportPaths:
 # export_scene_materials
 # ---------------------------------------------------------------------------
 
+
 class TestExportSceneMaterials:
     """export_scene_materials must return a usable materials list."""
 
@@ -124,8 +140,14 @@ class TestExportSceneMaterials:
 
     def test_material_has_required_keys(self, simple_scene) -> None:
         """Each material dict must contain all required property keys."""
-        required = {"name", "conductivity", "relative_permittivity",
-                    "scattering_coefficient", "xpd_coefficient", "scattering_pattern"}
+        required = {
+            "name",
+            "conductivity",
+            "relative_permittivity",
+            "scattering_coefficient",
+            "xpd_coefficient",
+            "scattering_pattern",
+        }
         mats, _ = export_scene_materials(simple_scene)
         for mat in mats:
             assert required.issubset(mat.keys()), f"Missing keys in material: {mat}"
@@ -147,14 +169,24 @@ class TestExportSceneMaterials:
 # export_scene_rt_params
 # ---------------------------------------------------------------------------
 
+
 class TestExportSceneRtParams:
     """export_scene_rt_params must capture scene and solver settings."""
 
     def test_required_keys(self, simple_scene) -> None:
         """All expected parameter keys must be present in the output dict."""
-        required = {"bandwidth", "frequency", "rx_array_num_ant", "tx_array_num_ant",
-                    "synthetic_array", "raytracer_version", "max_depth",
-                    "los", "specular_reflection", "diffuse_reflection"}
+        required = {
+            "bandwidth",
+            "frequency",
+            "rx_array_num_ant",
+            "tx_array_num_ant",
+            "synthetic_array",
+            "raytracer_version",
+            "max_depth",
+            "los",
+            "specular_reflection",
+            "diffuse_reflection",
+        }
         params = export_scene_rt_params(simple_scene, max_depth=3)
         assert required.issubset(params.keys())
 
@@ -173,10 +205,10 @@ class TestExportSceneRtParams:
     def test_aliases_present(self, simple_scene) -> None:
         """Converter-compatibility aliases must be present."""
         params = export_scene_rt_params(simple_scene)
-        assert "num_samples"  in params
-        assert "reflection"   in params
-        assert "scattering"   in params
-        assert "diffraction"  in params
+        assert "num_samples" in params
+        assert "reflection" in params
+        assert "scattering" in params
+        assert "diffraction" in params
 
     def test_raytracer_version_is_string_or_none(self, simple_scene) -> None:
         """raytracer_version must be a version string or None."""
@@ -187,6 +219,7 @@ class TestExportSceneRtParams:
 # ---------------------------------------------------------------------------
 # export_scene_buildings
 # ---------------------------------------------------------------------------
+
 
 class TestExportSceneBuildings:
     """export_scene_buildings must return valid geometry arrays."""
@@ -220,15 +253,21 @@ class TestExportSceneBuildings:
 # sionna_exporter (full pipeline)
 # ---------------------------------------------------------------------------
 
+
 class TestSionnaExporter:
     """End-to-end test: scene + paths → pkl files on disk."""
 
     def test_files_created(self, simple_scene, computed_paths) -> None:
         """All six expected .pkl files must be created in the save folder."""
         with tempfile.TemporaryDirectory() as tmpdir:
-            rt_params = {"max_depth": 2, "los": True, "specular_reflection": True,
-                         "diffuse_reflection": False, "refraction": True,
-                         "samples_per_src": 500_000}
+            rt_params = {
+                "max_depth": 2,
+                "los": True,
+                "specular_reflection": True,
+                "diffuse_reflection": False,
+                "refraction": True,
+                "samples_per_src": 500_000,
+            }
             sionna_exporter(simple_scene, computed_paths, rt_params, tmpdir)
 
             expected = {

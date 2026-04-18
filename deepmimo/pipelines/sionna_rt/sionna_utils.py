@@ -19,18 +19,18 @@ from sionna.rt import (
 # modifying an existing RadioMaterial (string assignment is only valid in
 # the RadioMaterial constructor).
 _CONCRETE_SCATTERING_COEFF = 0.4
-_CONCRETE_XPD_COEFF        = 0.4
-_CONCRETE_ALPHA_R          = 4
-_CONCRETE_ALPHA_I          = 4
-_CONCRETE_LAMBDA           = 0.75
+_CONCRETE_XPD_COEFF = 0.4
+_CONCRETE_ALPHA_R = 4
+_CONCRETE_ALPHA_I = 4
+_CONCRETE_LAMBDA = 0.75
 
 # --- Asphalt material parameters ---
 # ITU-R P.2040 does not include asphalt; these values come from measurement
 # campaigns at similar frequencies and match common simulation practice.
-_ASPHALT_PERMITTIVITY       = 5.72
-_ASPHALT_CONDUCTIVITY       = 5e-4
-_ASPHALT_SCATTERING_COEFF  = 0.4
-_ASPHALT_XPD_COEFF         = 0.4
+_ASPHALT_PERMITTIVITY = 5.72
+_ASPHALT_CONDUCTIVITY = 5e-4
+_ASPHALT_SCATTERING_COEFF = 0.4
+_ASPHALT_XPD_COEFF = 0.4
 
 
 def get_sionna_version() -> str | None:
@@ -60,7 +60,7 @@ def set_materials(scene: Scene) -> Scene:
         if mat_name == "itu_concrete":
             mat = scene.objects[obj.name].radio_material
             mat.scattering_coefficient = _CONCRETE_SCATTERING_COEFF
-            mat.xpd_coefficient        = _CONCRETE_XPD_COEFF
+            mat.xpd_coefficient = _CONCRETE_XPD_COEFF
             # Must assign a BackscatteringPattern object here — assigning a
             # string to an existing RadioMaterial raises a TypeError in 2.0.
             mat.scattering_pattern = BackscatteringPattern(

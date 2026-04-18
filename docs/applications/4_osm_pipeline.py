@@ -72,19 +72,19 @@ BBOX = {
 }
 
 # Carrier frequency
-CARRIER_FREQ = 3.5e9   # 3.5 GHz
+CARRIER_FREQ = 3.5e9  # 3.5 GHz
 
 # Sionna RT ray-tracing settings
-MAX_DEPTH    = 3       # maximum reflection/refraction bounces
-N_SAMPLES    = 2_000_000  # Monte-Carlo rays per transmitter
+MAX_DEPTH = 3  # maximum reflection/refraction bounces
+N_SAMPLES = 2_000_000  # Monte-Carlo rays per transmitter
 
 # Transmitter (base station) position in local Cartesian metres
 # (0, 0) is the centre of the bounding box; z is height above ground
-TX_POS = np.array([[0.0, 0.0, 25.0]])   # single BS at 25 m height
+TX_POS = np.array([[0.0, 0.0, 25.0]])  # single BS at 25 m height
 
 # UE grid settings
-UE_HEIGHT    = 1.5    # metres above ground
-GRID_SPACING = 20.0   # metres between UE positions
+UE_HEIGHT = 1.5  # metres above ground
+GRID_SPACING = 20.0  # metres between UE positions
 
 # %% [markdown]
 # ## Step 1 — Generate the Mitsuba Scene from OSM
@@ -95,7 +95,7 @@ GRID_SPACING = 20.0   # metres between UE positions
 # GPS coordinates can be recovered later.
 
 # %%
-scene_folder = tempfile.mkdtemp()   # use any writable directory
+scene_folder = tempfile.mkdtemp()  # use any writable directory
 
 osm_scene_folder = generate_scene(
     minlat=BBOX["minlat"],
@@ -126,9 +126,12 @@ print(f"Sample materials: {[o.radio_material.name for o in list(scene.objects.va
 
 # Single isotropic antenna for both TX and RX
 single_ant = PlanarArray(
-    num_rows=1, num_cols=1,
-    vertical_spacing=0.5, horizontal_spacing=0.5,
-    pattern="iso", polarization="V",
+    num_rows=1,
+    num_cols=1,
+    vertical_spacing=0.5,
+    horizontal_spacing=0.5,
+    pattern="iso",
+    polarization="V",
 )
 scene.tx_array = single_ant
 scene.rx_array = single_ant
@@ -146,8 +149,12 @@ print(f"Local coordinate origin: ({origin_lat:.6f}, {origin_lon:.6f})")
 
 # Bounding box in local Cartesian
 xmin, ymin, xmax, ymax = convert_GpsBBox2CartesianBBox(
-    BBOX["minlat"], BBOX["minlon"], BBOX["maxlat"], BBOX["maxlon"],
-    origin_lat, origin_lon,
+    BBOX["minlat"],
+    BBOX["minlon"],
+    BBOX["maxlat"],
+    BBOX["maxlon"],
+    origin_lat,
+    origin_lon,
 )
 print(f"Scene extent: X=[{xmin:.0f}, {xmax:.0f}] m,  Y=[{ymin:.0f}, {ymax:.0f}] m")
 
@@ -156,8 +163,7 @@ scene.add(Transmitter("tx_0", position=TX_POS[0].tolist()))
 print(f"TX at {TX_POS[0]}")
 
 # Generate UE grid and add receivers
-rx_pos = gen_plane_grid(xmin + 10, xmax - 10, ymin + 10, ymax - 10,
-                        GRID_SPACING, UE_HEIGHT)
+rx_pos = gen_plane_grid(xmin + 10, xmax - 10, ymin + 10, ymax - 10, GRID_SPACING, UE_HEIGHT)
 print(f"UE grid: {len(rx_pos)} positions")
 
 for i, pos in enumerate(rx_pos):
@@ -169,12 +175,12 @@ print(f"Added {len(rx_pos)} receivers")
 
 # %%
 RT_PARAMS = {
-    "max_depth":           MAX_DEPTH,
-    "los":                 True,
+    "max_depth": MAX_DEPTH,
+    "los": True,
     "specular_reflection": True,
-    "diffuse_reflection":  False,
-    "refraction":          True,
-    "samples_per_src":     N_SAMPLES,
+    "diffuse_reflection": False,
+    "refraction": True,
+    "samples_per_src": N_SAMPLES,
 }
 
 print("Running ray tracing...")
@@ -227,8 +233,12 @@ pwr_db = 10 * np.log10(pwr_linear + 1e-30)
 # Scatter plot: UE position coloured by received power
 fig, ax = plt.subplots(figsize=(8, 7))
 sc = ax.scatter(
-    dataset.rx_pos[:, 0], dataset.rx_pos[:, 1],
-    c=pwr_db, cmap="viridis", s=40, vmin=np.percentile(pwr_db, 5),
+    dataset.rx_pos[:, 0],
+    dataset.rx_pos[:, 1],
+    c=pwr_db,
+    cmap="viridis",
+    s=40,
+    vmin=np.percentile(pwr_db, 5),
 )
 ax.scatter(*TX_POS[0, :2], c="red", marker="^", s=200, zorder=5, label="TX")
 plt.colorbar(sc, ax=ax, label="Received power [dB]")

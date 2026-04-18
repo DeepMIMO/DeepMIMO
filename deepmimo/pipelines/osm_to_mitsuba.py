@@ -34,20 +34,21 @@ import requests
 from deepmimo.pipelines.utils.geo_utils import xy_from_latlong
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-OVERPASS_TIMEOUT = 60          # seconds
+OVERPASS_TIMEOUT = 60  # seconds
 DEFAULT_BUILDING_HEIGHT = 10.0  # meters when OSM tag absent
-FLOOR_HEIGHT_PER_LEVEL = 3.0   # meters per floor for buildings:levels tag
-GROUND_PADDING = 30.0          # extra meters around the bbox for the ground plane
+FLOOR_HEIGHT_PER_LEVEL = 3.0  # meters per floor for buildings:levels tag
+GROUND_PADDING = 30.0  # extra meters around the bbox for the ground plane
 MITSUBA_VERSION = "2.1.0"
 
 # ITU material type strings (must match Sionna's itu-radio-material plugin)
 BUILDING_MATERIAL = "concrete"
-GROUND_MATERIAL   = "concrete"
+GROUND_MATERIAL = "concrete"
 
 
 # ---------------------------------------------------------------------------
 # OSM querying
 # ---------------------------------------------------------------------------
+
 
 def query_osm_buildings(
     minlat: float,
@@ -129,6 +130,7 @@ def _parse_height(tags: dict[str, str]) -> float:
 # Mesh generation
 # ---------------------------------------------------------------------------
 
+
 def _extrude_footprint(
     footprint_xy: list[tuple[float, float]],
     height: float,
@@ -154,17 +156,13 @@ def _extrude_footprint(
         return None, None
 
     # Vertex layout: bottom ring 0..n-1, top ring n..2n-1
-    verts: list[list[float]] = (
-        [[x, y, 0.0] for x, y in pts]
-        + [[x, y, float(height)] for x, y in pts]
-    )
+    verts: list[list[float]] = [[x, y, 0.0] for x, y in pts] + [
+        [x, y, float(height)] for x, y in pts
+    ]
 
     # Side walls: N quads → 2N triangles
     sides = [
-        tri
-        for i in range(n)
-        for j in [(i + 1) % n]
-        for tri in ([i, j, j + n], [i, j + n, i + n])
+        tri for i in range(n) for j in [(i + 1) % n] for tri in ([i, j, j + n], [i, j + n, i + n])
     ]
 
     # Roof: fan from first top vertex (vertex index n)
@@ -193,6 +191,7 @@ def _ground_plane(
 # ---------------------------------------------------------------------------
 # PLY and XML writers
 # ---------------------------------------------------------------------------
+
 
 def _write_ply(vertices: np.ndarray, triangles: list[list[int]], path: Path) -> None:
     """Write an ASCII PLY file with the given triangulated mesh."""
@@ -248,6 +247,7 @@ def _write_mitsuba_xml(
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 def generate_scene(  # noqa: PLR0913
     minlat: float,
@@ -328,11 +328,13 @@ def generate_scene(  # noqa: PLR0913
 
         ply_rel = f"meshes/building_{idx}.ply"
         _write_ply(verts, tris, folder / ply_rel)
-        mesh_entries.append({
-            "id": f"mesh-building_{idx}",
-            "filename": ply_rel,
-            "material": BUILDING_MATERIAL,
-        })
+        mesh_entries.append(
+            {
+                "id": f"mesh-building_{idx}",
+                "filename": ply_rel,
+                "material": BUILDING_MATERIAL,
+            }
+        )
         n_written += 1
 
     if verbose:

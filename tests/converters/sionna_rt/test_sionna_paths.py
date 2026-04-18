@@ -26,6 +26,7 @@ from deepmimo.converters.sionna_rt.sionna_paths import (
 # transform_interaction_types
 # ---------------------------------------------------------------------------
 
+
 class TestTransformInteractionTypes:
     """Unit tests for the Sionna 2.0 → DeepMIMO interaction code converter."""
 
@@ -99,12 +100,12 @@ class TestTransformInteractionTypes:
         """Multiple paths with different sequences in a single batch."""
         types = np.array(
             [
-                [0, 0, 0],   # LoS
-                [1, 0, 0],   # single reflection
-                [1, 1, 0],   # two reflections
-                [1, 2, 0],   # reflection + scatter
-                [8, 0, 0],   # diffraction
-                [1, 8, 0],   # reflection + diffraction
+                [0, 0, 0],  # LoS
+                [1, 0, 0],  # single reflection
+                [1, 1, 0],  # two reflections
+                [1, 2, 0],  # reflection + scatter
+                [8, 0, 0],  # diffraction
+                [1, 8, 0],  # reflection + diffraction
             ],
             dtype=np.float32,
         )
@@ -152,18 +153,20 @@ class TestTransformInteractionTypes:
 # Interaction constants sanity
 # ---------------------------------------------------------------------------
 
+
 def test_sionna_interaction_constants() -> None:
     """Sionna 2.0 enum values match what the remapping table expects."""
-    assert SIONNA_INTERACTION_NONE        == 0
-    assert SIONNA_INTERACTION_SPECULAR    == 1
-    assert SIONNA_INTERACTION_DIFFUSE     == 2
-    assert SIONNA_INTERACTION_REFRACTION  == 4
+    assert SIONNA_INTERACTION_NONE == 0
+    assert SIONNA_INTERACTION_SPECULAR == 1
+    assert SIONNA_INTERACTION_DIFFUSE == 2
+    assert SIONNA_INTERACTION_REFRACTION == 4
     assert SIONNA_INTERACTION_DIFFRACTION == 8
 
 
 def test_remapping_table_completeness() -> None:
     """Every non-NONE Sionna 2.0 type maps to a known DeepMIMO code."""
     from deepmimo.converters.sionna_rt.sionna_paths import _SIONNA_TO_DEEPMIMO  # noqa: PLC0415
+
     sionna_types = {
         SIONNA_INTERACTION_SPECULAR,
         SIONNA_INTERACTION_DIFFUSE,
@@ -176,13 +179,14 @@ def test_remapping_table_completeness() -> None:
         c.INTERACTION_TRANSMISSION,
         c.INTERACTION_DIFFRACTION,
     }
-    assert set(_SIONNA_TO_DEEPMIMO.keys())   == sionna_types
+    assert set(_SIONNA_TO_DEEPMIMO.keys()) == sionna_types
     assert set(_SIONNA_TO_DEEPMIMO.values()) == deepmimo_codes
 
 
 # ---------------------------------------------------------------------------
 # read_paths integration (mocked I/O)
 # ---------------------------------------------------------------------------
+
 
 @patch("deepmimo.converters.sionna_rt.sionna_paths.load_pickle")
 def test_read_paths_sionna2(mock_load) -> None:
@@ -199,14 +203,14 @@ def test_read_paths_sionna2(mock_load) -> None:
     path_data = {
         "sources": np.zeros((n_tx, 3)),
         "targets": np.zeros((n_rx, 3)),
-        "a":            np.ones((n_rx, 1, n_tx, 1, max_paths)) * (1 + 1j),
-        "tau":          np.zeros((n_rx, n_tx, max_paths)),
-        "theta_t":      np.zeros((n_rx, n_tx, max_paths)),
-        "phi_t":        np.zeros((n_rx, n_tx, max_paths)),
-        "theta_r":      np.zeros((n_rx, n_tx, max_paths)),
-        "phi_r":        np.zeros((n_rx, n_tx, max_paths)),
+        "a": np.ones((n_rx, 1, n_tx, 1, max_paths)) * (1 + 1j),
+        "tau": np.zeros((n_rx, n_tx, max_paths)),
+        "theta_t": np.zeros((n_rx, n_tx, max_paths)),
+        "phi_t": np.zeros((n_rx, n_tx, max_paths)),
+        "theta_r": np.zeros((n_rx, n_tx, max_paths)),
+        "phi_r": np.zeros((n_rx, n_tx, max_paths)),
         "interactions": np.zeros((max_depth, n_rx, n_tx, max_paths)),
-        "vertices":     np.zeros((max_depth, n_rx, n_tx, max_paths, 3)),
+        "vertices": np.zeros((max_depth, n_rx, n_tx, max_paths, 3)),
     }
     mock_load.return_value = [path_data]
 
@@ -238,16 +242,16 @@ def test_read_paths_interaction_codes_stored(mock_load) -> None:
 
     path_data = {
         # Use distinct TX/RX positions so the BS-BS-path guard does not trigger.
-        "sources":      np.array([[0.0, 0.0, 10.0]]),   # TX at height 10
-        "targets":      np.array([[5.0, 5.0, 1.5]]),    # RX at street level
-        "a":            a,
-        "tau":          np.zeros((n_rx, n_tx, max_paths)),
-        "theta_t":      np.zeros((n_rx, n_tx, max_paths)),
-        "phi_t":        np.zeros((n_rx, n_tx, max_paths)),
-        "theta_r":      np.zeros((n_rx, n_tx, max_paths)),
-        "phi_r":        np.zeros((n_rx, n_tx, max_paths)),
+        "sources": np.array([[0.0, 0.0, 10.0]]),  # TX at height 10
+        "targets": np.array([[5.0, 5.0, 1.5]]),  # RX at street level
+        "a": a,
+        "tau": np.zeros((n_rx, n_tx, max_paths)),
+        "theta_t": np.zeros((n_rx, n_tx, max_paths)),
+        "phi_t": np.zeros((n_rx, n_tx, max_paths)),
+        "theta_r": np.zeros((n_rx, n_tx, max_paths)),
+        "phi_r": np.zeros((n_rx, n_tx, max_paths)),
         "interactions": interactions,
-        "vertices":     np.zeros((max_depth, n_rx, n_tx, max_paths, 3)),
+        "vertices": np.zeros((max_depth, n_rx, n_tx, max_paths, 3)),
     }
     mock_load.return_value = [path_data]
 
@@ -257,6 +261,7 @@ def test_read_paths_interaction_codes_stored(mock_load) -> None:
     }
 
     saved = {}
+
     def capture_save(arr, key, _path):
         saved[key] = arr
 
@@ -279,16 +284,16 @@ def test_read_paths_los_code_stored(mock_load) -> None:
 
     path_data = {
         # Use distinct TX/RX positions so the BS-BS-path guard does not trigger.
-        "sources":      np.array([[0.0, 0.0, 10.0]]),   # TX at height 10
-        "targets":      np.array([[5.0, 5.0, 1.5]]),    # RX at street level
-        "a":            a,
-        "tau":          np.zeros((n_rx, n_tx, max_paths)),
-        "theta_t":      np.zeros((n_rx, n_tx, max_paths)),
-        "phi_t":        np.zeros((n_rx, n_tx, max_paths)),
-        "theta_r":      np.zeros((n_rx, n_tx, max_paths)),
-        "phi_r":        np.zeros((n_rx, n_tx, max_paths)),
+        "sources": np.array([[0.0, 0.0, 10.0]]),  # TX at height 10
+        "targets": np.array([[5.0, 5.0, 1.5]]),  # RX at street level
+        "a": a,
+        "tau": np.zeros((n_rx, n_tx, max_paths)),
+        "theta_t": np.zeros((n_rx, n_tx, max_paths)),
+        "phi_t": np.zeros((n_rx, n_tx, max_paths)),
+        "theta_r": np.zeros((n_rx, n_tx, max_paths)),
+        "phi_r": np.zeros((n_rx, n_tx, max_paths)),
         "interactions": np.zeros((max_depth, n_rx, n_tx, max_paths)),  # all zero → LoS
-        "vertices":     np.zeros((max_depth, n_rx, n_tx, max_paths, 3)),
+        "vertices": np.zeros((max_depth, n_rx, n_tx, max_paths, 3)),
     }
     mock_load.return_value = [path_data]
 
@@ -298,6 +303,7 @@ def test_read_paths_los_code_stored(mock_load) -> None:
     }
 
     saved = {}
+
     def capture_save(arr, key, _path):
         saved[key] = arr
 

@@ -15,10 +15,10 @@ from deepmimo.utils import get_mat_filename, load_pickle, save_mat
 
 # Sionna 2.0 InteractionType enum values (sionna.rt.constants.InteractionType).
 # These are NOT the same as DeepMIMO codes — remapping is required.
-SIONNA_INTERACTION_NONE        = 0  # padding slot / LoS (no bounce at this depth)
-SIONNA_INTERACTION_SPECULAR    = 1  # specular reflection
-SIONNA_INTERACTION_DIFFUSE     = 2  # diffuse / lambertian scattering
-SIONNA_INTERACTION_REFRACTION  = 4  # transmission through a surface
+SIONNA_INTERACTION_NONE = 0  # padding slot / LoS (no bounce at this depth)
+SIONNA_INTERACTION_SPECULAR = 1  # specular reflection
+SIONNA_INTERACTION_DIFFUSE = 2  # diffuse / lambertian scattering
+SIONNA_INTERACTION_REFRACTION = 4  # transmission through a surface
 SIONNA_INTERACTION_DIFFRACTION = 8  # edge diffraction (Keller cone)
 
 # DeepMIMO interaction codes differ from Sionna's enum values.
@@ -26,10 +26,10 @@ SIONNA_INTERACTION_DIFFRACTION = 8  # edge diffraction (Keller cone)
 # that the per-depth digit-concatenation encoding remains consistent with other
 # DeepMIMO ray tracers (e.g. Wireless InSite uses the same DeepMIMO codes).
 _SIONNA_TO_DEEPMIMO: dict[int, int] = {
-    SIONNA_INTERACTION_SPECULAR:    c.INTERACTION_REFLECTION,    # 1 → 1 (unchanged)
-    SIONNA_INTERACTION_DIFFUSE:     c.INTERACTION_SCATTERING,    # 2 → 3
-    SIONNA_INTERACTION_REFRACTION:  c.INTERACTION_TRANSMISSION,  # 4 → 4 (unchanged)
-    SIONNA_INTERACTION_DIFFRACTION: c.INTERACTION_DIFFRACTION,   # 8 → 2
+    SIONNA_INTERACTION_SPECULAR: c.INTERACTION_REFLECTION,  # 1 → 1 (unchanged)
+    SIONNA_INTERACTION_DIFFUSE: c.INTERACTION_SCATTERING,  # 2 → 3
+    SIONNA_INTERACTION_REFRACTION: c.INTERACTION_TRANSMISSION,  # 4 → 4 (unchanged)
+    SIONNA_INTERACTION_DIFFRACTION: c.INTERACTION_DIFFRACTION,  # 8 → 2
 }
 
 # Dimension thresholds used to distinguish single- vs multi-antenna arrays.
@@ -49,14 +49,14 @@ def _preallocate_data(n_rx: int) -> dict:
     return {
         c.RX_POS_PARAM_NAME: np.zeros((n_rx, 3), dtype=c.FP_TYPE),
         c.TX_POS_PARAM_NAME: np.zeros((1, 3), dtype=c.FP_TYPE),
-        c.AOA_AZ_PARAM_NAME:        np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
-        c.AOA_EL_PARAM_NAME:        np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
-        c.AOD_AZ_PARAM_NAME:        np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
-        c.AOD_EL_PARAM_NAME:        np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
-        c.DELAY_PARAM_NAME:         np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
-        c.POWER_PARAM_NAME:         np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
-        c.PHASE_PARAM_NAME:         np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
-        c.INTERACTIONS_PARAM_NAME:  np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
+        c.AOA_AZ_PARAM_NAME: np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
+        c.AOA_EL_PARAM_NAME: np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
+        c.AOD_AZ_PARAM_NAME: np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
+        c.AOD_EL_PARAM_NAME: np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
+        c.DELAY_PARAM_NAME: np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
+        c.POWER_PARAM_NAME: np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
+        c.PHASE_PARAM_NAME: np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
+        c.INTERACTIONS_PARAM_NAME: np.full(nan_2d, np.nan, dtype=c.FP_TYPE),
         c.INTERACTIONS_POS_PARAM_NAME: np.full(
             (n_rx, c.MAX_PATHS, c.MAX_INTER_PER_PATH, 3), np.nan, dtype=c.FP_TYPE
         ),
@@ -178,14 +178,14 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
     """
     inactive_count = 0
 
-    a        = paths_dict["a"]
-    tau      = paths_dict["tau"]
-    phi_r    = paths_dict["phi_r"]
-    phi_t    = paths_dict["phi_t"]
-    theta_r  = paths_dict["theta_r"]
-    theta_t  = paths_dict["theta_t"]
+    a = paths_dict["a"]
+    tau = paths_dict["tau"]
+    phi_r = paths_dict["phi_r"]
+    phi_t = paths_dict["phi_t"]
+    theta_r = paths_dict["theta_r"]
+    theta_t = paths_dict["theta_t"]
     vertices = paths_dict["vertices"]
-    types    = paths_dict["interactions"]
+    types = paths_dict["interactions"]
 
     tx_idx = t
 
@@ -193,22 +193,22 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
     # theta_r.ndim == MULTI_ANT_NDIM+1 (4-D) when antenna dims are present.
     if theta_r.ndim > MULTI_ANT_NDIM:
         # Multi-antenna: antenna dims at positions 1 (rx_ant) and 3 (tx_ant)
-        a        = a       [:, rx_ant_idx, tx_idx, tx_ant_idx, :]
-        tau      = tau     [:, rx_ant_idx, tx_idx, tx_ant_idx, :]
-        phi_r    = phi_r   [:, rx_ant_idx, tx_idx, tx_ant_idx, :]
-        phi_t    = phi_t   [:, rx_ant_idx, tx_idx, tx_ant_idx, :]
-        theta_r  = theta_r [:, rx_ant_idx, tx_idx, tx_ant_idx, :]
-        theta_t  = theta_t [:, rx_ant_idx, tx_idx, tx_ant_idx, :]
-        types    = types   [:, :, rx_ant_idx, :, tx_ant_idx]
+        a = a[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
+        tau = tau[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
+        phi_r = phi_r[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
+        phi_t = phi_t[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
+        theta_r = theta_r[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
+        theta_t = theta_t[:, rx_ant_idx, tx_idx, tx_ant_idx, :]
+        types = types[:, :, rx_ant_idx, :, tx_ant_idx]
         vertices = vertices[:, :, rx_ant_idx, tx_idx, tx_ant_idx, :]
     else:
         # Single-antenna: squeeze the singleton antenna dims (index 0)
-        a        = a       [:, 0, tx_idx, 0, :]
-        tau      = tau     [:, tx_idx, :]
-        phi_r    = phi_r   [:, tx_idx, :]
-        phi_t    = phi_t   [:, tx_idx, :]
-        theta_r  = theta_r [:, tx_idx, :]
-        theta_t  = theta_t [:, tx_idx, :]
+        a = a[:, 0, tx_idx, 0, :]
+        tau = tau[:, tx_idx, :]
+        phi_r = phi_r[:, tx_idx, :]
+        phi_t = phi_t[:, tx_idx, :]
+        theta_r = theta_r[:, tx_idx, :]
+        theta_t = theta_t[:, tx_idx, :]
         vertices = vertices[:, :, tx_idx, ...]
         # types stays (max_depth, num_rx, num_tx, max_paths) — tx dim resolved later
 
@@ -238,8 +238,8 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
         data[c.PHASE_PARAM_NAME][abs_idx, :n_paths] = np.angle(amp[path_idxs], deg=True)
 
         # Angles of arrival / departure in degrees
-        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_r  [rel_rx_idx, path_idxs])
-        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_t  [rel_rx_idx, path_idxs])
+        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_r[rel_rx_idx, path_idxs])
+        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_t[rel_rx_idx, path_idxs])
         data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_r[rel_rx_idx, path_idxs])
         data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_t[rel_rx_idx, path_idxs])
 
@@ -278,19 +278,17 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
 
     # Collect all TX positions seen across batches (rows in each 'sources' array)
     all_tx_pos = np.unique(
-        np.vstack([
-            _get_path_key(paths_dict, "sources", "src_positions")
-            for paths_dict in path_dict_list
-        ]),
+        np.vstack(
+            [_get_path_key(paths_dict, "sources", "src_positions") for paths_dict in path_dict_list]
+        ),
         axis=0,
     )
     n_tx = len(all_tx_pos)
 
     # Stack all target positions from every batch to reconstruct the full RX grid
-    all_rx_pos = np.vstack([
-        _get_path_key(paths_dict, "targets", "tgt_positions")
-        for paths_dict in path_dict_list
-    ])
+    all_rx_pos = np.vstack(
+        [_get_path_key(paths_dict, "targets", "tgt_positions") for paths_dict in path_dict_list]
+    )
     # Deduplicate while preserving original order (np.unique reorders; undo that)
     _, unique_indices = np.unique(all_rx_pos, axis=0, return_index=True)
     rx_pos = all_rx_pos[np.sort(unique_indices)]
@@ -323,8 +321,8 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
     for tx_idx, tx_pos_target in enumerate(all_tx_pos):
         # For multi-antenna TX, tx_idx encodes the antenna element; for single
         # antenna, it encodes the physical TX location.
-        idx_of_tx     = 0        if multi_tx_ant else tx_idx
-        idx_of_tx_ant = tx_idx   if multi_tx_ant else 0
+        idx_of_tx = 0 if multi_tx_ant else tx_idx
+        idx_of_tx_ant = tx_idx if multi_tx_ant else 0
         # Default fallback; overwritten in the inner loop for multi-antenna TX.
         tx_ant_idx = idx_of_tx_ant
 
@@ -353,8 +351,8 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
                     continue
 
             tx_ant_idx = tx_idx_in_dict[0] if multi_tx_ant else 0
-            t          = 0                  if multi_tx_ant else tx_idx_in_dict[0]
-            targets    = _get_path_key(paths_dict, "targets", "tgt_positions")
+            t = 0 if multi_tx_ant else tx_idx_in_dict[0]
+            targets = _get_path_key(paths_dict, "targets", "tgt_positions")
             batch_size = targets.shape[0]
 
             for rx_ant_idx in range(n_rx_ant):
@@ -372,7 +370,7 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
 
         # Save one .mat file per channel parameter per TX
         for key in data:
-            idx      = tx_ant_idx if multi_tx_ant else tx_idx
+            idx = tx_ant_idx if multi_tx_ant else tx_idx
             mat_file = get_mat_filename(key, 0, idx, 1)
             save_mat(data[key], key, str(Path(save_folder) / mat_file))
 
@@ -383,10 +381,10 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
 
             print(f"BS-BS paths found for TX {tx_idx}, Ant {tx_ant_idx}")
 
-            paths_dict    = path_dict_list[0]
-            all_bs_pos    = _get_path_key(paths_dict, "sources", "src_positions")
-            num_bs        = len(all_bs_pos)
-            data_bs_bs    = _preallocate_data(num_bs)
+            paths_dict = path_dict_list[0]
+            all_bs_pos = _get_path_key(paths_dict, "sources", "src_positions")
+            num_bs = len(all_bs_pos)
+            data_bs_bs = _preallocate_data(num_bs)
             data_bs_bs[c.RX_POS_PARAM_NAME] = all_bs_pos
             data_bs_bs[c.TX_POS_PARAM_NAME] = tx_pos_target
 
@@ -405,8 +403,8 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
         # Mark TX set as also acting as RX so the converter treats it correctly
         txrx_dict["txrx_set_0"]["is_rx"] = True
 
-    txrx_dict["txrx_set_0"]["num_points"]        = n_tx
+    txrx_dict["txrx_set_0"]["num_points"] = n_tx
     txrx_dict["txrx_set_0"]["num_active_points"] = n_tx
 
-    txrx_dict["txrx_set_1"]["num_points"]        = n_rx
+    txrx_dict["txrx_set_1"]["num_points"] = n_rx
     txrx_dict["txrx_set_1"]["num_active_points"] = n_rx - rx_inactive_idxs_count

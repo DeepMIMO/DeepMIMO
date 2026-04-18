@@ -130,10 +130,10 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
         obj_materials += [obj.radio_material]
 
     # Deduplicate by object identity; preserve a stable name-based index list
-    unique_materials  = set(obj_materials)
-    unique_mat_names  = [mat.name for mat in unique_materials]
-    n_objs            = len(scene_objects)
-    obj_mat_indices   = np.zeros(n_objs, dtype=int)
+    unique_materials = set(obj_materials)
+    unique_mat_names = [mat.name for mat in unique_materials]
+    n_objs = len(scene_objects)
+    obj_mat_indices = np.zeros(n_objs, dtype=int)
     for obj_idx, obj_mat in enumerate(obj_materials):
         obj_mat_indices[obj_idx] = unique_mat_names.index(obj_mat.name)
 
@@ -148,16 +148,16 @@ def export_scene_materials(scene: Scene) -> tuple[list[dict[str, Any]], list[int
             else None
         )
         materials_dict = {
-            "name":                  material.name,
-            "conductivity":          material.conductivity.numpy(),
+            "name": material.name,
+            "conductivity": material.conductivity.numpy(),
             "relative_permeability": 1.0,  # field removed in Sionna RT >= 1.0
             "relative_permittivity": material.relative_permittivity.numpy(),
             "scattering_coefficient": material.scattering_coefficient.numpy(),
-            "scattering_pattern":    type(material.scattering_pattern).__name__,
-            "alpha_r":               alpha_r,
-            "alpha_i":               alpha_i,
-            "lambda_":               lambda_,
-            "xpd_coefficient":       material.xpd_coefficient.numpy(),
+            "scattering_pattern": type(material.scattering_pattern).__name__,
+            "alpha_r": alpha_r,
+            "alpha_i": alpha_i,
+            "lambda_": lambda_,
+            "xpd_coefficient": material.xpd_coefficient.numpy(),
         }
         materials_dict_list += [materials_dict]
     return materials_dict_list, obj_mat_indices
@@ -211,29 +211,29 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[st
     )
 
     rt_params_dict = {
-        "bandwidth":          scene_dict["bandwidth"].numpy(),
-        "frequency":          scene_dict["frequency"].numpy(),
-        "rx_array_size":      rx_array.array_size,
-        "rx_array_num_ant":   rx_array.num_ant,
-        "rx_array_ant_pos":   rx_array_ant_pos,
-        "tx_array_size":      tx_array.array_size,
-        "tx_array_num_ant":   tx_array.num_ant,
-        "tx_array_ant_pos":   tx_array_ant_pos,
-        "synthetic_array":    synthetic_array,
-        "raytracer_version":  get_sionna_version(),
+        "bandwidth": scene_dict["bandwidth"].numpy(),
+        "frequency": scene_dict["frequency"].numpy(),
+        "rx_array_size": rx_array.array_size,
+        "rx_array_num_ant": rx_array.num_ant,
+        "rx_array_ant_pos": rx_array_ant_pos,
+        "tx_array_size": tx_array.array_size,
+        "tx_array_num_ant": tx_array.num_ant,
+        "tx_array_ant_pos": tx_array_ant_pos,
+        "synthetic_array": synthetic_array,
+        "raytracer_version": get_sionna_version(),
     }
 
     # Defaults that match the Sionna 2.0 PathSolver documentation
     default_compute_paths_params = {
-        "max_depth":              3,
-        "max_num_paths_per_src":  1000000,
-        "samples_per_src":        1000000,
-        "synthetic_array":        True,
-        "los":                    True,
-        "specular_reflection":    True,
-        "diffuse_reflection":     False,
-        "refraction":             True,
-        "seed":                   42,
+        "max_depth": 3,
+        "max_num_paths_per_src": 1000000,
+        "samples_per_src": 1000000,
+        "synthetic_array": True,
+        "los": True,
+        "specular_reflection": True,
+        "diffuse_reflection": False,
+        "refraction": True,
+        "seed": 42,
     }
     default_compute_paths_params.update(compute_paths_kwargs)
     raw_params = {**rt_params_dict, **default_compute_paths_params}
@@ -241,10 +241,10 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[st
     # Aliases so the converter can read both the native Sionna names and the
     # DeepMIMO canonical names without branching.
     aliases = {
-        "num_samples":  raw_params["samples_per_src"],
-        "reflection":   bool(raw_params["specular_reflection"]),
-        "diffraction":  False,  # not a top-level Sionna 2.0 flag
-        "scattering":   bool(raw_params["diffuse_reflection"]),
+        "num_samples": raw_params["samples_per_src"],
+        "reflection": bool(raw_params["specular_reflection"]),
+        "diffraction": False,  # not a top-level Sionna 2.0 flag
+        "scattering": bool(raw_params["diffuse_reflection"]),
     }
 
     return {**raw_params, **aliases}
@@ -290,9 +290,7 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
         obj_index_map[obj_name] = (vertex_offset, vertex_offset + obj_vertices.shape[0])
         vertex_offset += obj_vertices.shape[0]
 
-    vertice_matrix = (
-        np.zeros((0, 3)) if len(all_vertices) == 0 else np.vstack(all_vertices)
-    )
+    vertice_matrix = np.zeros((0, 3)) if len(all_vertices) == 0 else np.vstack(all_vertices)
 
     return vertice_matrix, obj_index_map
 
@@ -327,9 +325,7 @@ def sionna_exporter(
 
     # Accept pre-serialised dicts (e.g. when cpu_offload=True in the pipeline)
     # so that export_paths is not called a second time unnecessarily.
-    paths_dict_list = (
-        path_list if isinstance(path_list[0], dict) else export_paths(path_list)
-    )
+    paths_dict_list = path_list if isinstance(path_list[0], dict) else export_paths(path_list)
 
     materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
@@ -338,12 +334,12 @@ def sionna_exporter(
     Path(save_folder).mkdir(parents=True, exist_ok=True)
 
     save_vars_dict = {
-        "sionna_paths.pkl":            paths_dict_list,
-        "sionna_materials.pkl":        materials_dict_list,
+        "sionna_paths.pkl": paths_dict_list,
+        "sionna_materials.pkl": materials_dict_list,
         "sionna_material_indices.pkl": material_indices,
-        "sionna_rt_params.pkl":        rt_params,
-        "sionna_vertices.pkl":         vertice_matrix,
-        "sionna_objects.pkl":          obj_index_map,
+        "sionna_rt_params.pkl": rt_params,
+        "sionna_vertices.pkl": vertice_matrix,
+        "sionna_objects.pkl": obj_index_map,
     }
 
     for filename, variable in save_vars_dict.items():
