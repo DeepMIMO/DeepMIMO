@@ -14,6 +14,8 @@ The module serves as a bridge between Wireless Insite's XML-based configuration
 and DeepMIMO's standardized dataset format.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path

@@ -19,6 +19,8 @@ Constants:
     DEGREE_TO_METER (float): Conversion factor from degrees to meters at equator
 """
 
+from __future__ import annotations
+
 import contextlib
 from dataclasses import dataclass
 from math import cos, pi, sin

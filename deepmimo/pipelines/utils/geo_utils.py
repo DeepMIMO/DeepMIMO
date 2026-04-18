@@ -21,6 +21,8 @@ Variables:
     DEGREE_TO_METER (float): Conversion factor from degrees to meters at equator
 """
 
+from __future__ import annotations
+
 from math import atan2, cos, radians, sin, sqrt
 from pathlib import Path
 from typing import TYPE_CHECKING

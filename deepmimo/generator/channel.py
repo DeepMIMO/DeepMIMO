@@ -9,6 +9,8 @@ The main function is generate_mimo_channel() which generates MIMO channel matric
 based on path information from ray-tracing and antenna configurations.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
 from typing import Any, ClassVar
 

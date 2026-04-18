@@ -10,8 +10,9 @@ The adapter assumes BSs are transmitters and users are receivers. Uplink channel
 can be generated using (transpose) reciprocity.
 """
 
-# Standard library imports
+from __future__ import annotations
 
+# Standard library imports
 # Third-party imports
 from typing import TYPE_CHECKING
 

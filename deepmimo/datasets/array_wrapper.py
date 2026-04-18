@@ -4,6 +4,8 @@ This module provides a custom array class that wraps numpy arrays and adds plott
 functionality.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any, Self
 
 import numpy as np

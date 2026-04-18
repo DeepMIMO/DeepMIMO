@@ -4,6 +4,8 @@ This module provides custom data structures used throughout DeepMIMO,
 including dot-notation dictionaries, delegating lists, and verbose printing utilities.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from pprint import pformat
 from typing import Any, TypeVar

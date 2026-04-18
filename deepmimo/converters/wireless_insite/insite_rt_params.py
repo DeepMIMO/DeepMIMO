@@ -12,6 +12,8 @@ The module serves as the interface between Wireless Insite's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 from dataclasses import dataclass

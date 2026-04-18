@@ -4,6 +4,8 @@ This module provides functionality to generate XML files for electromagnetic sim
 including study area, ray tracing parameters, and features.
 """
 
+from __future__ import annotations
+
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import TYPE_CHECKING

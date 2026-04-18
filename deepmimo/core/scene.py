@@ -5,6 +5,8 @@ and helper routines for road/mesh handling (2D face generation, endpoint detecti
 path compression, angle deviation, intersection checks, and TSP path ordering).
 """
 
+from __future__ import annotations
+
 import itertools
 from dataclasses import dataclass
 from pathlib import Path

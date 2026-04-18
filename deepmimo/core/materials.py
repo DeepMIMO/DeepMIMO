@@ -4,6 +4,8 @@ This module provides the base class for representing materials and their propert
 including electromagnetic and scattering characteristics.
 """
 
+from __future__ import annotations
+
 from contextlib import suppress
 from dataclasses import asdict, astuple, dataclass
 from typing import TYPE_CHECKING, Any

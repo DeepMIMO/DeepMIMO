@@ -10,6 +10,8 @@ This module provides geometric calculations and transformations needed for MIMO 
 The functions handle both single values and numpy arrays for vectorized operations.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 import numpy as np

@@ -7,6 +7,8 @@ The scene geometry follows the NVIDIA Omniverse USD format, where each primitive
 is defined by its path in the stage hierarchy.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 

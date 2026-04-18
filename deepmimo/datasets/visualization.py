@@ -9,6 +9,8 @@ This module provides visualization utilities for the DeepMIMO dataset, including
 The module uses matplotlib for generating plots and supports both 2D and 3D visualizations.
 """
 
+from __future__ import annotations
+
 import colorsys
 import csv
 from pathlib import Path

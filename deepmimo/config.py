@@ -25,6 +25,8 @@ Usage:
     deepmimo.config()  # Print all configs
 """
 
+from __future__ import annotations
+
 from typing import Any, Self
 
 from .consts import (

@@ -12,6 +12,8 @@ The module serves as the interface between Sionna's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 

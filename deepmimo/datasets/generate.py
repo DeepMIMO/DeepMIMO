@@ -4,6 +4,8 @@ This module provides the main generate() function for creating DeepMIMO datasets
 with channel matrices computed.
 """
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING, Any
 
 from deepmimo.datasets.load import load

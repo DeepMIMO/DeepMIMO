@@ -5,6 +5,8 @@ This module contains the raytracing function for Sionna.
 It is a wrapper around the Sionna RT API, and it is used to raytrace the scene.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 

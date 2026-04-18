@@ -5,6 +5,8 @@ ray tracing engines (Wireless Insite, Sionna, etc.). It defines common parameter
 and functionality while allowing engine-specific extensions.
 """
 
+from __future__ import annotations
+
 from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING
 

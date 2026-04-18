@@ -13,6 +13,8 @@ Requires Sionna RT 2.0+. Import explicitly — DeepMIMO does not require sionna:
 
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 
