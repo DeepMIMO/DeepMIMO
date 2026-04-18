@@ -77,6 +77,9 @@ dev = [
     # Better nbconvert handling for Colab MIME quirks
     "nbconvert>=7.16",
     "nbformat>=5.10",
+
+    # Notebook pre-rendering (convert .py percent-format to .ipynb)
+    "jupytext>=1.16",
 ]
 
 aodt = [
@@ -175,6 +178,7 @@ line-length = 100
 target-version = "py314"
 extend-exclude = [
     "scripts",
+    "docs/**/*.ipynb",
 ]
 
 [tool.ruff.lint]
