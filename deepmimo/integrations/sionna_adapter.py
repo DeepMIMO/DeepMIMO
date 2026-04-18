@@ -135,7 +135,7 @@ class SionnaAdapter:
                 # Place the DeepMIMO dataset power and delays into the channel sample for Sionna
                 for i_ch in range(self.num_rx):  # for each receiver in the sample
                     for j_ch in range(self.num_tx):  # for each transmitter in the sample
-                        n_paths = self.dataset[j].num_paths[i]
+                        n_paths = min(int(self.dataset[j].num_paths[i]), self.num_paths)
                         a[i_ch, :, j_ch, :, :, 0] = self.dataset[j].channels[i, :, :, :]
                         tau[i_ch, j_ch, :n_paths] = self.dataset[j].toa[i, :n_paths]
                 yield (a, tau)  # yield this sample
