@@ -104,43 +104,40 @@ insite = [
 ]
 
 sionna = [
-    # Common ray tracing pipeline tools
-    "utm",               # To be replaced by built-in (see geo_utils.py)
-    "lxml",              # To be replaced by built-in (see insite_raytracer.py)
+    # OSM scene pipeline (no Blender needed — uses osm_to_mitsuba.py)
+    "utm",               # GPS ↔ Cartesian conversion (geo_utils.py)
     "pandas",
-    "shapely",           # Used to create building polygons (see pipeline_csv_gen.py)
-    "bpy==4.4.0; python_version == '3.11'",
-    "ipykernel",
+    "shapely",           # Building polygon queries (osm_utils.py, pipeline_csv_gen.py)
 
-    # Sionna 2.0 (requires Python 3.11+, PyTorch 2.9+, mitsuba 3.8.0, drjit 1.3.1)
+    # Sionna 2.x (requires Python 3.11+, PyTorch 2.9+, mitsuba 3.8.0, drjit 1.3.1)
     "torch>=2.9.0",
-    "sionna-rt>=2.0.1",    # ray-tracing: PathSolver, Scene, sionna_exporter
-    "sionna-no-rt>=2.0.1; python_version >= '3.12'", # PHY layer: PUSCHTransmitter/Receiver, OFDMChannel, LDPC
+    "sionna-rt>=2.0.1,<3.0.0",    # ray-tracing: PathSolver, Scene, sionna_exporter
+    "sionna-no-rt>=2.0.1,<3.0.0; python_version >= '3.12'", # PHY layer: PUSCH, LDPC, OFDM
     "mitsuba==3.8.0",
     "drjit==1.3.1",
 
     # Development
-    "jupyter"
+    "jupyter",
 ]
 
 
 # Combination of [dev], [sionna], [insite] and [aodt]
 all = [
-    # Common ray tracing pipeline tools
+    # Common pipeline tools
     "utm",
     "lxml",
     "pandas",
     "shapely",
-    "bpy==4.4.0; python_version == '3.11'",
-    "ipykernel",
 
-    # InSite
+    # InSite (Blender still required for PLY generation)
+    "bpy==4.4.0; python_version == '3.11'",  # TODO: UPDATE bpy==5.0 for Python 3.12+
+    "ipykernel",
     "plyfile",
 
-    # Sionna 2.0
+    # Sionna 2.x
     "torch>=2.9.0",
-    "sionna-rt>=2.0.1",
-    "sionna-no-rt>=2.0.1; python_version >= '3.12'",
+    "sionna-rt>=2.0.1,<3.0.0",
+    "sionna-no-rt>=2.0.1,<3.0.0; python_version >= '3.12'",
     "mitsuba==3.8.0",
     "drjit==1.3.1",
 
@@ -172,9 +169,10 @@ all = [
     "nbformat>=5.10",
 ]
 
+
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py314"
 extend-exclude = [
     "scripts",
 ]
