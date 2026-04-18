@@ -114,7 +114,8 @@ sionna = [
 
     # Sionna 2.0 (requires Python 3.11+, PyTorch 2.9+, mitsuba 3.8.0, drjit 1.3.1)
     "torch>=2.9.0",
-    "sionna-rt>=2.0.1",
+    "sionna-rt>=2.0.1",    # ray-tracing: PathSolver, Scene, sionna_exporter
+    "sionna-no-rt>=2.0.1; python_version >= '3.12'", # PHY layer: PUSCHTransmitter/Receiver, OFDMChannel, LDPC
     "mitsuba==3.8.0",
     "drjit==1.3.1",
 
@@ -139,6 +140,7 @@ all = [
     # Sionna 2.0
     "torch>=2.9.0",
     "sionna-rt>=2.0.1",
+    "sionna-no-rt>=2.0.1; python_version >= '3.12'",
     "mitsuba==3.8.0",
     "drjit==1.3.1",
 
