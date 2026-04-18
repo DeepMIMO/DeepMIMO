@@ -13,6 +13,9 @@ deepmimo_scenarios*
 # Tests and Tutorials
 deepmimo_scen/*
 deepmimo_scen.zip
+
+# Pre-rendered notebook outputs (generated locally by scripts/pre_render_notebooks.py)
+docs/**/*.ipynb
 asu_campus_p2m.zip
 asu_campus_p2m/*
 *.bin
