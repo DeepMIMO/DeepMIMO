@@ -6,7 +6,6 @@ This module contains utility functions for Sionna.
 import sionna
 import sionna.rt as sionna_rt
 from sionna.rt import (
-    BackscatteringPattern,
     PlanarArray,
     RadioMaterial,
     Scene,
@@ -26,22 +25,6 @@ def get_sionna_version() -> str | None:
     return None
 
 
-def is_sionna_v1() -> bool:
-    """Check if Sionna is version 1.x.
-
-    Returns:
-        bool: True if Sionna is version 1.x, False otherwise
-
-    """
-    sionna_version = get_sionna_version()
-    if sionna_version is None:
-        print(
-            "[DeepMIMO] Warning: Could not determine Sionna version. Assuming Sionna RT >= 1.0.0.",
-        )
-        return True
-    return sionna_version.startswith("1.")
-
-
 def set_materials(scene: Scene) -> Scene:
     """Set radio material properties for Sionna."""
     for obj in scene.objects.values():
@@ -51,20 +34,11 @@ def set_materials(scene: Scene) -> Scene:
         if mat_name == "itu_concrete":
             scene.objects[obj.name].radio_material.scattering_coefficient = 0.4
             scene.objects[obj.name].radio_material.xpd_coefficient = 0.4
-            pattern = BackscatteringPattern(alpha_r=4, alpha_i=4, lambda_=0.75)
-            scene.objects[obj.name].radio_material.scattering_pattern = pattern
+            scene.objects[obj.name].radio_material.scattering_pattern = "backscattering"
         elif mat_name in ["itu_wet_ground", "itu_brick"]:
             continue
         else:
             print(f"Unknown material: {mat_name}")
-
-            # exit()
-
-    # Add asphalt material
-    if get_sionna_version().startswith("0.19"):
-        scat_pattern = BackscatteringPattern(alpha_r=4, alpha_i=4, lambda_=0.75)
-    else:
-        scat_pattern = "backscattering"
 
     asphalt_material = RadioMaterial(
         name="asphalt",
@@ -72,7 +46,7 @@ def set_materials(scene: Scene) -> Scene:
         conductivity=5e-4,
         scattering_coefficient=0.4,
         xpd_coefficient=0.4,
-        scattering_pattern=scat_pattern,
+        scattering_pattern="backscattering",
     )
     scene.add(asphalt_material)
 
@@ -86,9 +60,7 @@ def set_materials(scene: Scene) -> Scene:
 
 def create_base_scene(scene_path: str, center_frequency: float) -> Scene:
     """Create a base Sionna scene."""
-    args = {}
-    if is_sionna_v1():
-        args["merge_shapes"] = False
+    args: dict = {"merge_shapes": False}
     if scene_path:
         args["filename"] = scene_path
 
