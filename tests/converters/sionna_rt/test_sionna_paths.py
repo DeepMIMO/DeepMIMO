@@ -11,7 +11,7 @@ from deepmimo.converters.sionna_rt import sionna_paths
 def test_transform_interaction_types_los() -> None:
     """LoS path: all-zero depth array maps to INTERACTION_LOS."""
     types = np.array([[0, 0, 0]], dtype=np.float32)
-    result = sionna_paths._transform_interaction_types(types)
+    result = sionna_paths._transform_interaction_types(types)  # noqa: SLF001
     assert result[0] == c.INTERACTION_LOS
 
 
@@ -25,7 +25,7 @@ def test_transform_interaction_types_reflections() -> None:
         ],
         dtype=np.float32,
     )
-    result = sionna_paths._transform_interaction_types(types)
+    result = sionna_paths._transform_interaction_types(types)  # noqa: SLF001
     assert result[0] == 1.0
     assert result[1] == 11.0
     assert result[2] == 111.0
@@ -46,7 +46,7 @@ def test_transform_interaction_types_2_0_remapping() -> None:
         ],
         dtype=np.float32,
     )
-    result = sionna_paths._transform_interaction_types(types)
+    result = sionna_paths._transform_interaction_types(types)  # noqa: SLF001
     assert result[0] == 13.0
     assert result[1] == 2.0
     assert result[2] == 12.0

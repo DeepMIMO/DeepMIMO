@@ -17,7 +17,7 @@ from tqdm import tqdm
 
 from deepmimo.exporters.sionna_exporter import export_paths, sionna_exporter
 
-from .sionna_utils import create_base_scene, get_sionna_version, set_materials
+from .sionna_utils import create_base_scene, set_materials
 
 
 class _DataLoader:
@@ -75,7 +75,7 @@ def _compute_paths(
     return paths
 
 
-def raytrace_sionna(  # noqa: PLR0915, PLR0912, C901
+def raytrace_sionna(  # noqa: PLR0912, C901
     base_folder: str,
     tx_pos: np.ndarray,
     rx_pos: np.ndarray,
