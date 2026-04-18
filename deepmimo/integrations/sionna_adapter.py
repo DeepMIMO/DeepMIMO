@@ -13,10 +13,14 @@ can be generated using (transpose) reciprocity.
 # Standard library imports
 
 # Third-party imports
+from typing import TYPE_CHECKING
+
 import numpy as np
-from numpy.typing import NDArray
 
 from deepmimo.datasets.dataset import Dataset, MacroDataset
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 
 class SionnaAdapter:

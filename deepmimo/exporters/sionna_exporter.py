@@ -65,7 +65,7 @@ def _paths_to_dict(paths: Paths) -> dict[str, Any]:
     }
 
 
-def export_paths(path_list: "Paths | list[Paths]") -> list[dict[str, Any]]:
+def export_paths(path_list: Paths | list[Paths]) -> list[dict[str, Any]]:
     """Export Sionna paths to filtered dictionaries with the relevant fields.
 
     Args:
@@ -297,7 +297,7 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
 
 def sionna_exporter(
     scene: Scene,
-    path_list: "list[Paths] | Paths",
+    path_list: list[Paths] | Paths,
     my_compute_path_params: dict,
     save_folder: str,
 ) -> None:

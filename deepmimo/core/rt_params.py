@@ -6,7 +6,10 @@ and functionality while allowing engine-specific extensions.
 """
 
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 @dataclass
@@ -81,7 +84,7 @@ class RayTracingParameters:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, params_dict: dict, raw_params: dict | None = None) -> "RayTracingParameters":
+    def from_dict(cls, params_dict: dict, raw_params: dict | None = None) -> RayTracingParameters:
         """Create RayTracingParameters from a dictionary.
 
         Args:
@@ -98,7 +101,7 @@ class RayTracingParameters:
         return cls(**params_dict)
 
     @classmethod
-    def read_parameters(cls, load_folder: str | Path) -> "RayTracingParameters":
+    def read_parameters(cls, load_folder: str | Path) -> RayTracingParameters:
         """Read parameters from a folder.
 
         This is an abstract method that should be implemented by each engine-specific

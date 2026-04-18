@@ -10,8 +10,12 @@ This module provides geometric calculations and transformations needed for MIMO 
 The functions handle both single values and numpy arrays for vectorized operations.
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
 
 BATCH_DIM = 2
 ROTATION_NDIM = 3

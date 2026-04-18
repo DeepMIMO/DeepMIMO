@@ -336,7 +336,7 @@ class PhysicalElement:
         return obj_metadata
 
     @classmethod
-    def from_dict(cls: "PhysicalElement", data: dict, vertices: np.ndarray) -> "PhysicalElement":
+    def from_dict(cls: PhysicalElement, data: dict, vertices: np.ndarray) -> PhysicalElement:
         """Create physical object from dictionary format.
 
         Args:
@@ -476,7 +476,7 @@ class PhysicalElementGroup:
         self,
         label: str | None = None,
         material: int | None = None,
-    ) -> "PhysicalElementGroup":
+    ) -> PhysicalElementGroup:
         """Get objects filtered by label and/or material.
 
         Args:
@@ -656,7 +656,7 @@ class Scene:
         }
 
     @classmethod
-    def from_data(cls: Any, base_folder: str) -> "Scene":
+    def from_data(cls: Any, base_folder: str) -> Scene:
         """Create scene from metadata dictionary and data files.
 
         Args:

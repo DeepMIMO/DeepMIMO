@@ -66,7 +66,7 @@ class SionnaRayTracingParameters(RayTracingParameters):
     """
 
     @classmethod
-    def read_rt_params(cls, load_folder: str) -> "SionnaRayTracingParameters":
+    def read_rt_params(cls, load_folder: str) -> SionnaRayTracingParameters:
         """Read Sionna RT parameters and return a parameters object.
 
         Args:

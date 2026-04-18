@@ -27,7 +27,7 @@ class AODTScene:
     - Diffraction can only occur once per ray
     """
 
-    def __init__(self, world_df: "pd.DataFrame") -> None:
+    def __init__(self, world_df: pd.DataFrame) -> None:
         """Initialize scene from world dataframe.
 
         Args:

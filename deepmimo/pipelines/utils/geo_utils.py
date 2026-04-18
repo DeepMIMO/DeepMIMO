@@ -23,10 +23,13 @@ Variables:
 
 from math import atan2, cos, radians, sin, sqrt
 from pathlib import Path
+from typing import TYPE_CHECKING
 
-import numpy as np
 import requests
 import utm
+
+if TYPE_CHECKING:
+    import numpy as np
 
 # Constants
 EARTH_RADIUS = 6371000  # meters

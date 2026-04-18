@@ -4,7 +4,7 @@ This module provides a custom array class that wraps numpy arrays and adds plott
 functionality.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Self
 
 import numpy as np
 
@@ -46,7 +46,7 @@ class DeepMIMOArray(np.ndarray):
     - 3D arrays [num_rx, num_paths, max_interactions]: Plots specified path and interaction indices
     """
 
-    def __new__(cls, input_array: np.ndarray, dataset: Dataset, name: str) -> "DeepMIMOArray":
+    def __new__(cls, input_array: np.ndarray, dataset: Dataset, name: str) -> Self:
         """Create a new DeepMIMOArray instance.
 
         This is called when creating new arrays. We need __new__ instead of __init__

@@ -259,7 +259,7 @@ class ChannelParameters(DotDict):
             error_msg += f"ch_params.{c.PARAMSET_OFDM}.{c.PARAMSET_OFDM_SC_NUM}."
             raise ValueError(error_msg)
 
-    def validate(self, n_ues: int) -> "ChannelParameters":
+    def validate(self, n_ues: int) -> ChannelParameters:
         """Validate channel generation parameters.
 
         This method checks that channel generation parameters are valid and

@@ -5,9 +5,8 @@ This module contains the raytracing function for Sionna.
 It is a wrapper around the Sionna RT API, and it is used to raytrace the scene.
 """
 
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import mitsuba as mi
 import numpy as np
@@ -18,6 +17,9 @@ from tqdm import tqdm
 from deepmimo.exporters.sionna_exporter import export_paths, sionna_exporter
 
 from .sionna_utils import create_base_scene, set_materials
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class _DataLoader:

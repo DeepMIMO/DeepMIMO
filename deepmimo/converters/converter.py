@@ -6,9 +6,8 @@ a standardized scenario format.
 """
 
 # Standard library imports
-from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 # Local imports
 from deepmimo import consts as c
@@ -17,6 +16,9 @@ from . import converter_utils as cu
 from .aodt.aodt_converter import aodt_rt_converter
 from .sionna_rt.sionna_converter import sionna_rt_converter
 from .wireless_insite.insite_converter import insite_rt_converter
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _find_converter_from_dir(directory: str) -> Callable | None:
