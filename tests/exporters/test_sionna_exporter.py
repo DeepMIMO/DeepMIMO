@@ -6,14 +6,21 @@ from unittest.mock import MagicMock, Mock, patch
 import numpy as np
 import pytest
 
-# Mock sionna before importing exporter
-mock_sionna = MagicMock()
-mock_sionna.rt.Paths = MagicMock
-mock_sionna.rt.Scene = MagicMock
-sys.modules["sionna"] = mock_sionna
-sys.modules["sionna.rt"] = mock_sionna.rt
+# Inject sionna stubs only when the real package is absent.  If Sionna IS
+# installed, importing it here causes the real package to register in
+# sys.modules and prevents the exporter from seeing a corrupt stub.  Mocking
+# when the package exists would break any module-scoped fixture in the
+# integration test file that runs in the same session.
+try:
+    import sionna as _real_sionna  # noqa: F401
+except ImportError:
+    mock_sionna = MagicMock()
+    mock_sionna.rt.Paths = MagicMock
+    mock_sionna.rt.Scene = MagicMock
+    sys.modules["sionna"]    = mock_sionna
+    sys.modules["sionna.rt"] = mock_sionna.rt
 
-from deepmimo.exporters import sionna_exporter  # noqa: E402
+from deepmimo.exporters import sionna_exporter
 
 
 @pytest.fixture

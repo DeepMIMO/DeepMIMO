@@ -121,15 +121,14 @@ print(f"Adapter channel shape: {adapter.ch_shape}")
 print(f"Adapter delay shape:   {adapter.t_shape}")
 print(f"Total samples:         {len(adapter)}")
 
-# Collect all (a, tau) pairs from the generator
-all_a   = []
-all_tau = []
-for a_sample, tau_sample in adapter():
-    all_a.append(a_sample.copy())
-    all_tau.append(tau_sample.copy())
-
-all_a   = np.concatenate(all_a,   axis=0)  # (N_UE, 1, 1, n_tx_ant, N_PATHS, 1)
-all_tau = np.concatenate(all_tau, axis=0)  # (N_UE, 1, N_PATHS)
+# Collect all (a, tau) pairs from the generator.
+# Preallocate output arrays so we avoid a growing list + concatenation.
+n_samples = len(adapter)
+all_a   = np.zeros((n_samples, *adapter.ch_shape), dtype=np.csingle)
+all_tau = np.zeros((n_samples, *adapter.t_shape),  dtype=np.single)
+for idx, (a_sample, tau_sample) in enumerate(adapter()):
+    all_a  [idx] = a_sample
+    all_tau[idx] = tau_sample
 
 print(f"\nCollected a shape:   {all_a.shape}")
 print(f"Collected tau shape: {all_tau.shape}")
@@ -176,12 +175,13 @@ print("  (n_ue, n_tx_ant, n_subcarriers)")
 # Per-subcarrier channel power (summed over TX antennas): (N_UE, K)
 H_power = np.sum(np.abs(H) ** 2, axis=1)  # (N_UE, K)
 
-# Capacity vs SNR sweep
-capacities = np.zeros((len(SNR_DB_RANGE), dataset.n_ue))
-for snr_idx, snr_db in enumerate(SNR_DB_RANGE):
-    snr_linear = 10 ** (snr_db / 10)
-    # Average over subcarriers
-    capacities[snr_idx] = np.mean(np.log2(1 + snr_linear * H_power), axis=1)
+# Capacity vs SNR — vectorised over all SNR levels at once.
+# Broadcasting: snr_linear (n_snr,) x H_power (N_UE, K) -> (n_snr, N_UE, K)
+snr_linear = 10 ** (SNR_DB_RANGE / 10)                               # (n_snr,)
+capacities = np.mean(
+    np.log2(1 + snr_linear[:, None, None] * H_power[None]),          # (n_snr, N_UE, K)
+    axis=-1,
+)  # → (n_snr, N_UE)
 
 mean_cap = capacities.mean(axis=1)
 print("\nMean spectral efficiency vs SNR:")
