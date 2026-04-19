@@ -303,6 +303,13 @@ def generate_scene(  # noqa: PLR0913
     """
     folder = Path(scene_folder)
     folder.mkdir(parents=True, exist_ok=True)
+
+    # If the scene was already generated, skip the Overpass download.
+    if (folder / "scene.xml").exists() and (folder / "osm_gps_origin.txt").exists():
+        if verbose:
+            print(f"Scene already exists at {folder}, skipping generation.")
+        return str(folder)
+
     (folder / "meshes").mkdir(exist_ok=True)
 
     # Local origin at centre of bounding box (UTM metres)

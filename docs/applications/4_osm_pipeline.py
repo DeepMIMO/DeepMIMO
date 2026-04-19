@@ -39,7 +39,6 @@
 # %%
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -98,14 +97,18 @@ GRID_SPACING = 30.0  # metres between UE positions
 # the bbox) so that GPS coordinates can be recovered later.
 
 # %%
-scene_folder = tempfile.mkdtemp()
+# Use a persistent folder so the Overpass download is cached between runs.
+# Change WORK_DIR to any writable path on your system.
+WORK_DIR = Path.home() / ".cache" / "deepmimo" / "osm_pipeline_munich"
+WORK_DIR.mkdir(parents=True, exist_ok=True)
+scene_folder = str(WORK_DIR)
 
 osm_scene_folder = generate_scene(
     minlat=BBOX["minlat"],
     minlon=BBOX["minlon"],
     maxlat=BBOX["maxlat"],
     maxlon=BBOX["maxlon"],
-    scene_folder=str(Path(scene_folder) / "osm_scene"),
+    scene_folder=str(WORK_DIR / "osm_scene"),
     verbose=True,
 )
 
@@ -258,7 +261,7 @@ print("  (num_rx, num_tx, num_paths)")
 # ## Step 5 — Export with `sionna_exporter`
 
 # %%
-rt_save_folder = str(Path(scene_folder) / "sionna_rt_export")
+rt_save_folder = str(WORK_DIR / "sionna_rt_export")
 sionna_exporter(scene, paths, RT_PARAMS, rt_save_folder)
 
 print(f"\nExported files in {rt_save_folder}:")
