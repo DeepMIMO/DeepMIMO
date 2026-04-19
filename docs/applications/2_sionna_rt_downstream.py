@@ -271,10 +271,10 @@ print(f"\nLoad          : {t_load:.2f} s")
 # interaction type (LoS = green, reflected = red), with the reconstructed scene
 # overlaid automatically.
 #
-# > **Note — scene visualization:** buildings with multiple materials (e.g.
-# > concrete walls + glass windows) appear as overlapping mesh objects in the
-# > scene view. This is a display artifact from Sionna's default shape merging
-# > and does not affect the channel data.
+# The converter automatically deduplicates buildings that share multiple
+# material groups in the same physical space (e.g. concrete walls + glass
+# windows), so each building appears once.  Pass `deduplicate=False` to
+# `dm.convert` to disable this if needed.
 
 # %%
 n_ue = len(dataset.rx_pos)

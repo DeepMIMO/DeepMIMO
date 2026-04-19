@@ -30,6 +30,8 @@ def sionna_rt_converter(  # noqa: PLR0913
     print_params: bool = False,
     parent_folder: str = "",
     num_scenes: int = 1,
+    deduplicate: bool = True,
+    overlap_threshold: float = 0.8,
 ) -> str:
     """Convert Sionna ray-tracing data to DeepMIMO format.
 
@@ -49,6 +51,11 @@ def sionna_rt_converter(  # noqa: PLR0913
                              This parameter is only used if the scenario is time-varying.
         num_scenes (int): Number of scenes in the scenario. Defaults to 1.
                           This parameter is only used if the scenario is time-varying.
+        deduplicate (bool): Merge building components whose bounding boxes substantially
+            overlap. Fixes visual duplication from Sionna's default merge_shapes=True.
+            Defaults to True.
+        overlap_threshold (float): AABB overlap fraction threshold for deduplication.
+            Defaults to 0.8.
 
     Returns:
         str: Path to output folder containing converted DeepMIMO dataset.
@@ -88,7 +95,12 @@ def sionna_rt_converter(  # noqa: PLR0913
     materials_dict, material_indices = read_materials(rt_folder)
 
     # Read Scene data
-    scene = read_scene(rt_folder, material_indices)
+    scene = read_scene(
+        rt_folder,
+        material_indices,
+        deduplicate=deduplicate,
+        overlap_threshold=overlap_threshold,
+    )
     scene_dict = scene.export_data(temp_folder) if scene else {}
     scene_dict[c.SCENE_PARAM_NUMBER_SCENES] = num_scenes
 
