@@ -67,6 +67,7 @@ SIONNA_APPS = [
     ROOT / "docs/applications/2_sionna_rt_downstream.py",
     ROOT / "docs/applications/3_sionna_upstream.py",
     ROOT / "docs/applications/4_osm_pipeline.py",
+    ROOT / "docs/applications/5_dynamic_rt.py",
 ]
 
 # Notebooks intentionally skipped:

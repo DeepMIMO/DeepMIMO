@@ -7,6 +7,8 @@ This section contains advanced, real-world examples and applications of DeepMIMO
 - **[Channel Prediction](1_channel_prediction.ipynb)**: Complete workflow for creating realistic channel sequences for ML-based channel prediction, covering interpolation techniques, Doppler effects, and comparative analysis.
 - **[Sionna RT → DeepMIMO](2_sionna_rt_downstream.ipynb)**: Run Sionna RT 2.0 ray tracing on a built-in scene, export with `sionna_exporter`, convert with `dm.convert`, and load the resulting dataset. Requires `deepmimo[sionna]`.
 - **[DeepMIMO → Sionna](3_sionna_upstream.ipynb)**: Load a DeepMIMO scenario, adapt channels to Sionna's `(a, tau)` format via `SionnaAdapter`, build an OFDM channel matrix, and compute spectral efficiency.
+- **[OSM → Sionna RT → DeepMIMO](4_osm_pipeline.ipynb)**: Generate a Mitsuba scene from OpenStreetMap building data — no Blender required — run Sionna RT, and convert to DeepMIMO format.
+- **[Dynamic Ray Tracing](5_dynamic_rt.ipynb)**: Run the ray tracer once per time snapshot to capture scenes where geometry itself changes (e.g. a moving transmitter or obstacle). Assembles snapshots into a `DynamicDataset`. For most mobility scenarios, [Tutorial 5](../tutorials/5_doppler_mobility.ipynb) is faster and sufficient.
 
 ## How Applications Differ from Tutorials
 

@@ -193,6 +193,7 @@ DeepMIMO scenarios (see [Getting Started](../quickstart.md)).
 | `applications/2_sionna_rt_downstream.py` | `deepmimo[sionna]`, GPU | ~5–10 min |
 | `applications/3_sionna_upstream.py` | `deepmimo[sionna]`, GPU | ~5–10 min |
 | `applications/4_osm_pipeline.py` | `deepmimo[sionna]`, GPU, internet | ~10–15 min |
+| `applications/5_dynamic_rt.py` | `deepmimo[sionna]`, GPU | ~3–5 min |
 
 !!! note "Skipped notebooks"
     `tutorials/manual.py` is intentionally **not** pre-rendered by this
