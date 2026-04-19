@@ -56,19 +56,21 @@ from deepmimo.exporters.sionna_exporter import sionna_exporter
 # with buildings, streets, and varied geometry. The transmitter is placed
 # on a rooftop; receivers are placed at street level.
 #
-# We use `max_depth=2` with specular reflections only — enough to capture the
-# dominant LoS and first-order reflected paths.  Diffuse reflections are
-# enabled to add realistic surface scattering, which enriches the delay profiles.
+# We use `max_depth=3` with specular reflections, diffuse scattering, and edge
+# diffraction (UTD around building corners and rooftop edges).  Together these
+# capture LoS, multi-bounce specular, dense scattered multipath, and the
+# classic NLOS corner-diffraction paths that bend around obstacles.
 
 # %%
 CARRIER_FREQ = 3.5e9  # 3.5 GHz
 
 # Ray-tracing parameters forwarded to PathSolver
 RT_PARAMS = {
-    "max_depth": 2,
+    "max_depth": 3,  # LoS + up to 3 interactions (reflect / diffract)
     "los": True,
     "specular_reflection": True,
-    "diffuse_reflection": True,
+    "diffuse_reflection": True,  # Lambertian surface scattering
+    "diffraction": True,  # UTD edge diffraction around building corners
     "refraction": False,
     "samples_per_src": 2_000_000,
 }
@@ -88,6 +90,8 @@ RX_POSITIONS = [
 # ## Build the Scene
 
 # %%
+_t0 = time.perf_counter()
+
 scene = sionna_rt.load_scene(sionna_rt.scene.munich)
 scene.frequency = CARRIER_FREQ
 
@@ -114,8 +118,10 @@ for i, pos in enumerate(RX_POSITIONS):
     rx.display_radius = 4.0  # metres
     scene.add(rx)
 
+t_scene = time.perf_counter() - _t0
 print(f"TX position : {TX_POS}")
 print(f"RX count    : {len(RX_POSITIONS)}")
+print(f"Scene load  : {t_scene:.2f} s")
 
 # %% [markdown]
 # ## Visualize the Scene
@@ -144,19 +150,19 @@ plt.show()
 # %%
 p_solver = PathSolver()
 
-t0 = time.perf_counter()
+_t = time.perf_counter()
 paths = p_solver(scene=scene, **RT_PARAMS)
-elapsed = time.perf_counter() - t0
+t_rt = time.perf_counter() - _t
 
 n_rx = paths.tau.shape[0]
 n_tx = paths.tau.shape[1]
 max_paths = paths.tau.shape[2]
 
-print(f"Ray tracing completed in {elapsed:.1f} s")
-print(f"Receiver count  : {n_rx}")
-print(f"Transmitter count: {n_tx}")
-print(f"Max paths / pair : {max_paths}")
-print(f"Channel coeff (a[0]) shape: {paths.a[0].shape}")
+print(f"Ray tracing   : {t_rt:.1f} s")
+print(f"Receivers     : {n_rx}")
+print(f"Transmitters  : {n_tx}")
+print(f"Max paths/pair: {max_paths}")
+print(f"a[0] shape    : {paths.a[0].shape}  (n_rx, n_tx, n_rx_ant, n_tx_ant, n_paths)")
 
 # %% [markdown]
 # ## Visualize Propagation Paths
@@ -222,9 +228,11 @@ plt.show()
 # %%
 save_folder = str(Path(tempfile.mkdtemp()) / "munich_sionna_rt")
 
+_t = time.perf_counter()
 sionna_exporter(scene, paths, RT_PARAMS, save_folder)
+t_export = time.perf_counter() - _t
 
-print(f"Exported to: {save_folder}")
+print(f"Export        : {t_export:.2f} s  →  {save_folder}")
 for f in sorted(Path(save_folder).iterdir()):
     size_kb = f.stat().st_size / 1024
     print(f"  {f.name:40s}  {size_kb:7.1f} KB")
@@ -237,15 +245,20 @@ for f in sorted(Path(save_folder).iterdir()):
 # scenarios directory.
 
 # %%
+_t = time.perf_counter()
 scenario_name = dm.convert(save_folder, overwrite=True)
-print(f"Converted scenario: {scenario_name}")
+t_convert = time.perf_counter() - _t
+print(f"Convert       : {t_convert:.2f} s  →  {scenario_name}")
 
 # %% [markdown]
 # ## Load and Inspect the DeepMIMO Dataset
 
 # %%
+_t = time.perf_counter()
 dataset = dm.load(scenario_name)
+t_load = time.perf_counter() - _t
 print(dataset)
+print(f"\nLoad          : {t_load:.2f} s")
 
 # %% [markdown]
 # ## Ray Visualization (DeepMIMO)
@@ -267,7 +280,33 @@ plt.show()
 
 # %% [markdown]
 # ## Summary
-#
+
+# %%
+t_total = t_scene + t_rt + t_export + t_convert + t_load
+rows = [
+    ("Scene load", t_scene),
+    ("Ray tracing", t_rt),
+    ("Export", t_export),
+    ("Convert", t_convert),
+    ("Dataset load", t_load),
+    ("─" * 14, None),
+    ("Total", t_total),
+]
+print(f"{'Step':<16} {'Time':>8}")
+print("─" * 26)
+for label, val in rows:
+    if val is None:
+        print(f"{label}")
+    else:
+        print(f"{label:<16} {val:>7.2f} s")
+print(
+    f"\nRT params: max_depth={RT_PARAMS['max_depth']}, "
+    f"diffraction={RT_PARAMS['diffraction']}, "
+    f"diffuse={RT_PARAMS['diffuse_reflection']}, "
+    f"samples={RT_PARAMS['samples_per_src']:,}"
+)
+
+# %% [markdown]
 # The complete **Sionna RT 2.0 → DeepMIMO** pipeline:
 #
 # | Step | Tool | Output |
