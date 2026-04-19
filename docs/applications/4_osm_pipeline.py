@@ -11,10 +11,10 @@
 # **What this notebook covers:**
 # 1. Define a GPS bounding box around any urban area
 # 2. Download building footprints from **OpenStreetMap** — no Blender required
-# 3. Extrude footprints to 3D and write a **Mitsuba scene** directly
+# 3. Visualize the scene as a 2D footprint map and in Sionna RT's 3D renderer
 # 4. Run **Sionna RT 2.0** ray tracing on that scene
 # 5. Export and convert the results to a **DeepMIMO** dataset
-# 6. Load, inspect, and visualise the channel data
+# 6. Visualize the reconstructed DeepMIMO scene and channel data
 #
 # **Why no Blender?**
 # The traditional pipeline uses Blender + the blosm addon to convert OSM data
@@ -45,7 +45,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import sionna.rt as sionna_rt
-from sionna.rt import PathSolver, PlanarArray, Receiver, Transmitter
+from sionna.rt import Camera, PathSolver, PlanarArray, Receiver, Transmitter
 
 import deepmimo as dm
 from deepmimo.exporters.sionna_exporter import sionna_exporter
@@ -60,42 +60,45 @@ from deepmimo.pipelines.utils.pipeline_utils import get_origin_coords
 # Pick any GPS bounding box.  A block of ~300-600 m on a side works well -
 # large enough to capture reflections, small enough to run quickly.
 #
-# The example below covers part of **Midtown Manhattan**, New York City.
+# The example below covers part of **Munich city centre**, Germany.
+# To use a different location, replace the `BBOX` coordinates with any
+# GPS bounding box of your choice.
 
 # %%
-# GPS bounding box of the area to simulate
+# GPS bounding box — ~400 m x ~400 m block in Munich city centre
 BBOX = {
-    "minlat": 40.7520,
-    "minlon": -73.9820,
-    "maxlat": 40.7560,
-    "maxlon": -73.9770,
+    "minlat": 48.1355,
+    "minlon": 11.5735,
+    "maxlat": 48.1395,
+    "maxlon": 11.5795,
 }
 
-# Carrier frequency
 CARRIER_FREQ = 3.5e9  # 3.5 GHz
 
 # Sionna RT ray-tracing settings
-MAX_DEPTH = 3  # maximum reflection/refraction bounces
-N_SAMPLES = 2_000_000  # Monte-Carlo rays per transmitter
+MAX_DEPTH = 2
+N_SAMPLES = 1_000_000
 
-# Transmitter (base station) position in local Cartesian metres
-# (0, 0) is the centre of the bounding box; z is height above ground
-TX_POS = np.array([[0.0, 0.0, 25.0]])  # single BS at 25 m height
+# Transmitter: centre of the area at 25 m height
+# (0, 0) is the local coordinate origin = centre of the GPS bbox
+TX_POS = np.array([[0.0, 0.0, 25.0]])
 
 # UE grid settings
 UE_HEIGHT = 1.5  # metres above ground
-GRID_SPACING = 20.0  # metres between UE positions
+GRID_SPACING = 30.0  # metres between UE positions
 
 # %% [markdown]
 # ## Step 1 — Generate the Mitsuba Scene from OSM
 #
-# `generate_scene` queries the Overpass API for building footprints, extrudes
-# them into 3D PLY meshes, and writes a `scene.xml` that Sionna can load.
-# An `osm_gps_origin.txt` file records the local coordinate origin so that
-# GPS coordinates can be recovered later.
+# `generate_scene` queries the Overpass API for building footprints within the
+# GPS bounding box, extrudes each polygon into a 3D PLY mesh, creates a flat
+# ground plane, and writes a `scene.xml` that Sionna RT can load directly.
+#
+# An `osm_gps_origin.txt` file records the local coordinate origin (centre of
+# the bbox) so that GPS coordinates can be recovered later.
 
 # %%
-scene_folder = tempfile.mkdtemp()  # use any writable directory
+scene_folder = tempfile.mkdtemp()
 
 osm_scene_folder = generate_scene(
     minlat=BBOX["minlat"],
@@ -106,12 +109,51 @@ osm_scene_folder = generate_scene(
     verbose=True,
 )
 
-print(f"\nScene folder: {osm_scene_folder}")
-print("Files created:")
-for f in sorted(Path(osm_scene_folder).rglob("*")):
-    if f.is_file():
-        size_kb = f.stat().st_size / 1024
-        print(f"  {f.relative_to(osm_scene_folder)!s:<45}  {size_kb:7.1f} KB")
+print(f"\nScene folder : {osm_scene_folder}")
+n_buildings = sum(1 for f in Path(osm_scene_folder, "meshes").glob("building_*.ply"))
+print(f"Buildings written: {n_buildings}")
+
+# %% [markdown]
+# ## Visualize — 2D Building Footprint Map
+#
+# Before loading the scene into Sionna we can plot the building footprints
+# directly from the PLY meshes.  The bottom-ring vertices (z ≈ 0) of each
+# mesh form the building outline on the ground plane.
+#
+# > **Google satellite view**: if you have a Google Maps Static API key, you
+# > can overlay a satellite image with
+# > `deepmimo.pipelines.utils.geo_utils.fetch_satellite_view(...)`.
+
+# %%
+meshes_folder = Path(osm_scene_folder) / "meshes"
+
+fig, ax = plt.subplots(figsize=(8, 8))
+for ply_file in sorted(meshes_folder.glob("building_*.ply")):
+    lines = ply_file.read_text(encoding="utf-8").splitlines()
+    hdr_end = next(i for i, ln in enumerate(lines) if ln == "end_header")
+    n_verts = int(next(ln.split()[-1] for ln in lines if "element vertex" in ln))
+    # Bottom-ring vertices are the first half of the vertex list (z = 0)
+    z_tol = 0.01  # ground-level tolerance in metres
+    min_poly_pts = 3
+    footprint = [
+        tuple(map(float, lines[hdr_end + 1 + i].split()))
+        for i in range(n_verts)
+        if abs(float(lines[hdr_end + 1 + i].split()[2])) < z_tol
+    ]
+    if len(footprint) >= min_poly_pts:
+        xs = [v[0] for v in footprint] + [footprint[0][0]]
+        ys = [v[1] for v in footprint] + [footprint[0][1]]
+        ax.fill(xs, ys, alpha=0.5, color="steelblue", edgecolor="navy", linewidth=0.4)
+
+ax.scatter(*TX_POS[0, :2], c="red", marker="^", s=250, zorder=5, label="TX")
+ax.set_xlabel("x (m)")
+ax.set_ylabel("y (m)")
+ax.set_title("OSM Building Footprints — Munich City Centre")
+ax.set_aspect("equal")
+ax.grid(visible=True, alpha=0.3)
+ax.legend()
+plt.tight_layout()
+plt.show()
 
 # %% [markdown]
 # ## Step 2 — Load the Scene in Sionna RT
@@ -143,11 +185,9 @@ scene.rx_array = single_ant
 # UEs are placed on a regular grid at street level.
 
 # %%
-# Read the origin saved by generate_scene
 origin_lat, origin_lon = get_origin_coords(osm_scene_folder)
 print(f"Local coordinate origin: ({origin_lat:.6f}, {origin_lon:.6f})")
 
-# Bounding box in local Cartesian
 xmin, ymin, xmax, ymax = convert_GpsBBox2CartesianBBox(
     BBOX["minlat"],
     BBOX["minlon"],
@@ -162,13 +202,34 @@ print(f"Scene extent: X=[{xmin:.0f}, {xmax:.0f}] m,  Y=[{ymin:.0f}, {ymax:.0f}] 
 scene.add(Transmitter("tx_0", position=TX_POS[0].tolist()))
 print(f"TX at {TX_POS[0]}")
 
-# Generate UE grid and add receivers
+# Generate UE grid
 rx_pos = gen_plane_grid(xmin + 10, xmax - 10, ymin + 10, ymax - 10, GRID_SPACING, UE_HEIGHT)
 print(f"UE grid: {len(rx_pos)} positions")
 
 for i, pos in enumerate(rx_pos):
-    scene.add(Receiver(f"rx_{i}", position=pos.tolist()))
+    rx = Receiver(f"rx_{i}", position=pos.tolist())
+    rx.display_radius = 5.0  # metres; default heuristic is too large for this scene
+    scene.add(rx)
 print(f"Added {len(rx_pos)} receivers")
+
+# %% [markdown]
+# ## Visualize — Sionna RT Scene Render
+#
+# Sionna renders the 3D scene using Mitsuba's physically-based renderer.
+# Buildings are visible as 3D blocks; the red marker is the TX and the blue
+# spheres are the UE grid.
+
+# %%
+cam_top = Camera(position=[0.0, 0.0, 500.0], look_at=[0.0, 0.0, 0.0])
+fig = scene.render(camera=cam_top, show_devices=True)
+fig.suptitle("OSM Scene in Sionna RT — Top View (Munich)")
+plt.show()
+
+# %%
+cam_oblique = Camera(position=[-300.0, -300.0, 300.0], look_at=[0.0, 0.0, 30.0])
+fig = scene.render(camera=cam_oblique, show_devices=True)
+fig.suptitle("OSM Scene in Sionna RT — Perspective View")
+plt.show()
 
 # %% [markdown]
 # ## Step 4 — Run Sionna RT Ray Tracing
@@ -179,7 +240,7 @@ RT_PARAMS = {
     "los": True,
     "specular_reflection": True,
     "diffuse_reflection": False,
-    "refraction": True,
+    "refraction": False,
     "samples_per_src": N_SAMPLES,
 }
 
@@ -216,39 +277,46 @@ dataset = dm.load(scenario_name)
 print(dataset)
 
 # %% [markdown]
-# ## Step 8 — Compute Channels and Visualise
+# ## Visualize — DeepMIMO Reconstructed Scene
+#
+# DeepMIMO reconstructs the 3D scene from the Sionna mesh: each object is
+# decomposed into connected building components and represented as a convex
+# hull.  The 3D plot lets you verify the scene geometry before analysing
+# channel data.
 
 # %%
-n_paths_result = max(*dataset.num_paths, 1)
-ch_params = dm.ChannelParameters()
-ch_params.num_paths = n_paths_result
+dataset.scene.plot()
+plt.title("DeepMIMO Reconstructed Scene — Munich OSM")
+plt.tight_layout()
+plt.show()
 
-channels = dataset.compute_channels(ch_params)
-print(f"Channel tensor: {channels.shape}  (n_ue, n_rx_ant, n_tx_ant, n_paths)")
+# %% [markdown]
+# ## Step 8 — Received Power Coverage Map
+#
+# Per-UE peak received power (across paths) plotted as a scatter map.
+# UEs with no paths (obstructed or out-of-range) are shown in grey.
 
-# Per-UE received power (sum over paths, dB scale)
-pwr_linear = np.sum(np.abs(channels[:, 0, 0, :]) ** 2, axis=-1)
-pwr_db = 10 * np.log10(pwr_linear + 1e-30)
+# %%
+rx_pos_arr = np.array(dataset.rx_pos)
+power_peak = np.nanmax(dataset.power, axis=1)  # (n_ue,) in dBW
 
-# Scatter plot: UE position coloured by received power
 fig, ax = plt.subplots(figsize=(8, 7))
 sc = ax.scatter(
-    dataset.rx_pos[:, 0],
-    dataset.rx_pos[:, 1],
-    c=pwr_db,
+    rx_pos_arr[:, 0],
+    rx_pos_arr[:, 1],
+    c=power_peak,
     cmap="viridis",
-    s=40,
-    vmin=np.percentile(pwr_db, 5),
+    s=60,
+    vmin=np.nanpercentile(power_peak, 5),
 )
 ax.scatter(*TX_POS[0, :2], c="red", marker="^", s=200, zorder=5, label="TX")
-plt.colorbar(sc, ax=ax, label="Received power [dB]")
-ax.set_xlabel("x [m]")
-ax.set_ylabel("y [m]")
-ax.set_title(f"Received power — OSM scene\n({len(rx_pos)} UEs, 3.5 GHz)")
+plt.colorbar(sc, ax=ax, label="Peak received power (dBW)")
+ax.set_xlabel("x (m)")
+ax.set_ylabel("y (m)")
+ax.set_title(f"Coverage Map — OSM Munich ({len(rx_pos)} UEs, {CARRIER_FREQ / 1e9:.1f} GHz)")
 ax.legend()
 ax.grid(visible=True, alpha=0.3)
 plt.tight_layout()
-plt.savefig("osm_pipeline_power_map.png", dpi=100, bbox_inches="tight")
 plt.show()
 
 # %% [markdown]
@@ -263,7 +331,7 @@ plt.show()
 # | 5. Export | `sionna_exporter` | `.pkl` files |
 # | 6. Convert | `dm.convert` | DeepMIMO scenario |
 # | 7. Load | `dm.load` | `Dataset` object |
-# | 8. Channels | `dataset.compute_channels` | Complex channel tensor |
+# | 8. Visualize | `scene.plot`, `power` | Coverage map + 3D scene |
 #
 # **Key design choices:**
 # - **No Blender** — `generate_scene` fetches OSM data via the Overpass API and
@@ -274,3 +342,5 @@ plt.show()
 #   origin; `osm_gps_origin.txt` records this for downstream use.
 # - **Reusable scene folder** — the generated `scene.xml` folder can be fed
 #   directly into `raytrace_sionna()` for large-scale batch processing.
+# - **Satellite overlay** — optionally add a Google Maps satellite image with
+#   `deepmimo.pipelines.utils.geo_utils.fetch_satellite_view(bbox, api_key, ...)`.
