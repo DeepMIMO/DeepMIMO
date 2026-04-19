@@ -1,39 +1,10 @@
 # Wireless Data Generation Pipeline
 
-DeepMIMO sits at the centre of a three-phase workflow for generating large-scale,
+DeepMIMO sits at the center of a three-phase workflow for generating large-scale,
 ray-tracing-derived wireless datasets.  The diagram below shows the full pipeline;
 this page walks through each phase and step in detail.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  PHASE 1 — Scene Generation                                             │
-│                                                                         │
-│  Step 1          Step 2           Step 3                                │
-│  Scene      →    Scene       →    Scene Export                          │
-│  Extraction      Processing       (USD / XML / InSite)                  │
-└──────────────────────────────────────┬──────────────────────────────────┘
-                                       │
-┌──────────────────────────────────────▼──────────────────────────────────┐
-│  PHASE 2 — Channel Emulation  (DeepMIMO core)                           │
-│                                                                         │
-│  Step 4          Step 5           Step 6          Step 7      Step 8    │
-│  Configure  →    Run Ray    →     Convert    →    Compute  →  Export    │
-│  Ray Tracer      Tracer           Outputs         Channels    Channels  │
-│                  (AODT /                                                 │
-│                   Sionna /                                               │
-│                   InSite)                                                │
-└──────────────────────────────────────┬──────────────────────────────────┘
-                                       │
-┌──────────────────────────────────────▼──────────────────────────────────┐
-│  PHASE 3 — Downstream Simulation                                        │
-│                                                                         │
-│  Step 9                    Step 10                                      │
-│  Run Simulation   →        Collect & Store Data                         │
-│  (5G stack /               (channel estimation,                         │
-│   link-level /             beamforming, BLER, …)                        │
-│   system-level)                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
-```
+![Data Generation Pipeline](../assets/images/data_generation_pipeline.svg)
 
 ---
 
@@ -66,7 +37,7 @@ used directly with the export step.
 ### Step 2 — Scene Processing
 
 Raw GIS data is often noisy or multi-source.  This step merges, cleans, and
-normalises the geometry:
+normalizes the geometry:
 
 - Trimming roads and buildings to the simulation bounding box
 - Extruding 2D footprints into 3D building meshes
@@ -190,7 +161,7 @@ from deepmimo.converters import convert
 convert("./rt_output/sionna", output_folder="./deepmimo_scenarios/times_square")
 ```
 
-The converter normalises path attributes (power, delay, angles, interaction types)
+The converter normalizes path attributes (power, delay, angles, interaction types)
 across all three tracers so that downstream processing is tracer-agnostic.
 See [Converters](capabilities/converters.md) for format details.
 
@@ -254,16 +225,6 @@ reshaping.
 Simulation outputs (BLERs, capacity, prediction errors, …) are saved for analysis
 and, optionally, fed back into the DeepMIMO database to build a reproducible
 public dataset.
-
----
-
-## Supported Ray Tracers
-
-| Tracer | Organisation | Scene format | Transmissions | GPU |
-|--------|-------------|-------------|---------------|-----|
-| **NVIDIA AODT** | NVIDIA | OpenUSD | ✓ | ✓ |
-| **Sionna RT** | NVIDIA | Mitsuba XML | ✗ | ✓ |
-| **Wireless InSite** | Remcom | PLY / XML | ✓ | ✗ |
 
 ---
 
