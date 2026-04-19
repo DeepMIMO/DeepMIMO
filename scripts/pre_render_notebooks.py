@@ -57,6 +57,11 @@ TUTORIALS = [
     ROOT / "docs/tutorials/8_migration_guide.py",
 ]
 
+# Application notebooks that only need scenario data (no Sionna)
+APPS = [
+    ROOT / "docs/applications/1_channel_prediction.py",
+]
+
 # Sionna RT application notebooks (require `pip install deepmimo[sionna]`)
 SIONNA_APPS = [
     ROOT / "docs/applications/2_sionna_rt_downstream.py",
@@ -65,11 +70,9 @@ SIONNA_APPS = [
 ]
 
 # Notebooks intentionally skipped:
-#   tutorials/manual.py          — too large; maintained separately on Colab
-#   applications/1_channel_prediction.py — requires external ML dataset download
+#   tutorials/manual.py — too large; maintained separately on Colab
 SKIP: set[Path] = {
     ROOT / "docs/tutorials/manual.py",
-    ROOT / "docs/applications/1_channel_prediction.py",
 }
 
 EXECUTION_TIMEOUT = 600  # seconds per notebook
@@ -139,6 +142,7 @@ def _parse_args() -> argparse.Namespace:
         help="Specific .py notebook paths to pre-render (default: all groups selected below)",
     )
     parser.add_argument("--tutorials", action="store_true", help="Pre-render tutorial notebooks 1–8")
+    parser.add_argument("--apps", action="store_true", help="Pre-render application notebooks (no Sionna)")
     parser.add_argument("--sionna", action="store_true", help="Pre-render Sionna application notebooks")
     parser.add_argument(
         "--no-execute",
@@ -153,15 +157,17 @@ def main() -> None:
 
     if args.notebooks:
         notebooks = [Path(nb) for nb in args.notebooks]
-    elif args.tutorials or args.sionna:
+    elif args.tutorials or args.apps or args.sionna:
         notebooks = []
         if args.tutorials:
             notebooks += TUTORIALS
+        if args.apps:
+            notebooks += APPS
         if args.sionna:
             notebooks += SIONNA_APPS
     else:
         # Default: all groups
-        notebooks = TUTORIALS + SIONNA_APPS
+        notebooks = TUTORIALS + APPS + SIONNA_APPS
 
     execute = not args.no_execute
     print(f"Pre-rendering {len(notebooks)} notebook(s) (execute={execute})…\n")
