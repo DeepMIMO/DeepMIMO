@@ -40,10 +40,8 @@ Steps to run a pipeline:
 	Note: the file pipeline_csv_gen.py can be used to generate a CSV file from a list of cities.
 	Such a list of cities can be found in https://simplemaps.com/data/world-cities
 
-5. Run specific pipeline:
-	- python pipeline_runner_static.py
-    - python pipeline_runner_osm_static.py
-    - python pipeline_runner_dynamic.py
+5. Run the pipeline:
+	- python pipeline_runner.py [bounding_boxes.csv]
 
 --------------------------------
 
