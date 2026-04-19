@@ -695,6 +695,8 @@ class Scene:
         """
         default_vis_settings = {"z_order": 3, "alpha": 0.8, "color": None}
         for label, objects in label_groups.items():
+            if label == CAT_TERRAIN:
+                continue  # terrain (ground planes) causes depth-sort artifacts in 3D
             vis_settings = self.visualization_settings.get(label, default_vis_settings)
             n_objects = len(objects)
             colors = (

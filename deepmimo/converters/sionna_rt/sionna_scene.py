@@ -90,7 +90,7 @@ def read_scene(load_folder: str, material_indices: list[int]) -> Scene:
         obj_faces_map = [np.zeros((0, 3), dtype=np.int64)] * len(obj_items)
 
     scene = Scene()
-    terrain_keywords = ["plane", "floor", "terrain", "roads", "paths"]
+    terrain_keywords = ["plane", "floor", "terrain", "roads", "paths", "ground"]
     obj_counter = 0
 
     for mat_idx_pos, (name, vertex_range) in enumerate(obj_items):

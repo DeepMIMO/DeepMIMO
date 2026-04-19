@@ -14,7 +14,7 @@
 # 3. Inspect propagation paths directly from Sionna
 # 4. Export results to disk with DeepMIMO's `sionna_exporter`
 # 5. Convert to a DeepMIMO scenario with `dm.convert`
-# 6. Explore channels: coverage scatter, delay profiles, ray plots, and scene overlay
+# 6. Explore channels: delay profiles and ray visualization
 #
 # **Why this workflow?**
 # Sionna RT does not natively persist ray tracing results to disk.
@@ -76,15 +76,11 @@ RT_PARAMS = {
 # Transmitter — rooftop position
 TX_POS = [-210.0, 73.0, 105.0]
 
-# Receivers — street-level positions
+# Receivers — four street-level positions with confirmed propagation paths
 RX_POSITIONS = [
     [40.0, 20.0, 1.5],
-    [20.0, 10.0, 1.5],
     [20.0, 50.0, 1.5],
-    [10.0, 40.0, 1.5],
     [30.0, 60.0, 1.5],
-    [-10.0, 30.0, 1.5],
-    [0.0, 60.0, 1.5],
     [50.0, 50.0, 1.5],
 ]
 
@@ -110,9 +106,11 @@ scene.rx_array = single_ant
 # Add transmitter
 scene.add(Transmitter("tx_0", position=TX_POS))
 
-# Add receivers
+# Add receivers — set display_radius so devices render at a reasonable size
 for i, pos in enumerate(RX_POSITIONS):
-    scene.add(Receiver(f"rx_{i}", position=pos))
+    rx = Receiver(f"rx_{i}", position=pos)
+    rx.display_radius = 8.0  # metres; default heuristic is too large for Munich
+    scene.add(rx)
 
 print(f"TX position : {TX_POS}")
 print(f"RX count    : {len(RX_POSITIONS)}")
@@ -183,16 +181,14 @@ plt.show()
 # complex channel coefficient `a`.
 
 # %%
-# Complex channel coefficients: (n_rx, n_tx, max_paths, n_rx_ant, n_tx_ant)
+# Complex channel coefficients — shape: (n_rx, n_tx, n_rx_ant, n_tx_ant, max_paths)
 a_complex = paths.a[0].numpy() + 1j * paths.a[1].numpy()
 tau_np = paths.tau.numpy()  # (n_rx, n_tx, max_paths)
 
-fig, axes = plt.subplots(2, 4, figsize=(16, 7), sharey=True)
-axes = axes.flatten()
+fig, axes = plt.subplots(1, n_rx, figsize=(4 * n_rx, 4), sharey=True)
 for rx_idx in range(n_rx):
     ax = axes[rx_idx]
     delays_ns = tau_np[rx_idx, 0, :] * 1e9
-    # paths is the last dim: (n_rx, n_tx, n_rx_ant, n_tx_ant, max_paths)
     power_lin = np.abs(a_complex[rx_idx, 0, 0, 0, :]) ** 2
     valid = delays_ns > 0
     if valid.any():
@@ -205,7 +201,7 @@ for rx_idx in range(n_rx):
         )
     ax.set_title(f"RX {rx_idx}")
     ax.set_xlabel("Delay (ns)")
-    if rx_idx % 4 == 0:
+    if rx_idx == 0:
         ax.set_ylabel("Power (dBW)")
 
 plt.suptitle("Power-Delay Profiles (from Sionna)", fontsize=13)
@@ -249,84 +245,20 @@ dataset = dm.load(scenario_name)
 print(dataset)
 
 # %% [markdown]
-# ## Coverage Scatter
-#
-# Peak received power at each receiver position plotted on the 2D floor plan.
-
-# %%
-rx_pos = np.array(dataset.rx_pos)
-power_peak = np.nanmax(dataset.power, axis=1)  # peak power per UE (dBW), NaN if no paths
-
-fig, ax = plt.subplots(figsize=(8, 7))
-sc = ax.scatter(
-    rx_pos[:, 0],
-    rx_pos[:, 1],
-    c=power_peak,
-    cmap="plasma",
-    s=120,
-    zorder=5,
-)
-tx_pos_flat = np.array(dataset.tx_pos).flatten()  # [x, y, z] regardless of (3,) or (1, 3)
-ax.scatter(tx_pos_flat[0], tx_pos_flat[1], c="red", marker="^", s=250, label="TX", zorder=6)
-plt.colorbar(sc, ax=ax, label="Peak path power (dBW)")
-ax.set_xlabel("x (m)")
-ax.set_ylabel("y (m)")
-ax.set_title("Coverage — Peak Received Power")
-ax.legend()
-plt.tight_layout()
-plt.show()
-
-# %% [markdown]
-# ## Delay Profiles (DeepMIMO)
-#
-# Same power-delay view, now from the converted DeepMIMO dataset.  Comparing
-# with the Sionna plots above confirms the conversion preserved path structure.
-
-# %%
-n_ue = len(dataset.delay)
-fig, axes = plt.subplots(2, 4, figsize=(16, 7), sharey=True)
-axes = axes.flatten()
-for i in range(min(n_ue, 8)):
-    ax = axes[i]
-    valid = dataset.delay[i] > 0
-    delays_ns = dataset.delay[i][valid] * 1e9
-    powers_db = dataset.power[i][valid]
-    if len(delays_ns) > 0:
-        ax.stem(delays_ns, powers_db, basefmt="none", markerfmt="C1o", linefmt="C1-")
-    ax.set_title(f"UE {i}")
-    ax.set_xlabel("Delay (ns)")
-    if i % 4 == 0:
-        ax.set_ylabel("Power (dBW)")
-
-plt.suptitle("Power-Delay Profiles (from DeepMIMO)", fontsize=13)
-plt.tight_layout()
-plt.show()
-
-# %% [markdown]
 # ## Ray Visualization (DeepMIMO)
 #
 # DeepMIMO stores the full 3D interaction geometry for each path.
 # `dataset.plot_rays` draws TX → bounce points → RX segments, color-coded by
-# interaction type (LoS, reflection, …).
+# interaction type (LoS = green, reflected = red), with the reconstructed scene
+# overlaid automatically.
 
 # %%
-# Rays for the first UE, overlaid on the DeepMIMO scene
-u_idx = 0
-ax = dataset.plot_rays(u_idx)
-dataset.scene.plot(ax=ax)
-plt.title(f"Propagation Rays — UE {u_idx}")
-plt.tight_layout()
-plt.show()
-
-# %% [markdown]
-# ## DeepMIMO Scene
-#
-# The DeepMIMO scene was reconstructed from the Sionna mesh: each Sionna object
-# was split into connected building components and represented as a convex hull.
-
-# %%
-dataset.scene.plot()
-plt.title("DeepMIMO Scene — Reconstructed from Sionna Munich")
+n_ue = len(dataset.rx_pos)
+fig, axes = plt.subplots(1, n_ue, figsize=(5 * n_ue, 5), subplot_kw={"projection": "3d"})
+for u_idx, ax in enumerate(axes):
+    dataset.plot_rays(u_idx, ax=ax)
+    ax.set_title(f"UE {u_idx}")
+plt.suptitle("Propagation Rays — DeepMIMO", fontsize=13)
 plt.tight_layout()
 plt.show()
 
@@ -343,7 +275,7 @@ plt.show()
 # | 4. Export | `sionna_exporter` | `.pkl` files on disk |
 # | 5. Convert | `dm.convert` | DeepMIMO scenario folder |
 # | 6. Load | `dm.load` | `Dataset` object |
-# | 7. Explore | `plot_rays`, `scene.plot`, `power.plot` | Figures |
+# | 7. Explore | `plot_rays`, delay profiles | Figures |
 #
 # From here you can use any DeepMIMO tool: channel generation, beamforming,
 # dataset manipulation, Doppler, and ML training pipelines.
