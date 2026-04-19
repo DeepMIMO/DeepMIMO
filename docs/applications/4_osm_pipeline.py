@@ -220,15 +220,18 @@ print(f"Added {len(rx_pos)} receivers")
 # spheres are the UE grid.
 
 # %%
-cam_top = Camera(position=[0.0, 0.0, 500.0], look_at=[0.0, 0.0, 0.0])
+# Camera offset slightly south so Sionna's Z-up convention renders
+# East (x+) right and North (y+) up — matching the 2D footprint above.
+cam_top = Camera(position=[0.0, -5.0, 500.0], look_at=[0.0, 0.0, 0.0])
 fig = scene.render(camera=cam_top, show_devices=True)
-fig.suptitle("OSM Scene in Sionna RT — Top View (Munich)")
+fig.suptitle("OSM Scene in Sionna RT — Top View (x = East →, y = North ↑)")
 plt.show()
 
 # %%
-cam_oblique = Camera(position=[-300.0, -300.0, 300.0], look_at=[0.0, 0.0, 30.0])
+# South-facing oblique: consistent with top-down (East right, North into scene)
+cam_oblique = Camera(position=[0.0, -300.0, 200.0], look_at=[0.0, 0.0, 30.0])
 fig = scene.render(camera=cam_oblique, show_devices=True)
-fig.suptitle("OSM Scene in Sionna RT — Perspective View")
+fig.suptitle("OSM Scene in Sionna RT — Perspective View (South → North)")
 plt.show()
 
 # %% [markdown]
@@ -277,20 +280,6 @@ dataset = dm.load(scenario_name)
 print(dataset)
 
 # %% [markdown]
-# ## Visualize — DeepMIMO Reconstructed Scene
-#
-# DeepMIMO reconstructs the 3D scene from the Sionna mesh: each object is
-# decomposed into connected building components and represented as a convex
-# hull.  The 3D plot lets you verify the scene geometry before analysing
-# channel data.
-
-# %%
-dataset.scene.plot()
-plt.title("DeepMIMO Reconstructed Scene — Munich OSM")
-plt.tight_layout()
-plt.show()
-
-# %% [markdown]
 # ## Step 8 — Received Power Coverage Map
 #
 # Per-UE peak received power (across paths) plotted as a scatter map.
@@ -331,7 +320,7 @@ plt.show()
 # | 5. Export | `sionna_exporter` | `.pkl` files |
 # | 6. Convert | `dm.convert` | DeepMIMO scenario |
 # | 7. Load | `dm.load` | `Dataset` object |
-# | 8. Visualize | `scene.plot`, `power` | Coverage map + 3D scene |
+# | 8. Coverage map | `dataset.power` | Per-UE received power scatter |
 #
 # **Key design choices:**
 # - **No Blender** — `generate_scene` fetches OSM data via the Overpass API and
