@@ -7,7 +7,7 @@
   </defs>
 
   <!-- Background -->
-  <rect width="900" height="490" fill="#F9FAFB"/>
+  <rect width="900" height="490" fill="transparent"/>
 
   <!-- ═══ PHASE 1: Scene Generation ═══ -->
   <rect x="20" y="15" width="860" height="130" rx="8"

@@ -270,6 +270,11 @@ print(f"\nLoad          : {t_load:.2f} s")
 # `dataset.plot_rays` draws TX → bounce points → RX segments, color-coded by
 # interaction type (LoS = green, reflected = red), with the reconstructed scene
 # overlaid automatically.
+#
+# > **Note — scene visualization:** buildings with multiple materials (e.g.
+# > concrete walls + glass windows) appear as overlapping mesh objects in the
+# > scene view. This is a display artifact from Sionna's default shape merging
+# > and does not affect the channel data.
 
 # %%
 n_ue = len(dataset.rx_pos)

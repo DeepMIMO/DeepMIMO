@@ -40,7 +40,7 @@
 # 2. Ray trace **N snapshots** — one per drone position
 # 3. Export and convert each snapshot to a DeepMIMO scenario
 # 4. Assemble snapshots into a `DynamicDataset`
-# 5. Apply timestamps, inspect TX velocity, and visualise how paths change
+# 5. Apply timestamps, inspect TX velocity, and visualize how paths change
 #
 # **Requirements:**
 # ```bash
@@ -110,8 +110,8 @@ print(f"Snapshots: {N_SNAPSHOTS}  |  Time delta: {TIME_DELTA} s")
 # ## Build the Scene
 #
 # `simple_street_canyon_with_cars` provides a realistic urban cross-section:
-# two parallel building blocks, parked cars on the kerbs, and an open street.
-# The drone (TX) is placed above the centreline; UEs are at street level.
+# two parallel building blocks, parked cars on the curbs, and an open street.
+# The drone (TX) is placed above the centerline; UEs are at street level.
 
 # %%
 scene = sionna_rt.load_scene(sionna_rt.scene.simple_street_canyon_with_cars)
@@ -140,13 +140,13 @@ print(f"Scene loaded: {len(scene.objects)} objects")
 print(f"UEs: {len(UE_POSITIONS)}  |  TX: drone at height {DRONE_HEIGHT} m")
 
 # %% [markdown]
-# ## Visualise the Scene (Snapshot 0)
+# ## Visualize the Scene (Snapshot 0)
 #
 # Before running any ray tracing, render the scene to confirm the geometry.
 # The drone (red triangle) starts at one end of the street.
 
 # %%
-cam = Camera(position=[0.0, -60.0, 40.0], look_at=[0.0, 0.0, 5.0])
+cam = Camera(position=[0.0, -100.0, 60.0], look_at=[0.0, 0.0, 10.0])  # south view, full street
 fig = scene.render(camera=cam, show_devices=True)
 fig.suptitle("Street Canyon — Initial Setup (Drone at Snapshot 0)")
 plt.show()
@@ -220,7 +220,7 @@ print(
 )
 
 # %% [markdown]
-# ## Visualise Path Changes Across Snapshots
+# ## Visualize Path Changes Across Snapshots
 #
 # The most informative view of a dynamic dataset is how propagation paths
 # evolve as the drone moves.  Each subplot shows the rays from TX to a fixed
@@ -228,7 +228,7 @@ print(
 # and their delays shift across scenes.
 
 # %%
-UE_IDX = 1  # UE in the centre of the street
+UE_IDX = 1  # UE in the center of the street
 
 fig, axes = plt.subplots(
     1, N_SNAPSHOTS, figsize=(4 * N_SNAPSHOTS, 4), subplot_kw={"projection": "3d"}
@@ -248,13 +248,14 @@ plt.show()
 # The coverage pattern shifts as LoS geometry and reflection angles change.
 
 # %%
+MIN_POWER_DBW = -200  # discard paths with no real power
+
 fig, ax = plt.subplots(figsize=(8, 4))
 
 for ue_idx in range(len(UE_POSITIONS)):
     peak_power = []
     for snap in dyn.datasets:
         pwr = snap.power[ue_idx]
-        MIN_POWER_DBW = -200
         valid = pwr[np.isfinite(pwr) & (pwr > MIN_POWER_DBW)]
         peak_power.append(float(np.max(valid)) if valid.size > 0 else float("nan"))
     ax.plot(DRONE_X_POSITIONS, peak_power, "o-", label=f"UE {ue_idx}")
@@ -283,10 +284,10 @@ plt.show()
 #
 # | Scenario | Use |
 # |----------|-----|
-# | User moves within a static environment | **[Tutorial 5](../tutorials/5_doppler_mobility.ipynb)** |  # noqa: E501
+# | User moves within a static environment | [Tutorial 5](../tutorials/5_doppler_mobility.ipynb) |
 # | TX moves far enough to hit different surfaces | **This notebook** |
 # | Moving obstacle blocks/opens paths (e.g. truck) | **This notebook** |
-# | Many users, many trajectories, large-scale dataset | **[Batch Pipeline](../resources/batch_pipeline.md)** |  # noqa: E501
+# | Many users, many trajectories, large-scale dataset | Batch pipeline scripts |
 #
 # The rule of thumb: if the **geometry of the scene** changes between time steps
 # in a way that fundamentally alters which surfaces interact with the signal,

@@ -59,12 +59,12 @@ from deepmimo.pipelines.utils.pipeline_utils import get_origin_coords
 # Pick any GPS bounding box.  A block of ~300-600 m on a side works well -
 # large enough to capture reflections, small enough to run quickly.
 #
-# The example below covers part of **Munich city centre**, Germany.
+# The example below covers part of **Munich city center**, Germany.
 # To use a different location, replace the `BBOX` coordinates with any
 # GPS bounding box of your choice.
 
 # %%
-# GPS bounding box — ~400 m x ~400 m block in Munich city centre
+# GPS bounding box — ~400 m x ~400 m block in Munich city center
 BBOX = {
     "minlat": 48.1355,
     "minlon": 11.5735,
@@ -78,8 +78,8 @@ CARRIER_FREQ = 3.5e9  # 3.5 GHz
 MAX_DEPTH = 2
 N_SAMPLES = 1_000_000
 
-# Transmitter: centre of the area at 25 m height
-# (0, 0) is the local coordinate origin = centre of the GPS bbox
+# Transmitter: center of the area at 25 m height
+# (0, 0) is the local coordinate origin = center of the GPS bbox
 TX_POS = np.array([[0.0, 0.0, 25.0]])
 
 # UE grid settings
@@ -93,7 +93,7 @@ GRID_SPACING = 30.0  # metres between UE positions
 # GPS bounding box, extrudes each polygon into a 3D PLY mesh, creates a flat
 # ground plane, and writes a `scene.xml` that Sionna RT can load directly.
 #
-# An `osm_gps_origin.txt` file records the local coordinate origin (centre of
+# An `osm_gps_origin.txt` file records the local coordinate origin (center of
 # the bbox) so that GPS coordinates can be recovered later.
 
 # %%
@@ -151,7 +151,7 @@ for ply_file in sorted(meshes_folder.glob("building_*.ply")):
 ax.scatter(*TX_POS[0, :2], c="red", marker="^", s=250, zorder=5, label="TX")
 ax.set_xlabel("x (m)")
 ax.set_ylabel("y (m)")
-ax.set_title("OSM Building Footprints — Munich City Centre")
+ax.set_title("OSM Building Footprints — Munich City Center")
 ax.set_aspect("equal")
 ax.grid(visible=True, alpha=0.3)
 ax.legend()
@@ -184,7 +184,7 @@ scene.rx_array = single_ant
 # %% [markdown]
 # ## Step 3 — Place Transmitter and Receivers
 #
-# The base station is placed at the centre of the area at rooftop height.
+# The base station is placed at the center of the area at rooftop height.
 # UEs are placed on a regular grid at street level.
 
 # %%
@@ -330,7 +330,7 @@ plt.show()
 #   writes Mitsuba PLY meshes directly in Python.
 # - **ITU radio materials** — buildings use `itu-radio-material type=concrete`,
 #   matching the material convention of Sionna's built-in scenes.
-# - **Local coordinate system** — the centre of the GPS bounding box is the
+# - **Local coordinate system** — the center of the GPS bounding box is the
 #   origin; `osm_gps_origin.txt` records this for downstream use.
 # - **Reusable scene folder** — the generated `scene.xml` folder can be fed
 #   directly into `raytrace_sionna()` for large-scale batch processing.

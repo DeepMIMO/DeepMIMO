@@ -127,8 +127,13 @@ class MainClass:
 
 ## Testing
 
-Currently tests are executed using the DeepMIMO manual. 
-Future work will create specific tests in /tests, mainly for CI/CD purposes.
+The test suite lives in `tests/` and uses `pytest`. Run it with:
+
+```bash
+pytest
+```
+
+Tests are also enforced on every commit via the pre-commit hook. The suite covers datasets, generation, converters, and core models.
 
 ## Documentation
 

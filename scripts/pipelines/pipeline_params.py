@@ -9,13 +9,11 @@ Steps to run a pipeline:
 	- (recommended) mamba create -n dm_env python=3.10
 	- (recommended) mamba activate dm_env
 	- (recommended) pip install uv
-	- (for insite and sionna 1.0.x)  uv pip install .[all]
-	- (for insite and sionna 0.19.x) uv pip install .[sionna019]
+	- uv pip install .[all]
 
 3. Adjust parameters in this file. Particularly:
 	- WI_ROOT: path to the Wireless InSite installation
 	- Config versions:
-		- dm.config('sionna_version', '0.19.1')  # E.g. '0.19.1', '1.0.2'
 		- dm.config('wireless_insite_version', "4.0.1")  # E.g. '3.3.0', '4.0.1'
 	- Materials
 	- Ray tracing parameters in the p (parameters) dictionary
