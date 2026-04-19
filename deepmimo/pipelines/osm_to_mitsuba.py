@@ -25,6 +25,7 @@ Requirements: ``requests``, ``numpy``, and ``utm`` (all in deepmimo base deps).
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Any
 
@@ -35,6 +36,11 @@ from deepmimo.pipelines.utils.geo_utils import xy_from_latlong
 
 OVERPASS_URL = "https://overpass-api.de/api/interpreter"
 OVERPASS_TIMEOUT = 60  # seconds
+_OVERPASS_HEADERS = {
+    "User-Agent": "DeepMIMO/4 (https://github.com/DeepMIMO/DeepMIMO; deepmimo@nvidia.com)",
+    "Accept": "application/json",
+}
+_OVERPASS_RETRIES = 3
 DEFAULT_BUILDING_HEIGHT = 10.0  # meters when OSM tag absent
 FLOOR_HEIGHT_PER_LEVEL = 3.0  # meters per floor for buildings:levels tag
 GROUND_PADDING = 30.0  # extra meters around the bbox for the ground plane
@@ -81,7 +87,19 @@ out body;
 >;
 out skel qt;
 """
-    response = requests.get(OVERPASS_URL, params={"data": query}, timeout=OVERPASS_TIMEOUT + 5)
+    for attempt in range(_OVERPASS_RETRIES):
+        response = requests.get(
+            OVERPASS_URL,
+            params={"data": query},
+            headers=_OVERPASS_HEADERS,
+            timeout=OVERPASS_TIMEOUT + 5,
+        )
+        if response.status_code == requests.codes.ok:
+            break
+        if attempt < _OVERPASS_RETRIES - 1:
+            wait = 5 * 2**attempt
+            print(f"Overpass API returned {response.status_code}, retrying in {wait}s…")
+            time.sleep(wait)
     response.raise_for_status()
     data = response.json()
 
