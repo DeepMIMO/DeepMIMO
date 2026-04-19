@@ -168,6 +168,13 @@ python scripts/pre_render_notebooks.py --no-execute docs/applications/2_sionna_r
 ```
 
 After rendering, commit both the `.py` source and the `.ipynb` output.
+`.ipynb` files are gitignored by default (to prevent accidental large commits),
+so you must force-add them:
+
+```bash
+git add -f docs/applications/4_osm_pipeline.ipynb
+git commit -m "Pre-render OSM pipeline notebook"
+```
 
 #### Approximate render times
 
