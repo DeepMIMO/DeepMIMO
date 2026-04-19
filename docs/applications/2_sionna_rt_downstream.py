@@ -57,8 +57,8 @@ from deepmimo.exporters.sionna_exporter import sionna_exporter
 # on a rooftop; receivers are placed at street level.
 #
 # We use `max_depth=2` with specular reflections only — enough to capture the
-# dominant LoS and first-order reflected paths without the cost of diffractions
-# or refractions.
+# dominant LoS and first-order reflected paths.  Diffuse reflections are
+# enabled to add realistic surface scattering, which enriches the delay profiles.
 
 # %%
 CARRIER_FREQ = 3.5e9  # 3.5 GHz
@@ -68,7 +68,7 @@ RT_PARAMS = {
     "max_depth": 2,
     "los": True,
     "specular_reflection": True,
-    "diffuse_reflection": False,
+    "diffuse_reflection": True,
     "refraction": False,
     "samples_per_src": 2_000_000,
 }
@@ -104,12 +104,14 @@ scene.tx_array = single_ant
 scene.rx_array = single_ant
 
 # Add transmitter
-scene.add(Transmitter("tx_0", position=TX_POS))
+tx = Transmitter("tx_0", position=TX_POS)
+tx.display_radius = 5.0  # metres; default heuristic is too large for Munich
+scene.add(tx)
 
-# Add receivers — set display_radius so devices render at a reasonable size
+# Add receivers
 for i, pos in enumerate(RX_POSITIONS):
     rx = Receiver(f"rx_{i}", position=pos)
-    rx.display_radius = 8.0  # metres; default heuristic is too large for Munich
+    rx.display_radius = 4.0  # metres
     scene.add(rx)
 
 print(f"TX position : {TX_POS}")
@@ -203,6 +205,7 @@ for rx_idx in range(n_rx):
     ax.set_xlabel("Delay (ns)")
     if rx_idx == 0:
         ax.set_ylabel("Power (dBW)")
+    ax.grid(visible=True, alpha=0.3)
 
 plt.suptitle("Power-Delay Profiles (from Sionna)", fontsize=13)
 plt.tight_layout()
