@@ -25,7 +25,6 @@ Requirements: ``requests``, ``numpy``, and ``utm`` (all in deepmimo base deps).
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Any
 
@@ -34,13 +33,16 @@ import requests
 
 from deepmimo.pipelines.utils.geo_utils import xy_from_latlong
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
-OVERPASS_TIMEOUT = 60  # seconds
+OVERPASS_TIMEOUT = 90  # seconds for the Overpass query itself
+_OVERPASS_MIRRORS = [
+    "https://overpass-api.de/api/interpreter",
+    "https://overpass.kumi.systems/api/interpreter",
+    "https://overpass.openstreetmap.ru/api/interpreter",
+]
 _OVERPASS_HEADERS = {
     "User-Agent": "DeepMIMO/4 (https://github.com/DeepMIMO/DeepMIMO; deepmimo@nvidia.com)",
     "Accept": "application/json",
 }
-_OVERPASS_RETRIES = 3
 DEFAULT_BUILDING_HEIGHT = 10.0  # meters when OSM tag absent
 FLOOR_HEIGHT_PER_LEVEL = 3.0  # meters per floor for buildings:levels tag
 GROUND_PADDING = 30.0  # extra meters around the bbox for the ground plane
@@ -79,7 +81,7 @@ def query_osm_buildings(
 
     """
     query = f"""
-[out:json][timeout:{OVERPASS_TIMEOUT}];
+[out:json][timeout:{OVERPASS_TIMEOUT}][maxsize:1073741824];
 (
   way["building"]({minlat},{minlon},{maxlat},{maxlon});
 );
@@ -87,19 +89,20 @@ out body;
 >;
 out skel qt;
 """
-    for attempt in range(_OVERPASS_RETRIES):
-        response = requests.get(
-            OVERPASS_URL,
-            params={"data": query},
-            headers=_OVERPASS_HEADERS,
-            timeout=OVERPASS_TIMEOUT + 5,
-        )
-        if response.status_code == requests.codes.ok:
-            break
-        if attempt < _OVERPASS_RETRIES - 1:
-            wait = 5 * 2**attempt
-            print(f"Overpass API returned {response.status_code}, retrying in {wait}s…")
-            time.sleep(wait)
+    response = None
+    for mirror in _OVERPASS_MIRRORS:
+        try:
+            response = requests.get(
+                mirror,
+                params={"data": query},
+                headers=_OVERPASS_HEADERS,
+                timeout=OVERPASS_TIMEOUT + 10,
+            )
+            if response.status_code == requests.codes.ok:
+                break
+            print(f"Overpass mirror {mirror} returned {response.status_code}, trying next…")
+        except requests.exceptions.RequestException as exc:
+            print(f"Overpass mirror {mirror} failed: {exc}, trying next…")
     response.raise_for_status()
     data = response.json()
 
