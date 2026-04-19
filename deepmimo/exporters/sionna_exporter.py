@@ -252,18 +252,20 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[st
     return {**raw_params, **aliases}
 
 
-def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
+def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict, np.ndarray]:
     """Export building geometry from a Sionna Scene.
 
     Args:
         scene (Scene): Sionna Scene object.
 
     Returns:
-        tuple[np.ndarray, dict]: ``vertice_matrix`` (n_vertices x 3) and ``obj_index_map``
-        mapping object name to (start_idx, end_idx).
+        tuple[np.ndarray, dict, np.ndarray]: ``vertice_matrix`` (n_vertices x 3),
+        ``obj_index_map`` mapping object name to (start_idx, end_idx), and
+        ``face_matrix`` (n_faces x 3) of global vertex indices.
 
     """
     all_vertices = []
+    all_faces: list[np.ndarray] = []
     obj_index_map = {}
     vertex_offset = 0
 
@@ -273,6 +275,7 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
         # (was _mi_shape in 1.x)
         shape = obj.mi_mesh
         n_v = shape.vertex_count()
+        n_f = shape.face_count()
         obj_vertices = np.array(shape.vertex_position(np.arange(n_v))).T
 
         if obj_vertices.size == 0:
@@ -290,11 +293,18 @@ def export_scene_buildings(scene: Scene) -> tuple[np.ndarray, dict]:
 
         all_vertices.append(obj_vertices)
         obj_index_map[obj_name] = (vertex_offset, vertex_offset + obj_vertices.shape[0])
+
+        # Face indices: local (0…n_v-1) → global (vertex_offset…)
+        if n_f > 0:
+            local_faces = np.array(shape.face_indices(np.arange(n_f))).T  # (n_f, 3)
+            all_faces.append(local_faces + vertex_offset)
+
         vertex_offset += obj_vertices.shape[0]
 
     vertice_matrix = np.zeros((0, 3)) if len(all_vertices) == 0 else np.vstack(all_vertices)
+    face_matrix = np.zeros((0, 3), dtype=np.int64) if len(all_faces) == 0 else np.vstack(all_faces)
 
-    return vertice_matrix, obj_index_map
+    return vertice_matrix, obj_index_map, face_matrix
 
 
 def sionna_exporter(
@@ -331,7 +341,7 @@ def sionna_exporter(
 
     materials_dict_list, material_indices = export_scene_materials(scene)
     rt_params = export_scene_rt_params(scene, **my_compute_path_params)
-    vertice_matrix, obj_index_map = export_scene_buildings(scene)
+    vertice_matrix, obj_index_map, face_matrix = export_scene_buildings(scene)
 
     Path(save_folder).mkdir(parents=True, exist_ok=True)
 
@@ -342,6 +352,7 @@ def sionna_exporter(
         "sionna_rt_params.pkl": rt_params,
         "sionna_vertices.pkl": vertice_matrix,
         "sionna_objects.pkl": obj_index_map,
+        "sionna_faces.pkl": face_matrix,
     }
 
     for filename, variable in save_vars_dict.items():

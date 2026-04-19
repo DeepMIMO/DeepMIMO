@@ -236,25 +236,26 @@ class TestExportSceneBuildings:
     """export_scene_buildings must return valid geometry arrays."""
 
     def test_returns_tuple(self, simple_scene) -> None:
-        """Return value must be a (ndarray, dict) tuple."""
-        verts, obj_map = export_scene_buildings(simple_scene)
+        """Return value must be a (ndarray, dict, ndarray) tuple."""
+        verts, obj_map, faces = export_scene_buildings(simple_scene)
         assert isinstance(verts, np.ndarray)
         assert isinstance(obj_map, dict)
+        assert isinstance(faces, np.ndarray)
 
     def test_vertex_matrix_shape(self, simple_scene) -> None:
         """Vertex matrix must be 2-D with 3 columns (x, y, z)."""
-        verts, _ = export_scene_buildings(simple_scene)
+        verts, _, _faces = export_scene_buildings(simple_scene)
         assert verts.ndim == 2
         assert verts.shape[1] == 3
 
     def test_obj_index_map_keys_are_strings(self, simple_scene) -> None:
         """Object map keys must be strings (scene object names)."""
-        _, obj_map = export_scene_buildings(simple_scene)
+        _, obj_map, _faces = export_scene_buildings(simple_scene)
         assert all(isinstance(k, str) for k in obj_map)
 
     def test_index_ranges_are_contiguous(self, simple_scene) -> None:
         """Start/end index ranges must be non-negative and non-empty."""
-        _, obj_map = export_scene_buildings(simple_scene)
+        _, obj_map, _faces = export_scene_buildings(simple_scene)
         for start, end in obj_map.values():
             assert start >= 0
             assert end > start
@@ -288,6 +289,7 @@ class TestSionnaExporter:
                 "sionna_rt_params.pkl",
                 "sionna_vertices.pkl",
                 "sionna_objects.pkl",
+                "sionna_faces.pkl",
             }
             created = {p.name for p in Path(tmpdir).iterdir()}
             assert expected == created

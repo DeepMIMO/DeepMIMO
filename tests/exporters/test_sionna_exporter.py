@@ -150,8 +150,8 @@ def test_sionna_exporter_flow(mock_save, mock_scene, mock_paths) -> None:
         mock_ep.return_value = [{"path": 1}]
         mock_esm.return_value = ([{"mat": 1}], [0])
         mock_esrp.return_value = {"param": 1}
-        mock_esb.return_value = (np.zeros((1, 3)), {})
+        mock_esb.return_value = (np.zeros((1, 3)), {}, np.zeros((0, 3), dtype=np.int64))
 
         sionna_exporter.sionna_exporter(mock_scene, mock_paths, {}, "out_dir")
 
-        assert mock_save.call_count == 6
+        assert mock_save.call_count == 7

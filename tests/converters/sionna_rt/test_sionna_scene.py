@@ -20,7 +20,7 @@ def test_read_scene(mock_get_faces, mock_load) -> None:
             return mock_vertices
         if "sionna_objects.pkl" in path:
             return mock_objects
-        return None
+        raise FileNotFoundError(path)
 
     mock_load.side_effect = side_effect
 

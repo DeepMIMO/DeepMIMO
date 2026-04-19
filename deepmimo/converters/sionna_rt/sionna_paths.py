@@ -245,14 +245,18 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
 
         data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = tau[rel_rx_idx, path_idxs]
 
+        # Interaction type codes: (max_depth, n_rx, n_tx, max_paths) → (n_paths, max_depth)
+        path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0, 1)
+
         # Bounce positions: (max_depth, n_rx, max_paths, 3) → (n_paths, max_depth, 3)
         inter_pos_rx = vertices[:, rel_rx_idx, path_idxs, :].swapaxes(0, 1)
         n_interactions = inter_pos_rx.shape[1]
-        inter_pos_rx[inter_pos_rx == 0] = np.nan  # zero coords = unfilled slot
+        # Depth slots with NONE type (0) are empty padding — mark them NaN.
+        # Using the type array avoids falsely nulling valid positions that have a
+        # coordinate of exactly 0 (e.g. a building face at x=0).
+        inter_pos_rx[path_types == SIONNA_INTERACTION_NONE] = np.nan
         data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :n_interactions, :] = inter_pos_rx
 
-        # Interaction type codes: (max_depth, n_rx, n_tx, max_paths) → (n_paths, max_depth)
-        path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0, 1)
         data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = transform_interaction_types(path_types)
 
     return inactive_count
@@ -328,7 +332,7 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
 
         data = _preallocate_data(n_rx)
         data[c.RX_POS_PARAM_NAME] = rx_pos
-        data[c.TX_POS_PARAM_NAME] = tx_pos_target
+        data[c.TX_POS_PARAM_NAME] = tx_pos_target[np.newaxis]  # keep (1, 3) shape
 
         pbar = tqdm(
             total=n_rx,
@@ -386,7 +390,7 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
             num_bs = len(all_bs_pos)
             data_bs_bs = _preallocate_data(num_bs)
             data_bs_bs[c.RX_POS_PARAM_NAME] = all_bs_pos
-            data_bs_bs[c.TX_POS_PARAM_NAME] = tx_pos_target
+            data_bs_bs[c.TX_POS_PARAM_NAME] = tx_pos_target[np.newaxis]
 
             for rx_ant_idx in range(n_rx_ant):
                 inactive_count = _process_paths_batch(
