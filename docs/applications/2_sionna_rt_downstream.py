@@ -193,7 +193,8 @@ plt.show()
 a_complex = paths.a[0].numpy() + 1j * paths.a[1].numpy()
 tau_np = paths.tau.numpy()  # (n_rx, n_tx, max_paths)
 
-fig, axes = plt.subplots(1, n_rx, figsize=(4 * n_rx, 4), sharey=True)
+fig, axes = plt.subplots(2, (n_rx + 1) // 2, figsize=(10, 7), sharey=True)
+axes = axes.flatten()
 for rx_idx in range(n_rx):
     ax = axes[rx_idx]
     delays_ns = tau_np[rx_idx, 0, :] * 1e9
@@ -209,9 +210,11 @@ for rx_idx in range(n_rx):
         )
     ax.set_title(f"RX {rx_idx}")
     ax.set_xlabel("Delay (ns)")
-    if rx_idx == 0:
+    if rx_idx % ((n_rx + 1) // 2) == 0:
         ax.set_ylabel("Power (dBW)")
     ax.grid(visible=True, alpha=0.3)
+for ax in axes[n_rx:]:
+    ax.set_visible(False)
 
 plt.suptitle("Power-Delay Profiles (from Sionna)", fontsize=13)
 plt.tight_layout()
@@ -270,10 +273,15 @@ print(f"\nLoad          : {t_load:.2f} s")
 
 # %%
 n_ue = len(dataset.rx_pos)
-fig, axes = plt.subplots(1, n_ue, figsize=(5 * n_ue, 5), subplot_kw={"projection": "3d"})
-for u_idx, ax in enumerate(axes):
-    dataset.plot_rays(u_idx, ax=ax)
-    ax.set_title(f"UE {u_idx}")
+n_cols = min(n_ue, 2)
+n_rows = (n_ue + n_cols - 1) // n_cols
+fig, axes = plt.subplots(n_rows, n_cols, figsize=(10, 5 * n_rows), subplot_kw={"projection": "3d"})
+axes = np.array(axes).flatten()
+for u_idx in range(n_ue):
+    dataset.plot_rays(u_idx, ax=axes[u_idx])
+    axes[u_idx].set_title(f"UE {u_idx}")
+for ax in axes[n_ue:]:
+    ax.set_visible(False)
 plt.suptitle("Propagation Rays — DeepMIMO", fontsize=13)
 plt.tight_layout()
 plt.show()

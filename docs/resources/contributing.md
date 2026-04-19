@@ -4,23 +4,20 @@ Thank you for your interest in contributing to DeepMIMO! This guide will help yo
 
 ## Development Setup
 
-1. Fork and clone your forked the repository:
+1. Fork and clone in one step using the [GitHub CLI](https://cli.github.com/):
    ```bash
-   git clone https://github.com/YOUR_USERNAME/DeepMIMO.git
+   gh repo fork DeepMIMO/DeepMIMO --clone
    cd DeepMIMO
    ```
 
-2. Create a virtual environment (we recommend [miniforge](https://github.com/conda-forge/miniforge)):
+2. Install development dependencies with [uv](https://docs.astral.sh/uv/):
    ```bash
-   mamba create -n dm_env python=3.11
-   mamba activate dm_env
+   uv sync --extra dev
    ```
 
-3. Install development dependencies:
-   ```bash
-   pip install uv
-   uv pip install -e ".[dev]"
-   ```
+   That's it — `uv` creates an isolated `.venv` automatically and installs
+   the package in editable mode.  No separate virtual-environment creation
+   or `pip install` step is needed.
 
 ## Code Style
 

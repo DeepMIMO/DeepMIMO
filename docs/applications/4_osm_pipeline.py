@@ -232,9 +232,9 @@ plt.show()
 
 # %%
 # South-facing oblique: consistent with top-down (East right, North into scene)
-cam_oblique = Camera(position=[0.0, -300.0, 200.0], look_at=[0.0, 0.0, 30.0])
+cam_oblique = Camera(position=[-300.0, -300.0, 300.0], look_at=[0.0, 0.0, 30.0])
 fig = scene.render(camera=cam_oblique, show_devices=True)
-fig.suptitle("OSM Scene in Sionna RT — Perspective View (South → North)")
+fig.suptitle("OSM Scene in Sionna RT — Perspective View")
 plt.show()
 
 # %% [markdown]
