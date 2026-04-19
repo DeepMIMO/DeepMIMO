@@ -25,6 +25,7 @@ Requirements: ``requests``, ``numpy``, and ``utm`` (all in deepmimo base deps).
 
 from __future__ import annotations
 
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +44,8 @@ _OVERPASS_HEADERS = {
     "User-Agent": "DeepMIMO/4 (https://github.com/DeepMIMO/DeepMIMO; deepmimo@nvidia.com)",
     "Accept": "application/json",
 }
+_OSM_API_URL = "https://api.openstreetmap.org/api/0.6/map"
+_OSM_HEADERS = {"User-Agent": _OVERPASS_HEADERS["User-Agent"]}
 DEFAULT_BUILDING_HEIGHT = 10.0  # meters when OSM tag absent
 FLOOR_HEIGHT_PER_LEVEL = 3.0  # meters per floor for buildings:levels tag
 GROUND_PADDING = 30.0  # extra meters around the bbox for the ground plane
@@ -66,7 +69,9 @@ def query_osm_buildings(
 ) -> list[dict[str, Any]]:
     """Download building footprints from OpenStreetMap for a GPS bounding box.
 
-    Uses the Overpass API.  Each returned dict has:
+    Tries Overpass API mirrors first; falls back to the OSM main API if all
+    mirrors are unavailable.  Each returned dict has:
+
     - ``coords``: list of (lon, lat) tuples forming the closed polygon
     - ``height``: estimated building height in metres
 
@@ -80,7 +85,8 @@ def query_osm_buildings(
         List of building dicts, each with ``coords`` and ``height`` keys.
 
     """
-    query = f"""
+    # --- Try Overpass mirrors ---
+    overpass_query = f"""
 [out:json][timeout:{OVERPASS_TIMEOUT}][maxsize:1073741824];
 (
   way["building"]({minlat},{minlon},{maxlat},{maxlon});
@@ -89,24 +95,39 @@ out body;
 >;
 out skel qt;
 """
-    response = None
+    overpass_response = None
     for mirror in _OVERPASS_MIRRORS:
         try:
-            response = requests.get(
+            r = requests.get(
                 mirror,
-                params={"data": query},
+                params={"data": overpass_query},
                 headers=_OVERPASS_HEADERS,
                 timeout=OVERPASS_TIMEOUT + 10,
             )
-            if response.status_code == requests.codes.ok:
+            if r.status_code == requests.codes.ok:
+                overpass_response = r
                 break
-            print(f"Overpass mirror {mirror} returned {response.status_code}, trying next…")
+            print(f"Overpass mirror {mirror} returned {r.status_code}, trying next…")
         except requests.exceptions.RequestException as exc:
             print(f"Overpass mirror {mirror} failed: {exc}, trying next…")
-    response.raise_for_status()
-    data = response.json()
 
-    # Build a fast node-id → (lon, lat) lookup
+    if overpass_response is not None:
+        return _parse_overpass_json(overpass_response.json())
+
+    # --- Fallback: OSM main API ---
+    print("All Overpass mirrors unavailable — falling back to OSM main API…")
+    r = requests.get(
+        _OSM_API_URL,
+        params={"bbox": f"{minlon},{minlat},{maxlon},{maxlat}"},
+        headers=_OSM_HEADERS,
+        timeout=60,
+    )
+    r.raise_for_status()
+    return _parse_osm_xml(r.text)
+
+
+def _parse_overpass_json(data: dict[str, Any]) -> list[dict[str, Any]]:
+    """Parse Overpass API JSON response into building dicts."""
     nodes: dict[int, tuple[float, float]] = {}
     for elem in data["elements"]:
         if elem["type"] == "node":
@@ -119,15 +140,32 @@ out skel qt;
         tags = elem.get("tags", {})
         if "building" not in tags:
             continue
-
         coords = [nodes[nid] for nid in elem.get("nodes", []) if nid in nodes]
-        min_polygon_vertices = 3
-        if len(coords) < min_polygon_vertices:
+        if len(coords) < 3:  # noqa: PLR2004
             continue
+        buildings.append({"coords": coords, "height": _parse_height(tags)})
+    return buildings
 
-        height = _parse_height(tags)
-        buildings.append({"coords": coords, "height": height})
 
+def _parse_osm_xml(xml_text: str) -> list[dict[str, Any]]:
+    """Parse OSM main API XML response into building dicts."""
+    root = ET.fromstring(xml_text)  # noqa: S314 — trusted OSM server
+
+    nodes: dict[str, tuple[float, float]] = {
+        node.attrib["id"]: (float(node.attrib["lon"]), float(node.attrib["lat"]))
+        for node in root.iter("node")
+        if "lon" in node.attrib
+    }
+
+    buildings = []
+    for way in root.iter("way"):
+        tags = {t.attrib["k"]: t.attrib["v"] for t in way.iter("tag")}
+        if "building" not in tags:
+            continue
+        coords = [nodes[nd.attrib["ref"]] for nd in way.iter("nd") if nd.attrib["ref"] in nodes]
+        if len(coords) < 3:  # noqa: PLR2004
+            continue
+        buildings.append({"coords": coords, "height": _parse_height(tags)})
     return buildings
 
 
