@@ -163,5 +163,5 @@ These limitations apply to both integrations:
 ## Related Documentation
 
 - [Datasets Capabilities](datasets.md) - Dataset manipulation and features
-- [Sionna Integration Tutorial](../../tutorials/7_converters.py#sionna-integration) - Sionna adapter usage
+- [Sionna Integration Tutorial](../../tutorials/7_converters.ipynb#sionna-integration) - Sionna adapter usage
 - [Web Visualization](../../api/integrations.md) - Web export API reference

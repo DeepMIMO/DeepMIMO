@@ -1,69 +1,143 @@
 # Documentation Workflow
 
-This page captures the legacy Sphinx workflow so contributors can reproduce the same steps with the new MkDocs toolchain.
+## Overview
 
-## Local preview
+The documentation site is built with MkDocs and uses stored notebook outputs.
+Notebooks are kept as lightweight `.py` source files (Jupytext percent format) and
+must be converted to executed `.ipynb` files before the site can display outputs.
+`mkdocs build` / `mkdocs serve` never re-executes code — it only renders what is
+already stored inside the `.ipynb` files.
 
-1. Open a terminal in the repository root and start the live preview:
-   - **MkDocs** (new flow): `mkdocs serve`.
-   - **Sphinx** (legacy): `sphinx-build -b html . _build/html` inside `docs_old/`, then serve `_build/html` with `python -m http.server --directory _build/html`.
-2. On Windows you can clear previous Sphinx builds with `rmdir /s /q _build`.
+---
 
-## Updating the Jupyter manual
+## Prerequisites by notebook group
 
-1. Build the updated package and publish a test wheel so it can be installed on Google Colab.
-2. Install the test package inside Colab and capture new examples in the notebook.
-3. Download the notebook as `manual.ipynb`.
-4. Copy the table of contents cells from the tracked `manual.ipynb` so internal Markdown links remain intact.
-5. (Legacy) When using Sphinx, strip metadata/output via:
-   ```bash
-   jupyter nbconvert manual.ipynb --ClearMetadataPreprocessor.enabled=True \
-       --clear-output --to notebook --output manual2.ipynb
-   ```
-6. Replace the committed `docs/manual.ipynb` with the cleaned notebook and re-run the docs build.
+| Group | Notebooks | Extra requirements |
+|-------|-----------|-------------------|
+| **Tutorials 1–8** | `tutorials/1_getting_started` … `8_migration_guide` | DeepMIMO scenario files in `deepmimo_scenarios/` — download any scenario with `dm.load()` or via the [database API](../api/database.md) |
+| **Sionna apps 2–4** | `applications/2_sionna_rt_downstream` … `4_osm_pipeline` | `uv sync --extra sionna` (installs PyTorch, Sionna RT, Mitsuba) |
+| **App 1 — Channel Prediction** | `applications/1_channel_prediction` | External ML dataset — maintained on Colab; rendered as a code stub locally |
 
-## Running Tutorial Tests
+!!! info "OSM Pipeline (App 4)"
+    The OSM pipeline notebook queries the public Overpass API to fetch
+    OpenStreetMap building data.  The API can be slow or temporarily unavailable.
+    If execution fails with a 504 timeout, convert it as a stub
+    (`--no-execute`) and run it manually when the API is responsive.
 
-Tutorial tests execute each `.py` tutorial file in `docs/tutorials/` to ensure they run without errors. These tests are **excluded by default** from `pytest` runs to save time (tutorials take ~6 minutes).
+---
 
-| Command | Description |
-|---------|-------------|
-| `uv run pytest` | Run all tests **except** tutorials (default, fast) |
-| `uv run pytest tests/tutorials/` | Run **all** tutorial tests (~6 min) |
-| `uv run pytest -s tests/tutorials/` | Run **all** tutorial tests with output capture |
-| `uv run pytest tests/tutorials/test_1_getting_started.py` | Run **one** specific tutorial test |
-| `uv run pytest -m tutorial` | Run all tutorial tests (alternative method) |
-| `uv run python docs/tutorials/1_getting_started.py` | Run tutorial directly (not as test) |
+## Step-by-step workflow
 
-**Note**: Tutorials are excluded via `norecursedirs` in `pyproject.toml`, so running `pytest` alone will skip them for fast iteration. Explicitly specify `tests/tutorials/` to include them.
+### Step 1 — Pre-render notebooks
 
-## Building docs with tutorial execution
+```bash
+# Tutorials only (requires downloaded scenario data)
+uv run python scripts/pre_render_notebooks.py --tutorials
 
-By default, tutorials are rendered but not executed during docs build (`execute: false` in `mkdocs.yml`).
+# Sionna application notebooks (requires deepmimo[sionna])
+uv run python scripts/pre_render_notebooks.py --sionna
 
-To build docs with tutorials executed:
+# Both at once
+uv run python scripts/pre_render_notebooks.py
 
-1. Temporarily set `execute: true` in `mkdocs.yml`:
-   ```yaml
-   plugins:
-     - mkdocs-jupyter:
-         execute: true
-         allow_errors: false
-   ```
-2. Run the build:
-   ```bash
-   mkdocs build
-   ```
-3. Revert the change before committing (unless this is for a release build).
+# Code-only stubs — no outputs, no extra deps required
+uv run python scripts/pre_render_notebooks.py --no-execute
 
-**Note**: Executing tutorials during build will:
-- Download datasets (requires internet)
-- Take significantly longer (5-15 minutes vs. seconds)
-- Fail the build if any tutorial has errors
+# Single notebook
+uv run python scripts/pre_render_notebooks.py docs/tutorials/3_channel_generation.py
+```
 
-## Publishing changes
+### Step 2 — Serve or build
 
-1. Run the site build locally:
-   - `mkdocs build` (new) or `sphinx-build -b html . _build/html` (legacy).
-2. Commit updated Markdown, assets, and notebooks.
-3. Push to the `mkdocs` branch and let CI/GitHub Pages deploy the new site.
+```bash
+# Live-reloading dev server at http://127.0.0.1:8000
+uv run mkdocs serve
+
+# One-shot static build into site/
+uv run mkdocs build
+```
+
+That's it.  No Makefile, no separate build step.
+
+---
+
+## Timing reference
+
+Measured on an NVIDIA workstation (CPU execution, single machine).
+GPU-accelerated environments will be faster for Sionna notebooks.
+
+### Stub conversion — `--no-execute` (all 11 notebooks)
+
+Converts every `.py` source to a bare `.ipynb` with code cells but no outputs.
+No execution or extra dependencies required.
+
+| Step | Time |
+|------|------|
+| All 11 notebooks → stubs | **~13 s** |
+
+### Tutorial execution — `--tutorials` (8 notebooks, needs scenario data)
+
+| Notebook | Approximate time |
+|----------|-----------------|
+| 1 — Getting Started | ~30 s |
+| 2 — Visualization | ~45 s |
+| 3 — Channel Generation | ~60 s |
+| 4 — Dataset Manipulation | ~45 s |
+| 5 — Doppler & Mobility | ~55 s |
+| 6 — Beamforming | ~65 s |
+| 7 — Converters | ~55 s |
+| 8 — Migration Guide | ~30 s |
+| **Total (all 8)** | **~7 min** |
+
+### Sionna app execution — `--sionna` (apps 2 & 3, GPU optional)
+
+| Notebook | Approximate time |
+|----------|-----------------|
+| 2 — Sionna RT → DeepMIMO | ~25 s |
+| 3 — DeepMIMO → Sionna | ~28 s |
+| 4 — OSM Pipeline | network-dependent (Overpass API) |
+| **Total (apps 2–3)** | **~55 s** |
+
+### Docs build
+
+| Step | Time |
+|------|------|
+| `mkdocs build` (all pages, stored outputs) | **~17 s** |
+| `mkdocs serve` first load | **~17 s**, then incremental |
+
+---
+
+## Notebook source files
+
+| File | Purpose |
+|------|---------|
+| `docs/tutorials/*.py` | Source of truth — edit this file |
+| `docs/tutorials/*.ipynb` | Rendered output — gitignored; regenerate with pre-render script |
+| `docs/applications/*.py` | Source of truth |
+| `docs/applications/*.ipynb` | Rendered output — gitignored |
+
+!!! warning "`.ipynb` files are gitignored"
+    The generated `.ipynb` files are excluded from version control
+    (`docs/**/*.ipynb` in `.gitignore`).  Every contributor who wants to
+    build docs with outputs must run the pre-render script locally.
+
+---
+
+## Which notebooks skip execution?
+
+Two notebooks are intentionally excluded from the pre-render script:
+
+| Notebook | Reason |
+|----------|--------|
+| `tutorials/manual.py` | Too large; maintained separately on Colab |
+| `applications/1_channel_prediction.py` | Requires an external ML dataset download; rendered as a code stub |
+
+To build with all outputs visible, run `--tutorials` and `--sionna`, then
+create a stub for the channel-prediction notebook:
+
+```bash
+uv run jupytext --to notebook \
+    docs/applications/1_channel_prediction.py \
+    -o docs/applications/1_channel_prediction.ipynb \
+    --quiet
+```

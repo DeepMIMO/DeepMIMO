@@ -11,12 +11,9 @@ def gen_tx_pos(rt_params: dict[str, Any]) -> np.ndarray:
     """Generate transmitter positions from GPS coordinates.
 
     Args:
-        rt_params (dict[str, Any]): Ray tracing parameters
-        Required Parameters:
-            - bs_lats (list[float]): Latitude coordinates of base stations
-            - bs_lons (list[float]): Longitude coordinates of base stations
-            - bs_heights (list[float]): Height coordinates of base stations
-            - origin_lat, origin_lon (float): Origin GPS coordinates
+        rt_params (dict[str, Any]): Ray tracing parameters dict with keys
+            ``bs_lats``, ``bs_lons``, ``bs_heights`` (lists of floats) and
+            ``origin_lat``, ``origin_lon`` (floats for the local origin).
 
     Returns:
         list[list[float]]: Transmitter positions in Cartesian coordinates

@@ -4,10 +4,14 @@ This module provides the base class for representing materials and their propert
 including electromagnetic and scattering characteristics.
 """
 
-from collections.abc import Iterator
+from __future__ import annotations
+
 from contextlib import suppress
 from dataclasses import asdict, astuple, dataclass
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 
 @dataclass
@@ -87,7 +91,7 @@ class MaterialList:
         """Initialize an empty material list."""
         self._materials: list[Material] = []
 
-    def __getitem__(self, idx: int | list[int]) -> "Material | MaterialList":
+    def __getitem__(self, idx: int | list[int]) -> Material | MaterialList:
         """Get material(s) by index or indices.
 
         Args:
@@ -108,7 +112,7 @@ class MaterialList:
         """Get number of materials."""
         return len(self._materials)
 
-    def __iter__(self) -> Iterator["Material"]:
+    def __iter__(self) -> Iterator[Material]:
         """Iterate over materials."""
         return iter(self._materials)
 
@@ -192,7 +196,7 @@ class MaterialList:
         return {f"material_{mat.id}": asdict(mat) for mat in self._materials}
 
     @classmethod
-    def from_dict(cls, materials_dict: dict) -> "MaterialList":
+    def from_dict(cls, materials_dict: dict) -> MaterialList:
         """Create MaterialList from dictionary representation.
 
         Args:

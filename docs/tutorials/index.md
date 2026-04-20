@@ -6,14 +6,14 @@ Welcome to the DeepMIMO tutorials! These step-by-step guides will help you maste
 
 | # | Tutorial | Description | Video |
 |---|----------|-------------|-------|
-| 1 | [Getting Started](1_getting_started.py) | Load scenarios, generate channels, explore datasets | [▶️](https://youtu.be/LDG6IPEHY54) |
-| 2 | [Visualization and Scene](2_visualization.py) | Coverage maps, ray visualization, 3D scenes | [▶️](https://youtu.be/MO7h2shBhsc) |
-| 3 | [Detailed Channel Generation](3_channel_generation.py) | Channel parameters, time/freq domain, antenna rotation | [▶️](https://youtu.be/xsl6gjTEu2U) |
-| 4 | [User Selection and Dataset Manipulation](4_dataset_manipulation.py) | Sampling, trimming, filtering by various criteria | [▶️](https://youtu.be/KV0LLp0jOFc) |
-| 5 | [Doppler and Mobility](5_doppler_mobility.py) | Time-varying channels, mobility models, Doppler effects | [▶️](https://youtu.be/xsl6gjTEu2U) |
-| 6 | [Beamforming](6_beamforming.py) | Steering vectors, beamforming visualization, MIMO | [▶️](https://youtu.be/IPVnIW2vGLE) |
-| 7 | [Convert & Upload Ray-tracing Dataset](7_converters.py) | External ray tracers, format conversion, uploading | [▶️](https://youtu.be/kXY2bMWeDgg) |
-| 8 | [Migration Guide](8_migration_guide.py) | Migrating from DeepMIMO v3 to v4 | [▶️](https://youtu.be/15nQWS15h3k) |
+| 1 | [Getting Started](1_getting_started.ipynb) | Load scenarios, generate channels, explore datasets | [▶️](https://youtu.be/LDG6IPEHY54) |
+| 2 | [Visualization and Scene](2_visualization.ipynb) | Coverage maps, ray visualization, 3D scenes | [▶️](https://youtu.be/MO7h2shBhsc) |
+| 3 | [Detailed Channel Generation](3_channel_generation.ipynb) | Channel parameters, time/freq domain, antenna rotation | [▶️](https://youtu.be/xsl6gjTEu2U) |
+| 4 | [User Selection and Dataset Manipulation](4_dataset_manipulation.ipynb) | Sampling, trimming, filtering by various criteria | [▶️](https://youtu.be/KV0LLp0jOFc) |
+| 5 | [Doppler and Mobility](5_doppler_mobility.ipynb) | Time-varying channels, mobility models, Doppler effects | [▶️](https://youtu.be/xsl6gjTEu2U) |
+| 6 | [Beamforming](6_beamforming.ipynb) | Steering vectors, beamforming visualization, MIMO | [▶️](https://youtu.be/IPVnIW2vGLE) |
+| 7 | [Convert & Upload Ray-tracing Dataset](7_converters.ipynb) | External ray tracers, format conversion, uploading | [▶️](https://youtu.be/kXY2bMWeDgg) |
+| 8 | [Migration Guide](8_migration_guide.ipynb) | Migrating from DeepMIMO v3 to v4 | [▶️](https://youtu.be/15nQWS15h3k) |
 | 9 | [Complete Examples Manual](manual.py) | Comprehensive reference with all DeepMIMO examples | - |
 
 ## How to Use These Tutorials
@@ -27,12 +27,12 @@ Welcome to the DeepMIMO tutorials! These step-by-step guides will help you maste
 
 2. Download a tutorial:
    ```bash
-   wget https://raw.githubusercontent.com/DeepMIMO/DeepMIMO/main/docs/tutorials/1_getting_started.py
+   wget https://raw.githubusercontent.com/DeepMIMO/DeepMIMO/main/docs/tutorials/1_getting_started.ipynb
    ```
 
 3. Run the tutorial:
    ```python
-   python 1_getting_started.py
+   python 1_getting_started.ipynb
    ```
 
 ### Running in Colab

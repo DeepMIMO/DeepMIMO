@@ -185,6 +185,6 @@ These limitations apply to all dataset types:
 ## Related Documentation
 
 - [Converters Capabilities](converters.md) - Ray-tracing data conversion
-- [Generation Tutorial](../../tutorials/3_channel_generation.py) - Channel generation examples
-- [Visualization Tutorial](../../tutorials/2_visualization.py) - Plotting examples
-- [Dataset Manipulation](../../tutorials/4_dataset_manipulation.py) - Sampling and filtering
+- [Generation Tutorial](../../tutorials/3_channel_generation.ipynb) - Channel generation examples
+- [Visualization Tutorial](../../tutorials/2_visualization.ipynb) - Plotting examples
+- [Dataset Manipulation](../../tutorials/4_dataset_manipulation.ipynb) - Sampling and filtering

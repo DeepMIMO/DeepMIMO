@@ -148,8 +148,7 @@ def install_blender_addon(addon_name: str) -> None:
         mitsuba_spec = importlib.util.find_spec("mitsuba")
         if mitsuba_spec is None:
             LOGGER.info("📦 Mitsuba not found, installing mitsuba package")
-            install_python_package("mitsuba==3.5.0")  # sionna 0.19
-            # install_python_package('mitsuba==3.6.2') # sionna 1.0
+            install_python_package("mitsuba==3.8.0")
         else:
             LOGGER.info("✅ Mitsuba import successful")
             LOGGER.warning("🔄 Packages installed! Restarting Blender to update imports")

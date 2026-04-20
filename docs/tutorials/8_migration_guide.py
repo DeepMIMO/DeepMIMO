@@ -20,9 +20,8 @@
 #
 # ---
 
-import deepmimo as dm
-
 # %%
+import deepmimo as dm
 
 # %% [markdown]
 # ## Overview

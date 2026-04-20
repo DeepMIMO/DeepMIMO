@@ -5,6 +5,8 @@ and helper routines for road/mesh handling (2D face generation, endpoint detecti
 path compression, angle deviation, intersection checks, and TSP path ordering).
 """
 
+from __future__ import annotations
+
 import itertools
 from dataclasses import dataclass
 from pathlib import Path
@@ -336,7 +338,7 @@ class PhysicalElement:
         return obj_metadata
 
     @classmethod
-    def from_dict(cls: "PhysicalElement", data: dict, vertices: np.ndarray) -> "PhysicalElement":
+    def from_dict(cls: PhysicalElement, data: dict, vertices: np.ndarray) -> PhysicalElement:
         """Create physical object from dictionary format.
 
         Args:
@@ -476,7 +478,7 @@ class PhysicalElementGroup:
         self,
         label: str | None = None,
         material: int | None = None,
-    ) -> "PhysicalElementGroup":
+    ) -> PhysicalElementGroup:
         """Get objects filtered by label and/or material.
 
         Args:
@@ -656,7 +658,7 @@ class Scene:
         }
 
     @classmethod
-    def from_data(cls: Any, base_folder: str) -> "Scene":
+    def from_data(cls: Any, base_folder: str) -> Scene:
         """Create scene from metadata dictionary and data files.
 
         Args:
@@ -693,6 +695,8 @@ class Scene:
         """
         default_vis_settings = {"z_order": 3, "alpha": 0.8, "color": None}
         for label, objects in label_groups.items():
+            if label == CAT_TERRAIN:
+                continue  # terrain (ground planes) causes depth-sort artifacts in 3D
             vis_settings = self.visualization_settings.get(label, default_vis_settings)
             n_objects = len(objects)
             colors = (

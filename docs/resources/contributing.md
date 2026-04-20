@@ -4,23 +4,20 @@ Thank you for your interest in contributing to DeepMIMO! This guide will help yo
 
 ## Development Setup
 
-1. Fork and clone your forked the repository:
+1. Fork and clone in one step using the [GitHub CLI](https://cli.github.com/):
    ```bash
-   git clone https://github.com/YOUR_USERNAME/DeepMIMO.git
+   gh repo fork DeepMIMO/DeepMIMO --clone
    cd DeepMIMO
    ```
 
-2. Create a virtual environment (we recommend [miniforge](https://github.com/conda-forge/miniforge)):
+2. Install development dependencies with [uv](https://docs.astral.sh/uv/):
    ```bash
-   mamba create -n dm_env python=3.11
-   mamba activate dm_env
+   uv sync --extra dev
    ```
 
-3. Install development dependencies:
-   ```bash
-   pip install uv
-   uv pip install -e ".[dev]"
-   ```
+   That's it — `uv` creates an isolated `.venv` automatically and installs
+   the package in editable mode.  No separate virtual-environment creation
+   or `pip install` step is needed.
 
 ## Code Style
 
@@ -130,8 +127,13 @@ class MainClass:
 
 ## Testing
 
-Currently tests are executed using the DeepMIMO manual. 
-Future work will create specific tests in /tests, mainly for CI/CD purposes.
+The test suite lives in `tests/` and uses `pytest`. Run it with:
+
+```bash
+pytest
+```
+
+Tests are also enforced on every commit via the pre-commit hook. The suite covers datasets, generation, converters, and core models.
 
 ## Documentation
 
@@ -142,6 +144,65 @@ Build documentation:
 | Install | `pip install .[dev]`                             | Install development dependencies  |
 | Build   | `mkdocs build`                                   | Generate HTML documentation       |
 | Serve   | `mkdocs serve`                                   | View docs at http://localhost:8000|
+
+### Pre-rendering Notebooks
+
+Notebooks live as percent-format `.py` files (edited by humans) alongside
+`.ipynb` files (stored outputs for the docs).  The docs site is built with
+`execute: false`, so it only displays pre-stored outputs — **you must
+re-render any notebook you change** before committing.
+
+```bash
+# Activate the environment first (needs jupytext + jupyter + deepmimo[sionna])
+source .venv/bin/activate          # or: conda activate dm_env
+
+# Re-render a single notebook
+python scripts/pre_render_notebooks.py docs/applications/4_osm_pipeline.py
+
+# Re-render all Sionna application notebooks
+python scripts/pre_render_notebooks.py --sionna
+
+# Re-render all tutorial notebooks (requires downloaded scenario data)
+python scripts/pre_render_notebooks.py --tutorials
+
+# Convert to .ipynb stub without executing (no outputs — useful for syntax checks)
+python scripts/pre_render_notebooks.py --no-execute docs/applications/2_sionna_rt_downstream.py
+```
+
+After rendering, commit both the `.py` source and the `.ipynb` output.
+`.ipynb` files are gitignored by default (to prevent accidental large commits),
+so you must force-add them:
+
+```bash
+git add -f docs/applications/4_osm_pipeline.ipynb
+git commit -m "Pre-render OSM pipeline notebook"
+```
+
+#### Approximate render times
+
+Times measured on an NVIDIA GPU workstation.  CPU-only machines will be
+significantly slower for the Sionna notebooks.  Tutorials require downloaded
+DeepMIMO scenarios (see [Getting Started](../quickstart.md)).
+
+| Notebook | Requires | Approx. time |
+|----------|----------|--------------|
+| `tutorials/1_getting_started.py` | Scenario data | ~1 min |
+| `tutorials/2_visualization.py` | Scenario data | ~1 min |
+| `tutorials/3_channel_generation.py` | Scenario data | ~1 min |
+| `tutorials/4_dataset_manipulation.py` | Scenario data | ~1 min |
+| `tutorials/5_doppler_mobility.py` | Scenario data | ~2 min |
+| `tutorials/6_beamforming.py` | Scenario data | ~2 min |
+| `tutorials/7_converters.py` | Scenario data + Sionna | ~3 min |
+| `tutorials/8_migration_guide.py` | Scenario data | ~1 min |
+| `applications/1_channel_prediction.py` | Scenario data | ~2 min |
+| `applications/2_sionna_rt_downstream.py` | `deepmimo[sionna]`, GPU | ~5–10 min |
+| `applications/3_sionna_upstream.py` | `deepmimo[sionna]`, GPU | ~5–10 min |
+| `applications/4_osm_pipeline.py` | `deepmimo[sionna]`, GPU, internet | ~10–15 min |
+| `applications/5_dynamic_rt.py` | `deepmimo[sionna]`, GPU | ~3–5 min |
+
+!!! note "Skipped notebooks"
+    `tutorials/manual.py` is intentionally **not** pre-rendered by this
+    script — it is too large and is maintained separately on Colab.
 
 
 ## Pull Request Process

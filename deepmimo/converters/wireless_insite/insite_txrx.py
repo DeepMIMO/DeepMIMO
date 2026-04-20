@@ -14,6 +14,8 @@ The module serves as a bridge between Wireless Insite's XML-based configuration
 and DeepMIMO's standardized dataset format.
 """
 
+from __future__ import annotations
+
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
@@ -159,7 +161,7 @@ class InSiteTxRxSet:
         """Get receiver antenna configuration if present."""
         return self._get_antenna_data("Receiver")
 
-    def copy(self) -> "InSiteTxRxSet":
+    def copy(self) -> InSiteTxRxSet:
         """Create a deep copy of this set with a new data dictionary.
 
         Returns:
@@ -169,7 +171,7 @@ class InSiteTxRxSet:
         return InSiteTxRxSet(deepcopy(self.data), self.set_type)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any], set_type: str = "point") -> "InSiteTxRxSet":
+    def from_dict(cls, data: dict[str, Any], set_type: str = "point") -> InSiteTxRxSet:
         """Create an InSiteTxRxSet instance from a dictionary.
 
         Args:

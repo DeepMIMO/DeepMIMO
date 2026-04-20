@@ -17,18 +17,22 @@ nav:
       - Quickstart: quickstart.md
   - Tutorials:
       - Overview: tutorials/index.md
-      - Getting Started: tutorials/1_getting_started.py
-      - Visualization: tutorials/2_visualization.py
-      - Channel Generation: tutorials/3_channel_generation.py
-      - Dataset Manipulation: tutorials/4_dataset_manipulation.py
-      - Doppler & Mobility: tutorials/5_doppler_mobility.py
-      - Beamforming: tutorials/6_beamforming.py
-      - Converters: tutorials/7_converters.py
-      - Migration Guide: tutorials/8_migration_guide.py
+      - Getting Started: tutorials/1_getting_started.ipynb
+      - Visualization: tutorials/2_visualization.ipynb
+      - Channel Generation: tutorials/3_channel_generation.ipynb
+      - Dataset Manipulation: tutorials/4_dataset_manipulation.ipynb
+      - Doppler & Mobility: tutorials/5_doppler_mobility.ipynb
+      - Beamforming: tutorials/6_beamforming.ipynb
+      - Converters: tutorials/7_converters.ipynb
+      - Migration Guide: tutorials/8_migration_guide.ipynb
       - Complete Manual: tutorials/manual.py
   - Applications:
       - Overview: applications/index.md
-      - Channel Prediction: applications/1_channel_prediction.py
+      - Channel Prediction: applications/1_channel_prediction.ipynb
+      - Sionna RT → DeepMIMO: applications/2_sionna_rt_downstream.ipynb
+      - DeepMIMO → Sionna: applications/3_sionna_upstream.ipynb
+      - OSM → Sionna RT → DeepMIMO: applications/4_osm_pipeline.ipynb
+      - Dynamic Ray Tracing: applications/5_dynamic_rt.ipynb
   - API Reference:
       - Datasets: api/datasets.md
       - Generator: api/generator.md
@@ -43,6 +47,7 @@ nav:
       - Utilities: api/utils.md
       - Configuration: api/config.md
   - Resources:
+      - Data Generation Pipeline: resources/data_generation.md
       - Ray Tracing Guidelines: resources/raytracing_guidelines.md
       - Comparing Ray Tracers: resources/comparing_raytracers.md
       - Scenario Specs: resources/specs.md
@@ -104,12 +109,8 @@ plugins:
   - mkdocs-jupyter:
       include_source: true
       ignore_h1_titles: true
-      execute: true
-      allow_errors: true
+      execute: false
       theme: dark
-      execute_ignore:
-        - "tutorials/manual.py"
-        - "applications/1_channel_prediction.py"
   - mkdocstrings:
       handlers:
         python:
@@ -133,6 +134,20 @@ plugins:
         - "manual_full.ipynb"
         - "tutorials/__init__.py"
         - "applications/__init__.py"
+        # .py source files are pre-rendered to .ipynb; exclude them from the built site
+        - "tutorials/1_getting_started.py"
+        - "tutorials/2_visualization.py"
+        - "tutorials/3_channel_generation.py"
+        - "tutorials/4_dataset_manipulation.py"
+        - "tutorials/5_doppler_mobility.py"
+        - "tutorials/6_beamforming.py"
+        - "tutorials/7_converters.py"
+        - "tutorials/8_migration_guide.py"
+        - "applications/1_channel_prediction.py"
+        - "applications/2_sionna_rt_downstream.py"
+        - "applications/3_sionna_upstream.py"
+        - "applications/4_osm_pipeline.py"
+        - "applications/5_dynamic_rt.py"
 
 markdown_extensions:
   - admonition

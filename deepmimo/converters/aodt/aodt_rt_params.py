@@ -13,6 +13,8 @@ The module serves as the interface between AODT's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -68,7 +70,7 @@ class AODTRayTracingParameters(RayTracingParameters):
     """
 
     @classmethod
-    def read_rt_params(cls, rt_folder: str | Path) -> "AODTRayTracingParameters":
+    def read_rt_params(cls, rt_folder: str | Path) -> AODTRayTracingParameters:
         """Read AODT RT parameters and return a parameters object.
 
         Args:

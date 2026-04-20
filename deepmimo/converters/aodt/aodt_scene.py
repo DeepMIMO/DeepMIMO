@@ -7,6 +7,8 @@ The scene geometry follows the NVIDIA Omniverse USD format, where each primitive
 is defined by its path in the stage hierarchy.
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +29,7 @@ class AODTScene:
     - Diffraction can only occur once per ray
     """
 
-    def __init__(self, world_df: "pd.DataFrame") -> None:
+    def __init__(self, world_df: pd.DataFrame) -> None:
         """Initialize scene from world dataframe.
 
         Args:

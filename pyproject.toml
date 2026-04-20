@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "DeepMIMO"
-version = "4.0.0"
+version = "4.0.1"
 authors = [
     { name = "João Morais" },
     { name = "Umut Demirhan" },
@@ -29,7 +29,7 @@ dependencies = [
     "numpy>=1.19.5,<2.3",
     "scipy>=1.6.2",  # only for .mat and ConvexHulls
     "tqdm>=4.59.0",
-    "requests"
+    "requests",
 ]
 
 [tool.setuptools.packages.find]
@@ -63,6 +63,10 @@ dev = [
     "mkdocs-jupyter>=0.25",
     "pymdown-extensions>=10.0",
     "mkdocs-material-extensions>=1.3",
+    # pygments 2.20 broke mkdocstrings: pymdownx passes filename=None for
+    # untitled code blocks and html.escape(None) raises AttributeError.
+    # Remove upper bound once pymdownx or pygments ships a fix.
+    "pygments>=2.19.2,<2.20",
 
     # MkDocs API docs
     "mkdocstrings[python]>=0.25",
@@ -77,6 +81,9 @@ dev = [
     # Better nbconvert handling for Colab MIME quirks
     "nbconvert>=7.16",
     "nbformat>=5.10",
+
+    # Notebook pre-rendering (convert .py percent-format to .ipynb)
+    "jupytext>=1.16",
 ]
 
 aodt = [
@@ -104,41 +111,42 @@ insite = [
 ]
 
 sionna = [
-    # Common ray tracing pipeline tools
-    "utm",               # To be replaced by built-in (see geo_utils.py)
-    "lxml",              # To be replaced by built-in (see insite_raytracer.py)
+    # OSM scene pipeline (no Blender needed — uses osm_to_mitsuba.py)
+    "utm",               # GPS ↔ Cartesian conversion (geo_utils.py)
     "pandas",
-    "shapely",           # Used to create building polygons (see pipeline_csv_gen.py)
-    "bpy==3.6.0; python_version == '3.10'",
-    "bpy==4.4.0; python_version == '3.11'",
-    "numpy<2.0; python_version == '3.11'",
-    "ipykernel",
+    "shapely",           # Building polygon queries (osm_utils.py, pipeline_csv_gen.py)
 
-    # Sionna 1.0
-    "sionna-rt==1.0.2",  # Sionna Ray Tracer (pins "mitsuba==3.6.2")
+    # Sionna 2.x (requires Python 3.11+, PyTorch 2.9+, mitsuba 3.8.0, drjit 1.3.1)
+    "torch>=2.9.0",
+    "sionna-rt>=2.0.1,<3.0.0",    # ray-tracing: PathSolver, Scene, sionna_exporter
+    "sionna-no-rt>=2.0.1,<3.0.0; python_version >= '3.12'", # PHY layer: PUSCH, LDPC, OFDM
+    "mitsuba==3.8.0",
+    "drjit==1.3.1",
 
     # Development
-    "jupyter"
+    "jupyter",
 ]
 
 
 # Combination of [dev], [sionna], [insite] and [aodt]
 all = [
-    # Common ray tracing pipeline tools
-    "utm",               
-    "lxml",              
-    "pandas",            
-    "shapely",           
-    "bpy==3.6.0; python_version == '3.10'",
-    "bpy==4.4.0; python_version == '3.11'",
-    "numpy<2.0; python_version == '3.11'",
-    "ipykernel",
+    # Common pipeline tools
+    "utm",
+    "lxml",
+    "pandas",
+    "shapely",
 
-    # InSite
-    "plyfile",           
-    
-    # Sionna
-    "sionna-rt==1.0.2",
+    # InSite (Blender still required for PLY generation)
+    "bpy==4.4.0; python_version == '3.11'",  # TODO: UPDATE bpy==5.0 for Python 3.12+
+    "ipykernel",
+    "plyfile",
+
+    # Sionna 2.x
+    "torch>=2.9.0",
+    "sionna-rt>=2.0.1,<3.0.0",
+    "sionna-no-rt>=2.0.1,<3.0.0; python_version >= '3.12'",
+    "mitsuba==3.8.0",
+    "drjit==1.3.1",
 
     # AODT
     "pyarrow",
@@ -168,11 +176,13 @@ all = [
     "nbformat>=5.10",
 ]
 
+
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py314"
 extend-exclude = [
     "scripts",
+    "docs/**/*.ipynb",
 ]
 
 [tool.ruff.lint]
@@ -235,4 +245,18 @@ markers = [
 filterwarnings = [
     "ignore::UserWarning:matplotlib",
     "ignore:FigureCanvasAgg is non-interactive",
+]
+
+[tool.coverage.run]
+source = ["deepmimo"]
+# Pipelines require external tools (Sionna, Blender, InSite) — exclude from coverage
+omit = [
+    "deepmimo/pipelines/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
 ]

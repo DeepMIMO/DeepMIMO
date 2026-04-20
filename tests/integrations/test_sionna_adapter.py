@@ -70,6 +70,28 @@ def test_sionna_adapter_init_single() -> None:
         assert tau.shape == (1, 1, 5)
 
 
+def test_sionna_adapter_num_paths_clamp() -> None:
+    """Adapter must not crash when dataset has more paths than num_paths in channels."""
+    with pytest.MonkeyPatch.context() as m:
+
+        class FakeDataset:
+            pass
+
+        m.setattr(sionna_adapter, "Dataset", FakeDataset)
+
+        ds = FakeDataset()
+        ds.channels = np.zeros((2, 1, 1, 3))  # num_paths=3 in channels
+        ds.n_ue = 2
+        ds.ch_params = MagicMock(freq_domain=False)
+        ds.num_paths = np.full(2, 5)  # but dataset says 5 active paths
+        ds.toa = np.zeros((2, 5))
+
+        adapter = SionnaAdapter(ds)
+        gen = adapter()
+        _a, tau = next(gen)  # must not raise ValueError
+        assert tau.shape == (1, 1, 3)
+
+
 def test_sionna_adapter_macro() -> None:
     """Validate adapter behavior for macro dataset lists."""
     # For macro, isinstance(ds, Dataset) must be False.

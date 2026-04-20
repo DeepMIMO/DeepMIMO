@@ -12,6 +12,8 @@ The module serves as the interface between Sionna's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -66,7 +68,7 @@ class SionnaRayTracingParameters(RayTracingParameters):
     """
 
     @classmethod
-    def read_rt_params(cls, load_folder: str) -> "SionnaRayTracingParameters":
+    def read_rt_params(cls, load_folder: str) -> SionnaRayTracingParameters:
         """Read Sionna RT parameters and return a parameters object.
 
         Args:

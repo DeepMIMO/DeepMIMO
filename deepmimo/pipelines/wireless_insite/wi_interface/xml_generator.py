@@ -4,14 +4,19 @@ This module provides functionality to generate XML files for electromagnetic sim
 including study area, ray tracing parameters, and features.
 """
 
+from __future__ import annotations
+
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from lxml import etree
 
 from .material import Material
-from .setup_editor import SetupEditor
-from .txrx_editor import TxRxEditor
+
+if TYPE_CHECKING:
+    from .setup_editor import SetupEditor
+    from .txrx_editor import TxRxEditor
 
 # XML parser
 XML_PARSER = etree.XMLParser(recover=True)

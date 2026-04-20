@@ -4,6 +4,8 @@ This module provides custom data structures used throughout DeepMIMO,
 including dot-notation dictionaries, delegating lists, and verbose printing utilities.
 """
 
+from __future__ import annotations
+
 from collections.abc import Mapping
 from pprint import pformat
 from typing import Any, TypeVar
@@ -154,7 +156,7 @@ class DotDict(Mapping[K, V]):
                 result[key] = value
         return result
 
-    def deepcopy(self) -> "DotDict":
+    def deepcopy(self) -> DotDict:
         """Create a deep copy of the DotDict instance.
 
         This method creates a completely independent copy of the DotDict,
@@ -202,7 +204,7 @@ class DelegatingList(list):
         first_attr = getattr(self[0], name)
         if callable(first_attr):
 
-            def method(*args: Any, **kwargs: Any) -> "DelegatingList":
+            def method(*args: Any, **kwargs: Any) -> DelegatingList:
                 results = [getattr(item, name)(*args, **kwargs) for item in self]
                 return DelegatingList(results)
 

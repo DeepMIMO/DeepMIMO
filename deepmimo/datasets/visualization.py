@@ -9,18 +9,22 @@ This module provides visualization utilities for the DeepMIMO dataset, including
 The module uses matplotlib for generating plots and supports both 2D and 3D visualizations.
 """
 
+from __future__ import annotations
+
 import colorsys
 import csv
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.axes import Axes
-from matplotlib.colorbar import Colorbar
 from matplotlib.colors import Colormap, ListedColormap
-from matplotlib.figure import Figure
 from tqdm import tqdm
+
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.colorbar import Colorbar
+    from matplotlib.figure import Figure
 
 CAT_LABELS_MAX_UNIQUE = 30
 VAL_RANGE_THRESHOLD = 100

@@ -25,7 +25,9 @@ Usage:
     deepmimo.config()  # Print all configs
 """
 
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, Self
 
 from .consts import (
     RAYTRACER_VERSION_AODT,
@@ -47,7 +49,7 @@ class DeepMIMOConfig:
 
     _instance = None
 
-    def __new__(cls: type["DeepMIMOConfig"]) -> "DeepMIMOConfig":
+    def __new__(cls) -> Self:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls._instance.reset()

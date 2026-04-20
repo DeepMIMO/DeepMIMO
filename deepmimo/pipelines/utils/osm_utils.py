@@ -19,10 +19,11 @@ Constants:
     DEGREE_TO_METER (float): Conversion factor from degrees to meters at equator
 """
 
+from __future__ import annotations
+
 import contextlib
 from dataclasses import dataclass
 from math import cos, pi, sin
-from typing import Optional
 
 import numpy as np
 import requests
@@ -56,7 +57,7 @@ class Building:
         cls,
         element: dict,
         nodes_cache: dict[int, tuple[float, float]],
-    ) -> Optional["Building"]:
+    ) -> Building | None:
         """Create a Building instance from an OSM element.
 
         Args:

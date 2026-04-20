@@ -12,6 +12,8 @@ The module serves as the interface between Wireless Insite's parameter format
 and DeepMIMO's standardized ray tracing parameters.
 """
 
+from __future__ import annotations
+
 import os
 import sys
 from dataclasses import dataclass
@@ -128,7 +130,7 @@ class InsiteRayTracingParameters(RayTracingParameters):
     """
 
     @classmethod
-    def read_rt_params(cls, sim_folder: str | Path) -> "InsiteRayTracingParameters":
+    def read_rt_params(cls, sim_folder: str | Path) -> InsiteRayTracingParameters:
         """Read a Wireless Insite setup file and return a parameters object.
 
         Args:

@@ -17,6 +17,8 @@ import numpy as np
 from scipy.spatial import ConvexHull, QhullError
 
 from deepmimo import consts as c
+from deepmimo.datasets.dataset import DynamicDataset, MacroDataset
+from deepmimo.datasets.load import load
 
 __all__ = ["stats"]
 
@@ -621,8 +623,6 @@ def _resolve_stats_datasets(
     scen_name: str,
 ) -> tuple[list[Any], list[str]]:
     """Resolve loaded data to the list of TX/RX datasets used for statistics."""
-    from .dataset import DynamicDataset, MacroDataset  # noqa: PLC0415
-
     messages: list[str] = []
     if isinstance(dataset, DynamicDataset):
         if len(dataset) == 0:
@@ -759,8 +759,6 @@ def stats(
         header for each pair.
 
     """
-    from .load import load  # noqa: PLC0415
-
     if isinstance(tx_sets, (list, dict)) and len(tx_sets) == 0:
         msg = "tx_sets must be non-empty when provided, e.g. tx_sets=[4]"
         raise ValueError(msg)
