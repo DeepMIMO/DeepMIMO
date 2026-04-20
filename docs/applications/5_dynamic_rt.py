@@ -140,15 +140,31 @@ print(f"Scene loaded: {len(scene.objects)} objects")
 print(f"UEs: {len(UE_POSITIONS)}  |  TX: drone at height {DRONE_HEIGHT} m")
 
 # %% [markdown]
-# ## Visualize the Scene (Snapshot 0)
+# ## Visualize the Scene
 #
-# Before running any ray tracing, render the scene to confirm the geometry.
-# The drone (red triangle) starts at one end of the street.
+# Two views confirm the geometry before ray tracing begins.
+#
+# - **End-on view** (camera west of the canyon, looking east): shows the street
+#   running away from you, buildings on both sides, parked cars along the curbs,
+#   and the drone (TX, red triangle) sitting at the west end of its trajectory.
+# - **Top-down view**: shows the full x-extent of the drone's planned path and
+#   the four fixed UEs (blue dots) at street level.
+#
+# Only the **drone moves** — it flies east along the x-axis at 15 m altitude
+# across four snapshots.  The UEs, parked cars, and scene geometry are all static.
 
 # %%
-cam = Camera(position=[0.0, -100.0, 60.0], look_at=[0.0, 0.0, 10.0])  # south view, full street
-fig = scene.render(camera=cam, show_devices=True)
-fig.suptitle("Street Canyon — Initial Setup (Drone at Snapshot 0)")
+# End-on view: look east along the street; canyon walls visible left and right
+cam_street = Camera(position=[-70.0, 0.0, 18.0], look_at=[20.0, 0.0, 5.0])
+fig = scene.render(camera=cam_street, show_devices=True)
+fig.suptitle("Street Canyon — Drone (TX) at West End, Flying East")
+plt.show()
+
+# %%
+# Top-down view: shows full drone trajectory west → east along x-axis
+cam_top = Camera(position=[0.0, 0.0, 120.0], look_at=[0.0, 0.0, 0.0])
+fig = scene.render(camera=cam_top, show_devices=True)
+fig.suptitle("Street Canyon — Top View  (drone path: x = -30 to +30 m)")
 plt.show()
 
 # %% [markdown]
@@ -222,13 +238,15 @@ print(
 # %% [markdown]
 # ## Visualize Path Changes Across Snapshots
 #
-# The most informative view of a dynamic dataset is how propagation paths
-# evolve as the drone moves.  Each subplot shows the rays from TX to a fixed
-# UE for one snapshot — notice how the set of active paths, their directions,
-# and their delays shift across scenes.
+# Each subplot shows the rays from the drone (TX) to a fixed street-level UE
+# for one snapshot, viewed from a consistent end-on angle looking east.
+#
+# Watch how the LoS ray direction rotates as the drone moves from west
+# (Snap 0, x = -30 m) to east (Snap 3, x = +30 m), and how reflected paths
+# appear and disappear as the drone clears building corners.
 
 # %%
-UE_IDX = 1  # UE in the center of the street
+UE_IDX = 1  # center-street UE at [0, 3, 1.5]
 
 fig, axes = plt.subplots(
     1, N_SNAPSHOTS, figsize=(4 * N_SNAPSHOTS, 4), subplot_kw={"projection": "3d"}
@@ -236,8 +254,9 @@ fig, axes = plt.subplots(
 for snap_idx, ax in enumerate(axes):
     snap = dyn[snap_idx]
     snap.plot_rays(UE_IDX, ax=ax)
-    ax.set_title(f"Snap {snap_idx}\nTX x={DRONE_X_POSITIONS[snap_idx]:+.0f} m")
-fig.suptitle(f"Propagation Rays for UE {UE_IDX} — Drone Moving Along Street", fontsize=12)
+    ax.set_title(f"Snap {snap_idx}  (drone x={DRONE_X_POSITIONS[snap_idx]:+.0f} m)")
+    ax.view_init(elev=25, azim=-60)  # end-on: looking east along the canyon
+fig.suptitle(f"Rays to UE {UE_IDX} as Drone Flies West → East Along Street Canyon", fontsize=12)
 plt.tight_layout()
 plt.show()
 
