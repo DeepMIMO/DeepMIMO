@@ -60,6 +60,7 @@ VERSION = __version__
 # Dataset version — tracks the dataset schema/format independently of the software version.
 # Increment the letter suffix (4a → 4b → …) when the on-disk format changes in a way
 # that requires a new download; the server uses this to return the correct dataset build.
+DATASET_VERSION_PARAM_NAME = "dataset_version"
 DATASET_VERSION = "4a"
 
 # File and folder paths
