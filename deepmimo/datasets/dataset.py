@@ -310,7 +310,7 @@ class Dataset(DotDict):
                 delta_f = bandwidth / n_subcarriers
                 t_sym = 1.0 / delta_f
                 times = np.arange(int(num_timestamps), dtype=float) * t_sym
-        array_response_product = self._compute_array_response_product()
+        array_response_rx, array_response_tx = self._compute_array_responses()
         n_paths_to_gen = params.num_paths
         n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
         default_doppler = np.zeros((self.n_ue, n_paths))
@@ -321,8 +321,11 @@ class Dataset(DotDict):
             if not use_doppler and params[c.PARAMSET_DOPPLER_EN]:
                 print("No doppler in channel generation because all velocities are zero")
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
+        # Carry RX/TX responses separately; the M_rx x M_tx product is formed per-chunk
+        # inside the generator so the full product is never held for all users at once.
         channel = _generate_mimo_channel(
-            array_response_product=array_response_product[..., :n_paths],
+            array_response_rx=array_response_rx[..., :n_paths],
+            array_response_tx=array_response_tx[..., :n_paths],
             power=self._power_linear_ant_gain[..., :n_paths],
             delay=self.delay[..., :n_paths],
             phase=self.phase[..., :n_paths],
@@ -579,28 +582,83 @@ class Dataset(DotDict):
             phi: Azimuth angles array
 
         Returns:
-            Array response matrix
+            Array response matrix (complex64 to halve memory of the per-path responses)
 
         """
         kd = 2 * np.pi * ant_params.spacing
         ant_ind = _ant_indices(ant_params[c.PARAMSET_ANT_SHAPE])
-        return _array_response_batch(ant_ind=ant_ind, theta=theta, phi=phi, kd=kd)
+        return _array_response_batch(
+            ant_ind=ant_ind, theta=theta, phi=phi, kd=kd, dtype=np.complex64
+        )
+
+    def _compute_array_responses(self) -> tuple[np.ndarray, np.ndarray]:
+        """Compute the separate RX and TX antenna array responses (complex64).
+
+        Returns the receive [n_ue, M_rx, P] and transmit [n_ue, M_tx, P] responses
+        *without* forming the memory-heavy [n_ue, M_rx, M_tx, P] outer product. The M_rx x
+        M_tx contraction is deferred to per-chunk channel generation.
+
+        Results are cached on the dataset and reused across repeated channel generations.
+        The cache is invalidated automatically when the antenna geometry (shape/spacing) or
+        the rotated angles change (the latter via object identity of the rotated-angle
+        arrays, which are themselves recomputed when their cache is cleared).
+
+        Returns:
+            Tuple ``(array_response_rx, array_response_tx)``.
+
+        """
+        bs_ant_params = self.ch_params.bs_antenna
+        ue_ant_params = self.ch_params.ue_antenna
+        aod_el = self[c.AOD_EL_ROT_PARAM_NAME]
+        aod_az = self[c.AOD_AZ_ROT_PARAM_NAME]
+        aoa_el = self[c.AOA_EL_ROT_PARAM_NAME]
+        aoa_az = self[c.AOA_AZ_ROT_PARAM_NAME]
+
+        cache_key = (
+            tuple(np.asarray(bs_ant_params[c.PARAMSET_ANT_SHAPE]).ravel().tolist()),
+            float(bs_ant_params[c.PARAMSET_ANT_SPACING]),
+            tuple(np.asarray(ue_ant_params[c.PARAMSET_ANT_SHAPE]).ravel().tolist()),
+            float(ue_ant_params[c.PARAMSET_ANT_SPACING]),
+            id(aod_el),
+            id(aod_az),
+            id(aoa_el),
+            id(aoa_az),
+        )
+        # Read the cache straight from the instance __dict__ (it is stored via
+        # object.__setattr__): the Dataset overrides __getattr__ to raise KeyError for
+        # unknown keys, which getattr(..., default) would not catch.
+        cache = self.__dict__.get("_array_response_cache")
+        if cache is not None and cache["key"] == cache_key:
+            return cache["rx"], cache["tx"]
+
+        array_response_tx = self._compute_single_array_response(bs_ant_params, aod_el, aod_az)
+        array_response_rx = self._compute_single_array_response(ue_ant_params, aoa_el, aoa_az)
+        object.__setattr__(
+            self,
+            "_array_response_cache",
+            {
+                "key": cache_key,
+                "rx": array_response_rx,
+                "tx": array_response_tx,
+                # Keep references to the rotated-angle arrays so their id() stays unique
+                # (prevents id reuse after the rotated-angle cache is cleared/recomputed).
+                "refs": (aod_el, aod_az, aoa_el, aoa_az),
+            },
+        )
+        return array_response_rx, array_response_tx
 
     def _compute_array_response_product(self) -> np.ndarray:
-        """Compute product of TX and RX array responses.
+        """Compute the full TX/RX array response product (legacy full-product form).
+
+        Prefer :meth:`_compute_array_responses` (separate RX/TX) for channel generation;
+        this method materializes the full [n_ue, M_rx, M_tx, P] product and is retained for
+        backward compatibility (e.g. ``dataset.array_response_product``).
 
         Returns:
             Array response product matrix
 
         """
-        tx_ant_params = self.ch_params.bs_antenna
-        rx_ant_params = self.ch_params.ue_antenna
-        array_response_tx = self._compute_single_array_response(
-            tx_ant_params, self[c.AOD_EL_ROT_PARAM_NAME], self[c.AOD_AZ_ROT_PARAM_NAME]
-        )
-        array_response_rx = self._compute_single_array_response(
-            rx_ant_params, self[c.AOA_EL_ROT_PARAM_NAME], self[c.AOA_AZ_ROT_PARAM_NAME]
-        )
+        array_response_rx, array_response_tx = self._compute_array_responses()
         return array_response_rx[:, :, None, :] * array_response_tx[:, None, :, :]
 
     def _is_full_fov(self, fov: np.ndarray) -> bool:

@@ -616,12 +616,15 @@ def _estimate_chunk_size(  # noqa: PLR0913
     k_sel: int,
     n_times: int,
     total_subcarriers: int,
+    materialize_product: bool = False,
     budget_bytes: int = _CHUNK_MEMORY_BUDGET_BYTES,
 ) -> int:
     """Estimate a UE-chunk size that keeps peak working memory near ``budget_bytes``.
 
     Accounts for the dominant per-chunk temporaries: the complex128 intermediates plus the
-    complex64 results of the batched computation. Always returns at least 1.
+    complex64 results of the batched computation. When ``materialize_product`` is True the
+    per-chunk [M_rx, M_tx, P] outer product of the separate RX/TX responses (complex64) is
+    also budgeted for. Always returns at least 1.
     """
     bytes_c128 = 16  # complex128
     bytes_c64 = 8  # complex64 / float64
@@ -639,6 +642,8 @@ def _estimate_chunk_size(  # noqa: PLR0913
             m_ant * p_max * n_times * (bytes_c128 + bytes_c64)  # outer product (c128 + c64)
             + m_ant * p_max * bytes_c128  # gathered array response (c128)
         )
+    if materialize_product:
+        per_user += m_ant * p_max * bytes_c64  # per-chunk RX x TX product (complex64)
     per_user = max(per_user, 1)
     return max(1, int(budget_bytes // per_user))
 
@@ -712,14 +717,61 @@ def _compute_single_time_channel(
     return out
 
 
+def _resolve_response_dims(
+    array_response_product: np.ndarray | None,
+    array_response_rx: np.ndarray | None,
+    array_response_tx: np.ndarray | None,
+) -> tuple[bool, int, int]:
+    """Validate the array-response inputs and resolve (use_separate, M_rx, M_tx).
+
+    Exactly one form must be provided: the full ``array_response_product`` or both the
+    separate ``array_response_rx`` and ``array_response_tx`` responses.
+    """
+    if array_response_product is not None:
+        m_rx, m_tx = array_response_product.shape[1:3]
+        return False, m_rx, m_tx
+    if array_response_rx is None or array_response_tx is None:
+        msg = (
+            "Provide either array_response_product, or both array_response_rx and "
+            "array_response_tx."
+        )
+        raise ValueError(msg)
+    return True, array_response_rx.shape[1], array_response_tx.shape[1]
+
+
+def _chunk_array_product(
+    array_response_product: np.ndarray | None,
+    array_response_rx: np.ndarray | None,
+    array_response_tx: np.ndarray | None,
+    start: int,
+    end: int,
+) -> np.ndarray:
+    """Return the [B, M_rx, M_tx, P] array-response product for a single UE chunk.
+
+    When responses are carried separately, the M_rx x M_tx product is formed for this chunk
+    only (via ``np.einsum``), so the full product is never materialized for all users at
+    once: ``arp[b, r, t, p] = rx[b, r, p] * tx[b, t, p]``.
+    """
+    if array_response_product is not None:
+        return array_response_product[start:end]
+    return np.einsum(
+        "brp,btp->brtp",
+        array_response_rx[start:end],
+        array_response_tx[start:end],
+        optimize=True,
+    )
+
+
 def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred for clarity
-    array_response_product: np.ndarray,
+    array_response_product: np.ndarray | None = None,
+    *,
     power: np.ndarray,
     delay: np.ndarray,
     phase: np.ndarray,
     doppler: np.ndarray,
     ofdm_params: dict,
-    *,
+    array_response_rx: np.ndarray | None = None,
+    array_response_tx: np.ndarray | None = None,
     times: float | np.ndarray = 0.0,
     freq_domain: bool = True,
     squeeze_time: bool = True,
@@ -731,13 +783,27 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
     across the chunk, which amortizes Python-loop overhead while keeping peak memory
     bounded. Results are identical (within floating tolerance) to a per-UE computation.
 
+    The antenna array response can be supplied in either of two equivalent ways:
+
+    - ``array_response_product``: the full pre-formed [n_users, M_rx, M_tx, P_max] outer
+      product of the RX and TX responses (legacy interface).
+    - ``array_response_rx`` + ``array_response_tx``: the RX [n_users, M_rx, P_max] and TX
+      [n_users, M_tx, P_max] responses carried separately. The M_rx x M_tx product is then
+      formed one chunk at a time (via ``np.einsum``), so the full product is never held for
+      all users simultaneously. This is the memory-efficient path used by the dataset.
+
+    Exactly one of the two forms must be provided.
+
     Args:
-        array_response_product: [n_users, M_rx, M_tx, P_max] antenna array responses
+        array_response_product: [n_users, M_rx, M_tx, P_max] antenna array responses, or
+            None when ``array_response_rx``/``array_response_tx`` are given instead.
         power: [n_users, P_max] path powers (linear scale)
         delay: [n_users, P_max] path delays (seconds)
         phase: [n_users, P_max] path phases (degrees)
         doppler: [n_users, P_max] Doppler frequencies (Hz)
         ofdm_params: OFDM parameters dictionary
+        array_response_rx: [n_users, M_rx, P_max] RX array responses (separate form).
+        array_response_tx: [n_users, M_tx, P_max] TX array responses (separate form).
         times: Time samples (scalar or array, in seconds)
         freq_domain: If True, generate frequency-domain (OFDM) channel
         squeeze_time: If True and single time sample, squeeze time dimension
@@ -752,6 +818,10 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
         - Time domain, multi time: [n_users, M_rx, M_tx, P_max, N_t]
 
     """
+    use_separate, m_rx, m_tx = _resolve_response_dims(
+        array_response_product, array_response_rx, array_response_tx
+    )
+
     # Time handling
     times_arr = np.atleast_1d(times).astype(float)  # [N_t]
     n_times = times_arr.shape[0]
@@ -767,7 +837,6 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
 
     n_ues = power.shape[0]
     p_max = power.shape[1]
-    m_rx, m_tx = array_response_product.shape[1:3]
 
     last_ch_dim = k_subcarriers if freq_domain else p_max
 
@@ -788,6 +857,7 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
             k_sel=k_subcarriers,
             n_times=n_times,
             total_subcarriers=ofdm_params[c.PARAMSET_OFDM_SC_NUM],
+            materialize_product=use_separate,
         )
     chunk_size = max(1, int(chunk_size))
 
@@ -801,7 +871,10 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
         if not mask_b.any():
             continue  # all-padding chunk -> leave zeros (matches 0-path behavior)
 
-        arp_b = array_response_product[start:end]  # [B, M_rx, M_tx, P_max]
+        # [B, M_rx, M_tx, P_max]; product formed per-chunk when responses are separate.
+        arp_b = _chunk_array_product(
+            array_response_product, array_response_rx, array_response_tx, start, end
+        )
         # Zero padded paths so they contribute exactly zero (avoids NaN propagation).
         power_b = np.where(mask_b, power[start:end], 0.0)
         phase_b = np.where(mask_b, phase[start:end], 0.0)
