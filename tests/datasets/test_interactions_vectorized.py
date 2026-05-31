@@ -117,7 +117,10 @@ def _make_dataset(  # noqa: PLR0913
                 aod_az[u, p] = rng.uniform(-180, 180)
                 aod_el[u, p] = rng.uniform(1, 179)
             code, pts = _assign_path(
-                rng, within=within, n_depth=n_depth, terrain_z=terrain_z,
+                rng,
+                within=within,
+                n_depth=n_depth,
+                terrain_z=terrain_z,
                 full_depth=(force_full and u == 0 and p == 0),
             )
             inter[u, p] = code
@@ -238,8 +241,12 @@ def test_inter_angles_matches_loop(case) -> None:
     """Vectorized interaction angles must match the original loop."""
     seed, n_ue, n_paths, n_depth, n_objects, full = case
     ds = _make_dataset(
-        seed=seed, n_ue=n_ue, n_paths=n_paths, n_depth=n_depth,
-        n_objects=n_objects, force_full=full,
+        seed=seed,
+        n_ue=n_ue,
+        n_paths=n_paths,
+        n_depth=n_depth,
+        n_objects=n_objects,
+        force_full=full,
     )
     vec = ds._compute_inter_angles()  # noqa: SLF001
     base = _baseline_inter_angles(ds)
@@ -253,8 +260,12 @@ def test_inter_objects_matches_loop(case) -> None:
     """Vectorized object-id assignment must match the original loop exactly."""
     seed, n_ue, n_paths, n_depth, n_objects, full = case
     ds = _make_dataset(
-        seed=seed, n_ue=n_ue, n_paths=n_paths, n_depth=n_depth,
-        n_objects=n_objects, force_full=full,
+        seed=seed,
+        n_ue=n_ue,
+        n_paths=n_paths,
+        n_depth=n_depth,
+        n_objects=n_objects,
+        force_full=full,
     )
     vec = ds._compute_inter_objects()  # noqa: SLF001
     base = _baseline_inter_objects(ds)
@@ -268,8 +279,12 @@ def test_doppler_matches_loop(case) -> None:
     """Vectorized doppler must match the original loop within tolerance."""
     seed, n_ue, n_paths, n_depth, n_objects, full = case
     ds = _make_dataset(
-        seed=seed, n_ue=n_ue, n_paths=n_paths, n_depth=n_depth,
-        n_objects=n_objects, force_full=full,
+        seed=seed,
+        n_ue=n_ue,
+        n_paths=n_paths,
+        n_depth=n_depth,
+        n_objects=n_objects,
+        force_full=full,
     )
     vec = ds._compute_doppler()  # noqa: SLF001
     base = _baseline_doppler(ds)

@@ -677,7 +677,12 @@ def _compute_freq_channel_batch(  # noqa: PLR0913
 
     # Multiple time samples: build the full [B, P, K, N_t] gains and contract the path axis.
     gains = path_gen.generate_batch(
-        pwr=power, toa=delay, phs=phase, ts=ts, dopplers=doppler, times=times,
+        pwr=power,
+        toa=delay,
+        phs=phase,
+        ts=ts,
+        dopplers=doppler,
+        times=times,
     )
     k_sel = gains.shape[2]
     g2 = gains.reshape(b, n_paths, k_sel * n_times)

@@ -579,9 +579,8 @@ def _make_synthetic(n_users, n_rx, n_tx, p_max, seed=0):
     delay = np.full((n_users, p_max), np.nan)
     phase = np.full((n_users, p_max), np.nan)
     doppler = np.full((n_users, p_max), np.nan)
-    array_response = (
-        rng.standard_normal((n_users, n_rx, n_tx, p_max))
-        + 1j * rng.standard_normal((n_users, n_rx, n_tx, p_max))
+    array_response = rng.standard_normal((n_users, n_rx, n_tx, p_max)) + 1j * rng.standard_normal(
+        (n_users, n_rx, n_tx, p_max)
     )
 
     counts = rng.integers(0, p_max + 1, size=n_users)
@@ -603,8 +602,16 @@ def _make_synthetic(n_users, n_rx, n_tx, p_max, seed=0):
 
 
 def _reference_mimo_channel(  # noqa: PLR0913, PLR0915
-    array_response_product, power, delay, phase, doppler, ofdm_params, times,
-    *, freq_domain, squeeze_time,
+    array_response_product,
+    power,
+    delay,
+    phase,
+    doppler,
+    ofdm_params,
+    times,
+    *,
+    freq_domain,
+    squeeze_time,
 ):
     """Independent, explicit per-UE reference implementation of the channel."""
     times_arr = np.atleast_1d(times).astype(float)
@@ -634,7 +641,7 @@ def _reference_mimo_channel(  # noqa: PLR0913, PLR0915
         ph = phase[i, mask].astype(float)
         dp = doppler[i, mask].astype(float)
         if freq_domain:
-            delay_n = (delay[i, mask].astype(float) / ts)
+            delay_n = delay[i, mask].astype(float) / ts
             pwr = pw.copy()
             fd = dp.copy()
             over = delay_n >= n_sc
@@ -686,8 +693,15 @@ def test_batched_channel_matches_reference(freq_domain, lpf, times, chunk_size):
     squeeze_time = np.ndim(times) == 0
 
     reference = _reference_mimo_channel(
-        array_response, power, delay, phase, doppler, ofdm_params, times,
-        freq_domain=freq_domain, squeeze_time=squeeze_time,
+        array_response,
+        power,
+        delay,
+        phase,
+        doppler,
+        ofdm_params,
+        times,
+        freq_domain=freq_domain,
+        squeeze_time=squeeze_time,
     )
     result = _generate_mimo_channel(
         array_response_product=array_response,
@@ -760,10 +774,10 @@ def test_ofdm_path_generator_detects_uniform_subcarriers() -> None:
 @pytest.mark.parametrize(
     ("n_sc", "selected"),
     [
-        (300, np.arange(200)),        # contiguous; crosses several 64-wide recurrence blocks
+        (300, np.arange(200)),  # contiguous; crosses several 64-wide recurrence blocks
         (512, np.arange(0, 256, 2)),  # evenly strided (step 2); also crosses block boundaries
-        (128, np.arange(64)),         # exactly one recurrence block wide
-        (96, np.arange(65)),          # one element past a block boundary (re-anchor edge)
+        (128, np.arange(64)),  # exactly one recurrence block wide
+        (96, np.arange(65)),  # one element past a block boundary (re-anchor edge)
     ],
 )
 def test_batched_freq_channel_uniform_subcarriers_match_reference(n_sc, selected) -> None:
@@ -778,8 +792,15 @@ def test_batched_freq_channel_uniform_subcarriers_match_reference(n_sc, selected
     )
 
     reference = _reference_mimo_channel(
-        array_response, power, delay, phase, doppler, ofdm_params, 0.0,
-        freq_domain=True, squeeze_time=True,
+        array_response,
+        power,
+        delay,
+        phase,
+        doppler,
+        ofdm_params,
+        0.0,
+        freq_domain=True,
+        squeeze_time=True,
     )
     result = _generate_mimo_channel(
         array_response_product=array_response,

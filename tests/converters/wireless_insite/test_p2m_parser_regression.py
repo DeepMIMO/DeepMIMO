@@ -159,25 +159,46 @@ def _write_p2m(path: Path, rx_blocks: list[str]) -> str:
 def _comprehensive_rx_blocks() -> list[str]:
     """Receiver blocks covering 0-paths, LOS, every interaction type and combos."""
     los = _path_block(
-        1, "Tx-Rx", [], (-70.1, 12.5, 3.33e-07, 80.0, 10.0, 95.0, -20.0),
+        1,
+        "Tx-Rx",
+        [],
+        (-70.1, 12.5, 3.33e-07, 80.0, 10.0, 95.0, -20.0),
     )
     refl = _path_block(
-        2, "Tx-R-Rx", [[10.5, -20.25, 3.125]], (-85.5, -44.0, 1.2e-06, 30.0, 60.0, 120.0, -10.0),
+        2,
+        "Tx-R-Rx",
+        [[10.5, -20.25, 3.125]],
+        (-85.5, -44.0, 1.2e-06, 30.0, 60.0, 120.0, -10.0),
     )
     diff = _path_block(
-        3, "Tx-D-Rx", [[1.1, 2.2, 3.3]], (-90.0, 170.0, 1.5e-06, 33.0, -80.0, 90.0, -145.0),
+        3,
+        "Tx-D-Rx",
+        [[1.1, 2.2, 3.3]],
+        (-90.0, 170.0, 1.5e-06, 33.0, -80.0, 90.0, -145.0),
     )
     scat = _path_block(
-        4, "Tx-DS-Rx", [[-5.5, 6.6, 7.7]], (-100.25, 0.0, 1.9e-06, 44.0, 44.0, 91.0, -137.0),
+        4,
+        "Tx-DS-Rx",
+        [[-5.5, 6.6, 7.7]],
+        (-100.25, 0.0, 1.9e-06, 44.0, 44.0, 91.0, -137.0),
     )
     trans_t = _path_block(
-        5, "Tx-T-Rx", [[8.0, 9.0, 1.0]], (-95.0, -5.0, 2.0e-06, 50.0, 12.0, 88.0, 4.0),
+        5,
+        "Tx-T-Rx",
+        [[8.0, 9.0, 1.0]],
+        (-95.0, -5.0, 2.0e-06, 50.0, 12.0, 88.0, 4.0),
     )
     trans_f = _path_block(
-        6, "Tx-F-Rx", [[2.5, 3.5, 4.5]], (-96.5, 8.0, 2.1e-06, 51.0, 13.0, 87.0, 5.0),
+        6,
+        "Tx-F-Rx",
+        [[2.5, 3.5, 4.5]],
+        (-96.5, 8.0, 2.1e-06, 51.0, 13.0, 87.0, 5.0),
     )
     trans_x = _path_block(
-        7, "Tx-X-Rx", [[6.25, 7.25, 8.25]], (-97.5, 9.0, 2.2e-06, 52.0, 14.0, 86.0, 6.0),
+        7,
+        "Tx-X-Rx",
+        [[6.25, 7.25, 8.25]],
+        (-97.5, 9.0, 2.2e-06, 52.0, 14.0, 86.0, 6.0),
     )
     # Multi-interaction path mixing several interaction types (R, DS, D, T, F, X).
     multi = _path_block(
@@ -234,7 +255,8 @@ def _assert_identical(opt: dict[str, np.ndarray], base: dict[str, np.ndarray]) -
         # Bit-exact check on finite entries (also distinguishes -0.0 from +0.0).
         finite = ~np.isnan(a)
         assert np.array_equal(
-            a[finite].view(np.uint8), b[finite].view(np.uint8),
+            a[finite].view(np.uint8),
+            b[finite].view(np.uint8),
         ), f"{key}: finite bit pattern differs"
 
 
@@ -257,10 +279,14 @@ def test_comprehensive_fixture_byte_identical(tmp_path) -> None:
 def test_single_path_single_interaction_byte_identical(tmp_path) -> None:
     """Minimal file: one rx, one path, one reflection."""
     refl = _path_block(
-        1, "Tx-R-Rx", [[50.0, 50.0, 5.0]], (-80.5, 45.0, 1.2e-06, 30.0, 60.0, 120.0, -10.0),
+        1,
+        "Tx-R-Rx",
+        [[50.0, 50.0, 5.0]],
+        (-80.5, 45.0, 1.2e-06, 30.0, 60.0, 120.0, -10.0),
     )
     file = _write_p2m(
-        tmp_path / "single.paths.p2m", [_rx_block(1, [refl]), _rx_block(2, [])],
+        tmp_path / "single.paths.p2m",
+        [_rx_block(1, [refl]), _rx_block(2, [])],
     )
     opt = p2m_parser.paths_parser(file)
     base = _baseline_paths_parser(file)
@@ -306,7 +332,10 @@ def test_gt_max_inter_per_path_matches_baseline(tmp_path) -> None:
     inter_str = "Tx-" + "-".join(["R"] * n_inter) + "-Rx"
     xyzs = [[float(i), float(i) + 1.0, float(i) + 2.0] for i in range(n_inter)]
     path = _path_block(
-        1, inter_str, xyzs, (-80.0, 45.0, 1.0e-06, 30.0, 60.0, 120.0, -10.0),
+        1,
+        inter_str,
+        xyzs,
+        (-80.0, 45.0, 1.0e-06, 30.0, 60.0, 120.0, -10.0),
     )
     file = _write_p2m(tmp_path / "biginter.paths.p2m", [_rx_block(1, [path])])
 

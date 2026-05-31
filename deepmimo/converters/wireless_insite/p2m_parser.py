@@ -141,16 +141,18 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
             inter_strs = lines[line_idx + 1].split("-")[1:-1]
             inter_total_s = "".join([str(interactions_map[s]) for s in inter_strs])
 
-            rows.append((
-                float(i3),  # received power (dBm)
-                float(i4),  # phase (deg)
-                float(i5),  # time of arrival (sec)
-                float(i6),  # arrival theta (deg)
-                float(i7),  # arrival phi (deg)
-                float(i8),  # departure theta (deg)
-                float(i9),  # departure phi (deg)
-                float(inter_total_s) if inter_total_s else 0.0,  # interaction code
-            ))
+            rows.append(
+                (
+                    float(i3),  # received power (dBm)
+                    float(i4),  # phase (deg)
+                    float(i5),  # time of arrival (sec)
+                    float(i6),  # arrival theta (deg)
+                    float(i7),  # arrival phi (deg)
+                    float(i8),  # departure theta (deg)
+                    float(i9),  # departure phi (deg)
+                    float(inter_total_s) if inter_total_s else 0.0,  # interaction code
+                )
+            )
 
             # Line 3-end (Example: "166 104 22"). Each interaction xyz is written
             # individually so the original per-interaction indexing (and hence its
