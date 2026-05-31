@@ -7,7 +7,6 @@ from Wireless InSite into DeepMIMO's physical object representation.
 import re
 from pathlib import Path
 
-import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
 
@@ -31,7 +30,6 @@ OBJECT_LABELS: dict[str, str] = {
     ".flp": CAT_FLOORPLANS,
     ".obj": CAT_OBJECTS,
 }
-MIN_TRI_POINTS = 3
 
 
 def read_scene(folder_path: str | Path) -> Scene:
@@ -85,71 +83,6 @@ def read_scene(folder_path: str | Path) -> Scene:
     return scene
 
 
-def visualize_road_object(
-    name: str,
-    vertices: np.ndarray,
-    faces: list[list[tuple[float, float, float]]],
-) -> None:
-    """Visualize a road object and its generated faces."""
-    # Save vertices for testing
-    save_path = f"road_vertices_{name.replace(' ', '_')}.npy"
-    np.save(save_path, vertices)
-    print(f"Saved vertices to {save_path}")
-
-    fig = plt.figure(figsize=(15, 5))
-
-    # Plot original vertices
-    ax1 = fig.add_subplot(121, projection="3d")
-    ax1.scatter(vertices[:, 0], vertices[:, 1], vertices[:, 2], c="b", marker="o")
-    ax1.set_title(f"Original Vertices\n{name}")
-
-    # Plot generated faces
-    if faces:
-        ax2 = fig.add_subplot(122, projection="3d")
-        print(f"\nAnalyzing faces for {name}:")
-        for i, face in enumerate(faces):
-            face_array = np.array(face)
-            print(f"Face {i}:")
-            print(f"  Vertices: {len(face)}")
-            print(f"  Unique XY points: {len(np.unique(face_array[:, :2], axis=0))}")
-            print(f"  Z range: {face_array[:, 2].min():.3f} to {face_array[:, 2].max():.3f}")
-
-            # Plot face as a line connecting vertices
-            face_array_closed = np.vstack([face_array, face_array[0]])  # Close the loop
-            ax2.plot(
-                face_array_closed[:, 0],
-                face_array_closed[:, 1],
-                face_array_closed[:, 2],
-                "-o",
-                alpha=0.5,
-            )
-
-            # Fill face if it has at least 3 unique points
-            unique_points = np.unique(face_array[:, :2], axis=0)
-            if len(unique_points) >= MIN_TRI_POINTS:
-                try:
-                    from matplotlib.tri import Triangulation  # noqa: PLC0415
-
-                    tri = Triangulation(face_array[:, 0], face_array[:, 1])
-                    ax2.plot_trisurf(
-                        face_array[:, 0],
-                        face_array[:, 1],
-                        face_array[:, 2],
-                        triangles=tri.triangles,
-                        alpha=0.2,
-                    )
-                except (ImportError, ValueError, RuntimeError) as err:
-                    print(f"  Warning: Could not triangulate face: {err!s}")
-            else:
-                print("  Warning: Face has fewer than 3 unique points in XY plane")
-
-        ax2.set_title("Generated Faces")
-
-    plt.tight_layout()
-    plt.savefig(f"road_debug_{name.replace(' ', '_')}.png")
-    plt.close()
-
-
 class PhysicalObjectParser:
     """Parser for Wireless InSite physical object files (.city, .ter, .veg)."""
 
@@ -170,7 +103,7 @@ class PhysicalObjectParser:
         self.name = self.file_path.stem  # Get filename without extension
         self.starting_id = starting_id
 
-    def parse(self, *, force_fast_mode: bool = True) -> list[PhysicalElement]:
+    def parse(self) -> list[PhysicalElement]:
         """Parse the file and return a list of physical objects.
 
         Returns:
@@ -196,12 +129,10 @@ class PhysicalObjectParser:
         ):
             vertices_array = np.array(vertices)
 
-            # Use detailed mode for roads to preserve their geometry
-            use_fast_mode = "road" not in self.name.lower()
             self.name = f"{self.name}_{i}"
 
-            # Generate faces
-            object_faces = get_object_faces(vertices_array, fast=use_fast_mode or force_fast_mode)
+            # Generate faces using the convex-hull approach
+            object_faces = get_object_faces(vertices_array)
             if object_faces is None:
                 print(f"Failed to generate faces for object {self.name}")
                 continue

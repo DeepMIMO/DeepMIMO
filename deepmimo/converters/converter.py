@@ -62,7 +62,10 @@ def convert(path_to_rt_folder: str, **conversion_params: dict[str, Any]) -> str 
         path_to_rt_folder (str): Path to the folder containing raytracing data.
                                  If the folder contains multiple scenes, the function will
                                  sort them with sorted() and convert each folder to a time snapshot.
-        **conversion_params (dict[str, Any]): Additional parameters for the conversion process
+        **conversion_params (dict[str, Any]): Additional parameters for the conversion process.
+            Forwarded verbatim to the selected ray-tracer converter. Notably,
+            ``lossless=True`` requests the lossless triangular-mesh scene export
+            (default is the compact convex-hull representation).
 
     Returns:
         Optional[Any]: Scenario object if conversion is successful, None otherwise

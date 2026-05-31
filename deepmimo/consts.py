@@ -142,6 +142,15 @@ SCENE_PARAM_N_VERTICES = "n_vertices"
 SCENE_PARAM_N_FACES = "n_faces"
 SCENE_PARAM_N_TRIANGULAR_FACES = "n_triangular_faces"
 
+# Scene geometry representation (how object faces are stored on disk)
+SCENE_PARAM_REPRESENTATION = "representation"
+SCENE_REPRESENTATION_HULL = "hull"  # Default/legacy convex-hull simplification
+SCENE_REPRESENTATION_MESH = "mesh"  # Lossless triangular mesh (preserves geometry)
+
+# Filenames for the lossless triangular-mesh representation
+SCENE_MESH_FACES_FILENAME = "faces.npz"  # Per-object (N_tri, 3) vertex-index arrays
+SCENE_MESH_MATERIALS_FILENAME = "materials.npz"  # Per-object (N_tri,) material-index arrays
+
 # ==============================================================================
 # 4. Materials Parameters
 # ==============================================================================

@@ -4,7 +4,7 @@ This module provides functionality for running electromagnetic simulations using
 It handles:
 - Setting up the simulation environment from OpenStreetMap data:
     - Configuring transmitter and receiver positions
-    - Generating terrain, building and road models
+    - Generating terrain and building models
     - Creating simulation configuration files (.setup, .txrx, .ter, .city)
 - Running the ray tracing simulation
 
@@ -93,7 +93,6 @@ def raytrace_insite(
                 - wi_exe (str): Path to Wireless InSite executable
                 - wi_lic (str): Path to Wireless InSite license
                 - building_material (str): Path to building material file
-                - road_material (str): Path to road material file
                 - terrain_material (str): Path to terrain material file
 
             Required Parameters:
@@ -123,15 +122,12 @@ def raytrace_insite(
     """
     insite_path, study_area_path = create_directory_structure(osm_folder, rt_params)
 
-    # Create buildings.city & roads.city files
+    # Create buildings.city file
     bldgs_city = convert_to_city_file(
         osm_folder,
         insite_path,
         "buildings",
         rt_params["building_material"],
-    )
-    roads_city = (
-        None  # convert_to_city_file(osm_folder, insite_path, "roads", rt_params['road_material'])
     )
 
     xmin_pad, ymin_pad, xmax_pad, ymax_pad = convert_GpsBBox2CartesianBBox(
@@ -222,8 +218,6 @@ def raytrace_insite(
     else:
         msg = "No buildings found. Check Blender Export to ply."
         raise RuntimeError(msg)
-    if roads_city:
-        scenario.add_feature(roads_city, "road")
     scenario.save("insite")  # insite.setup
 
     # Generate XML file (.xml) - What Wireless InSite executable actually uses

@@ -16,10 +16,8 @@ from .utils.blender_utils import (
     create_ground_plane,
     export_mesh_obj_to_ply,
     export_mitsuba_scene,
-    get_xy_bounds_from_latlon,
     install_blender_addon,
     log_local_setup,
-    process_roads,
     save_bbox_metadata,
     save_osm_origin,
     set_logger,
@@ -89,13 +87,10 @@ def fetch_osm_scene(  # noqa: PLR0913 - signature follows Blender/OSM requiremen
     setup_world_lighting()
 
     building_material_name = "itu_concrete"
-    road_material_name = "itu_brick"
 
     # Create materials (for lighting/coloring and downstream processing)
     building_material = bpy.data.materials.new(name=building_material_name)
     building_material.diffuse_color = (0.75, 0.40, 0.16, 1)  # Beige
-    road_material = bpy.data.materials.new(name=road_material_name)
-    road_material.diffuse_color = (0.29, 0.25, 0.21, 1)  # Dark grey
 
     # Convert all to meshes
     convert_objects_to_mesh()
@@ -107,10 +102,6 @@ def fetch_osm_scene(  # noqa: PLR0913 - signature follows Blender/OSM requiremen
     # Process buildings
     add_materials_to_objs("building", building_material)
 
-    # Process roads
-    terrain_bounds = get_xy_bounds_from_latlon(minlat, minlon, maxlat, maxlon, pad=40)
-    process_roads(terrain_bounds, road_material)  # Filter, trim to bounds and add material
-
     # Render processed scene
     create_camera_and_render(im_path.replace(".png", "_processed.png"))
 
@@ -118,9 +109,8 @@ def fetch_osm_scene(  # noqa: PLR0913 - signature follows Blender/OSM requiremen
     if "insite" in output_formats:
         logger.info("🔄 Outputting InSite scene...")
 
-        # Export buildings and roads
+        # Export buildings
         export_mesh_obj_to_ply("building", output_folder)
-        export_mesh_obj_to_ply("road", output_folder)
 
         logger.info("✅ InSite scene exported.")
 

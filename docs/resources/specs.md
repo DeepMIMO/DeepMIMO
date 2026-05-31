@@ -65,8 +65,24 @@ The dimensions are:
 
 | File Name | Description |
 |-----------|-------------|
-| objects.json | Contains scene object metadata including: name, label, id, face_vertex_idxs (indices into vertices.mat), face_material_idxs (indices of the materials in each face) |
-| params.json | Ray tracing parameters including: raytracer info, frequency, max_path_depth, interaction settings (reflections, diffractions, scattering, transmissions), ray casting settings, GPS bounding box, materials, and many raw parameters from the ray tracer that should be sufficient to reproduce the simulation. |
+| objects.json | Contains scene object metadata. Layout depends on the scene representation (see [Scene Geometry](#scene-geometry)). For the default `hull` representation: name, label, id, face_vertex_idxs (indices into vertices.npz), face_material_idxs (material index per face). |
+| params.json | Ray tracing parameters including: raytracer info, frequency, max_path_depth, interaction settings (reflections, diffractions, scattering, transmissions), ray casting settings, GPS bounding box, materials, and many raw parameters from the ray tracer that should be sufficient to reproduce the simulation. The `scene` block also holds `num_scenes`, `n_objects`, `n_vertices`, `n_faces`, `n_triangular_faces`, and `representation` (`hull` or `mesh`). |
+
+### Scene Geometry
+
+The physical scene geometry is stored at the scenario root as a global, deduplicated vertex pool plus per-object face metadata. Two representations are supported; the active one is recorded in the `params.json` scene block via the `representation` field:
+
+- **`hull`** (default, legacy) — compact convex-hull simplification:
+  - `vertices.npz` — global vertex pool, `N_vertices × 3` float32 (`np.savez_compressed`, key `vertices`).
+  - `objects.json` — list of per-object dicts: `name`, `label`, `id`, `face_vertex_idxs` (indices into `vertices.npz`), `face_material_idxs` (material index per face).
+
+- **`mesh`** (optional, lossless) — preserves the exact triangular geometry. Produced by `Scene.export_data(..., lossless=True)` or by passing `lossless=True` to a converter:
+  - `vertices.npz` — global vertex pool (same format as above).
+  - `faces.npz` — one int32 array per object (key = `mesh_key`), each `N_triangles × 3` vertex indices into `vertices.npz`.
+  - `materials.npz` — one int32 array per object (key = `mesh_key`), each `N_triangles` material indices.
+  - `objects.json` — list of per-object dicts: `name`, `label`, `id`, `mesh_key` (the key into `faces.npz`/`materials.npz`).
+
+Loading is backward compatible: scenarios without a `representation` field (and without mesh files) are read as `hull`. Detection is based on the presence of `faces.npz`/`materials.npz`, falling back to the `params.json` flag.
 
 ### Secondary (Computed) Matrices
 

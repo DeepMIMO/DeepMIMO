@@ -57,6 +57,7 @@ def insite_rt_converter(  # noqa: PLR0913
     print_params: bool = True,
     parent_folder: str = "",
     num_scenes: int = 1,
+    lossless: bool = False,
 ) -> str:
     """Convert Wireless InSite ray-tracing data to DeepMIMO format.
 
@@ -76,6 +77,8 @@ def insite_rt_converter(  # noqa: PLR0913
             This parameter is only used if the scenario is time-varying.
         num_scenes (int): Number of scenes in the scenario. Defaults to 1.
                           This parameter is only used if the scenario is time-varying.
+        lossless (bool): If True, export the scene as a lossless triangular mesh
+            instead of the default convex-hull representation. Defaults to False.
 
     Returns:
         str: Path to output folder containing converted DeepMIMO dataset.
@@ -118,7 +121,7 @@ def insite_rt_converter(  # noqa: PLR0913
 
     # Read scene objects
     scene = read_scene(rt_folder)
-    scene_dict = scene.export_data(temp_folder)
+    scene_dict = scene.export_data(temp_folder, lossless=lossless)
     scene_dict[c.SCENE_PARAM_NUMBER_SCENES] = num_scenes
 
     # Visualize if requested

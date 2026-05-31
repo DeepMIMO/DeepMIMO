@@ -32,6 +32,7 @@ def sionna_rt_converter(  # noqa: PLR0913
     num_scenes: int = 1,
     deduplicate: bool = True,
     overlap_threshold: float = 0.8,
+    lossless: bool = False,
 ) -> str:
     """Convert Sionna ray-tracing data to DeepMIMO format.
 
@@ -56,6 +57,8 @@ def sionna_rt_converter(  # noqa: PLR0913
             Defaults to True.
         overlap_threshold (float): AABB overlap fraction threshold for deduplication.
             Defaults to 0.8.
+        lossless (bool): If True, export the scene as a lossless triangular mesh
+            instead of the default convex-hull representation. Defaults to False.
 
     Returns:
         str: Path to output folder containing converted DeepMIMO dataset.
@@ -101,7 +104,7 @@ def sionna_rt_converter(  # noqa: PLR0913
         deduplicate=deduplicate,
         overlap_threshold=overlap_threshold,
     )
-    scene_dict = scene.export_data(temp_folder) if scene else {}
+    scene_dict = scene.export_data(temp_folder, lossless=lossless) if scene else {}
     scene_dict[c.SCENE_PARAM_NUMBER_SCENES] = num_scenes
 
     # Visualize if requested

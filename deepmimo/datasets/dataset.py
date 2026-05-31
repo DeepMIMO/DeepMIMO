@@ -80,6 +80,165 @@ SHARED_PARAMS = [
     c.RT_PARAMS_PARAM_NAME,
 ]
 
+
+# Memory budget (number of (point, triangle) pairs) per vectorized chunk used
+# when assigning interaction points to the nearest triangular face in lossless
+# mesh scenes. Caps the transient [chunk, n_triangles, 3] arrays regardless of
+# how many interaction points / triangles the scene contains.
+_POINT_TRIANGLE_PAIR_BUDGET = 4_000_000
+
+
+def _gather_object_triangles(
+    objects: list,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Collect every triangular face of ``objects`` into flat vertex arrays.
+
+    Args:
+        objects: Physical elements whose triangular faces should be gathered.
+
+    Returns:
+        tuple of (v0, v1, v2, tri_obj_ids):
+            - v0, v1, v2: ``(T, 3)`` float arrays holding the three vertices of
+              each of the ``T`` triangles.
+            - tri_obj_ids: ``(T,)`` int array mapping each triangle to the
+              ``object_id`` of the element that owns it.
+
+    """
+    tris_per_obj: list[np.ndarray] = []
+    obj_ids_per_obj: list[np.ndarray] = []
+    for obj in objects:
+        obj_tris = [tri for face in obj.faces for tri in face.triangular_faces]
+        if not obj_tris:
+            continue
+        obj_tris_arr = np.asarray(obj_tris, dtype=float)  # (t, 3, 3)
+        tris_per_obj.append(obj_tris_arr)
+        obj_ids_per_obj.append(np.full(len(obj_tris_arr), obj.object_id, dtype=int))
+    if not tris_per_obj:
+        empty = np.zeros((0, 3), dtype=float)
+        return empty, empty, empty, np.zeros((0,), dtype=int)
+    tris = np.concatenate(tris_per_obj, axis=0)  # (T, 3, 3)
+    tri_obj_ids = np.concatenate(obj_ids_per_obj)  # (T,)
+    return tris[:, 0, :], tris[:, 1, :], tris[:, 2, :], tri_obj_ids
+
+
+def _point_segment_distances(points: np.ndarray, a: np.ndarray, b: np.ndarray) -> np.ndarray:
+    """Distance from each point to each segment ``[a, b]`` (vectorized).
+
+    Args:
+        points: ``(P, 3)`` query points.
+        a: ``(T, 3)`` segment start vertices.
+        b: ``(T, 3)`` segment end vertices.
+
+    Returns:
+        ``(P, T)`` array of point-to-segment distances.
+
+    """
+    ab = b - a  # (T, 3)
+    ab_len2 = np.einsum("tj,tj->t", ab, ab)  # (T,)
+    safe_len2 = np.where(ab_len2 > 0.0, ab_len2, 1.0)
+    ap = points[:, None, :] - a[None, :, :]  # (P, T, 3)
+    t = np.einsum("ptj,tj->pt", ap, ab) / safe_len2  # (P, T)
+    t = np.clip(t, 0.0, 1.0)
+    closest = a[None, :, :] + t[:, :, None] * ab[None, :, :]  # (P, T, 3)
+    return np.linalg.norm(points[:, None, :] - closest, axis=2)  # (P, T)
+
+
+def _point_triangle_distances(
+    points: np.ndarray, v0: np.ndarray, v1: np.ndarray, v2: np.ndarray
+) -> np.ndarray:
+    """Exact Euclidean distance from each point to each triangle (vectorized).
+
+    The closest point of a triangle to an external query point is either the
+    orthogonal projection onto the triangle plane (when that projection lands
+    inside the triangle) or a point on one of its three edges. Both candidates
+    are computed and selected per (point, triangle) pair, yielding the exact
+    point-to-triangle distance (not an approximation).
+
+    Args:
+        points: ``(P, 3)`` query points.
+        v0: ``(T, 3)`` first triangle vertices.
+        v1: ``(T, 3)`` second triangle vertices.
+        v2: ``(T, 3)`` third triangle vertices.
+
+    Returns:
+        ``(P, T)`` array of exact point-to-triangle distances.
+
+    """
+    eps = 1e-12
+    ab = v1 - v0  # (T, 3)
+    ac = v2 - v0  # (T, 3)
+    d00 = np.einsum("tj,tj->t", ab, ab)  # (T,)
+    d01 = np.einsum("tj,tj->t", ab, ac)  # (T,)
+    d11 = np.einsum("tj,tj->t", ac, ac)  # (T,)
+    denom = d00 * d11 - d01 * d01  # (T,)
+    non_degenerate = np.abs(denom) > eps  # (T,)
+    safe_denom = np.where(non_degenerate, denom, 1.0)
+
+    ap = points[:, None, :] - v0[None, :, :]  # (P, T, 3)
+    d20 = np.einsum("ptj,tj->pt", ap, ab)  # (P, T)
+    d21 = np.einsum("ptj,tj->pt", ap, ac)  # (P, T)
+    # Barycentric coordinates of the in-plane projection of each point.
+    bary_v = (d11 * d20 - d01 * d21) / safe_denom  # (P, T)
+    bary_w = (d00 * d21 - d01 * d20) / safe_denom  # (P, T)
+    bary_u = 1.0 - bary_v - bary_w  # (P, T)
+    inside = (bary_u >= 0) & (bary_v >= 0) & (bary_w >= 0) & non_degenerate[None, :]
+
+    normal = np.cross(ab, ac)  # (T, 3)
+    normal_len = np.linalg.norm(normal, axis=1)  # (T,)
+    safe_normal_len = np.where(normal_len > eps, normal_len, 1.0)
+    unit_normal = normal / safe_normal_len[:, None]  # (T, 3)
+    dist_plane = np.abs(np.einsum("ptj,tj->pt", ap, unit_normal))  # (P, T)
+
+    edge_dist = np.minimum(
+        np.minimum(
+            _point_segment_distances(points, v0, v1),
+            _point_segment_distances(points, v1, v2),
+        ),
+        _point_segment_distances(points, v2, v0),
+    )  # (P, T)
+    return np.where(inside, dist_plane, edge_dist)
+
+
+def _nearest_triangle_object_ids(  # noqa: PLR0913
+    points: np.ndarray,
+    v0: np.ndarray,
+    v1: np.ndarray,
+    v2: np.ndarray,
+    tri_obj_ids: np.ndarray,
+    pair_budget: int = _POINT_TRIANGLE_PAIR_BUDGET,
+) -> np.ndarray:
+    """Assign each point to the ``object_id`` owning its nearest triangle.
+
+    Uses the exact point-to-triangle distance. Points are processed in chunks so
+    the transient ``(chunk, T, 3)`` arrays stay within ``pair_budget`` (point,
+    triangle) pairs, bounding peak memory regardless of scene size. The cost is
+    ``O(P x T)`` (interaction points x triangles): when both are large this is
+    heavier than the hull bbox-center heuristic, which is the deliberate
+    accuracy-vs-throughput trade-off of using the lossless mesh.
+
+    Args:
+        points: ``(P, 3)`` query points.
+        v0: ``(T, 3)`` first triangle vertices.
+        v1: ``(T, 3)`` second triangle vertices.
+        v2: ``(T, 3)`` third triangle vertices.
+        tri_obj_ids: ``(T,)`` owning object_id per triangle.
+        pair_budget: Maximum number of (point, triangle) pairs per chunk.
+
+    Returns:
+        ``(P,)`` int array with the owning object_id for each point.
+
+    """
+    n_points = len(points)
+    result = np.empty(n_points, dtype=tri_obj_ids.dtype)
+    n_tris = len(tri_obj_ids)
+    chunk = max(1, pair_budget // max(1, n_tris))
+    for start in range(0, n_points, chunk):
+        stop = start + chunk
+        dists = _point_triangle_distances(points[start:stop], v0, v1, v2)  # (c, T)
+        result[start:stop] = tri_obj_ids[np.argmin(dists, axis=1)]
+    return result
+
+
 # Peak bytes for the transient [chunk, n_centers, 3] distance tensor in `_nearest_center_idx`.
 _NEAREST_CENTER_CHUNK_BYTES = 64 * 1024 * 1024
 
@@ -1784,6 +1943,20 @@ class Dataset(DotDict):
         Each object represents the object that the path interacts with.
         The objects are returned as the object index.
 
+        Assignment of a (non-terrain) interaction point to an object depends on
+        the loaded scene's geometry representation:
+
+        - Hull/legacy scenes (``scene.representation == "hull"``): the point is
+          assigned to the non-terrain object whose bounding-box *center* is
+          nearest. This is the long-standing heuristic and is left unchanged.
+        - Lossless mesh scenes (``scene.representation == "mesh"``): the point is
+          assigned to the object owning the nearest *triangular face* using the
+          exact point-to-triangle distance, which is substantially more accurate
+          than bounding-box centers (see ``_compute_inter_objects_mesh``).
+
+        The terrain z-snap behavior (assigning the terrain object when a point's
+        z is approximately the terrain top) is identical in both modes.
+
         Returns:
             np.ndarray: The objects that interact with each path of each user.
             Shape: [n_ue, max_paths, max_interactions]
@@ -1799,6 +1972,11 @@ class Dataset(DotDict):
         terrain_obj = terrain_objs[0]
         terrain_z_coord = terrain_obj.bounding_box.z_max
         non_terrain_objs = [obj for obj in self.scene.objects if obj.label != "terrain"]
+        scene_repr = getattr(self.scene, c.SCENE_PARAM_REPRESENTATION, c.SCENE_REPRESENTATION_HULL)
+        if scene_repr == c.SCENE_REPRESENTATION_MESH:
+            return self._compute_inter_objects_mesh(
+                inter_obj_ids, terrain_obj, terrain_z_coord, non_terrain_objs
+            )
         obj_centers = np.array([obj.bounding_box.center for obj in non_terrain_objs])
         obj_ids = np.array([obj.object_id for obj in non_terrain_objs])
 
@@ -1825,6 +2003,59 @@ class Dataset(DotDict):
             assigned[other] = obj_ids[nearest]
 
         inter_obj_ids[point_mask] = assigned
+        return inter_obj_ids
+
+    def _compute_inter_objects_mesh(
+        self,
+        inter_obj_ids: np.ndarray,
+        terrain_obj: Any,
+        terrain_z_coord: float,
+        non_terrain_objs: list,
+    ) -> np.ndarray:
+        """Mesh-scene variant of :meth:`_compute_inter_objects`.
+
+        Each non-terrain interaction point is assigned to the object owning the
+        nearest *triangular face* using the exact point-to-triangle distance,
+        which is far more accurate than the hull bounding-box-center heuristic
+        when the lossless mesh geometry is available. Terrain points are still
+        resolved by the same z-snap test as the hull path.
+
+        The terrain z-snap loop mirrors the hull path so terrain assignment is
+        byte-identical; non-terrain points are gathered and assigned in a single
+        vectorized (chunked) pass over all triangular faces.
+
+        Args:
+            inter_obj_ids: Pre-allocated ``(n_ue, max_paths, max_inter)`` array
+                of NaNs to fill in place.
+            terrain_obj: The single terrain object (z-snap target).
+            terrain_z_coord: Terrain top z used for the z-snap test.
+            non_terrain_objs: Objects eligible for nearest-face assignment.
+
+        Returns:
+            np.ndarray: The filled ``inter_obj_ids`` array.
+
+        """
+        v0, v1, v2, tri_obj_ids = _gather_object_triangles(non_terrain_objs)
+        pending_points: list[np.ndarray] = []
+        pending_idx: list[tuple[int, int, int]] = []
+        for ue_i in tqdm(range(self.n_ue), desc="Computing interaction objects per UE"):
+            for path_i in range(self.max_paths):
+                n_inter = self.num_interactions[ue_i, path_i]
+                if np.isnan(n_inter) or n_inter == 0:
+                    continue
+                for i in range(int(n_inter)):
+                    i_pos = self.inter_pos[ue_i, path_i, i]
+                    if np.isclose(i_pos[2], terrain_z_coord, rtol=0, atol=0.001):
+                        inter_obj_ids[ue_i, path_i, i] = terrain_obj.object_id
+                        continue
+                    pending_points.append(i_pos)
+                    pending_idx.append((ue_i, path_i, i))
+        if pending_points and len(tri_obj_ids) > 0:
+            nearest = _nearest_triangle_object_ids(
+                np.asarray(pending_points, dtype=float), v0, v1, v2, tri_obj_ids
+            )
+            for (ue_i, path_i, i), obj_id in zip(pending_idx, nearest, strict=True):
+                inter_obj_ids[ue_i, path_i, i] = obj_id
         return inter_obj_ids
 
     def clear_all_caches(self) -> None:

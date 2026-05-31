@@ -13,7 +13,6 @@ from typing import Any
 
 # Blender imports
 import bpy  # type: ignore[import]
-import mathutils  # type: ignore[import] (comes with blender)
 import requests
 
 ADDONS = {
@@ -363,23 +362,6 @@ def create_camera_and_render(
 # SCENE PROCESSING UTILITIES
 ###############################################################################
 
-REJECTED_ROAD_KEYWORDS = ["profile_", "paths_steps"]
-
-TIERS = {
-    1: [
-        "map.osm_roads_primary",
-        "map.osm_roads_residential",
-        "map.osm_roads_tertiary",
-        "map.osm_roads_secondary",
-        "map.osm_roads_unclassified",
-        "map.osm_roads_service",
-    ],
-    2: ["map.osm_paths_footway"],
-}
-
-# Reject all roads because of sionna 1.1 material bug
-REJECTED_ROAD_KEYWORDS += TIERS[1] + TIERS[2]
-
 
 def create_ground_plane(
     min_lat: float,
@@ -439,114 +421,6 @@ def add_materials_to_objs(
         return obj
 
 
-def trim_faces_outside_bounds(
-    obj: bpy.types.Object,
-    min_x: float,
-    max_x: float,
-    min_y: float,
-    max_y: float,
-) -> None:
-    """Trim faces at bounds and remove exterior parts via boolean intersection."""
-    LOGGER.info("✂️ Trimming faces at bounds for object: %s", obj.name)
-    try:
-        # First check if object is completely outside bounds
-        bbox_corners = [obj.matrix_world @ mathutils.Vector(corner) for corner in obj.bound_box]
-        obj_min_x = min(corner.x for corner in bbox_corners)
-        obj_max_x = max(corner.x for corner in bbox_corners)
-        obj_min_y = min(corner.y for corner in bbox_corners)
-        obj_max_y = max(corner.y for corner in bbox_corners)
-
-        LOGGER.debug(
-            "Object bounds: x=[%.2f, %.2f], y=[%.2f, %.2f]",
-            obj_min_x,
-            obj_max_x,
-            obj_min_y,
-            obj_max_y,
-        )
-        LOGGER.debug(
-            "Target bounds: x=[%.2f, %.2f], y=[%.2f, %.2f]",
-            min_x,
-            max_x,
-            min_y,
-            max_y,
-        )
-
-        # Expand the bounds by a factor to keep more of the roads
-        expansion_factor = 2.0  # Double the bounds to better match road sizes
-        expanded_min_x = min_x * expansion_factor
-        expanded_max_x = max_x * expansion_factor
-        expanded_min_y = min_y * expansion_factor
-        expanded_max_y = max_y * expansion_factor
-
-        LOGGER.debug(
-            "Expanded bounds: x=[%.2f, %.2f], y=[%.2f, %.2f]",
-            expanded_min_x,
-            expanded_max_x,
-            expanded_min_y,
-            expanded_max_y,
-        )
-
-        # If object is completely outside expanded bounds, delete it
-        if (
-            obj_max_x < expanded_min_x
-            or obj_min_x > expanded_max_x
-            or obj_max_y < expanded_min_y
-            or obj_min_y > expanded_max_y
-        ):
-            LOGGER.warning(
-                "Object %s is completely outside expanded bounds - skipping",
-                obj.name,
-            )
-            return
-
-        # If object is completely inside original bounds, keep it
-        if obj_min_x >= min_x and obj_max_x <= max_x and obj_min_y >= min_y and obj_max_y <= max_y:
-            LOGGER.info(
-                "Object %s is completely inside bounds - keeping as is",
-                obj.name,
-            )
-            return
-
-        LOGGER.info("Initial face count for %s: %d", obj.name, len(obj.data.polygons))
-
-        # Create a cube that will be our bounding box
-        padding = 0.1  # Small padding to avoid precision issues
-        bpy.ops.mesh.primitive_cube_add(size=1)
-        bound_box = bpy.context.active_object
-
-        # Scale and position the bounding box using expanded bounds
-        width = (expanded_max_x - expanded_min_x) + 2 * padding
-        height = (expanded_max_y - expanded_min_y) + 2 * padding
-        depth = 1000  # Make it very tall to ensure it intersects the full height
-
-        bound_box.scale = (width / 2, height / 2, depth / 2)
-        bound_box.location = (
-            (expanded_max_x + expanded_min_x) / 2,
-            (expanded_max_y + expanded_min_y) / 2,
-            0,
-        )
-
-        # Add boolean modifier to the original object
-        bool_mod = obj.modifiers.new(name="Boolean", type="BOOLEAN")
-        bool_mod.object = bound_box
-        bool_mod.operation = "INTERSECT"
-
-        # Apply the boolean modifier
-        LOGGER.debug("Applying boolean intersection")
-        bpy.context.view_layer.objects.active = obj
-        bpy.ops.object.modifier_apply(modifier=bool_mod.name)
-
-        # Delete the bounding box
-        bpy.data.objects.remove(bound_box, do_unlink=True)
-
-        LOGGER.info("Final face count for %s: %d", obj.name, len(obj.data.polygons))
-
-    except Exception as e:
-        error_msg = f"❌ Failed to trim faces for {obj.name}: {e!s}"
-        LOGGER.exception(error_msg)
-        raise RuntimeError(error_msg) from e
-
-
 def convert_objects_to_mesh() -> None:
     """Convert all selected objects to mesh type."""
     LOGGER.info("🔄 Converting objects to mesh")
@@ -562,57 +436,6 @@ def convert_objects_to_mesh() -> None:
         error_msg = f"❌ Failed to convert objects to mesh: {e!s}"
         LOGGER.exception(error_msg)
         raise RuntimeError(error_msg) from e
-
-
-def process_roads(  # noqa: C901
-    terrain_bounds: tuple[float, float, float, float],
-    road_material: bpy.types.Material,
-) -> None:
-    """Process roads using tiered priority and material assignment.
-
-    Args:
-        terrain_bounds: (min_x, max_x, min_y, max_y) in meters
-        road_material: Material to apply to selected roads
-
-    """
-    LOGGER.info("🛣️ Starting road processing")
-
-    # Step 1: Delete rejected roads early
-    for obj in list(bpy.data.objects):
-        if any(k in obj.name.lower() for k in REJECTED_ROAD_KEYWORDS):
-            LOGGER.debug("❌ Rejecting road: %s", obj.name)
-            bpy.data.objects.remove(obj, do_unlink=True)
-
-    # Step 2: Tiered selection
-    selected_roads = []
-    for tier, names in TIERS.items():
-        objs = [obj for name in names if (obj := bpy.data.objects.get(name))]
-        if objs:
-            selected_roads = objs
-            selected_tier = tier
-            LOGGER.info("✅ Using Tier %s roads", tier)
-            break
-
-    if not selected_roads:
-        LOGGER.warning("⚠️ No valid road objects found in any tier")
-        return
-
-    # Step 3: Remove roads from lower tiers
-    for tier, names in TIERS.items():
-        if tier <= selected_tier:
-            continue
-        for name in names:
-            obj = bpy.data.objects.get(name)
-            if obj:
-                LOGGER.debug("🗑️ Removing tier %s road: %s", tier, obj.name)
-                bpy.data.objects.remove(obj, do_unlink=True)
-
-    # Step 4: Process selected roads
-    for obj in selected_roads:
-        LOGGER.info("🔄 Processing road: %s", obj.name)
-        trim_faces_outside_bounds(obj, *terrain_bounds)
-        obj.data.materials.clear()
-        obj.data.materials.append(road_material)
 
 
 ###############################################################################
