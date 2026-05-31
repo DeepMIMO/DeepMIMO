@@ -304,7 +304,7 @@ def plot(results, out_path):
                 label="speedup (baseline / vectorized)",
             )
             ax2.axhline(1.0, color="gray", ls="--", lw=1.0)
-            ax2.set_yscale("log")
+            ax2.set_ylim(bottom=0)  # linear speedup axis; keep 1x break-even in frame
             ax2.set_ylabel("speedup (x)", color="tab:blue")
             ax2.tick_params(axis="y", labelcolor="tab:blue")
             peak = np.nanmax(speedup) if np.isfinite(speedup).any() else float("nan")
@@ -312,7 +312,7 @@ def plot(results, out_path):
 
     fig.suptitle(
         "MIMO channel generation: per-UE loop vs vectorized "
-        "(log-log time; blue = speedup, dashed = 1x break-even)",
+        "(log-log time; blue = speedup on linear axis, dashed = 1x break-even)",
         fontsize=15,
     )
     fig.tight_layout(rect=(0, 0, 1, 0.97))
