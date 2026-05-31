@@ -1,11 +1,18 @@
 """Tests for DeepMIMO Scene module."""
 
+from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
 from scipy.spatial import ConvexHull
 
+from deepmimo.consts import (
+    SCENE_PARAM_N_TRIANGULAR_FACES,
+    SCENE_PARAM_REPRESENTATION,
+    SCENE_REPRESENTATION_HULL,
+    SCENE_REPRESENTATION_MESH,
+)
 from deepmimo.core.scene import (
     CAT_BUILDINGS,
     CAT_OBJECTS,
@@ -15,15 +22,10 @@ from deepmimo.core.scene import (
     PhysicalElement,
     PhysicalElementGroup,
     Scene,
-    _calculate_angle_deviation,
-    _ccw,
-    _detect_endpoints,
     _get_faces_convex_hull,
-    _segments_intersect,
-    _signed_distance_to_curve,
-    _tsp_held_karp_no_intersections,
     get_object_faces,
 )
+from deepmimo.utils import save_dict_as_json
 
 
 # --- BoundingBox Tests ---
@@ -151,6 +153,104 @@ def test_scene_export_import(tmp_path) -> None:
     np.testing.assert_array_almost_equal(scene2.objects[0].faces[0].vertices, obj.faces[0].vertices)
 
 
+def test_scene_export_default_is_hull(tmp_path) -> None:
+    """Default export stays the convex-hull representation (same files + flag)."""
+    obj = PhysicalElement([Face([[0, 0, 0], [1, 0, 0], [0, 1, 0]])], name="Tri", label=CAT_OBJECTS)
+    scene = Scene()
+    scene.add_object(obj)
+
+    base_folder = str(tmp_path / "scene_hull")
+    metadata = scene.export_data(base_folder)
+
+    # Representation flag is "hull" and only the legacy files are written
+    assert metadata[SCENE_PARAM_REPRESENTATION] == SCENE_REPRESENTATION_HULL
+    folder = Path(base_folder)
+    assert (folder / "vertices.npz").exists()
+    assert (folder / "objects.json").exists()
+    assert not (folder / "faces.npz").exists()
+    assert not (folder / "materials.npz").exists()
+
+    # And it loads back as hull, identical to before
+    scene2 = Scene.from_data(base_folder)
+    assert len(scene2.objects) == 1
+    np.testing.assert_array_almost_equal(
+        scene2.objects[0].faces[0].vertices,
+        obj.faces[0].vertices,
+    )
+
+
+def test_scene_export_import_lossless(tmp_path) -> None:
+    """Round-trip a scene via lossless mesh export and validate exact triangles."""
+    # A quad face (fans into 2 triangles, material 2) and a triangle face (material 5)
+    quad = Face([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]], material_idx=2)
+    tri = Face([[0, 0, 1], [1, 0, 1], [0, 1, 1]], material_idx=5)
+    obj = PhysicalElement([quad, tri], name="MeshObj", object_id=7, label=CAT_BUILDINGS)
+
+    scene = Scene()
+    scene.add_object(obj)
+
+    base_folder = str(tmp_path / "scene_mesh")
+    metadata = scene.export_data(base_folder, lossless=True)
+
+    # Representation flag + mesh files present
+    assert metadata[SCENE_PARAM_REPRESENTATION] == SCENE_REPRESENTATION_MESH
+    assert metadata[SCENE_PARAM_N_TRIANGULAR_FACES] == 3
+    folder = Path(base_folder)
+    assert (folder / "vertices.npz").exists()
+    assert (folder / "faces.npz").exists()
+    assert (folder / "materials.npz").exists()
+    assert (folder / "objects.json").exists()
+
+    # Expected triangles (fan triangulation) and per-triangle materials, in order
+    expected_tris = [
+        np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0]]),
+        np.array([[0, 0, 0], [1, 1, 0], [0, 1, 0]]),
+        np.array([[0, 0, 1], [1, 0, 1], [0, 1, 1]]),
+    ]
+    expected_mats = [2, 2, 5]
+
+    scene2 = Scene.from_data(base_folder)
+    assert len(scene2.objects) == 1
+    obj2 = scene2.objects[0]
+    assert obj2.name == "MeshObj"
+    assert obj2.object_id == 7
+    assert obj2.label == CAT_BUILDINGS
+
+    # One Face per triangle, preserving exact geometry + material indexing
+    assert len(obj2.faces) == 3
+    for face, exp_tri, exp_mat in zip(obj2.faces, expected_tris, expected_mats, strict=True):
+        assert face.vertices.shape == (3, 3)
+        np.testing.assert_array_almost_equal(face.vertices, exp_tri)
+        assert face.material_idx == exp_mat
+
+
+def test_from_data_legacy_loads_as_hull(tmp_path) -> None:
+    """A scenario dir without a representation flag (legacy) loads as hull."""
+    obj = PhysicalElement(
+        [Face([[0, 0, 0], [1, 0, 0], [0, 1, 0]])],
+        name="Legacy",
+        label=CAT_OBJECTS,
+    )
+    scene = Scene()
+    scene.add_object(obj)
+
+    base_folder = str(tmp_path / "legacy_scene")
+    scene.export_data(base_folder)  # hull export leaves no mesh marker in the folder
+
+    # Simulate a legacy params.json whose scene block has no representation key
+    folder = Path(base_folder)
+    save_dict_as_json(str(folder / "params.json"), {"scene": {"num_scenes": 1, "n_objects": 1}})
+
+    assert Scene._is_mesh_representation(base_folder) is False  # noqa: SLF001
+    scene2 = Scene.from_data(base_folder)
+    assert len(scene2.objects) == 1
+    assert scene2.objects[0].name == "Legacy"
+    np.testing.assert_array_almost_equal(
+        scene2.objects[0].faces[0].vertices,
+        obj.faces[0].vertices,
+    )
+
+
 @patch("matplotlib.pyplot.subplots")
 def test_scene_plot(mock_subplots) -> None:
     """Test plotting calls."""
@@ -174,8 +274,7 @@ def test_scene_plot(mock_subplots) -> None:
 
 
 def test_get_object_faces() -> None:
-    """Compute face list for a simple cube in fast mode."""
-    # Test fast mode (convex hull)
+    """Compute face list for a simple cube via convex-hull generation."""
     # Cube vertices
     vertices = [
         [0, 0, 0],
@@ -187,7 +286,7 @@ def test_get_object_faces() -> None:
         [1, 1, 1],
         [0, 1, 1],
     ]
-    faces = get_object_faces(vertices, fast=True)
+    faces = get_object_faces(vertices)
     assert len(faces) >= 6  # Cube has 6 faces; hull count can vary with collinearity
     # For simple cube, it should return top, bottom + 4 sides = 6.
     assert len(faces) == 6
@@ -441,176 +540,11 @@ def test_get_faces_convex_hull_collinear_returns_none(capsys) -> None:
 
 
 # ---------------------------------------------------------------------------
-# _calculate_angle_deviation  (lines 961-968)
-# ---------------------------------------------------------------------------
-
-
-def test_calculate_angle_deviation_straight_line() -> None:
-    """Collinear points in the same direction give 0 degrees."""
-    p1 = np.array([0.0, 0.0])
-    p2 = np.array([1.0, 0.0])
-    p3 = np.array([2.0, 0.0])
-    angle = _calculate_angle_deviation(p1, p2, p3)
-    assert angle == pytest.approx(0.0, abs=1e-6)
-
-
-def test_calculate_angle_deviation_right_angle() -> None:
-    """A 90° turn gives approximately 90 degrees."""
-    p1 = np.array([0.0, 0.0])
-    p2 = np.array([1.0, 0.0])
-    p3 = np.array([1.0, 1.0])
-    angle = _calculate_angle_deviation(p1, p2, p3)
-    assert angle == pytest.approx(90.0, abs=1e-4)
-
-
-def test_calculate_angle_deviation_equal_points_returns_180() -> None:
-    """When p1==p2 or p2==p3 the function returns 180.0."""
-    p = np.array([1.0, 2.0])
-    # p1 == p2
-    assert _calculate_angle_deviation(p, p, np.array([3.0, 4.0])) == pytest.approx(180.0)
-    # p2 == p3
-    assert _calculate_angle_deviation(np.array([0.0, 0.0]), p, p) == pytest.approx(180.0)
-
-
-# ---------------------------------------------------------------------------
-# _ccw  (line 973)
-# ---------------------------------------------------------------------------
-
-
-def test_ccw_counter_clockwise() -> None:
-    """Points arranged counter-clockwise return a truthy value."""
-    a = np.array([0.0, 0.0])
-    b = np.array([1.0, 0.0])
-    c = np.array([0.0, 1.0])
-    assert _ccw(a, b, c)
-
-
-def test_ccw_clockwise() -> None:
-    """Points arranged clockwise return a falsy value."""
-    a = np.array([0.0, 0.0])
-    b = np.array([0.0, 1.0])
-    c = np.array([1.0, 0.0])
-    assert not _ccw(a, b, c)
-
-
-# ---------------------------------------------------------------------------
-# _segments_intersect  (line 978)
-# ---------------------------------------------------------------------------
-
-
-def test_segments_intersect_crossing() -> None:
-    """Two crossing diagonals of a square should intersect."""
-    p1 = np.array([0.0, 0.0])
-    p2 = np.array([1.0, 1.0])
-    q1 = np.array([1.0, 0.0])
-    q2 = np.array([0.0, 1.0])
-    assert _segments_intersect(p1, p2, q1, q2)
-
-
-def test_segments_intersect_parallel() -> None:
-    """Parallel horizontal segments do not intersect."""
-    p1 = np.array([0.0, 0.0])
-    p2 = np.array([1.0, 0.0])
-    q1 = np.array([0.0, 1.0])
-    q2 = np.array([1.0, 1.0])
-    assert not _segments_intersect(p1, p2, q1, q2)
-
-
-# ---------------------------------------------------------------------------
-# _tsp_held_karp_no_intersections  (lines 988-1044)
-# ---------------------------------------------------------------------------
-
-
-def test_tsp_held_karp_4_points() -> None:
-    """4 axis-aligned points: TSP should return a cost and a valid cyclic path."""
-    points = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]])
-    cost, path = _tsp_held_karp_no_intersections(points)
-    assert np.isfinite(cost)
-    assert len(path) >= 4  # at minimum visits all points
-    # path starts and ends at index 0
-    assert path[0] == 0
-    assert path[-1] == 0
-
-
-def test_tsp_held_karp_3_points() -> None:
-    """3 points: minimal non-trivial case."""
-    points = np.array([[0.0, 0.0], [2.0, 0.0], [1.0, 1.0]])
-    cost, path = _tsp_held_karp_no_intersections(points)
-    assert np.isfinite(cost)
-    # Path must visit all three points and close the loop
-    visited = set(path)
-    assert {0, 1, 2}.issubset(visited)
-
-
-# ---------------------------------------------------------------------------
-# _detect_endpoints  (lines 1063-1081)
-# ---------------------------------------------------------------------------
-
-
-def test_detect_endpoints_basic() -> None:
-    """detect_endpoints returns 4 indices identifying the two farthest pairs."""
-    # Simple grid: farthest apart should be the outer corners
-    points = np.array([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [0.0, 5.0], [1.0, 5.0], [2.0, 5.0]])
-    endpoints = _detect_endpoints(points)
-    assert len(endpoints) == 4
-    # All returned indices must be valid
-    for idx in endpoints:
-        assert 0 <= idx < len(points)
-
-
-def test_detect_endpoints_deduplicates_nearby() -> None:
-    """Points within min_distance are treated as a single point."""
-    # Two groups of near-duplicates far apart
-    points = np.array(
-        [
-            [0.0, 0.0],
-            [0.01, 0.0],  # near-duplicate at origin
-            [100.0, 0.0],
-            [100.01, 0.0],
-        ]  # near-duplicate far away
-    )
-    endpoints = _detect_endpoints(points, min_distance=0.05)
-    # Should only have one representative per cluster
-    assert len(endpoints) == 4  # function always returns 4 index slots
-
-
-# ---------------------------------------------------------------------------
-# _signed_distance_to_curve  (lines 1102-1116)
-# ---------------------------------------------------------------------------
-
-
-def test_signed_distance_to_curve_on_curve() -> None:
-    """A point on the fitted curve should have near-zero signed distance."""
-    # Flat line y=0 fitted by quadratic → curve is y=0 for all x
-    x_pts = np.linspace(0, 10, 20)
-    y_pts = np.zeros_like(x_pts)
-    z_coeffs = np.polyfit(x_pts, y_pts, 3)
-    curve_fit = np.poly1d(z_coeffs)
-
-    point = np.array([5.0, 0.0])
-    signed_dist, closest = _signed_distance_to_curve(point, curve_fit, (0.0, 10.0))
-    assert abs(signed_dist) < 0.1
-    assert closest.shape == (2,)
-
-
-def test_signed_distance_to_curve_off_curve() -> None:
-    """A point clearly above the curve has a non-zero signed distance."""
-    x_pts = np.linspace(0, 10, 30)
-    y_pts = np.zeros(30)
-    z_coeffs = np.polyfit(x_pts, y_pts, 3)
-    curve_fit = np.poly1d(z_coeffs)
-
-    point = np.array([5.0, 10.0])  # 10 units above the curve
-    signed_dist, _ = _signed_distance_to_curve(point, curve_fit, (0.0, 10.0))
-    assert abs(signed_dist) > 5.0
-
-
-# ---------------------------------------------------------------------------
 # get_object_faces - too few vertices returns None (line 1282)
 # ---------------------------------------------------------------------------
 
 
 def test_get_object_faces_too_few_vertices() -> None:
     """Fewer than 3 vertices returns None."""
-    result = get_object_faces([[0, 0, 0], [1, 0, 0]], fast=True)
+    result = get_object_faces([[0, 0, 0], [1, 0, 0]])
     assert result is None

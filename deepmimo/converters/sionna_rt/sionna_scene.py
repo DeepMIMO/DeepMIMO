@@ -21,8 +21,8 @@ from deepmimo.core.scene import (
 )
 from deepmimo.utils import load_pickle
 
-# (vertices, material_idx, label, name, use_fast)
-_Component = tuple[np.ndarray, int, str, str, bool]
+# (vertices, material_idx, label, name)
+_Component = tuple[np.ndarray, int, str, str]
 
 
 def _split_into_components(
@@ -109,7 +109,7 @@ def _cluster_by_aabb(
     Only components sharing the same scene label are considered for merging.
 
     Args:
-        components: Sequence of ``(vertices, material_idx, label, name, use_fast)``
+        components: Sequence of ``(vertices, material_idx, label, name)``
             tuples.
         overlap_threshold: Fraction of the smaller AABB volume that must lie
             inside the larger AABB to trigger a merge.  Default 0.8.
@@ -224,8 +224,7 @@ def read_scene(
 
             for comp_idx, comp_verts in enumerate(components):
                 comp_name = name if n_comps == 1 else f"{name}_{comp_idx}"
-                use_fast = "road" not in comp_name.lower()
-                all_components.append((comp_verts, material_idx, obj_label, comp_name, use_fast))
+                all_components.append((comp_verts, material_idx, obj_label, comp_name))
 
         except Exception as e:
             print(f"Error processing object {name}: {e!s}")
@@ -241,10 +240,9 @@ def read_scene(
     obj_counter = 0
     for cluster in clusters:
         merged_verts = np.vstack([all_components[k][0] for k in cluster])
-        _, material_idx, obj_label, comp_name, _ = all_components[cluster[0]]
-        use_fast = "road" not in comp_name.lower()
+        _, material_idx, obj_label, comp_name = all_components[cluster[0]]
 
-        generated_faces = get_object_faces(merged_verts, fast=use_fast)
+        generated_faces = get_object_faces(merged_verts)
         if generated_faces is None:
             continue
 

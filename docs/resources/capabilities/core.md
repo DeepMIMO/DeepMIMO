@@ -110,8 +110,8 @@ Represents a single face (polygon) of a physical object.
 | Vertex access | ✓ | Indexed/iterable |
 | | | |
 | **Utilities** | | |
-| Convex hull generation | ✓ | `get_object_faces()` with `fast=True` |
-| Triangle mesh support | ✓ | `get_object_faces()` with `fast=False` |
+| Convex hull generation | ✓ | `get_object_faces()` (convex-hull simplification, default) |
+| Triangle mesh support | ✓ | Lossless triangular mesh via `Scene.export_data(lossless=True)` |
 
 ### BoundingBox
 
