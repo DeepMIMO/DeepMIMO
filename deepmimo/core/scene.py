@@ -622,6 +622,10 @@ class Scene:
         self.visualization_settings = self.DEFAULT_VISUALIZATION_SETTINGS.copy()
         self.face_indices = []
         self._current_index = 0
+        # Geometry representation of the loaded scene. Defaults to the convex-hull
+        # ("hull") simplification; set to "mesh" only when reconstructed from the
+        # lossless triangular-mesh files (see ``_from_data_mesh``).
+        self.representation: str = SCENE_REPRESENTATION_HULL
         self._objects_by_category: dict[str, list[PhysicalElement]] = {
             cat: [] for cat in ELEMENT_CATEGORIES
         }
@@ -884,6 +888,7 @@ class Scene:
 
         """
         scene = cls()
+        scene.representation = SCENE_REPRESENTATION_MESH
         faces_path = f"{base_folder}/{SCENE_MESH_FACES_FILENAME}"
         materials_path = f"{base_folder}/{SCENE_MESH_MATERIALS_FILENAME}"
         try:

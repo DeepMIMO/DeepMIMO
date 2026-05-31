@@ -6,6 +6,13 @@ import numpy as np
 import pytest
 
 from deepmimo import consts as c
+from deepmimo.core.scene import (
+    CAT_BUILDINGS,
+    CAT_TERRAIN,
+    Face,
+    PhysicalElement,
+    Scene,
+)
 from deepmimo.datasets.compat_v3 import _apply_v3_compat, _merge_rx_grids_v3, _rx_rank_map
 from deepmimo.datasets.dataset import (
     SHARED_PARAMS,
@@ -15,7 +22,9 @@ from deepmimo.datasets.dataset import (
     MacroDataset,
     MergedGridDataset,
     _missing_user_array,
+    _nearest_triangle_object_ids,
     _pad_concat_users,
+    _point_triangle_distances,
     merge_datasets,
 )
 from deepmimo.datasets.load import _validate_txrx_sets
@@ -1627,6 +1636,120 @@ def test_compute_path_hash_inactive_user_gets_minus_one() -> None:
     ds["path_ids"] = path_ids
     user_hashes = ds._compute_path_hash()  # noqa: SLF001
     assert user_hashes[1] == -1
+
+
+# ===========================================================================
+# _compute_inter_objects: mesh (nearest triangular face) vs hull (bbox center)
+# ===========================================================================
+
+
+def _wall_faces(x0, x1, y0, y1, z0, z1) -> list[Face]:  # noqa: PLR0913
+    """Two opposing axis-aligned walls at x=x0 and x=x1 (defines a box bbox)."""
+    lo = Face([[x0, y0, z0], [x0, y1, z0], [x0, y1, z1], [x0, y0, z1]])
+    hi = Face([[x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1]])
+    return [lo, hi]
+
+
+def _make_inter_object_scene() -> Scene:
+    """Scene where the nearest *face* and nearest bbox *center* disagree.
+
+    - terrain: flat ground at z=0 (z-snap target, object_id 0).
+    - obj A (id 1): elongated box x in [1, 21] -> a face sits ~1 m from the
+      probe point at (0, 0, 5) but its bbox center is far away at (11, 0, 5).
+    - obj B (id 2): compact box x in [-6, -4] -> bbox center (-5, 0, 5) is closer
+      than A's center, yet its nearest face is ~4 m away.
+
+    So for the probe point (0, 0, 5): hull picks B (center dist 5 < 11) while the
+    mesh path picks A (face dist 1 < 4).
+    """
+    terrain = PhysicalElement(
+        [Face([[-50, -50, 0], [50, -50, 0], [50, 50, 0], [-50, 50, 0]])],
+        object_id=0,
+        label=CAT_TERRAIN,
+        name="terrain",
+    )
+    obj_a = PhysicalElement(
+        _wall_faces(1, 21, -1, 1, 0, 10), object_id=1, label=CAT_BUILDINGS, name="A"
+    )
+    obj_b = PhysicalElement(
+        _wall_faces(-6, -4, -1, 1, 4, 6), object_id=2, label=CAT_BUILDINGS, name="B"
+    )
+    scene = Scene()
+    scene.add_object(terrain)
+    scene.add_object(obj_a)
+    scene.add_object(obj_b)
+    return scene
+
+
+def _make_inter_object_dataset(point: list[float]) -> Dataset:
+    """One UE / one path / one (reflection) interaction at ``point``."""
+    data = {
+        "rx_pos": np.array([[0.0, 0.0, 1.5]], dtype=float),
+        "tx_pos": np.array([0.0, 0.0, 10.0], dtype=float),
+        "aoa_az": np.array([[0.0]], dtype=float),
+        "inter": np.array([[1.0]], dtype=float),
+        "inter_pos": np.array([[[point]]], dtype=float),
+    }
+    ds = Dataset(data)
+    ds.scene = _make_inter_object_scene()
+    return ds
+
+
+def test_point_triangle_distances_matches_known_geometry() -> None:
+    """Exact point-to-triangle distance for interior, edge, vertex, and tilted cases."""
+    v0 = np.array([[0.0, 0.0, 0.0]])
+    v1 = np.array([[1.0, 0.0, 0.0]])
+    v2 = np.array([[0.0, 1.0, 0.0]])
+    # Interior projection -> pure plane (height) distance
+    d = _point_triangle_distances(np.array([[0.2, 0.2, 3.0]]), v0, v1, v2)
+    assert d[0, 0] == pytest.approx(3.0)
+    # In-plane but past an edge -> distance to that edge segment
+    d = _point_triangle_distances(np.array([[0.5, -2.0, 0.0]]), v0, v1, v2)
+    assert d[0, 0] == pytest.approx(2.0)
+    # Past a vertex -> distance to the vertex
+    d = _point_triangle_distances(np.array([[-1.0, -1.0, 0.0]]), v0, v1, v2)
+    assert d[0, 0] == pytest.approx(np.sqrt(2.0))
+    # Off-plane and outside -> combines edge + height
+    d = _point_triangle_distances(np.array([[2.0, 2.0, 1.0]]), v0, v1, v2)
+    assert d[0, 0] == pytest.approx(np.sqrt(5.5))
+
+
+def test_nearest_triangle_object_ids_chunking_is_stable() -> None:
+    """Chunked evaluation yields the same assignment as a single-shot pass."""
+    v0 = np.array([[0.0, 0.0, 0.0], [10.0, 0.0, 0.0]])
+    v1 = np.array([[1.0, 0.0, 0.0], [11.0, 0.0, 0.0]])
+    v2 = np.array([[0.0, 1.0, 0.0], [10.0, 1.0, 0.0]])
+    tri_obj_ids = np.array([100, 200])
+    points = np.array([[0.1, 0.1, 0.5], [10.2, 0.2, 0.5], [0.0, 0.0, 9.0]])
+    full = _nearest_triangle_object_ids(points, v0, v1, v2, tri_obj_ids)
+    chunked = _nearest_triangle_object_ids(points, v0, v1, v2, tri_obj_ids, pair_budget=2)
+    np.testing.assert_array_equal(full, chunked)
+    np.testing.assert_array_equal(full, [100, 200, 100])
+
+
+def test_compute_inter_objects_hull_uses_bbox_center() -> None:
+    """Hull scene: interaction point assigned to nearest bbox-center object (B)."""
+    ds = _make_inter_object_dataset([0.0, 0.0, 5.0])
+    assert ds.scene.representation == c.SCENE_REPRESENTATION_HULL
+    ids = ds._compute_inter_objects()  # noqa: SLF001
+    assert ids[0, 0, 0] == 2  # object B (nearest center), not A
+
+
+def test_compute_inter_objects_mesh_uses_nearest_face() -> None:
+    """Mesh scene: same point assigned to object owning the nearest triangle (A)."""
+    ds = _make_inter_object_dataset([0.0, 0.0, 5.0])
+    ds.scene.representation = c.SCENE_REPRESENTATION_MESH
+    ids = ds._compute_inter_objects()  # noqa: SLF001
+    assert ids[0, 0, 0] == 1  # object A (nearest face), differs from hull result
+
+
+def test_compute_inter_objects_terrain_snap_unchanged_in_both_modes() -> None:
+    """A point at the terrain top z-snaps to the terrain object in both modes."""
+    for representation in (c.SCENE_REPRESENTATION_HULL, c.SCENE_REPRESENTATION_MESH):
+        ds = _make_inter_object_dataset([3.0, 4.0, 0.0])
+        ds.scene.representation = representation
+        ids = ds._compute_inter_objects()  # noqa: SLF001
+        assert ids[0, 0, 0] == 0  # terrain object_id
 
 
 # ===========================================================================
