@@ -114,26 +114,45 @@ def transform_interaction_types(types: np.ndarray) -> np.ndarray:
          [8, 0, 0]]    # diffraction →    2]   (DIFFRACTION 8 → code 2)
 
     """
-    n_paths = types.shape[0]
-    result = np.zeros(n_paths, dtype=np.float32)
+    if types.shape[0] == 0:
+        return np.zeros(0, dtype=np.float32)
 
-    for i in range(n_paths):
-        path = types[i]
+    types_int = types.astype(np.int64)
 
-        # All-zero depth slots → LoS (no bounces)
-        if np.all(path == 0):
-            result[i] = c.INTERACTION_LOS
-            continue
+    # Lookup table mirroring ``_SIONNA_TO_DEEPMIMO.get(x, x)``: identity passthrough
+    # with the Sionna→DeepMIMO remappings overlaid (2→3 scattering, 8→2 diffraction).
+    lut_size = max(int(types_int.max(initial=0)) + 1, max(_SIONNA_TO_DEEPMIMO) + 1)
+    lut = np.arange(lut_size, dtype=np.int64)
+    for sionna_val, dm_code in _SIONNA_TO_DEEPMIMO.items():
+        lut[sionna_val] = dm_code
+    digits = lut[types_int]  # DeepMIMO digit per depth slot (0 where NONE)
 
-        # Find the last non-zero depth to avoid trailing padding zeros
-        non_zero_indices = np.where(path != 0)[0]
-        valid_raw = path[: non_zero_indices[-1] + 1]
+    # Concatenate the non-zero digits, in depth order, into a decimal code.
+    # NONE(0) slots are skipped (including padding zeros between bounces), so the
+    # j-th kept slot contributes ``digit * 10 ** (n_kept - rank)`` where ``rank``
+    # is its 1-based position among kept slots.  All-zero rows → 0 (LoS).
+    nonzero = types_int != 0
+    n_kept = nonzero.sum(axis=1, keepdims=True)
+    rank = np.cumsum(nonzero, axis=1)
+    weights = np.where(nonzero, 10.0 ** (n_kept - rank), 0.0)
+    # float64 sum is exact for the digit counts produced by Sionna (max_depth
+    # slots ⇒ ≤ max_depth digits); cast to float32 like the original.
+    return (digits * weights).sum(axis=1).astype(np.float32)
 
-        # Remap Sionna enum values → DeepMIMO codes, then concatenate as digits
-        remapped = [_SIONNA_TO_DEEPMIMO.get(int(x), int(x)) for x in valid_raw if x != 0]
-        result[i] = float("".join(str(v) for v in remapped))
 
-    return result
+def _build_rx_pos_index(rx_pos: np.ndarray) -> dict[bytes, int]:
+    """Map each ``rx_pos`` row's raw bytes to its global index.
+
+    Replaces the original per-receiver ``np.where(np.all(rx_pos == target))``
+    scan (which made the whole batch loop O(n_rx**2)) with an O(1) dict lookup.
+    Using ``row.tobytes()`` preserves the exact float-equality and first-match
+    semantics of the original scan; ``rx_pos`` rows are unique in practice
+    (``read_paths`` dedups them), so first-match never actually differs.
+    """
+    index: dict[bytes, int] = {}
+    for i in range(len(rx_pos)):
+        index.setdefault(rx_pos[i].tobytes(), i)
+    return index
 
 
 def _process_paths_batch(  # noqa: PLR0913, PLR0915
@@ -141,19 +160,26 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
     data: dict,
     t: int,
     targets: np.ndarray,
-    rx_pos: np.ndarray,
+    rx_pos_index: dict[bytes, int],
     tx_ant_idx: int = 0,
     rx_ant_idx: int = 0,
 ) -> int:
     """Process one Sionna batch and write path data into the DeepMIMO data dict.
+
+    Fully vectorized over the batch's receivers: every receiver's active-path
+    selection, descending-power sort, scalar conversions and interaction
+    encoding are computed in a handful of array ops instead of a per-receiver
+    Python loop.  The output is numerically identical to the original loop (and
+    byte-identical when per-receiver path magnitudes are distinct, which they
+    always are for physical ray-tracing data).
 
     Args:
         paths_dict: Exported Sionna path dictionary (Sionna 2.0 format).
         data: Pre-allocated DeepMIMO data dict (from ``_preallocate_data``).
         t: TX index within this paths_dict (column in the TX dimension).
         targets: RX positions for this batch, shape (n_batch, 3).
-        rx_pos: All RX positions in the scenario, shape (n_rx, 3).
-            Used to map batch-relative indices to global indices.
+        rx_pos_index: Map from global ``rx_pos`` row bytes to global index, from
+            ``_build_rx_pos_index``.  Used to map batch-local indices to global.
         tx_ant_idx: TX antenna element index (multi-antenna case only).
         rx_ant_idx: RX antenna element index (multi-antenna case only).
 
@@ -176,8 +202,6 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
           vertices:     (max_depth, num_rx, num_rx_ant, num_tx, num_tx_ant, max_paths, 3)
 
     """
-    inactive_count = 0
-
     a = paths_dict["a"]
     tau = paths_dict["tau"]
     phi_r = paths_dict["phi_r"]
@@ -212,54 +236,90 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
         vertices = vertices[:, :, tx_idx, ...]
         # types stays (max_depth, num_rx, num_tx, max_paths) — tx dim resolved later
 
-    n_rx = a.shape[0]
-    for rel_rx_idx in range(n_rx):
-        # Map batch-local RX index to global RX position index
-        abs_idx_arr = np.where(np.all(rx_pos == targets[rel_rx_idx], axis=1))[0]
-        if len(abs_idx_arr) == 0:
-            continue  # target not in the global rx_pos grid (can happen with floating point)
-        abs_idx = abs_idx_arr[0]
+    n_batch, n_sionna_paths = a.shape
 
-        amp = a[rel_rx_idx]
+    # Map every batch-local target to its global index in a single pass. Targets
+    # missing from the global grid get -1 and are skipped (matches the original).
+    abs_idx = np.fromiter(
+        (rx_pos_index.get(targets[i].tobytes(), -1) for i in range(n_batch)),
+        dtype=np.int64,
+        count=n_batch,
+    )
+    found = abs_idx >= 0
 
-        # Keep only paths with non-zero amplitude, capped at MAX_PATHS
-        non_zero_path_idxs = np.where(amp != 0)[0][: c.MAX_PATHS]
-        n_paths = len(non_zero_path_idxs)
-        if n_paths == 0:
-            inactive_count += 1
-            continue
+    # Select active paths: non-zero amplitude, keeping the first MAX_PATHS (by
+    # Sionna index) then sorting those by descending magnitude. ``cumsum`` of the
+    # non-zero mask reproduces the original ``np.where(amp != 0)[0][:MAX_PATHS]``.
+    mag = np.abs(a)
+    nonzero = a != 0
+    keep = nonzero & (np.cumsum(nonzero, axis=1) <= c.MAX_PATHS)
+    n_paths = keep.sum(axis=1)
 
-        # Sort retained paths by descending power so the strongest path is index 0
-        sorted_path_idxs = np.argsort(np.abs(amp[non_zero_path_idxs]))[::-1]
-        path_idxs = non_zero_path_idxs[sorted_path_idxs]
+    # Reversing a stable ascending sort places kept paths first in descending
+    # magnitude order while reproducing the original ``np.argsort(...)[::-1]``
+    # tie ordering: numpy's default sort is insertion sort (stable) for the
+    # per-receiver path counts seen here, so equal-magnitude paths keep the exact
+    # order the loop produced. Non-kept slots (key -inf) sort to the very end.
+    sort_key = np.where(keep, mag, -np.inf)
+    order = np.argsort(sort_key, axis=1, kind="stable")[:, ::-1]
 
-        # Power in dB, phase in degrees
-        data[c.POWER_PARAM_NAME][abs_idx, :n_paths] = 20 * np.log10(np.abs(amp[path_idxs]))
-        data[c.PHASE_PARAM_NAME][abs_idx, :n_paths] = np.angle(amp[path_idxs], deg=True)
+    n_take = min(n_sionna_paths, c.MAX_PATHS)
+    cols = order[:, :n_take]  # (n_batch, n_take) Sionna path indices, strongest-first
+    valid = np.arange(n_take)[None, :] < n_paths[:, None]
+    invalid = ~valid
 
-        # Angles of arrival / departure in degrees
-        data[c.AOA_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_r[rel_rx_idx, path_idxs])
-        data[c.AOD_AZ_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(phi_t[rel_rx_idx, path_idxs])
-        data[c.AOA_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_r[rel_rx_idx, path_idxs])
-        data[c.AOD_EL_PARAM_NAME][abs_idx, :n_paths] = np.rad2deg(theta_t[rel_rx_idx, path_idxs])
+    # Gather the per-path quantities for the whole batch at once.
+    amp_s = np.take_along_axis(a, cols, axis=1)
+    with np.errstate(divide="ignore"):
+        power = 20 * np.log10(np.abs(amp_s))  # -inf only at padded slots (NaN'd below)
+    phase = np.angle(amp_s, deg=True)
+    aoa_az = np.rad2deg(np.take_along_axis(phi_r, cols, axis=1))
+    aod_az = np.rad2deg(np.take_along_axis(phi_t, cols, axis=1))
+    aoa_el = np.rad2deg(np.take_along_axis(theta_r, cols, axis=1))
+    aod_el = np.rad2deg(np.take_along_axis(theta_t, cols, axis=1))
+    delay = np.take_along_axis(tau, cols, axis=1)
 
-        data[c.DELAY_PARAM_NAME][abs_idx, :n_paths] = tau[rel_rx_idx, path_idxs]
+    # types: (max_depth, n_batch, n_tx, n_sionna_paths) → (n_batch, n_take, max_depth)
+    types_tx = np.moveaxis(types[:, :, tx_idx, :], 0, 2)
+    path_types = np.take_along_axis(types_tx, cols[:, :, None], axis=1)
 
-        # Interaction type codes: (max_depth, n_rx, n_tx, max_paths) → (n_paths, max_depth)
-        path_types = types[:, rel_rx_idx, tx_idx, path_idxs].swapaxes(0, 1)
+    # vertices: (max_depth, n_batch, n_sionna_paths, 3) → (n_batch, n_take, max_depth, 3)
+    vert = np.moveaxis(vertices, 0, 2)
+    inter_pos = np.take_along_axis(vert, cols[:, :, None, None], axis=1).copy()
+    max_depth = inter_pos.shape[2]
 
-        # Bounce positions: (max_depth, n_rx, max_paths, 3) → (n_paths, max_depth, 3)
-        inter_pos_rx = vertices[:, rel_rx_idx, path_idxs, :].swapaxes(0, 1)
-        n_interactions = inter_pos_rx.shape[1]
-        # Depth slots with NONE type (0) are empty padding — mark them NaN.
-        # Using the type array avoids falsely nulling valid positions that have a
-        # coordinate of exactly 0 (e.g. a building face at x=0).
-        inter_pos_rx[path_types == SIONNA_INTERACTION_NONE] = np.nan
-        data[c.INTERACTIONS_POS_PARAM_NAME][abs_idx, :n_paths, :n_interactions, :] = inter_pos_rx
+    codes = transform_interaction_types(path_types.reshape(-1, max_depth)).reshape(n_batch, n_take)
 
-        data[c.INTERACTIONS_PARAM_NAME][abs_idx, :n_paths] = transform_interaction_types(path_types)
+    # NONE(0) depth slots are empty padding — mark them NaN. Using the type array
+    # avoids falsely nulling valid positions at a coordinate of exactly 0.
+    inter_pos[path_types == SIONNA_INTERACTION_NONE] = np.nan
 
-    return inactive_count
+    # Blank out padded path slots (rank >= n_paths) so they stay NaN, exactly as
+    # the pre-allocated arrays would after the original per-receiver writes.
+    power[invalid] = np.nan
+    phase[invalid] = np.nan
+    aoa_az[invalid] = np.nan
+    aod_az[invalid] = np.nan
+    aoa_el[invalid] = np.nan
+    aod_el[invalid] = np.nan
+    delay[invalid] = np.nan
+    codes[invalid] = np.nan
+    inter_pos[invalid] = np.nan
+
+    # Scatter into the global data arrays (skip targets absent from rx_pos).
+    rows = abs_idx[found]
+    cols_slice = slice(None, n_take)
+    data[c.POWER_PARAM_NAME][rows, cols_slice] = power[found]
+    data[c.PHASE_PARAM_NAME][rows, cols_slice] = phase[found]
+    data[c.AOA_AZ_PARAM_NAME][rows, cols_slice] = aoa_az[found]
+    data[c.AOD_AZ_PARAM_NAME][rows, cols_slice] = aod_az[found]
+    data[c.AOA_EL_PARAM_NAME][rows, cols_slice] = aoa_el[found]
+    data[c.AOD_EL_PARAM_NAME][rows, cols_slice] = aod_el[found]
+    data[c.DELAY_PARAM_NAME][rows, cols_slice] = delay[found]
+    data[c.INTERACTIONS_PARAM_NAME][rows, cols_slice] = codes[found]
+    data[c.INTERACTIONS_POS_PARAM_NAME][rows, :n_take, :max_depth, :] = inter_pos[found]
+
+    return int(np.sum(n_paths[found] == 0))
 
 
 def read_paths(  # noqa: C901, PLR0912, PLR0915
@@ -297,6 +357,10 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
     _, unique_indices = np.unique(all_rx_pos, axis=0, return_index=True)
     rx_pos = all_rx_pos[np.sort(unique_indices)]
     n_rx = len(rx_pos)
+
+    # Build the global position→index map once (O(n_rx)); _process_paths_batch
+    # uses it for O(1) per-target lookups instead of an O(n_rx) scan per receiver.
+    rx_pos_index = _build_rx_pos_index(rx_pos)
 
     n_txrx_sets = len(txrx_dict.keys())
     if n_txrx_sets != EXPECTED_TXRX_SETS:
@@ -361,7 +425,7 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
 
             for rx_ant_idx in range(n_rx_ant):
                 inactive_count = _process_paths_batch(
-                    paths_dict, data, t, targets, rx_pos, tx_ant_idx, rx_ant_idx
+                    paths_dict, data, t, targets, rx_pos_index, tx_ant_idx, rx_ant_idx
                 )
 
             if tx_idx == 0 and tx_ant_idx == 0:
@@ -394,7 +458,7 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
 
             for rx_ant_idx in range(n_rx_ant):
                 inactive_count = _process_paths_batch(
-                    paths_dict, data_bs_bs, t, all_bs_pos, rx_pos, tx_ant_idx, rx_ant_idx
+                    paths_dict, data_bs_bs, t, all_bs_pos, rx_pos_index, tx_ant_idx, rx_ant_idx
                 )
 
             data_bs_bs = compress_path_data(data_bs_bs)
