@@ -98,54 +98,75 @@ def paths_parser(file: str) -> dict[str, np.ndarray]:
         * np.nan,
     }
 
+    # The 7 numeric path fields plus the interaction code are accumulated per rx
+    # and committed with one vectorized assignment per field (ordered to match the
+    # per-path row tuple built below). The interaction map and interaction-position
+    # array are bound to locals to avoid dict lookups in the hot loops.
+    path_field_arrays = (
+        data[c.POWER_PARAM_NAME],
+        data[c.PHASE_PARAM_NAME],
+        data[c.DELAY_PARAM_NAME],
+        data[c.AOA_EL_PARAM_NAME],
+        data[c.AOA_AZ_PARAM_NAME],
+        data[c.AOD_EL_PARAM_NAME],
+        data[c.AOD_AZ_PARAM_NAME],
+        data[c.INTERACTIONS_PARAM_NAME],
+    )
+    inter_pos_arr = data[c.INTERACTIONS_POS_PARAM_NAME]
+    interactions_map = INTERACTIONS_MAP
+
     line_idx = LINE_START
     for rx_i in tqdm(range(n_rxs), desc="Processing paths of each RX"):
-        line = lines[line_idx]
-
         # The start of each "path info" is the rx idx and *number of paths*
-        rx_n_paths = int(line.split()[1])
+        rx_n_paths = int(lines[line_idx].split()[1])
 
         if rx_n_paths == 0:
             line_idx += 1
             continue
 
         n_paths_to_read = min(rx_n_paths, c.MAX_PATHS)
-
         line_idx += 2
 
+        # Parse each path's scalar fields with Python ``float`` (far cheaper than
+        # constructing ``np.float32`` scalars) into a row buffer. Storing the
+        # resulting float64 values into the float32 arrays rounds identically to
+        # ``np.float32("<str>")``, so the output is byte-for-byte unchanged.
+        rows = []
         for path_idx in range(n_paths_to_read):
-            # Line 1 (Example: '1 2 -133.1 31.9 1.7e-06 84.0 40.3 90.9 -13.4\n')
-            line = lines[line_idx]
-            _i1, i2, i3, i4, i5, i6, i7, i8, i9 = tuple(line.split())
-            # (no need) i1 = <path number>
-            # (no need) i2 = <total interactions for path> (not including Tx and Rx)
-            data[c.POWER_PARAM_NAME][rx_i, path_idx] = np.float32(i3)  # i3 = <received power(dBm)>
-            data[c.PHASE_PARAM_NAME][rx_i, path_idx] = np.float32(i4)  # i4 = <phase(deg)>
-            data[c.DELAY_PARAM_NAME][rx_i, path_idx] = np.float32(i5)  # i5 = <time of arrival(sec)>
-            data[c.AOA_EL_PARAM_NAME][rx_i, path_idx] = np.float32(i6)  # i6 = <arrival theta(deg)>
-            data[c.AOA_AZ_PARAM_NAME][rx_i, path_idx] = np.float32(i7)  # i7 = <arrival phi(deg)>
-            data[c.AOD_EL_PARAM_NAME][rx_i, path_idx] = np.float32(
-                i8,
-            )  # i8 = <departure theta(deg)>
-            data[c.AOD_AZ_PARAM_NAME][rx_i, path_idx] = np.float32(i9)  # i9 = <departure phi(deg)>
+            # Line 1 (Example: '1 2 -133.1 31.9 1.7e-06 84.0 40.3 90.9 -13.4')
+            # i1 = <path number> (unused); i2 = <total interactions> (not Tx/Rx)
+            _i1, i2, i3, i4, i5, i6, i7, i8, i9 = lines[line_idx].split()
 
-            # Line 2 (Example: "Tx-D-R-Rx")
-            line = lines[line_idx + 1]
-            inter_strs = line.split("-")[1:-1]  # Example: ['D', 'R']
-            # Map to interactions integers ['2', '1'] and join -> '21'
-            inter_total_s = "".join([str(INTERACTIONS_MAP[i_str]) for i_str in inter_strs])
-            data[c.INTERACTIONS_PARAM_NAME][rx_i, path_idx] = (
-                np.float32(inter_total_s) if inter_total_s else 0
-            )
+            # Line 2 (Example: "Tx-D-R-Rx") -> map interactions ['D', 'R'] to '21'
+            inter_strs = lines[line_idx + 1].split("-")[1:-1]
+            inter_total_s = "".join([str(interactions_map[s]) for s in inter_strs])
 
-            # Line 3-end (Example: "166 104 22")
+            rows.append((
+                float(i3),  # received power (dBm)
+                float(i4),  # phase (deg)
+                float(i5),  # time of arrival (sec)
+                float(i6),  # arrival theta (deg)
+                float(i7),  # arrival phi (deg)
+                float(i8),  # departure theta (deg)
+                float(i9),  # departure phi (deg)
+                float(inter_total_s) if inter_total_s else 0.0,  # interaction code
+            ))
+
+            # Line 3-end (Example: "166 104 22"). Each interaction xyz is written
+            # individually so the original per-interaction indexing (and hence its
+            # >MAX_INTER_PER_PATH IndexError) is preserved exactly.
             n_iteractions = int(i2)
+            inter_line_0 = line_idx + 3  # skip tx and rx in 1st & last lines
             for inter_idx in range(n_iteractions):
-                line = lines[line_idx + 3 + inter_idx]  # skip tx and rx in 1st & last lines
-                xyz = [np.float32(i) for i in line.split()]
-                data[c.INTERACTIONS_POS_PARAM_NAME][rx_i, path_idx, inter_idx] = xyz
+                xyz = [float(v) for v in lines[inter_line_0 + inter_idx].split()]
+                inter_pos_arr[rx_i, path_idx, inter_idx] = xyz
 
-            line_idx += 4 + n_iteractions  # add number of description lines each path has
+            line_idx += 4 + n_iteractions  # number of description lines per path
+
+        # Commit this rx's path fields (shape (n_paths_to_read, 8)) column by column.
+        block = np.asarray(rows, dtype=np.float32)
+        for field_arr, column in zip(path_field_arrays, block.T, strict=True):
+            field_arr[rx_i, :n_paths_to_read] = column
 
     # Remove extra paths and bounces
     return cu.compress_path_data(data)
