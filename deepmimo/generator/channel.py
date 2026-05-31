@@ -330,6 +330,17 @@ class OFDMPathGenerator:
         # float32 view of the selected subcarriers: keeps the batched delay phase (the dominant
         # frequency-domain intermediate) in complex64 instead of upcasting to complex128.
         self.subcarriers_f32 = np.asarray(subcarriers, dtype=np.float32)
+        # Arithmetic-spacing of the selected subcarriers (sc[j] = start + step*j). When uniform
+        # (the common arange / evenly-subsampled case) the per-subcarrier delay phase factorizes,
+        # letting the batched frequency path replace the K transcendental exp() per path with a
+        # cheap cumulative product (see _uniform_delay_response). Subcarriers are integer indices,
+        # so exact equality of the successive differences detects spacing without false positives;
+        # any non-uniform set falls back to the direct exp.
+        sc_arr = np.asarray(subcarriers)
+        sc_diffs = np.diff(sc_arr)
+        self.subcarriers_uniform = bool(sc_diffs.size == 0 or np.all(sc_diffs == sc_diffs[0]))
+        self.subcarriers_step = float(sc_diffs[0]) if sc_diffs.size else 1.0
+        self.subcarriers_start = float(sc_arr[0]) if sc_arr.size else 0.0
         # The [N, K_sel] delay->OFDM transform is only used by the LPF branch. Build it lazily so
         # it is never materialized (an [N, K_sel] complex128 exp) when LPF is off, the common case.
         self._delay_to_OFDM: np.ndarray | None = None
@@ -449,6 +460,60 @@ class OFDMPathGenerator:
         return h_pbkn.astype(np.complex64, copy=False)
 
 
+# Subcarrier-recurrence block length: exact exp() anchors are recomputed every _SC_RECURRENCE_BLOCK
+# subcarriers so the complex64 cumulative product's drift stays far below the channel's rtol=1e-4
+# (drift ~ block * 2**-24 ~ 4e-6, independent of the subcarrier count).
+_SC_RECURRENCE_BLOCK = 64
+
+
+def _uniform_delay_response(path_gen: OFDMPathGenerator, delay_n: np.ndarray) -> np.ndarray:
+    """Build the [B, P, K] delay response for arithmetic (evenly spaced) subcarriers.
+
+    For ``sc[j] = start + step*j`` the per-subcarrier phase factorizes as
+    ``exp(-j 2*pi/N * delay_n * sc[j]) = base0 * q**j``, with the step
+    ``q = exp(-j 2*pi/N * delay_n * step)``. The K transcendental ``exp()`` evaluations per path
+    therefore collapse to a cumulative product of cheap complex multiplies. To stay in complex64
+    without letting the cumulative product's magnitude drift away from the unit circle, exact
+    ``exp()`` anchors are recomputed every ``_SC_RECURRENCE_BLOCK`` subcarriers and combined
+    with a single in-block ramp via one broadcast multiply. This matches the direct ``exp()`` to
+    well within the channel's rtol=1e-4 (it is in fact closer to the exact value).
+
+    Args:
+        path_gen: OFDM path generator (supplies the subcarrier start/step and total count).
+        delay_n: [B, P] path delays in sample units (already clipped for over-FFT paths).
+
+    Returns:
+        [B, P, K] complex64 delay response.
+
+    """
+    b, p = delay_n.shape
+    k_sel = path_gen.subcarriers_f32.shape[0]
+    start = path_gen.subcarriers_start
+    step = path_gen.subcarriers_step
+    block = min(_SC_RECURRENCE_BLOCK, k_sel)
+    n_blk = -(-k_sel // block)  # ceil(k_sel / block)
+
+    # Per-path angular increment per unit subcarrier index, kept in float64 for accurate anchors.
+    w = (-2.0 * np.pi / path_gen.total_subcarriers) * delay_n  # [B, P]
+
+    # In-block ramp q**l, l in [0, block): a complex64 cumprod whose drift is bounded by `block`.
+    q = np.exp(1j * (w * step)).astype(np.complex64)  # [B, P]
+    ramp = np.empty((b, p, block), dtype=np.complex64)
+    ramp[:, :, 0] = 1.0
+    ramp[:, :, 1:] = q[:, :, None]
+    np.cumprod(ramp, axis=2, out=ramp)  # [B, P, block]
+
+    # Exact per-block anchors exp(-j 2*pi/N * delay_n * (start + step*block*m)), built in float64.
+    m = np.arange(n_blk, dtype=np.float64)
+    anchors = np.exp(1j * (w[:, :, None] * (start + step * block * m)[None, None, :])).astype(
+        np.complex64,
+    )  # [B, P, n_blk]
+
+    # anchor[m] * ramp[l] tiles the full response; reshape the (block, in-block) grid and trim to K.
+    resp = (anchors[:, :, :, None] * ramp[:, :, None, :]).reshape(b, p, n_blk * block)
+    return resp[:, :, :k_sel]
+
+
 def _freq_path_factors(  # noqa: PLR0913
     path_gen: OFDMPathGenerator,
     power: np.ndarray,
@@ -502,9 +567,14 @@ def _freq_path_factors(  # noqa: PLR0913
         # LPF delay shaping: lpf [B, P, N] projected onto the selected subcarriers -> [B, P, K].
         lpf = np.sinc(path_gen.delay_d[None, None, :] - delay_n[:, :, None])  # [B, P, N]
         delay_resp = (lpf @ path_gen.delay_to_OFDM).astype(np.complex64)  # [B, P, K]
+    elif path_gen.subcarriers_uniform:
+        # Geometric per-subcarrier phase from delay: exp(-j 2*pi/N * delay_n * k). For arithmetic
+        # subcarriers this factorizes, so a cumulative product replaces the K transcendental exp()
+        # per path (the dominant frequency-domain cost) while staying in complex64.
+        delay_resp = _uniform_delay_response(path_gen, delay_n)
     else:
-        # Geometric per-subcarrier phase from delay: exp(-j 2*pi/N * delay_n * k). The large
-        # [B, P, K] phase argument is built in float32 to keep the exp in complex64.
+        # Non-uniform subcarriers: build the large [B, P, K] phase argument in float32 (keeps the
+        # exp in complex64) and exponentiate directly.
         ang = (
             np.float32(-2.0 * np.pi / n_sc)
             * delay_n[:, :, None].astype(np.float32)
