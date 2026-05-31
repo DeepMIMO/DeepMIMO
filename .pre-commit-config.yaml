@@ -1,0 +1,22 @@
+# Pre-commit hooks for DeepMIMO.
+#
+# Mirrors the CI quality gates in .github/workflows/ci.yml (`ruff check .` and
+# `ruff format --check .`) so formatting/lint issues are caught locally before
+# they can fail CI. Ruff auto-discovers [tool.ruff] in pyproject.toml, so the
+# line length, rule selection and excludes (e.g. scripts/) apply identically.
+#
+# Enable once per clone:
+#     pre-commit install
+# Run manually against the whole repo:
+#     pre-commit run --all-files
+# Bump the pinned hook version (keep it in step with the ruff pin in pyproject):
+#     pre-commit autoupdate
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.8
+    hooks:
+      # Linter (with autofix) — mirrors `ruff check .`
+      - id: ruff-check
+        args: [--fix]
+      # Formatter — mirrors `ruff format --check .`
+      - id: ruff-format
