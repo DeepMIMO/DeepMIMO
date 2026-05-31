@@ -728,3 +728,71 @@ def test_batched_channel_zero_path_users_are_zero():
         assert np.all(result[0] == 0)
         # A user with valid paths should be non-zero.
         assert np.any(result[1] != 0)
+
+
+# ---------------------------------------------------------------------------
+# Uniform-subcarrier delay-phase recurrence (the fast path in _freq_path_factors)
+# ---------------------------------------------------------------------------
+
+
+def test_ofdm_path_generator_detects_uniform_subcarriers() -> None:
+    """Arithmetic-spaced subcarriers enable the recurrence; non-uniform sets fall back."""
+    params = _make_ofdm_params(n_sc=512)
+
+    contiguous = OFDMPathGenerator(params, np.arange(10))
+    assert contiguous.subcarriers_uniform
+    assert contiguous.subcarriers_step == 1.0
+    assert contiguous.subcarriers_start == 0.0
+
+    strided = OFDMPathGenerator(params, np.arange(4, 40, 3))
+    assert strided.subcarriers_uniform
+    assert strided.subcarriers_step == 3.0
+    assert strided.subcarriers_start == 4.0
+
+    non_uniform = OFDMPathGenerator(params, np.array([0, 5, 17, 31]))
+    assert not non_uniform.subcarriers_uniform
+
+    # A single selected subcarrier is degenerate-uniform (no spacing to violate).
+    single = OFDMPathGenerator(params, np.array([7]))
+    assert single.subcarriers_uniform
+
+
+@pytest.mark.parametrize(
+    ("n_sc", "selected"),
+    [
+        (300, np.arange(200)),        # contiguous; crosses several 64-wide recurrence blocks
+        (512, np.arange(0, 256, 2)),  # evenly strided (step 2); also crosses block boundaries
+        (128, np.arange(64)),         # exactly one recurrence block wide
+        (96, np.arange(65)),          # one element past a block boundary (re-anchor edge)
+    ],
+)
+def test_batched_freq_channel_uniform_subcarriers_match_reference(n_sc, selected) -> None:
+    """Uniform subcarriers take the recurrence path; must match the direct-exp reference."""
+    ofdm_params = _make_ofdm_params(n_sc=n_sc, selected=selected)
+    # Guard: these sets must actually exercise the recurrence (not the fallback).
+    assert OFDMPathGenerator(ofdm_params, np.asarray(selected)).subcarriers_uniform
+
+    n_users, n_rx, n_tx, p_max = 17, 2, 2, 6
+    array_response, power, delay, phase, doppler = _make_synthetic(
+        n_users, n_rx, n_tx, p_max, seed=3
+    )
+
+    reference = _reference_mimo_channel(
+        array_response, power, delay, phase, doppler, ofdm_params, 0.0,
+        freq_domain=True, squeeze_time=True,
+    )
+    result = _generate_mimo_channel(
+        array_response_product=array_response,
+        power=power,
+        delay=delay,
+        phase=phase,
+        doppler=doppler,
+        ofdm_params=ofdm_params,
+        times=0.0,
+        freq_domain=True,
+        squeeze_time=True,
+    )
+
+    assert result.shape == reference.shape
+    assert result.dtype == np.csingle
+    assert np.allclose(result, reference, rtol=1e-4, atol=1e-6)
