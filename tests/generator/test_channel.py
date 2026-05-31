@@ -549,3 +549,182 @@ def test_validate_ofdm_subcarriers_missing_keys_returns_early() -> None:
     """Params without SC_SAMP/SC_NUM keys should return without raising."""
     cp = ChannelParameters()
     cp._validate_ofdm_subcarriers({})  # noqa: SLF001
+
+
+# ---------------------------------------------------------------------------
+# Regression: the batched generator must match an independent per-UE reference
+# ---------------------------------------------------------------------------
+
+
+def _make_ofdm_params(n_sc=64, selected=(0, 5, 17, 31), bandwidth=10e6, lpf=0):
+    """Build a fresh OFDM params dict (never mutate the shared class defaults)."""
+    return {
+        c.PARAMSET_OFDM_SC_NUM: n_sc,
+        c.PARAMSET_OFDM_SC_SAMP: np.array(selected),
+        c.PARAMSET_OFDM_BANDWIDTH: bandwidth,
+        c.PARAMSET_OFDM_LPF: lpf,
+    }
+
+
+def _make_synthetic(n_users, n_rx, n_tx, p_max, seed=0):
+    """Synthetic ragged multi-user paths with NaN padding.
+
+    Guarantees at least one user with 0 valid paths, one user with the maximum number
+    of paths, and one user with interspersed (non-front-loaded) NaN padding. The array
+    response is finite everywhere (including padded paths) so the test also verifies that
+    padded paths contribute exactly zero.
+    """
+    rng = np.random.default_rng(seed)
+    power = np.full((n_users, p_max), np.nan)
+    delay = np.full((n_users, p_max), np.nan)
+    phase = np.full((n_users, p_max), np.nan)
+    doppler = np.full((n_users, p_max), np.nan)
+    array_response = (
+        rng.standard_normal((n_users, n_rx, n_tx, p_max))
+        + 1j * rng.standard_normal((n_users, n_rx, n_tx, p_max))
+    )
+
+    counts = rng.integers(0, p_max + 1, size=n_users)
+    counts[0] = 0  # user with no valid paths
+    counts[1] = p_max  # user with the maximum number of paths
+    for i in range(n_users):
+        n = counts[i]
+        if n == 0:
+            continue
+        if i == 2 and 0 < n < p_max:  # interspersed padding (exercises compaction)
+            idx = np.sort(rng.choice(p_max, size=n, replace=False))
+        else:  # front-loaded layout (as produced by the real converters)
+            idx = np.arange(n)
+        power[i, idx] = rng.uniform(0.05, 1.0, n)
+        delay[i, idx] = rng.uniform(0.0, 4.0e-6, n)
+        phase[i, idx] = rng.uniform(0.0, 360.0, n)
+        doppler[i, idx] = rng.uniform(-300.0, 300.0, n)
+    return array_response, power, delay, phase, doppler
+
+
+def _reference_mimo_channel(  # noqa: PLR0913, PLR0915
+    array_response_product, power, delay, phase, doppler, ofdm_params, times,
+    *, freq_domain, squeeze_time,
+):
+    """Independent, explicit per-UE reference implementation of the channel."""
+    times_arr = np.atleast_1d(times).astype(float)
+    n_times = times_arr.shape[0]
+    ts = 1.0 / ofdm_params[c.PARAMSET_OFDM_BANDWIDTH]
+    subc = np.asarray(ofdm_params[c.PARAMSET_OFDM_SC_SAMP])
+    n_sc = ofdm_params[c.PARAMSET_OFDM_SC_NUM]
+    lpf_on = bool(ofdm_params[c.PARAMSET_OFDM_LPF])
+    k_sel = len(subc)
+    n_users, m_rx, m_tx, p_max = array_response_product.shape
+    last = k_sel if freq_domain else p_max
+
+    if n_times == 1 and squeeze_time:
+        out = np.zeros((n_users, m_rx, m_tx, last), dtype=np.csingle)
+    else:
+        out = np.zeros((n_users, m_rx, m_tx, last, n_times), dtype=np.csingle)
+
+    delay_d = np.arange(n_sc)
+    delay_to_ofdm = np.exp(-1j * 2 * np.pi / n_sc * np.outer(delay_d, subc))
+
+    for i in range(n_users):
+        mask = ~np.isnan(power[i])
+        if not mask.any():
+            continue
+        ap = array_response_product[i][..., mask]  # [m_rx, m_tx, P]
+        pw = power[i, mask].astype(float)
+        ph = phase[i, mask].astype(float)
+        dp = doppler[i, mask].astype(float)
+        if freq_domain:
+            delay_n = (delay[i, mask].astype(float) / ts)
+            pwr = pw.copy()
+            fd = dp.copy()
+            over = delay_n >= n_sc
+            pwr[over] = 0.0
+            delay_n = delay_n.copy()
+            delay_n[over] = n_sc
+            fd[over] = 0.0
+            a_pt = np.sqrt(pwr / n_sc)[:, None] * np.exp(
+                1j * (np.deg2rad(ph)[:, None] + 2 * np.pi * fd[:, None] * times_arr[None, :])
+            )  # [P, N_t]
+            if lpf_on:
+                lpf = np.sinc(delay_d[None, :] - delay_n[:, None])  # [P, N]
+                h_pk = lpf @ delay_to_ofdm  # [P, K]
+            else:
+                h_pk = np.exp(
+                    -1j * (2 * np.pi / n_sc) * (delay_n[:, None] * subc[None, :])
+                )  # [P, K]
+            gains = (a_pt[:, None, :] * h_pk[:, :, None]).astype(np.complex64)  # [P, K, N_t]
+            ch = np.einsum("rtp,pkn->rtkn", ap, gains).astype(np.complex64)
+            out[i] = ch[..., 0] if (squeeze_time and n_times == 1) else ch
+        else:
+            gains = np.sqrt(pw)[:, None] * np.exp(
+                1j * (np.deg2rad(ph)[:, None] + 2 * np.pi * dp[:, None] * times_arr[None, :])
+            )  # [P, N_t]
+            ch = np.einsum("rtp,pn->rtpn", ap, gains).astype(np.complex64)  # [m_rx, m_tx, P, N_t]
+            n_paths = ap.shape[2]
+            if squeeze_time and n_times == 1:
+                tmp = np.zeros((m_rx, m_tx, p_max), dtype=np.complex64)
+                tmp[..., :n_paths] = ch[..., 0]
+            else:
+                tmp = np.zeros((m_rx, m_tx, p_max, n_times), dtype=np.complex64)
+                tmp[..., :n_paths, :] = ch
+            out[i] = tmp
+    return out
+
+
+@pytest.mark.parametrize("freq_domain", [True, False])
+@pytest.mark.parametrize("lpf", [0, 1])
+@pytest.mark.parametrize("times", [0.0, np.array([0.0, 5e-5, 1e-4])])
+@pytest.mark.parametrize("chunk_size", [None, 1, 4, 1000])
+def test_batched_channel_matches_reference(freq_domain, lpf, times, chunk_size):
+    """Batched generator must equal the per-UE reference (freq + time, all options)."""
+    if not freq_domain and lpf:
+        pytest.skip("LPF only applies to the frequency-domain path")
+
+    n_users, n_rx, n_tx, p_max = 23, 2, 3, 6
+    array_response, power, delay, phase, doppler = _make_synthetic(n_users, n_rx, n_tx, p_max)
+    ofdm_params = _make_ofdm_params(lpf=lpf)
+    squeeze_time = np.ndim(times) == 0
+
+    reference = _reference_mimo_channel(
+        array_response, power, delay, phase, doppler, ofdm_params, times,
+        freq_domain=freq_domain, squeeze_time=squeeze_time,
+    )
+    result = _generate_mimo_channel(
+        array_response_product=array_response,
+        power=power,
+        delay=delay,
+        phase=phase,
+        doppler=doppler,
+        ofdm_params=ofdm_params,
+        times=times,
+        freq_domain=freq_domain,
+        squeeze_time=squeeze_time,
+        chunk_size=chunk_size,
+    )
+
+    assert result.shape == reference.shape
+    assert result.dtype == np.csingle
+    assert np.allclose(result, reference, rtol=1e-4, atol=1e-6)
+
+
+def test_batched_channel_zero_path_users_are_zero():
+    """Users with zero valid paths must produce all-zero channels (freq and time)."""
+    n_users, n_rx, n_tx, p_max = 4, 2, 2, 5
+    array_response, power, delay, phase, doppler = _make_synthetic(n_users, n_rx, n_tx, p_max)
+    ofdm_params = _make_ofdm_params()
+
+    for freq_domain in (True, False):
+        result = _generate_mimo_channel(
+            array_response_product=array_response,
+            power=power,
+            delay=delay,
+            phase=phase,
+            doppler=doppler,
+            ofdm_params=ofdm_params,
+            times=0.0,
+            freq_domain=freq_domain,
+        )
+        # User 0 is constructed to have zero valid paths.
+        assert np.all(result[0] == 0)
+        # A user with valid paths should be non-zero.
+        assert np.any(result[1] != 0)

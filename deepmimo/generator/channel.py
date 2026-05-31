@@ -405,6 +405,73 @@ class OFDMPathGenerator:
 
         return h_pkn.astype(np.complex64, copy=False)
 
+    def generate_batch(  # noqa: PLR0913
+        self,
+        pwr: np.ndarray,
+        toa: np.ndarray,
+        phs: np.ndarray,
+        ts: float,
+        dopplers: np.ndarray,
+        times: float | np.ndarray,
+    ) -> np.ndarray:
+        """Vectorized OFDM path gains for a batch (chunk) of links.
+
+        Batched counterpart of :meth:`generate`: identical math applied to ``B`` links at
+        once. Padded/invalid paths MUST already be zeroed by the caller (power, delay,
+        phase and Doppler set to 0) so that they yield exactly zero path gain.
+
+        Inputs:
+            pwr       : [B, P]    linear powers per path (0 on padded paths)
+            toa       : [B, P]    times of arrival (seconds; 0 on padded paths)
+            phs       : [B, P]    initial phases (degrees; 0 on padded paths)
+            ts        : scalar    sampling period (seconds)
+            dopplers  : [B, P]    Doppler frequencies (Hz; 0 on padded paths)
+            times     : scalar or [N_t] times (seconds) at which to sample
+
+        Returns:
+            h_pbkn    : [B, P, K_sel, N_t] complex64 path gains.
+
+        """
+        times = np.atleast_1d(times).astype(float)  # [N_t]
+        n_sc = self.OFDM_params[c.PARAMSET_OFDM_SC_NUM]
+
+        power = np.asarray(pwr, dtype=float)  # [B, P]
+        delay_n = np.asarray(toa, dtype=float) / ts  # [B, P] (sample units)
+        phase0 = np.deg2rad(np.asarray(phs, dtype=float))  # [B, P] (radians)
+        fd = np.asarray(dopplers, dtype=float)  # [B, P] (Hz)
+
+        # Ignore paths over FFT window (clip to zero), matching generate()
+        over = delay_n >= n_sc
+        if np.any(over):
+            power = np.where(over, 0.0, power)
+            delay_n = np.where(over, float(n_sc), delay_n)
+            fd = np.where(over, 0.0, fd)
+
+        # Doppler-induced phase over time: [B, P, N_t]
+        theta_d = 2 * np.pi * fd[:, :, None] * times[None, None, :]
+
+        # Per-path complex amplitude vs time (before frequency shaping): [B, P, N_t]
+        a_pt = np.sqrt(power / self.total_subcarriers)[:, :, None] * np.exp(
+            1j * (phase0[:, :, None] + theta_d),
+        )
+
+        if self.OFDM_params[c.PARAMSET_OFDM_LPF]:
+            # LPF delay shaping: lpf [B, P, N] then project to subcarriers -> [B, P, K]
+            lpf = np.sinc(self.delay_d[None, None, :] - delay_n[:, :, None])  # [B, P, N]
+            h_pk = lpf @ self.delay_to_OFDM  # [B, P, K]
+            h_pbkn = a_pt[:, :, None, :] * h_pk[:, :, :, None]  # [B, P, K, N_t]
+        else:
+            # Geometric per-subcarrier phase from delay: exp(-j 2π/N · delay_n · k)
+            delay_phase = np.exp(
+                -1j
+                * (2 * np.pi / self.total_subcarriers)
+                * delay_n[:, :, None]
+                * self.subcarriers[None, None, :],
+            )  # [B, P, K]
+            h_pbkn = a_pt[:, :, None, :] * delay_phase[:, :, :, None]  # [B, P, K, N_t]
+
+        return h_pbkn.astype(np.complex64, copy=False)
+
 
 def _check_ofdm_compatibility(ofdm_params: dict, delays: np.ndarray) -> None:
     """Check if path delays are compatible with OFDM symbol duration."""
@@ -436,6 +503,144 @@ def _check_ofdm_compatibility(ofdm_params: dict, delays: np.ndarray) -> None:
         f"3. Switch to time-domain channel generation (set ch_params['{c.PARAMSET_FD_CH}'] = 0)",
     )
     print("-" * 50)
+
+
+def _compute_freq_channel_batch(
+    array_product: np.ndarray,
+    path_gains: np.ndarray,
+    *,
+    squeeze_time: bool,
+) -> np.ndarray:
+    """Combine array responses with OFDM path gains for a batch (chunk) of links.
+
+    The channel is the path-summed product of the antenna array response and the OFDM
+    path gains. Padded paths contribute exactly zero (their path gains are zero), so the
+    sum over all ``P`` paths equals the sum over the valid paths only.
+
+    Args:
+        array_product: [B, M_rx, M_tx, P] antenna array responses (finite; padded paths
+            may hold arbitrary finite values, they are nulled by the zero path gains).
+        path_gains: [B, P, K, N_t] per-path gains (zero on padded paths).
+        squeeze_time: If True and single time sample, squeeze the time dimension.
+
+    Returns:
+        [B, M_rx, M_tx, K] if squeezed, else [B, M_rx, M_tx, K, N_t].
+
+    """
+    b, m_rx, m_tx, n_paths = array_product.shape
+    k_sel, n_times = path_gains.shape[2:]
+
+    # Batched matmul contracts the path axis (BLAS-backed):
+    # [B, M_rx*M_tx, P] @ [B, P, K*N_t] -> [B, M_rx*M_tx, K*N_t]
+    a2 = array_product.reshape(b, m_rx * m_tx, n_paths)
+    g2 = path_gains.reshape(b, n_paths, k_sel * n_times)
+    channel = np.matmul(a2, g2).reshape(b, m_rx, m_tx, k_sel, n_times)
+    channel = channel.astype(np.complex64, copy=False)
+
+    if squeeze_time and n_times == 1:
+        return channel[..., 0]
+    return channel
+
+
+def _compute_time_channel_batch(  # noqa: PLR0913
+    array_product: np.ndarray,
+    valid_mask: np.ndarray,
+    power: np.ndarray,
+    phase: np.ndarray,
+    doppler: np.ndarray,
+    times: np.ndarray,
+    *,
+    squeeze_time: bool,
+) -> np.ndarray:
+    """Compute the time-domain channel for a batch (chunk) of links.
+
+    Time-domain path gains are ``a[p, n] = sqrt(P) * exp(j(phi0 + 2*pi*fD*t))`` and the
+    delay is represented structurally by the path index. Valid paths are kept compacted at
+    the front of the path axis (matching the per-user reference); padded paths become
+    zeros. Real datasets are front-loaded, so compaction is skipped unless padding is
+    actually interspersed.
+
+    Args:
+        array_product: [B, M_rx, M_tx, P] antenna array responses.
+        valid_mask: [B, P] boolean mask of valid (non-padded) paths.
+        power: [B, P] linear path powers (0 on padded paths).
+        phase: [B, P] path phases in degrees (0 on padded paths).
+        doppler: [B, P] Doppler frequencies in Hz (0 on padded paths).
+        times: [N_t] time samples in seconds.
+        squeeze_time: If True and single time sample, squeeze the time dimension.
+
+    Returns:
+        [B, M_rx, M_tx, P] if squeezed, else [B, M_rx, M_tx, P, N_t].
+
+    """
+    n_times = times.shape[0]
+
+    # Per-path complex gains over time at original path positions ([B, P, N_t]).
+    # Padded paths are zero because their power was zeroed by the caller.
+    phase0 = np.deg2rad(phase)[:, :, None]
+    gains = np.sqrt(power)[:, :, None] * np.exp(
+        1j * (phase0 + 2 * np.pi * doppler[:, :, None] * times[None, None, :]),
+    )
+
+    array_resp = array_product
+    # Only reorder when padding is interspersed (False followed by True in the mask).
+    needs_compaction = not bool(np.all(valid_mask[:, :-1] >= valid_mask[:, 1:]))
+    if needs_compaction:
+        order = np.argsort(~valid_mask, axis=1, kind="stable")  # valid first, in order
+        gains = np.take_along_axis(gains, order[:, :, None], axis=1)
+        array_resp = np.take_along_axis(array_product, order[:, None, None, :], axis=3)
+
+    # Outer product keeping the path axis: [B, M_rx, M_tx, P, N_t]
+    channel = (array_resp[:, :, :, :, None] * gains[:, None, None, :, :]).astype(
+        np.complex64,
+        copy=False,
+    )
+
+    if squeeze_time and n_times == 1:
+        return channel[..., 0]
+    return channel
+
+
+# Target peak working-memory budget (bytes) for a single batched UE chunk. This bounds the
+# temporaries created per chunk; the full output array is always allocated in addition.
+_CHUNK_MEMORY_BUDGET_BYTES = 512 * 1024 * 1024  # 512 MiB
+
+
+def _estimate_chunk_size(  # noqa: PLR0913
+    *,
+    freq_domain: bool,
+    lpf: bool,
+    m_rx: int,
+    m_tx: int,
+    p_max: int,
+    k_sel: int,
+    n_times: int,
+    total_subcarriers: int,
+    budget_bytes: int = _CHUNK_MEMORY_BUDGET_BYTES,
+) -> int:
+    """Estimate a UE-chunk size that keeps peak working memory near ``budget_bytes``.
+
+    Accounts for the dominant per-chunk temporaries: the complex128 intermediates plus the
+    complex64 results of the batched computation. Always returns at least 1.
+    """
+    bytes_c128 = 16  # complex128
+    bytes_c64 = 8  # complex64 / float64
+    m_ant = m_rx * m_tx
+    if freq_domain:
+        per_user = (
+            p_max * k_sel * n_times * (bytes_c128 + bytes_c64)  # path gains (c128 build + c64)
+            + p_max * k_sel * bytes_c128  # delay phase / LPF projection (c128)
+            + m_ant * k_sel * n_times * (bytes_c128 + bytes_c64)  # matmul result (c128 + c64)
+        )
+        if lpf:
+            per_user += p_max * total_subcarriers * bytes_c64  # sinc LPF kernel (float64)
+    else:
+        per_user = (
+            m_ant * p_max * n_times * (bytes_c128 + bytes_c64)  # outer product (c128 + c64)
+            + m_ant * p_max * bytes_c128  # gathered array response (c128)
+        )
+    per_user = max(per_user, 1)
+    return max(1, int(budget_bytes // per_user))
 
 
 def _compute_single_freq_channel(
@@ -518,8 +723,13 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
     times: float | np.ndarray = 0.0,
     freq_domain: bool = True,
     squeeze_time: bool = True,
+    chunk_size: int | None = None,
 ) -> np.ndarray:
     """Generate MIMO channel matrices in frequency or time domain.
+
+    Users (UEs) are processed in batches (chunks) and the whole computation is vectorized
+    across the chunk, which amortizes Python-loop overhead while keeping peak memory
+    bounded. Results are identical (within floating tolerance) to a per-UE computation.
 
     Args:
         array_response_product: [n_users, M_rx, M_tx, P_max] antenna array responses
@@ -531,6 +741,8 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
         times: Time samples (scalar or array, in seconds)
         freq_domain: If True, generate frequency-domain (OFDM) channel
         squeeze_time: If True and single time sample, squeeze time dimension
+        chunk_size: Number of users processed per batch. If None (default), a size is
+            derived from a peak working-memory budget. Output is independent of this value.
 
     Returns:
         Channel matrix with shape depending on domain and time:
@@ -565,49 +777,61 @@ def _generate_mimo_channel(  # noqa: PLR0913 - explicit path arrays preferred fo
     else:
         channel = np.zeros((n_ues, m_rx, m_tx, last_ch_dim, n_times), dtype=np.csingle)
 
-    # Masks per user (valid paths)
+    # Resolve the UE-chunk size (memory-budgeted when not provided)
+    if chunk_size is None:
+        chunk_size = _estimate_chunk_size(
+            freq_domain=freq_domain,
+            lpf=bool(ofdm_params[c.PARAMSET_OFDM_LPF]),
+            m_rx=m_rx,
+            m_tx=m_tx,
+            p_max=p_max,
+            k_sel=k_subcarriers,
+            n_times=n_times,
+            total_subcarriers=ofdm_params[c.PARAMSET_OFDM_SC_NUM],
+        )
+    chunk_size = max(1, int(chunk_size))
+
+    # Valid-path mask (NaN padding marks invalid/padded paths)
     nan_masks = ~np.isnan(power)  # [n_users, P_max]
-    valid_path_counts = np.sum(nan_masks, axis=1)  # [n_users]
 
-    for i in tqdm(range(n_ues), desc="Generating channels"):
-        non_nan_mask = nan_masks[i]
-        n_paths = valid_path_counts[i]
-        if n_paths == 0:
-            continue
+    n_chunks = (n_ues + chunk_size - 1) // chunk_size
+    for start in tqdm(range(0, n_ues, chunk_size), total=n_chunks, desc="Generating channels"):
+        end = min(start + chunk_size, n_ues)
+        mask_b = nan_masks[start:end]  # [B, P_max]
+        if not mask_b.any():
+            continue  # all-padding chunk -> leave zeros (matches 0-path behavior)
 
-        # Slice per-user arrays
-        array_product = array_response_product[i][..., non_nan_mask]  # [M_rx, M_tx, P]
-
-        # Per-user path data
-        user_power = power[i, non_nan_mask]
-        user_delay = delay[i, non_nan_mask]
-        user_phase = phase[i, non_nan_mask]
-        user_doppler = doppler[i, non_nan_mask]
+        arp_b = array_response_product[start:end]  # [B, M_rx, M_tx, P_max]
+        # Zero padded paths so they contribute exactly zero (avoids NaN propagation).
+        power_b = np.where(mask_b, power[start:end], 0.0)
+        phase_b = np.where(mask_b, phase[start:end], 0.0)
+        doppler_b = np.where(mask_b, doppler[start:end], 0.0)
 
         if freq_domain:
-            # Generate OFDM path gains: h[p,k,n] = √(P/N) · exp(j(φ₀ + 2πfD·t)) · exp(-j2πτk/N)
-            # where N=total subcarriers, k=subcarrier index, τ=delay, fD=Doppler
-            # Delays create per-subcarrier phase shifts (frequency-dependent)
-            path_gains = path_gen.generate(
-                pwr=user_power,
-                toa=user_delay,
-                phs=user_phase,
+            # OFDM path gains h[b,p,k,n] = √(P/N)·exp(j(φ₀+2πfD·t))·exp(-j2πτk/N);
+            # delays create per-subcarrier (frequency-dependent) phase shifts.
+            delay_b = np.where(mask_b, delay[start:end], 0.0)
+            path_gains = path_gen.generate_batch(
+                pwr=power_b,
+                toa=delay_b,
+                phs=phase_b,
                 ts=ts,
-                dopplers=user_doppler,
+                dopplers=doppler_b,
                 times=times_arr,
             )
-            channel[i] = _compute_single_freq_channel(
-                array_product, path_gains, squeeze_time=squeeze_time
+            channel[start:end] = _compute_freq_channel_batch(
+                arp_b, path_gains, squeeze_time=squeeze_time
             )
         else:
-            # Generate time-domain path gains: a[p,n] = √P · exp(j(φ₀ + 2πfD·t))
-            # Delays are represented structurally: each path index p has delay[p]
-            phase0 = np.deg2rad(user_phase)[:, None]  # [P, 1]
-            path_gains = np.sqrt(user_power)[:, None] * np.exp(
-                1j * (phase0 + 2 * np.pi * user_doppler[:, None] * times_arr[None, :]),
-            )  # [P, N_t]
-            channel[i] = _compute_single_time_channel(
-                array_product, path_gains, p_max, squeeze_time=squeeze_time
+            # Time-domain gains a[b,p,n] = √P·exp(j(φ₀+2πfD·t)); delay is the path index.
+            channel[start:end] = _compute_time_channel_batch(
+                arp_b,
+                mask_b,
+                power_b,
+                phase_b,
+                doppler_b,
+                times_arr,
+                squeeze_time=squeeze_time,
             )
 
     return channel
