@@ -43,7 +43,14 @@ def _array_response(ant_ind: NDArray, theta: float, phi: float, kd: float) -> ND
     return np.exp(ant_ind @ gamma.T)
 
 
-def _array_response_batch(ant_ind: NDArray, theta: NDArray, phi: NDArray, kd: float) -> NDArray:
+def _array_response_batch(
+    ant_ind: NDArray,
+    theta: NDArray,
+    phi: NDArray,
+    kd: float,
+    *,
+    dtype: type = np.complex128,
+) -> NDArray:
     """Calculate array response vectors for multiple users/paths simultaneously.
 
     This is a vectorized version of array_response() that can process multiple users
@@ -54,6 +61,9 @@ def _array_response_batch(ant_ind: NDArray, theta: NDArray, phi: NDArray, kd: fl
         theta (NDArray): Elevation angles with shape [batch_size, n_paths] in radians
         phi (NDArray): Azimuth angles with shape [batch_size, n_paths] in radians
         kd (float): Product of wavenumber k and antenna spacing d
+        dtype: Output complex dtype. Defaults to ``np.complex128``. Channel generation
+            uses ``np.complex64`` to halve the memory of the array responses; the final
+            channel precision is unaffected.
 
     Returns:
         NDArray: Complex array response matrix with shape [batch_size, N, n_paths]
@@ -77,7 +87,7 @@ def _array_response_batch(ant_ind: NDArray, theta: NDArray, phi: NDArray, kd: fl
     gamma = _array_response_phase(theta[valid_mask], phi[valid_mask], kd)  # [n_valid_paths, 3]
 
     # Initialize output array
-    result = np.zeros((batch_size, n_ant, n_paths), dtype=np.complex128)
+    result = np.zeros((batch_size, n_ant, n_paths), dtype=dtype)
 
     # Create index arrays for valid paths
     batch_idx, path_idx = np.nonzero(valid_mask)

@@ -80,6 +80,37 @@ SHARED_PARAMS = [
     c.RT_PARAMS_PARAM_NAME,
 ]
 
+# Peak bytes for the transient [chunk, n_centers, 3] distance tensor in `_nearest_center_idx`.
+_NEAREST_CENTER_CHUNK_BYTES = 64 * 1024 * 1024
+
+
+def _nearest_center_idx(
+    points: np.ndarray, centers: np.ndarray, *, max_bytes: int = _NEAREST_CENTER_CHUNK_BYTES
+) -> np.ndarray:
+    """Index of the nearest center (by Euclidean distance) for each point.
+
+    Chunked over ``points`` so the transient ``[chunk, n_centers, 3]`` distance tensor
+    never exceeds ``max_bytes``. Ties resolve to the lowest index, matching ``np.argmin``.
+
+    Args:
+        points: Query points, shape ``[n_points, 3]``.
+        centers: Candidate centers, shape ``[n_centers, 3]``.
+        max_bytes: Memory budget for the per-chunk distance tensor.
+
+    Returns:
+        np.ndarray: Index into ``centers`` of the nearest center, shape ``[n_points]``.
+
+    """
+    n_points = points.shape[0]
+    nearest = np.empty(n_points, dtype=np.intp)
+    bytes_per_point = max(centers.shape[0] * centers.shape[1] * points.itemsize, 1)
+    chunk = max(1, int(max_bytes // bytes_per_point))
+    for start in range(0, n_points, chunk):
+        block = points[start : start + chunk]
+        dist = np.linalg.norm(centers[None, :, :] - block[:, None, :], axis=2)
+        nearest[start : start + chunk] = np.argmin(dist, axis=1)
+    return nearest
+
 
 class Dataset(DotDict):
     """Class for managing DeepMIMO datasets.
@@ -310,7 +341,7 @@ class Dataset(DotDict):
                 delta_f = bandwidth / n_subcarriers
                 t_sym = 1.0 / delta_f
                 times = np.arange(int(num_timestamps), dtype=float) * t_sym
-        array_response_product = self._compute_array_response_product()
+        array_response_rx, array_response_tx = self._compute_array_responses()
         n_paths_to_gen = params.num_paths
         n_paths = np.min((n_paths_to_gen, self.delay.shape[-1]))
         default_doppler = np.zeros((self.n_ue, n_paths))
@@ -321,8 +352,11 @@ class Dataset(DotDict):
             if not use_doppler and params[c.PARAMSET_DOPPLER_EN]:
                 print("No doppler in channel generation because all velocities are zero")
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
+        # Carry RX/TX responses separately; the M_rx x M_tx product is formed per-chunk
+        # inside the generator so the full product is never held for all users at once.
         channel = _generate_mimo_channel(
-            array_response_product=array_response_product[..., :n_paths],
+            array_response_rx=array_response_rx[..., :n_paths],
+            array_response_tx=array_response_tx[..., :n_paths],
             power=self._power_linear_ant_gain[..., :n_paths],
             delay=self.delay[..., :n_paths],
             phase=self.phase[..., :n_paths],
@@ -579,28 +613,83 @@ class Dataset(DotDict):
             phi: Azimuth angles array
 
         Returns:
-            Array response matrix
+            Array response matrix (complex64 to halve memory of the per-path responses)
 
         """
         kd = 2 * np.pi * ant_params.spacing
         ant_ind = _ant_indices(ant_params[c.PARAMSET_ANT_SHAPE])
-        return _array_response_batch(ant_ind=ant_ind, theta=theta, phi=phi, kd=kd)
+        return _array_response_batch(
+            ant_ind=ant_ind, theta=theta, phi=phi, kd=kd, dtype=np.complex64
+        )
+
+    def _compute_array_responses(self) -> tuple[np.ndarray, np.ndarray]:
+        """Compute the separate RX and TX antenna array responses (complex64).
+
+        Returns the receive [n_ue, M_rx, P] and transmit [n_ue, M_tx, P] responses
+        *without* forming the memory-heavy [n_ue, M_rx, M_tx, P] outer product. The M_rx x
+        M_tx contraction is deferred to per-chunk channel generation.
+
+        Results are cached on the dataset and reused across repeated channel generations.
+        The cache is invalidated automatically when the antenna geometry (shape/spacing) or
+        the rotated angles change (the latter via object identity of the rotated-angle
+        arrays, which are themselves recomputed when their cache is cleared).
+
+        Returns:
+            Tuple ``(array_response_rx, array_response_tx)``.
+
+        """
+        bs_ant_params = self.ch_params.bs_antenna
+        ue_ant_params = self.ch_params.ue_antenna
+        aod_el = self[c.AOD_EL_ROT_PARAM_NAME]
+        aod_az = self[c.AOD_AZ_ROT_PARAM_NAME]
+        aoa_el = self[c.AOA_EL_ROT_PARAM_NAME]
+        aoa_az = self[c.AOA_AZ_ROT_PARAM_NAME]
+
+        cache_key = (
+            tuple(np.asarray(bs_ant_params[c.PARAMSET_ANT_SHAPE]).ravel().tolist()),
+            float(bs_ant_params[c.PARAMSET_ANT_SPACING]),
+            tuple(np.asarray(ue_ant_params[c.PARAMSET_ANT_SHAPE]).ravel().tolist()),
+            float(ue_ant_params[c.PARAMSET_ANT_SPACING]),
+            id(aod_el),
+            id(aod_az),
+            id(aoa_el),
+            id(aoa_az),
+        )
+        # Read the cache straight from the instance __dict__ (it is stored via
+        # object.__setattr__): the Dataset overrides __getattr__ to raise KeyError for
+        # unknown keys, which getattr(..., default) would not catch.
+        cache = self.__dict__.get("_array_response_cache")
+        if cache is not None and cache["key"] == cache_key:
+            return cache["rx"], cache["tx"]
+
+        array_response_tx = self._compute_single_array_response(bs_ant_params, aod_el, aod_az)
+        array_response_rx = self._compute_single_array_response(ue_ant_params, aoa_el, aoa_az)
+        object.__setattr__(
+            self,
+            "_array_response_cache",
+            {
+                "key": cache_key,
+                "rx": array_response_rx,
+                "tx": array_response_tx,
+                # Keep references to the rotated-angle arrays so their id() stays unique
+                # (prevents id reuse after the rotated-angle cache is cleared/recomputed).
+                "refs": (aod_el, aod_az, aoa_el, aoa_az),
+            },
+        )
+        return array_response_rx, array_response_tx
 
     def _compute_array_response_product(self) -> np.ndarray:
-        """Compute product of TX and RX array responses.
+        """Compute the full TX/RX array response product (legacy full-product form).
+
+        Prefer :meth:`_compute_array_responses` (separate RX/TX) for channel generation;
+        this method materializes the full [n_ue, M_rx, M_tx, P] product and is retained for
+        backward compatibility (e.g. ``dataset.array_response_product``).
 
         Returns:
             Array response product matrix
 
         """
-        tx_ant_params = self.ch_params.bs_antenna
-        rx_ant_params = self.ch_params.ue_antenna
-        array_response_tx = self._compute_single_array_response(
-            tx_ant_params, self[c.AOD_EL_ROT_PARAM_NAME], self[c.AOD_AZ_ROT_PARAM_NAME]
-        )
-        array_response_rx = self._compute_single_array_response(
-            rx_ant_params, self[c.AOA_EL_ROT_PARAM_NAME], self[c.AOA_AZ_ROT_PARAM_NAME]
-        )
+        array_response_rx, array_response_tx = self._compute_array_responses()
         return array_response_rx[:, :, None, :] * array_response_tx[:, None, :, :]
 
     def _is_full_fov(self, fov: np.ndarray) -> bool:
@@ -1609,26 +1698,35 @@ class Dataset(DotDict):
         )
         k_tx = spherical_to_cartesian(tx_coord_cat)
         k_rx = spherical_to_cartesian(rx_coord_cat)
-        k_i = self._compute_inter_angles()
-        inter_objects = self._compute_inter_objects()
-        for ue_i in tqdm(range(self.n_ue), desc="Computing doppler per UE"):
-            n_paths = self.num_paths[ue_i]
-            for path_i in range(n_paths):
-                if np.isnan(self.inter[ue_i, path_i]):
-                    continue
-                n_inter = self.num_interactions[ue_i, path_i]
-                tx_doppler = np.dot(k_tx[ue_i, path_i], self.tx_vel) / wavelength
-                rx_doppler = np.dot(k_rx[ue_i, path_i], self.rx_vel[ue_i]) / wavelength
-                path_dopplers = [0]
-                for i in range(int(n_inter)):
-                    inter_obj_idx = inter_objects[ue_i, path_i, i]
-                    if np.isnan(inter_obj_idx):
-                        continue
-                    v_i = self.scene.objects[int(inter_obj_idx)].vel
-                    ki_diff = k_i[ue_i, path_i, i + 1] - k_i[ue_i, path_i, i]
-                    path_dopplers += [np.dot(v_i, ki_diff) / wavelength]
-                doppler[ue_i, path_i] = tx_doppler - rx_doppler + np.sum(path_dopplers)
-        return doppler
+        k_i = self._compute_inter_angles()  # [n_ue, max_paths, max_inter+1, 3]
+        inter_objects = self._compute_inter_objects()  # [n_ue, max_paths, max_inter]
+
+        # k_i / inter_objects already use the (nanmax-derived) max_paths; match it here.
+        max_paths = self.max_paths
+        k_tx = k_tx[:, :max_paths, :]
+        k_rx = k_rx[:, :max_paths, :]
+
+        # TX/RX terms: dot(k, v) / wavelength for every (user, path).
+        tx_doppler = np.sum(k_tx * self.tx_vel, axis=-1) / wavelength
+        rx_doppler = np.sum(k_rx * self.rx_vel[:, None, :], axis=-1) / wavelength
+
+        # Interaction terms: sum_i dot(v_obj[i], k_{i+1} - k_i) / wavelength.
+        ki_diff = np.diff(k_i, axis=2)  # [n_ue, max_paths, max_inter, 3]
+        obj_mask = ~np.isnan(inter_objects)  # real interaction points only
+        obj_vel = np.array([obj.vel for obj in self.scene.objects])  # [n_objects, 3]
+        obj_idx = np.where(obj_mask, inter_objects, 0).astype(int)
+        v_obj = obj_vel[obj_idx]  # [n_ue, max_paths, max_inter, 3]
+        inter_doppler = np.where(obj_mask, np.sum(v_obj * ki_diff, axis=-1) / wavelength, 0.0)
+        inter_doppler = inter_doppler.sum(axis=2)
+
+        doppler = tx_doppler - rx_doppler + inter_doppler
+
+        # Original loop only visits paths with index < num_paths and a non-NaN code.
+        path_idx = np.arange(max_paths)
+        path_valid = (path_idx[None, :] < self.num_paths[:, None]) & ~np.isnan(
+            self.inter[:, :max_paths]
+        )
+        return np.where(path_valid, doppler, 0.0)
 
     def _compute_inter_angles(self) -> np.ndarray:
         """Compute the outgoing angles for all users and paths.
@@ -1642,20 +1740,41 @@ class Dataset(DotDict):
                         the unit vectors between interactions (x, y, z)
 
         """
-        inter_angles = np.zeros((self.n_ue, self.max_paths, self.max_inter + 1, 3))
-        for ue_i in tqdm(range(self.n_ue), desc="Computing interaction angles per UE"):
-            for path_i in range(self.max_paths):
-                n_inter = self.num_interactions[ue_i, path_i]
-                if np.isnan(n_inter) or n_inter == 0:
-                    continue
-                for i in range(-1, int(n_inter)):
-                    pos1 = self.tx_pos if i == -1 else self.inter_pos[ue_i, path_i, i]
-                    if i == n_inter - 1:
-                        pos2 = self.rx_pos[ue_i]
-                    else:
-                        pos2 = self.inter_pos[ue_i, path_i, i + 1]
-                    vec = pos2 - pos1
-                    inter_angles[ue_i, path_i, i + 1] = vec / np.linalg.norm(vec)
+        n_ue, max_paths, max_inter = self.n_ue, self.max_paths, self.max_inter
+        inter_angles = np.zeros((n_ue, max_paths, max_inter + 1, 3))
+
+        # `max_paths`/`max_inter` are nanmax-derived, so clip to the loop's index bounds.
+        n_inter = self.num_interactions[:, :max_paths]  # NaN when the path is empty
+        valid = ~np.isnan(n_inter) & (n_inter != 0)
+        if not valid.any():
+            return inter_angles
+        n_int = np.where(valid, n_inter, 0).astype(int)
+
+        tx_pos = np.reshape(np.asarray(self.tx_pos), CARTESIAN_DIM)
+        inter_pos = self.inter_pos[:, :max_paths, :max_inter, :]
+        rx_pos = self.rx_pos  # [n_ue, 3]
+
+        # Walk the chain tx_pos -> inter_pos[0] -> ... -> inter_pos[n-1] -> rx_pos.
+        # Segment s (stored at slot s) goes from pos1[s] to pos2[s].
+        pos1 = np.empty((n_ue, max_paths, max_inter + 1, CARTESIAN_DIM))
+        pos1[:, :, 0, :] = tx_pos
+        pos1[:, :, 1:, :] = inter_pos
+        pos2 = np.empty((n_ue, max_paths, max_inter + 1, CARTESIAN_DIM))
+        pos2[:, :, :max_inter, :] = inter_pos
+        pos2[:, :, max_inter, :] = 0.0  # placeholder; only read when n_inter == max_inter
+
+        # The final segment of every (valid) path terminates at the receiver.
+        ue_sel, path_sel = np.nonzero(valid)
+        pos2[ue_sel, path_sel, n_int[ue_sel, path_sel], :] = rx_pos[ue_sel]
+
+        vec = pos2 - pos1
+        with np.errstate(invalid="ignore", divide="ignore"):
+            unit = vec / np.linalg.norm(vec, axis=-1, keepdims=True)
+
+        # Fill slots 0..n_inter; deeper slots stay zero exactly like the loop skipped them.
+        slots = np.arange(max_inter + 1)
+        slot_mask = valid[:, :, None] & (slots[None, None, :] <= n_int[:, :, None])
+        inter_angles[slot_mask] = unit[slot_mask]
         return inter_angles
 
     def _compute_inter_objects(self) -> np.ndarray:
@@ -1670,7 +1789,9 @@ class Dataset(DotDict):
             Shape: [n_ue, max_paths, max_interactions]
 
         """
-        inter_obj_ids = np.zeros((self.n_ue, self.max_paths, self.max_inter)) * np.nan
+        n_ue, max_paths, max_inter = self.n_ue, self.max_paths, self.max_inter
+        inter_obj_ids = np.full((n_ue, max_paths, max_inter), np.nan)
+
         terrain_objs = [obj for obj in self.scene.objects if obj.label == "terrain"]
         if len(terrain_objs) > 1:
             msg = "There should be only one terrain object"
@@ -1680,19 +1801,30 @@ class Dataset(DotDict):
         non_terrain_objs = [obj for obj in self.scene.objects if obj.label != "terrain"]
         obj_centers = np.array([obj.bounding_box.center for obj in non_terrain_objs])
         obj_ids = np.array([obj.object_id for obj in non_terrain_objs])
-        for ue_i in tqdm(range(self.n_ue), desc="Computing interaction objects per UE"):
-            for path_i in range(self.max_paths):
-                n_inter = self.num_interactions[ue_i, path_i]
-                if np.isnan(n_inter) or n_inter == 0:
-                    continue
-                for i in range(int(n_inter)):
-                    i_pos = self.inter_pos[ue_i, path_i, i]
-                    if np.isclose(i_pos[2], terrain_z_coord, rtol=0, atol=0.001):
-                        inter_obj_ids[ue_i, path_i, i] = terrain_obj.object_id
-                        continue
-                    dist = np.linalg.norm(obj_centers - i_pos, axis=1)
-                    obj_idx = np.argmin(dist)
-                    inter_obj_ids[ue_i, path_i, i] = obj_ids[obj_idx]
+
+        # Gather only the real interaction points (slot i < n_inter for non-empty paths).
+        # `max_paths`/`max_inter` are nanmax-derived, so clip to the loop's index bounds.
+        n_inter = self.num_interactions[:, :max_paths]
+        valid = ~np.isnan(n_inter) & (n_inter != 0)
+        n_int = np.where(valid, n_inter, 0).astype(int)
+        slots = np.arange(max_inter)
+        point_mask = valid[:, :, None] & (slots[None, None, :] < n_int[:, :, None])
+        if not point_mask.any():
+            return inter_obj_ids
+
+        pts = self.inter_pos[:, :max_paths, :max_inter, :][point_mask]  # [N, 3]
+        assigned = np.empty(pts.shape[0])
+
+        # Terrain z-snap short-circuits the nearest-object search, exactly like the loop.
+        is_terrain = np.isclose(pts[:, 2], terrain_z_coord, rtol=0, atol=0.001)
+        assigned[is_terrain] = terrain_obj.object_id
+
+        other = ~is_terrain
+        if other.any():
+            nearest = _nearest_center_idx(pts[other], obj_centers)
+            assigned[other] = obj_ids[nearest]
+
+        inter_obj_ids[point_mask] = assigned
         return inter_obj_ids
 
     def clear_all_caches(self) -> None:
