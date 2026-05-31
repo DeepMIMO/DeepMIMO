@@ -311,8 +311,7 @@ def plot(results, out_path):
             ax.legend(handles=[l1, l2, l3], fontsize=7, loc="best", title=f"peak {peak:.0f}x")
 
     fig.suptitle(
-        "MIMO channel generation: per-UE loop vs vectorized "
-        "(log-log time; blue = speedup on linear axis, dashed = 1x break-even)",
+        "MIMO channel generation: per-UE loop vs vectorized (log time, linear speedup)",
         fontsize=15,
     )
     fig.tight_layout(rect=(0, 0, 1, 0.97))
