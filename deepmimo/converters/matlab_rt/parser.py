@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, EM102, TRY003
 """Parser and validation boundary for MATLAB RT JSON exports."""
 
 from __future__ import annotations
@@ -20,8 +21,8 @@ from .schema import (
     MatlabRTInteraction,
     MatlabRTLink,
     MatlabRTMetadata,
-    MatlabRTReceiver,
     MatlabRTRay,
+    MatlabRTReceiver,
     MatlabRTScene,
     MatlabRTTransmitter,
 )
@@ -466,7 +467,7 @@ def _require_same_vector3(
     """Require two 3D position vectors to match within numeric tolerance."""
     if any(
         not math.isclose(obs, exp, rel_tol=0.0, abs_tol=1e-9)
-        for obs, exp in zip(observed, expected)
+        for obs, exp in zip(observed, expected, strict=True)
     ):
         raise MatlabRTValidationError(f"{context} is inconsistent with site position.")
 

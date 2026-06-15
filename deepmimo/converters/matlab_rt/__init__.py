@@ -18,22 +18,21 @@ from .schema import (
     MatlabRTInteraction,
     MatlabRTLink,
     MatlabRTMetadata,
-    MatlabRTReceiver,
     MatlabRTRay,
+    MatlabRTReceiver,
     MatlabRTScene,
     MatlabRTTransmitter,
 )
 from .writer import MatlabRTWriteResult
 
 __all__ = [
-    "convert_matlab_rt_json",
     "MatlabRTConversionError",
     "MatlabRTExport",
     "MatlabRTInteraction",
     "MatlabRTLink",
     "MatlabRTMetadata",
-    "MatlabRTReceiver",
     "MatlabRTRay",
+    "MatlabRTReceiver",
     "MatlabRTScene",
     "MatlabRTSchemaError",
     "MatlabRTTransmitter",
@@ -41,4 +40,5 @@ __all__ = [
     "MatlabRTWriteResult",
     "MatlabRTWriterError",
     "UnsupportedMatlabRTFeatureError",
+    "convert_matlab_rt_json",
 ]

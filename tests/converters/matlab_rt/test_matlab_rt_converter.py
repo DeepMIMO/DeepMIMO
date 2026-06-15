@@ -8,10 +8,10 @@ import unittest
 import uuid
 from pathlib import Path
 
-import matplotlib
+import matplotlib as mpl
 import numpy as np
 
-matplotlib.use("Agg")
+mpl.use("Agg")
 import matplotlib.pyplot as plt
 
 import deepmimo as dm
@@ -21,7 +21,6 @@ from deepmimo.converters.matlab_rt.errors import MatlabRTWriterError
 from deepmimo.converters.matlab_rt.parser import parse_matlab_rt_json
 from deepmimo.datasets.dataset import Dataset, MacroDataset
 from tests.converters.matlab_rt import expect_raises
-
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 MULTILINK_FIXTURE = FIXTURE_DIR / "matlab_rt_multilink.json"

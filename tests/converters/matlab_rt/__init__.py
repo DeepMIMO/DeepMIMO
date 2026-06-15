@@ -1,3 +1,4 @@
+# ruff: noqa: TC003
 """Tests for the MATLAB RT converter MVP."""
 
 from __future__ import annotations

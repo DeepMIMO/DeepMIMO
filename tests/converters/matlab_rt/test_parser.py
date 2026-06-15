@@ -21,7 +21,6 @@ from deepmimo.converters.matlab_rt.schema import (
 )
 from tests.converters.matlab_rt import expect_raises
 
-
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 
 

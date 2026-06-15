@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, EM102, PLR0913, TRY003
 """In-memory path-row helpers for parsed MATLAB RT exports."""
 
 from __future__ import annotations

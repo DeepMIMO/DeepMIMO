@@ -1,3 +1,4 @@
+# ruff: noqa: TC003
 """Tests for MATLAB RT filesystem scenario writer."""
 
 from __future__ import annotations
@@ -6,10 +7,10 @@ import json
 import shutil
 import unittest
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import replace
 from pathlib import Path
-from typing import Iterator
 
 import numpy as np
 
@@ -21,7 +22,6 @@ from deepmimo.converters.matlab_rt.parser import parse_matlab_rt_json
 from deepmimo.converters.matlab_rt.paths import build_path_row_groups
 from deepmimo.converters.matlab_rt.writer import expected_matrix_filenames, write_scenario_folder
 from tests.converters.matlab_rt import expect_raises
-
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 SCENARIO_NAME = "matlab_rt_writer_test"

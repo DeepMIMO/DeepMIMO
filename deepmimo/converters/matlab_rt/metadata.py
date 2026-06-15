@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, EM102, PLR0913, TRY003
 """In-memory metadata builders for MATLAB RT DeepMIMO scenarios."""
 
 from __future__ import annotations
@@ -384,4 +385,4 @@ def _string_or_default(value: Any, default: str) -> str:
     if not isinstance(value, str):
         raise MatlabRTValidationError("metadata string values must be strings.")
     stripped = value.strip()
-    return stripped if stripped else default
+    return stripped or default

@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, EM102, TRY003
 """Pure interaction helpers for MATLAB RT exports."""
 
 from __future__ import annotations
@@ -11,10 +12,10 @@ import numpy as np
 
 from .errors import UnsupportedMatlabRTFeatureError
 
-
 DEEPMIMO_LOS_CODE = 0
 DEEPMIMO_REFLECTION_CODE = 1
 MATLAB_REFLECTION_TYPE = "reflection"
+VECTOR3_LENGTH = 3
 
 
 def _as_interaction_sequence(
@@ -84,7 +85,7 @@ def matlab_interaction_location(interaction: Mapping[str, Any]) -> np.ndarray:
     location = interaction.get("Location")
     if isinstance(location, (str, bytes)) or not isinstance(location, Sequence):
         raise TypeError("interaction Location must be a numeric sequence with three values.")
-    if len(location) != 3:
+    if len(location) != VECTOR3_LENGTH:
         raise ValueError("interaction Location must contain exactly three values.")
 
     return np.array(

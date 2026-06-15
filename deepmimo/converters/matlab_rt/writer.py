@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, EM102, TRY003
 """Filesystem writer for MATLAB RT DeepMIMO scenario folders."""
 
 from __future__ import annotations

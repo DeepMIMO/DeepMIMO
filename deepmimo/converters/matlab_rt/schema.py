@@ -1,3 +1,4 @@
+# ruff: noqa: TC003
 """Typed schema objects for MATLAB RT converter inputs."""
 
 from __future__ import annotations

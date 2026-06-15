@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, EM102, TRY003
 """Pure numeric conversion helpers for MATLAB RT exports."""
 
 from __future__ import annotations

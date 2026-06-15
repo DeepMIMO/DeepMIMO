@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, EM102, FBT001, ICN001, N818, PLC0415, S603, TRY003, TRY300, TRY301
 """Run a real MATLAB RT export through the production DeepMIMO converter."""
 
 from __future__ import annotations
@@ -13,7 +14,6 @@ import uuid
 from pathlib import Path
 
 import numpy as np
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:

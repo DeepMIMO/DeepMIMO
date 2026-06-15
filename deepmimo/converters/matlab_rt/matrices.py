@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, EM102, TRY003
 """In-memory DeepMIMO-style matrix assembly for MATLAB RT path rows."""
 
 from __future__ import annotations
@@ -22,7 +23,8 @@ SCALAR_MATRIX_FIELDS = (
     "aod_el",
     "inter",
 )
-MATRIX_FIELDS = SCALAR_MATRIX_FIELDS + ("inter_pos", "rx_pos", "tx_pos")
+MATRIX_FIELDS = (*SCALAR_MATRIX_FIELDS, "inter_pos", "rx_pos", "tx_pos")
+VECTOR3_LENGTH = 3
 
 
 @dataclass(frozen=True)
@@ -294,7 +296,7 @@ def _validate_vector3(value: object, name: str, *, allow_nan: bool) -> None:
     """Validate one vector with three real numeric entries."""
     if isinstance(value, (str, bytes)) or not isinstance(value, Sequence):
         raise MatlabRTValidationError(f"{name} must be a 3D numeric sequence.")
-    if len(value) != 3:
+    if len(value) != VECTOR3_LENGTH:
         raise MatlabRTValidationError(f"{name} must contain exactly three values.")
     for item_index, item in enumerate(value):
         _validate_real(item, f"{name}[{item_index}]", allow_nan=allow_nan)

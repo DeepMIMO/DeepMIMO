@@ -19,7 +19,6 @@ from deepmimo.converters.matlab_rt.parser import parse_matlab_rt_json
 from deepmimo.converters.matlab_rt.paths import build_path_row_groups
 from tests.converters.matlab_rt import expect_raises
 
-
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
 
 

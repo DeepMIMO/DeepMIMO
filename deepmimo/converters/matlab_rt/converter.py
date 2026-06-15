@@ -1,3 +1,4 @@
+# ruff: noqa: EM101, PLR0913, TRY003
 """Public orchestration API for MATLAB RT JSON conversion."""
 
 from __future__ import annotations
@@ -35,6 +36,7 @@ def convert_matlab_rt_json(
 
     Returns:
         ``MatlabRTWriteResult`` with output paths, written files, and matrix shapes.
+
     """
     export = _load_or_validate_source(source)
     path_groups = build_path_row_groups(
