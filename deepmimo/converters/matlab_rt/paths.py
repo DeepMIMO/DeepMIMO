@@ -17,6 +17,10 @@ from .units import (
 )
 
 Vector3 = tuple[float, float, float]
+_ROW_BUILD_PASSTHROUGH_ERRORS = (
+    MatlabRTValidationError,
+    UnsupportedMatlabRTFeatureError,
+)
 
 
 @dataclass(frozen=True)
@@ -309,7 +313,7 @@ def path_row_from_ray(
             interaction_positions_m=interaction_positions,
             path_coordinates_m=ray.path_coordinates_m,
         )
-    except (MatlabRTValidationError, UnsupportedMatlabRTFeatureError):
+    except _ROW_BUILD_PASSTHROUGH_ERRORS:
         raise
     except Exception as exc:
         raise MatlabRTValidationError(
@@ -360,9 +364,7 @@ def _validate_export_graph(export: MatlabRTExport) -> None:
 
     observed_pairs = set(group_links_by_pair(export))
     expected_pairs = {
-        (tx_index, rx_index)
-        for tx_index in transmitter_indices
-        for rx_index in receiver_indices
+        (tx_index, rx_index) for tx_index in transmitter_indices for rx_index in receiver_indices
     }
     if observed_pairs != expected_pairs:
         missing = sorted(expected_pairs - observed_pairs)
@@ -434,8 +436,7 @@ def _interaction_sequence_code(interactions: tuple[MatlabRTInteraction, ...]) ->
 
     return int(
         "".join(
-            str(matlab_interaction_type_to_code(interaction.type))
-            for interaction in interactions
+            str(matlab_interaction_type_to_code(interaction.type)) for interaction in interactions
         )
     )
 

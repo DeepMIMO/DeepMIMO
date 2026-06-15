@@ -119,8 +119,7 @@ def empty_matrix_dict(
 
     scalar_shape = (num_rx, max_paths)
     matrices = {
-        field: np.full(scalar_shape, np.nan, dtype=np.float64)
-        for field in SCALAR_MATRIX_FIELDS
+        field: np.full(scalar_shape, np.nan, dtype=np.float64) for field in SCALAR_MATRIX_FIELDS
     }
     matrices["inter_pos"] = np.full(
         (num_rx, max_paths, max_interactions, 3),

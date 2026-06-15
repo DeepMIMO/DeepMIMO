@@ -140,8 +140,7 @@ def pack_interaction_positions(
     packing_depth = _validate_max_interactions(max_interactions)
     if positions.shape[0] > packing_depth:
         raise ValueError(
-            "interaction count exceeds max_interactions: "
-            f"{positions.shape[0]} > {packing_depth}."
+            f"interaction count exceeds max_interactions: {positions.shape[0]} > {packing_depth}."
         )
 
     packed = np.full((packing_depth, 3), np.nan, dtype=float)

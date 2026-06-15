@@ -278,8 +278,7 @@ def build_scenario_metadata(
         },
         "matrix_shapes": {
             f"tx{matrix_set.tx_index}": {
-                key: list(value.shape)
-                for key, value in matrix_set.matrices.items()
+                key: list(value.shape) for key, value in matrix_set.matrices.items()
             }
             for matrix_set in checked_matrix_sets
         },

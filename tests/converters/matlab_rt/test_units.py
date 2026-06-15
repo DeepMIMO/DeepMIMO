@@ -76,8 +76,7 @@ class TestMatlabRTUnits(unittest.TestCase):
     def test_matlab_ray_phase_prefers_degree_input(self) -> None:
         """Extract phase from ray-like mappings with degree priority."""
         assert (
-            matlab_ray_phase_to_deg({"phase_shift_deg": 38.0, "phase_shift_rad": math.pi})
-            == 38.0
+            matlab_ray_phase_to_deg({"phase_shift_deg": 38.0, "phase_shift_rad": math.pi}) == 38.0
         )
 
     def test_matlab_phase_invalid_input_behavior(self) -> None:

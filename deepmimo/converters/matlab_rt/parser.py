@@ -79,9 +79,7 @@ def parse_matlab_rt_export(
         transmitters = (
             _parse_transmitter(_require_mapping(export_data, "transmitter", "export"), index=1),
         )
-        receivers = (
-            _parse_receiver(_require_mapping(export_data, "receiver", "export"), index=1),
-        )
+        receivers = (_parse_receiver(_require_mapping(export_data, "receiver", "export"), index=1),)
         rays = _parse_rays(_require_sequence(export_data, "rays", "export"))
         declared_num_rays = _require_int(export_data, "num_rays", "export")
         if declared_num_rays != len(rays):
@@ -423,9 +421,7 @@ def _validate_link_coverage(
         raise MatlabRTValidationError("duplicate MATLAB RT link pairs are not allowed.")
 
     expected_pairs = {
-        (tx_index, rx_index)
-        for tx_index in transmitter_by_index
-        for rx_index in receiver_by_index
+        (tx_index, rx_index) for tx_index in transmitter_by_index for rx_index in receiver_by_index
     }
     observed_pair_set = set(observed_pairs)
     if observed_pair_set != expected_pairs:
