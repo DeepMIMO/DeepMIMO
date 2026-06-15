@@ -1,0 +1,98 @@
+{
+  "metadata": {
+    "experiment": "matlab_raytracing_poc",
+    "matlab_version": "25.2.0.3042426 (R2025b) Update 1",
+    "description": "One TX, one RX, Cartesian LoS ray tracing with no reflections or diffractions"
+  },
+  "scene": {
+    "coordinate_system": "cartesian",
+    "frequency_hz": 3.5E+9,
+    "tx_position_m": [
+      0,
+      0,
+      2
+    ],
+    "rx_position_m": [
+      10,
+      0,
+      1.5
+    ],
+    "geometry": "empty Cartesian scene; no buildings, terrain mesh, or reflector geometry"
+  },
+  "transmitter": {
+    "name": "tx1",
+    "antenna_position_m": [
+      0,
+      0,
+      2
+    ],
+    "transmitter_frequency_hz": 3.5E+9
+  },
+  "receiver": {
+    "name": "rx1",
+    "antenna_position_m": [
+      10,
+      0,
+      1.5
+    ]
+  },
+  "propagation_model": {
+    "class": "rfprop.RayTracing",
+    "coordinate_system": "cartesian",
+    "method": "sbr",
+    "max_num_reflections": 0,
+    "max_num_diffractions": 0,
+    "max_absolute_path_loss_db": null,
+    "max_relative_path_loss_db": 40
+  },
+  "num_rays": 1,
+  "rays": [
+    {
+      "index": 1,
+      "class": "comm.Ray",
+      "path_specification": "Locations",
+      "coordinate_system": "Cartesian",
+      "system_scale": 1,
+      "transmitter_location_m": [
+        0,
+        0,
+        2
+      ],
+      "receiver_location_m": [
+        10,
+        0,
+        1.5
+      ],
+      "line_of_sight": true,
+      "frequency_hz": 3.5E+9,
+      "path_loss_source": "Custom",
+      "path_loss_db": 63.339987921811087,
+      "phase_shift_rad": 5.6126218799732044,
+      "phase_shift_deg": 321.57954572524631,
+      "propagation_delay_s": 3.339807900454385E-8,
+      "propagation_distance_m": 10.012492197250394,
+      "angle_of_departure_deg": [
+        0,
+        -2.8624052261117479
+      ],
+      "angle_of_arrival_deg": [
+        180,
+        2.8624052261117479
+      ],
+      "num_interactions": 0,
+      "interactions": [],
+      "path_coordinates_m": [
+        [
+          0,
+          0,
+          2
+        ],
+        [
+          10,
+          0,
+          1.5
+        ]
+      ]
+    }
+  ]
+}
