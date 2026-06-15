@@ -109,7 +109,10 @@ def build_rt_params(
         export.propagation_model.get("max_num_diffractions", 0),
         "propagation_model.max_num_diffractions",
     )
-    max_scattering = _nonnegative_int(export.propagation_model.get("max_num_scattering", 0), "max_num_scattering")
+    max_scattering = _nonnegative_int(
+        export.propagation_model.get("max_num_scattering", 0),
+        "max_num_scattering",
+    )
     max_transmissions = _nonnegative_int(
         export.propagation_model.get("max_num_transmissions", 0),
         "max_num_transmissions",
@@ -306,7 +309,8 @@ def _validate_matrix_sets(
     observed_tx_indices = tuple(matrix_set.tx_index for matrix_set in checked)
     if observed_tx_indices != expected_tx_indices:
         raise MatlabRTValidationError(
-            f"matrix set TX order {observed_tx_indices} does not match export order {expected_tx_indices}."
+            "matrix set TX order "
+            f"{observed_tx_indices} does not match export order {expected_tx_indices}."
         )
 
     for matrix_set in checked:
@@ -319,7 +323,8 @@ def _validate_matrix_sets(
             )
         if len(matrix_set.path_counts) != export.num_rx:
             raise MatlabRTValidationError(
-                f"matrix set tx{matrix_set.tx_index} path_counts length does not match export.num_rx."
+                f"matrix set tx{matrix_set.tx_index} path_counts length does not match "
+                "export.num_rx."
             )
 
     return checked

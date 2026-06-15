@@ -17,7 +17,9 @@ DEEPMIMO_REFLECTION_CODE = 1
 MATLAB_REFLECTION_TYPE = "reflection"
 
 
-def _as_interaction_sequence(interactions: Sequence[Mapping[str, Any]]) -> Sequence[Mapping[str, Any]]:
+def _as_interaction_sequence(
+    interactions: Sequence[Mapping[str, Any]],
+) -> Sequence[Mapping[str, Any]]:
     """Validate that a value is a sequence of interaction mappings."""
     if isinstance(interactions, (str, bytes)) or not isinstance(interactions, Sequence):
         raise TypeError("interactions must be a sequence of mappings.")

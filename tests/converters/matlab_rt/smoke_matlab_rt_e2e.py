@@ -199,7 +199,8 @@ function out = coordinate_rows(value)
     elseif size(value, 2) == 3
         out = value;
     else
-        error('matlab_rt_smoke_export:InvalidPathCoordinates', 'PathCoordinates must be 3xN or Nx3.');
+        error('matlab_rt_smoke_export:InvalidPathCoordinates', ...
+            'PathCoordinates must be 3xN or Nx3.');
     end
 end
 
@@ -269,7 +270,11 @@ def run_matlab_export(matlab_exe: Path, script_path: Path) -> subprocess.Complet
     )
 
 
-def validate_deepmimo_pipeline(json_path: Path, scenario_name: str, keep_output: bool) -> dict[str, object]:
+def validate_deepmimo_pipeline(
+    json_path: Path,
+    scenario_name: str,
+    keep_output: bool,
+) -> dict[str, object]:
     """Convert the MATLAB export and validate DeepMIMO workflows."""
     import matplotlib
 
@@ -359,7 +364,11 @@ def main(argv: list[str] | None = None) -> int:
     """Run the complete smoke workflow."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--matlab-exe", help="Optional path to matlab.exe.")
-    parser.add_argument("--keep-output", action="store_true", help="Keep generated smoke artifacts.")
+    parser.add_argument(
+        "--keep-output",
+        action="store_true",
+        help="Keep generated smoke artifacts.",
+    )
     args = parser.parse_args(argv)
 
     os.chdir(REPO_ROOT)

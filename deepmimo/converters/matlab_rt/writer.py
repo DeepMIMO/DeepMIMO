@@ -156,7 +156,8 @@ def _safe_scenario_path(root_path: Path, scenario_name: str) -> Path:
     try:
         common_path = os.path.commonpath([str(root_resolved), str(scenario_resolved)])
     except ValueError as exc:
-        raise MatlabRTWriterError("scenario_root and scenario output must be on the same drive.") from exc
+        message = "scenario_root and scenario output must be on the same drive."
+        raise MatlabRTWriterError(message) from exc
     if common_path != str(root_resolved):
         raise MatlabRTWriterError(f"Refusing to write outside scenario_root: {scenario_path}")
     return scenario_path

@@ -20,6 +20,7 @@ from deepmimo.converters.matlab_rt.metadata import build_params
 from deepmimo.converters.matlab_rt.parser import parse_matlab_rt_json
 from deepmimo.converters.matlab_rt.paths import build_path_row_groups
 from deepmimo.converters.matlab_rt.writer import expected_matrix_filenames, write_scenario_folder
+from tests.converters.matlab_rt import expect_raises
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -66,25 +67,25 @@ class TestMatlabRTWriter(unittest.TestCase):
                 "vertices.npz",
                 *expected_matrix_filenames(matrix_sets),
             }
-            self.assertEqual({path.name for path in result.scenario_path.iterdir()}, expected_files)
-            self.assertIn("power_t000_tx000_r001.npz", expected_files)
-            self.assertIn("tx_pos_t000_tx001_r001.npz", expected_files)
+            assert {path.name for path in result.scenario_path.iterdir()} == expected_files
+            assert "power_t000_tx000_r001.npz" in expected_files
+            assert "tx_pos_t000_tx001_r001.npz" in expected_files
 
             with (result.scenario_path / "params.json").open("r", encoding="utf-8") as file:
                 saved_params = json.load(file)
             with (result.scenario_path / "objects.json").open("r", encoding="utf-8") as file:
-                self.assertEqual(json.load(file), [])
+                assert json.load(file) == []
             with np.load(result.scenario_path / "vertices.npz") as vertices_npz:
-                self.assertEqual(vertices_npz["vertices"].shape, (0, 3))
+                assert vertices_npz["vertices"].shape == (0, 3)
 
-            self.assertEqual(saved_params[c.RT_PARAMS_PARAM_NAME][c.RT_PARAM_FREQUENCY], 3.5e9)
+            assert saved_params[c.RT_PARAMS_PARAM_NAME][c.RT_PARAM_FREQUENCY] == 3.5e9
             with np.load(result.scenario_path / "power_t000_tx000_r001.npz") as power_npz:
                 np.testing.assert_allclose(
                     power_npz["power"],
                     matrix_sets[0].matrices["power"],
                     equal_nan=True,
                 )
-            self.assertEqual(len(expected_files), 3 + len(MATRIX_FIELDS) * 2)
+            assert len(expected_files) == 3 + len(MATRIX_FIELDS) * 2
 
     def test_overwrite_policy(self) -> None:
         """Existing output is refused unless overwrite is explicitly enabled."""
@@ -100,7 +101,7 @@ class TestMatlabRTWriter(unittest.TestCase):
             sentinel = first_result.scenario_path / "sentinel.txt"
             sentinel.write_text("stale", encoding="utf-8")
 
-            with self.assertRaises(MatlabRTWriterError):
+            with expect_raises(MatlabRTWriterError):
                 write_scenario_folder(
                     scenario_root=tmpdir,
                     scenario_name=SCENARIO_NAME,
@@ -108,7 +109,7 @@ class TestMatlabRTWriter(unittest.TestCase):
                     matrix_sets=matrix_sets,
                 )
 
-            self.assertTrue(sentinel.exists())
+            assert sentinel.exists()
             second_result = write_scenario_folder(
                 scenario_root=tmpdir,
                 scenario_name=SCENARIO_NAME,
@@ -116,31 +117,31 @@ class TestMatlabRTWriter(unittest.TestCase):
                 matrix_sets=matrix_sets,
                 overwrite=True,
             )
-            self.assertFalse((second_result.scenario_path / "sentinel.txt").exists())
+            assert not (second_result.scenario_path / "sentinel.txt").exists()
 
     def test_rejects_invalid_inputs(self) -> None:
         """Writer rejects unsafe names, malformed params, and incomplete matrices."""
         params, matrix_sets = build_writer_inputs()
         malformed_matrices = dict(matrix_sets[0].matrices)
         malformed_matrices.pop("power")
-        malformed_sets = (replace(matrix_sets[0], matrices=malformed_matrices),) + matrix_sets[1:]
+        malformed_sets = (replace(matrix_sets[0], matrices=malformed_matrices), *matrix_sets[1:])
 
         with writer_tempdir() as tmpdir:
-            with self.assertRaises(MatlabRTWriterError):
+            with expect_raises(MatlabRTWriterError):
                 write_scenario_folder(
                     scenario_root=tmpdir,
                     scenario_name="../bad",
                     params=params,
                     matrix_sets=matrix_sets,
                 )
-            with self.assertRaises(MatlabRTWriterError):
+            with expect_raises(MatlabRTWriterError):
                 write_scenario_folder(
                     scenario_root=tmpdir,
                     scenario_name=SCENARIO_NAME,
                     params={},
                     matrix_sets=matrix_sets,
                 )
-            with self.assertRaises(MatlabRTWriterError):
+            with expect_raises(MatlabRTWriterError):
                 write_scenario_folder(
                     scenario_root=tmpdir,
                     scenario_name=SCENARIO_NAME,

@@ -19,6 +19,7 @@ from deepmimo.converters.matlab_rt.schema import (
     MatlabRTLink,
     MatlabRTRay,
 )
+from tests.converters.matlab_rt import expect_raises
 
 
 FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures"
@@ -36,55 +37,57 @@ class TestMatlabRTParser(unittest.TestCase):
         """The one-link LoS fixture normalizes into one typed link."""
         export = parse_matlab_rt_json(FIXTURE_DIR / "matlab_rt_los.json")
 
-        self.assertIsInstance(export, MatlabRTExport)
-        self.assertEqual(export.num_tx, 1)
-        self.assertEqual(export.num_rx, 1)
-        self.assertEqual(len(export.links), 1)
-        self.assertEqual(export.scene.coordinate_system, "cartesian")
+        assert isinstance(export, MatlabRTExport)
+        assert export.num_tx == 1
+        assert export.num_rx == 1
+        assert len(export.links) == 1
+        assert export.scene.coordinate_system == "cartesian"
 
         link = export.links[0]
-        self.assertIsInstance(link, MatlabRTLink)
-        self.assertEqual((link.tx_index, link.rx_index), (1, 1))
-        self.assertEqual(link.num_rays, 1)
+        assert isinstance(link, MatlabRTLink)
+        assert (link.tx_index, link.rx_index) == (1, 1)
+        assert link.num_rays == 1
 
         ray = link.rays[0]
-        self.assertIsInstance(ray, MatlabRTRay)
-        self.assertTrue(ray.line_of_sight)
-        self.assertEqual(ray.num_interactions, 0)
-        self.assertEqual(ray.angle_of_departure_deg, (0.0, -2.8624052261117479))
-        self.assertEqual(ray.angle_of_arrival_deg, (180.0, 2.8624052261117479))
+        assert isinstance(ray, MatlabRTRay)
+        assert ray.line_of_sight
+        assert ray.num_interactions == 0
+        assert ray.angle_of_departure_deg == (0.0, -2.8624052261117479)
+        assert ray.angle_of_arrival_deg == (180.0, 2.8624052261117479)
 
     def test_nlos_fixture_parses(self) -> None:
         """The one-link NLoS fixture preserves reflection metadata."""
         export = parse_matlab_rt_json(FIXTURE_DIR / "matlab_rt_nlos_reflection.json")
 
-        self.assertEqual(export.num_tx, 1)
-        self.assertEqual(export.num_rx, 1)
-        self.assertEqual(export.links[0].num_rays, 2)
+        assert export.num_tx == 1
+        assert export.num_rx == 1
+        assert export.links[0].num_rays == 2
 
         reflected_ray = export.links[0].rays[1]
-        self.assertFalse(reflected_ray.line_of_sight)
-        self.assertEqual(reflected_ray.num_interactions, 1)
-        self.assertIsInstance(reflected_ray.interactions[0], MatlabRTInteraction)
-        self.assertEqual(reflected_ray.interactions[0].type, "Reflection")
-        self.assertEqual(reflected_ray.interactions[0].location_m, (5.0, 5.0, 1.0))
-        self.assertEqual(reflected_ray.interactions[0].material_name, "PEC")
+        assert not reflected_ray.line_of_sight
+        assert reflected_ray.num_interactions == 1
+        assert isinstance(reflected_ray.interactions[0], MatlabRTInteraction)
+        assert reflected_ray.interactions[0].type == "Reflection"
+        assert reflected_ray.interactions[0].location_m == (5.0, 5.0, 1.0)
+        assert reflected_ray.interactions[0].material_name == "PEC"
 
     def test_multilink_fixture_parses(self) -> None:
         """The multi-link fixture parses with deterministic TX-major coverage."""
         export = parse_matlab_rt_json(FIXTURE_DIR / "matlab_rt_multilink.json")
 
-        self.assertEqual(export.num_tx, 2)
-        self.assertEqual(export.num_rx, 2)
-        self.assertEqual([tx.index for tx in export.transmitters], [1, 2])
-        self.assertEqual([rx.index for rx in export.receivers], [1, 2])
-        self.assertEqual(
-            [(link.tx_index, link.rx_index) for link in export.links],
-            [(1, 1), (1, 2), (2, 1), (2, 2)],
-        )
-        self.assertEqual([link.num_rays for link in export.links], [2, 0, 0, 2])
-        self.assertEqual(export.links[1].rays, ())
-        self.assertEqual(export.links[2].rays, ())
+        assert export.num_tx == 2
+        assert export.num_rx == 2
+        assert [tx.index for tx in export.transmitters] == [1, 2]
+        assert [rx.index for rx in export.receivers] == [1, 2]
+        assert [(link.tx_index, link.rx_index) for link in export.links] == [
+            (1, 1),
+            (1, 2),
+            (2, 1),
+            (2, 2),
+        ]
+        assert [link.num_rays for link in export.links] == [2, 0, 0, 2]
+        assert export.links[1].rays == ()
+        assert export.links[2].rays == ()
 
     def test_link_order_is_deterministic(self) -> None:
         """Parser returns deterministic link order independent of JSON order."""
@@ -93,17 +96,19 @@ class TestMatlabRTParser(unittest.TestCase):
 
         export = parse_matlab_rt_export(data)
 
-        self.assertEqual(
-            [(link.tx_index, link.rx_index) for link in export.links],
-            [(1, 1), (1, 2), (2, 1), (2, 2)],
-        )
+        assert [(link.tx_index, link.rx_index) for link in export.links] == [
+            (1, 1),
+            (1, 2),
+            (2, 1),
+            (2, 2),
+        ]
 
     def test_missing_links_fails_cleanly_for_multilink_schema(self) -> None:
         """A multi-link export without links raises a typed schema error."""
         data = load_fixture("matlab_rt_multilink.json")
         data.pop("links")
 
-        with self.assertRaises(MatlabRTSchemaError):
+        with expect_raises(MatlabRTSchemaError):
             parse_matlab_rt_export(data)
 
     def test_incomplete_link_coverage_fails_cleanly(self) -> None:
@@ -111,7 +116,7 @@ class TestMatlabRTParser(unittest.TestCase):
         data = load_fixture("matlab_rt_multilink.json")
         data["links"] = data["links"][:-1]
 
-        with self.assertRaises(MatlabRTValidationError):
+        with expect_raises(MatlabRTValidationError):
             parse_matlab_rt_export(data)
 
     def test_num_rays_mismatch_fails_cleanly(self) -> None:
@@ -119,7 +124,7 @@ class TestMatlabRTParser(unittest.TestCase):
         data = load_fixture("matlab_rt_multilink.json")
         data["links"][0]["num_rays"] = 99
 
-        with self.assertRaises(MatlabRTValidationError):
+        with expect_raises(MatlabRTValidationError):
             parse_matlab_rt_export(data)
 
     def test_single_link_num_rays_mismatch_fails_cleanly(self) -> None:
@@ -127,7 +132,7 @@ class TestMatlabRTParser(unittest.TestCase):
         data = load_fixture("matlab_rt_los.json")
         data["num_rays"] = 2
 
-        with self.assertRaises(MatlabRTValidationError):
+        with expect_raises(MatlabRTValidationError):
             parse_matlab_rt_export(data)
 
     def test_unsupported_coordinate_system_fails_cleanly(self) -> None:
@@ -135,7 +140,7 @@ class TestMatlabRTParser(unittest.TestCase):
         data = load_fixture("matlab_rt_multilink.json")
         data["scene"]["coordinate_system"] = "geographic"
 
-        with self.assertRaises(UnsupportedMatlabRTFeatureError):
+        with expect_raises(UnsupportedMatlabRTFeatureError):
             parse_matlab_rt_export(data)
 
     def test_invalid_interaction_type_fails_cleanly(self) -> None:
@@ -143,7 +148,7 @@ class TestMatlabRTParser(unittest.TestCase):
         data = load_fixture("matlab_rt_nlos_reflection.json")
         data["rays"][1]["interactions"][0]["Type"] = "Diffraction"
 
-        with self.assertRaises(UnsupportedMatlabRTFeatureError):
+        with expect_raises(UnsupportedMatlabRTFeatureError):
             parse_matlab_rt_export(data)
 
     def test_empty_material_name_normalizes_to_none(self) -> None:
@@ -153,14 +158,14 @@ class TestMatlabRTParser(unittest.TestCase):
 
         export = parse_matlab_rt_export(data)
 
-        self.assertIsNone(export.links[0].rays[1].interactions[0].material_name)
+        assert export.links[0].rays[1].interactions[0].material_name is None
 
     def test_inconsistent_link_indices_fail_cleanly(self) -> None:
         """Link indices must refer to known TX/RX site indices."""
         data = load_fixture("matlab_rt_multilink.json")
         data["links"][0]["tx_index"] = 99
 
-        with self.assertRaises(MatlabRTValidationError):
+        with expect_raises(MatlabRTValidationError):
             parse_matlab_rt_export(data)
 
     def test_mutating_input_after_parse_does_not_change_raw_snapshot(self) -> None:
@@ -172,7 +177,7 @@ class TestMatlabRTParser(unittest.TestCase):
         mutated = deepcopy(data)
         mutated["transmitter"]["name"] = "changed"
 
-        self.assertEqual(original_name, "tx1")
+        assert original_name == "tx1"
 
 
 if __name__ == "__main__":

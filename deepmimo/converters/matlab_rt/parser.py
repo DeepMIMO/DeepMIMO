@@ -144,8 +144,25 @@ def _is_single_link_export(data: Mapping[str, Any]) -> bool:
 
 def _missing_supported_schema_fields(data: Mapping[str, Any]) -> set[str]:
     """Return missing fields for the closest supported schema."""
-    single_required = {"metadata", "scene", "propagation_model", "transmitter", "receiver", "num_rays", "rays"}
-    multi_required = {"metadata", "scene", "propagation_model", "num_tx", "num_rx", "transmitters", "receivers", "links"}
+    single_required = {
+        "metadata",
+        "scene",
+        "propagation_model",
+        "transmitter",
+        "receiver",
+        "num_rays",
+        "rays",
+    }
+    multi_required = {
+        "metadata",
+        "scene",
+        "propagation_model",
+        "num_tx",
+        "num_rx",
+        "transmitters",
+        "receivers",
+        "links",
+    }
     missing_single = single_required - set(data)
     missing_multi = multi_required - set(data)
     return missing_single if len(missing_single) <= len(missing_multi) else missing_multi
@@ -184,7 +201,10 @@ def _parse_transmitters(values: Sequence[Any]) -> tuple[MatlabRTTransmitter, ...
             key=lambda transmitter: transmitter.index,
         )
     )
-    _validate_contiguous_indices([transmitter.index for transmitter in transmitters], "transmitters")
+    _validate_contiguous_indices(
+        [transmitter.index for transmitter in transmitters],
+        "transmitters",
+    )
     return transmitters
 
 
@@ -444,7 +464,10 @@ def _require_same_vector3(
     context: str,
 ) -> None:
     """Require two 3D position vectors to match within numeric tolerance."""
-    if any(not math.isclose(obs, exp, rel_tol=0.0, abs_tol=1e-9) for obs, exp in zip(observed, expected)):
+    if any(
+        not math.isclose(obs, exp, rel_tol=0.0, abs_tol=1e-9)
+        for obs, exp in zip(observed, expected)
+    ):
         raise MatlabRTValidationError(f"{context} is inconsistent with site position.")
 
 
