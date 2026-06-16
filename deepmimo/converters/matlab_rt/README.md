@@ -50,6 +50,34 @@ It returns a `MatlabRTWriteResult` containing:
 - per-TX matrix file paths
 - per-TX matrix shapes
 
+## MATLAB JSON Export
+
+This package includes a MATLAB helper that exports MATLAB Ray Tracing output to
+the JSON schema accepted by `convert_matlab_rt_json(...)`:
+
+```matlab
+export_matlab_rt_json( ...
+    "matlab_rt_export.json", ...
+    tx_sites, ...
+    rx_sites, ...
+    propagation_model, ...
+    "Experiment", "matlab_rt_example", ...
+    "Description", "Cartesian MATLAB Ray Tracing export");
+```
+
+The helper runs `raytrace(tx_sites, rx_sites, propagation_model)` by default. If
+the rays were already computed, pass them with the `Rays` name-value argument:
+
+```matlab
+rays = raytrace(tx_sites, rx_sites, propagation_model);
+export_matlab_rt_json("matlab_rt_export.json", tx_sites, rx_sites, propagation_model, ...
+    "Rays", rays);
+```
+
+The export helper always writes the supported multi-link JSON schema. Every
+TX/RX pair is exported explicitly; links with no rays are written with
+`num_rays: 0` and `rays: []`.
+
 ## Conversion Pipeline
 
 The public converter performs this fixed MVP pipeline:
@@ -62,6 +90,17 @@ MATLAB RT JSON
 -> in-memory params/metadata construction
 -> DeepMIMO scenario folder writer
 ```
+
+The implementation follows the same domain boundaries used by the other
+converters:
+
+- `matlab_rt_scene.py` builds scene metadata
+- `matlab_rt_txrx.py` builds TX/RX metadata
+- `paths.py` extracts path rows from parsed rays
+- `matrices.py` assembles DeepMIMO path matrices
+- `matlab_rt_rt_params.py` builds ray-tracing parameters
+- `matlab_rt_materials.py` builds material metadata
+- `converter.py` orchestrates the conversion
 
 The writer produces:
 
@@ -122,7 +161,14 @@ Units and conventions:
 - velocity-derived Doppler.
 - advanced scene geometry and object metadata.
 
-The excluded features should remain documented limitations until object/material identity mapping is designed.
+The advanced scene limitation does not mean MATLAB RT scenarios have no scene
+information. The MVP preserves the scene information needed for path conversion
+and channel generation, including coordinate system, frequency, TX/RX positions,
+ray interactions, interaction locations, and optional interaction material names.
+What is not yet supported is object-aware reconstruction of MATLAB geometry into
+DeepMIMO `objects.json`, `vertices.npz`, material identities, and `inter_obj`.
+The excluded features should remain documented limitations until object/material
+identity mapping is designed.
 
 ## Metadata Policy
 
@@ -143,3 +189,5 @@ The excluded features should remain documented limitations until object/material
 - Geometry consistency validation is intentionally limited in this MVP.
 - The converter does not verify that path coordinates start/end at the link TX/RX positions.
 - The converter does not map interactions to scene objects or material identities.
+- Future object-aware exports should add optional scene objects with stable
+  object IDs, vertices, faces, material names, and interaction object references.
