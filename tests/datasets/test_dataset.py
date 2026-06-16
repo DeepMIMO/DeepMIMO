@@ -1,5 +1,6 @@
 """Dataset tests for DeepMIMO generator."""
 
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
@@ -1960,6 +1961,91 @@ def test_compute_channels_uses_doppler_when_set() -> None:
     )
     ch = ds.compute_channels(params=params)
     assert ch is not None
+
+
+def _make_doppler_ready_dataset(n_ue: int, col_width: int, valid_paths: np.ndarray) -> Dataset:
+    """Build a wider-than-needed path dataset for Doppler regression tests.
+
+    The stored arrays keep ``col_width`` path-columns while each user only has
+    ``valid_paths[i]`` non-NaN paths. Trailing path-columns are NaN-filled per user so
+    that ``num_paths`` (and thus the dynamically-derived ``max_paths``) can fall below the
+    array column width. A real Scene + rt_params are attached so velocity-driven Doppler
+    runs end-to-end.
+    """
+    ds = _make_minimal_path_dataset(n_ue=n_ue, n_paths=col_width)
+    path_arrays = ("aoa_az", "aoa_el", "aod_az", "aod_el", "power", "phase", "delay", "inter")
+    for key in path_arrays:
+        arr = np.asarray(ds[key]).astype(np.float64).copy()
+        for u in range(n_ue):
+            arr[u, valid_paths[u] :] = np.nan
+        ds[key] = arr
+    # A minimal real scene (terrain + building) so the interaction maths can run.
+    terrain = PhysicalElement(
+        [Face([[-50, -50, 0], [50, -50, 0], [50, 50, 0], [-50, 50, 0]])],
+        object_id=0,
+        label=CAT_TERRAIN,
+        name="terrain",
+    )
+    building = PhysicalElement(
+        _wall_faces(1, 21, -1, 1, 0, 10), object_id=1, label=CAT_BUILDINGS, name="A"
+    )
+    scene = Scene()
+    scene.add_object(terrain)
+    scene.add_object(building)
+    ds.scene = scene
+    ds.rt_params = SimpleNamespace(frequency=28e9)
+    return ds
+
+
+def test_compute_doppler_handles_path_dim_wider_than_max_paths() -> None:
+    """Regression for discussion #117: Doppler with wide stored arrays must not crash.
+
+    Velocity-driven Doppler used to fail when the stored angle arrays carry more
+    path-columns than ``nanmax(num_paths)``. This happens after trimming away the
+    densest-path user(s): rows are sliced but the path-column width is preserved, so
+    ``self.max_paths`` (nanmax over the subset) drops below the angle-array width and the
+    internal ``np.concatenate`` used to mismatch.
+    """
+    # User 0 is the densest (4 paths == column width); users 1 and 2 only have 2.
+    ds = _make_doppler_ready_dataset(n_ue=3, col_width=4, valid_paths=np.array([4, 2, 2]))
+
+    # Drop the densest user, exactly as dataset.trim(idxs=...) would.
+    sub = ds.trim(idxs=np.array([1, 2]))
+
+    # The divergence that used to break the concatenate: max_paths (2) < column width (4).
+    assert sub.max_paths == 2
+    assert sub.aod_az.shape[1] == 4
+
+    # Velocity must be (re)assigned after trim — _rx_vel is not carried across trims.
+    sub.rx_vel = np.array([10.0, 0.0, 0.0])
+
+    doppler = np.asarray(sub._compute_doppler())  # noqa: SLF001
+    assert doppler.shape == (sub.n_ue, sub.max_paths)
+    assert np.isfinite(doppler).all()
+    # Non-zero velocity on real paths should produce a non-trivial shift somewhere.
+    assert np.any(doppler != 0.0)
+
+
+def test_compute_channels_doppler_after_trimming_densest_user() -> None:
+    """End-to-end mirror of the #117 report: trim a subset, then compute Doppler channels.
+
+    Running compute_channels with velocity-driven Doppler on a trimmed subset must
+    complete instead of raising inside _compute_doppler / the channel generator.
+    """
+    ds = _make_doppler_ready_dataset(n_ue=3, col_width=4, valid_paths=np.array([4, 2, 2]))
+    sub = ds.trim(idxs=np.array([1, 2]))
+    sub.rx_vel = np.array([5.0, 3.0, 0.0])
+
+    params = ChannelParameters(
+        freq_domain=False,
+        num_paths=4,
+        bs_antenna={"shape": [1, 1]},
+        ue_antenna={"shape": [1, 1]},
+        doppler=True,
+    )
+    ch = sub.compute_channels(params=params)
+    assert ch is not None
+    assert ch.shape[0] == sub.n_ue
 
 
 # ===========================================================================
