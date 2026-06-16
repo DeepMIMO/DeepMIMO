@@ -511,6 +511,12 @@ class Dataset(DotDict):
             if not use_doppler and params[c.PARAMSET_DOPPLER_EN]:
                 print("No doppler in channel generation because all velocities are zero")
         dopplers = self.doppler[..., :n_paths] if use_doppler else default_doppler
+        # The doppler array is sized by `max_paths` (nanmax of valid paths), which can be
+        # narrower than `n_paths` after trimming away the densest-path user. Pad the extra
+        # (always-invalid) path columns with zeros so it aligns with power/phase/delay.
+        if dopplers.shape[-1] < n_paths:
+            pad_width = [(0, 0)] * (dopplers.ndim - 1) + [(0, n_paths - dopplers.shape[-1])]
+            dopplers = np.pad(dopplers, pad_width)
         # Carry RX/TX responses separately; the M_rx x M_tx product is formed per-chunk
         # inside the generator so the full product is never held for all users at once.
         channel = _generate_mimo_channel(
@@ -1848,12 +1854,23 @@ class Dataset(DotDict):
         if not self.doppler_enabled:
             return doppler
         wavelength = c.SPEED_OF_LIGHT / self.rt_params.frequency
-        ones = np.ones((self.n_ue, self.max_paths, 1))
+        max_paths = self.max_paths
+        ones = np.ones((self.n_ue, max_paths, 1))
         tx_coord_cat = np.concatenate(
-            (ones, np.deg2rad(self.aod_el)[..., None], np.deg2rad(self.aod_az)[..., None]), axis=-1
+            (
+                ones,
+                np.deg2rad(self.aod_el[:, :max_paths])[..., None],
+                np.deg2rad(self.aod_az[:, :max_paths])[..., None],
+            ),
+            axis=-1,
         )
         rx_coord_cat = -np.concatenate(
-            (ones, np.deg2rad(self.aoa_el)[..., None], np.deg2rad(self.aoa_az)[..., None]), axis=-1
+            (
+                ones,
+                np.deg2rad(self.aoa_el[:, :max_paths])[..., None],
+                np.deg2rad(self.aoa_az[:, :max_paths])[..., None],
+            ),
+            axis=-1,
         )
         k_tx = spherical_to_cartesian(tx_coord_cat)
         k_rx = spherical_to_cartesian(rx_coord_cat)
@@ -1861,7 +1878,6 @@ class Dataset(DotDict):
         inter_objects = self._compute_inter_objects()  # [n_ue, max_paths, max_inter]
 
         # k_i / inter_objects already use the (nanmax-derived) max_paths; match it here.
-        max_paths = self.max_paths
         k_tx = k_tx[:, :max_paths, :]
         k_rx = k_rx[:, :max_paths, :]
 
