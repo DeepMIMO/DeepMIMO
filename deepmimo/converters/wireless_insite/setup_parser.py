@@ -130,6 +130,10 @@ class Node:
     values: dict = field(default_factory=dict)
     labels: list = field(default_factory=list)
     data: list = field(default_factory=list)
+    # Every occurrence of each label, in file order. ``values`` keeps only the
+    # last one, which is all most callers want; readers that need repeated
+    # sibling blocks (several <Material> blocks in one file) use this instead.
+    all_values: dict = field(default_factory=dict)
 
     def __getitem__(self, key: str) -> Any:
         """Access node values using dictionary notation.
@@ -236,14 +240,34 @@ def parse_node(tokens: Any) -> tuple[str, Node]:
             case [str(label)]:
                 node.labels.append(label)
             case [str(label), value]:
-                node[label] = value
+                _assign_label(node, label, value)
             case [str(label), *rest]:
-                node[label] = rest
+                _assign_label(node, label, rest)
             case _:
                 node.data.append(value)
     eat(tokens, f"end_<{node_name}>")
     eat(tokens, NL_TOKEN)
     return (node_name, node)
+
+
+def _assign_label(node: Node, label: str, value: Any) -> None:
+    """Assign a label on a node, recording every occurrence of it.
+
+    Wireless InSite files repeat sibling blocks under the same label (several
+    ``begin_<Material>`` blocks in one file, several ``begin_<DielectricLayer>``
+    blocks in one material). ``values`` keeps the last occurrence, which is the
+    long-standing behaviour every caller is written against; ``all_values``
+    additionally keeps them all so readers that need the full set can get it
+    without changing what existing callers see.
+
+    Args:
+        node: Node being populated.
+        label: Label to assign.
+        value: Value to assign.
+
+    """
+    node[label] = value
+    node.all_values.setdefault(label, []).append(value)
 
 
 def parse_values(tokens: Any) -> Any:

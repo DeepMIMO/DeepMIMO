@@ -16,6 +16,7 @@ and DeepMIMO's standardized material representation.
 import os
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from deepmimo.core.materials import Material, MaterialList  # Base material classes
 
@@ -161,6 +162,125 @@ class InsiteFoliage:
         )
 
 
+# Extensions of files that declare materials. Wireless InSite writes standalone
+# geometry as ".object"; ".obj" is kept for compatibility with renamed exports.
+MATERIAL_FILE_EXTS = (".city", ".ter", ".veg", ".flp", ".obj", ".object")
+
+
+def _outer_layer(mat: Any) -> Any:
+    """Return the dielectric layer used to characterise a material.
+
+    Layered materials (e.g. "ITU Layered drywall") declare several
+    ``begin_<DielectricLayer>`` blocks. They are parsed into a list; the last
+    entry is used, matching the value this parser has always reported for
+    single-layer materials.
+
+    Args:
+        mat: Parsed material node.
+
+    Returns:
+        The dielectric layer node to read properties from.
+
+    """
+    layers = mat.all_values.get("DielectricLayer")
+    return layers[-1] if layers else mat.values["DielectricLayer"]
+
+
+# Conductivity used for perfect electric conductors. Wireless InSite marks these
+# with a bare "PEC" label and declares no dielectric layer. A large finite value is
+# used instead of infinity so the exported material stays valid JSON, and is
+# numerically equivalent for reflection (|gamma| ~ 1 either way).
+PEC_CONDUCTIVITY = 1e7
+PEC_PERMITTIVITY = 1.0
+
+
+def _build_material(mat: Any) -> Material:
+    """Build a Material from a parsed Wireless Insite material node.
+
+    Args:
+        mat: Parsed material node.
+
+    Returns:
+        The corresponding Material.
+
+    """
+    if "PEC" in mat.labels:
+        return InsiteMaterial(
+            name=mat.name,
+            diffuse_scattering_model=mat.values.get("diffuse_scattering_model", ""),
+            fields_diffusively_scattered=float(
+                mat.values.get("fields_diffusively_scattered", 0.0),
+            ),
+            cross_polarized_power=float(mat.values.get("cross_polarized_power", 0.0)),
+            directive_alpha=float(mat.values.get("directive_alpha", 4.0)),
+            directive_beta=float(mat.values.get("directive_beta", 4.0)),
+            directive_lambda=float(mat.values.get("directive_lambda", 0.5)),
+            conductivity=PEC_CONDUCTIVITY,
+            permittivity=PEC_PERMITTIVITY,
+            roughness=float(mat.values.get("roughness", 0.0)),
+            thickness=float(mat.values.get("thickness", 0.0)),
+        ).to_material()
+
+    if "diffuse_scattering_model" not in mat.values and mat.values.get("thickness", False):
+        # Foliage!
+        insite_mat = InsiteFoliage(
+            name=mat.name,
+            thickness=float(mat.values["thickness"]),
+            density=float(mat.values["density"]),
+            vertical_attenuation=float(mat.values["VerticalAttenuation"]),
+            horizontal_attenuation=float(mat.values["HorizontalAttenuation"]),
+            permittivity_vr=float(mat.values["permittivity_vr"]),
+            permittivity_hr=float(mat.values["permittivity_hr"]),
+        )
+    else:
+        insite_mat = InsiteMaterial(
+            name=mat.name,
+            diffuse_scattering_model=mat.values.get("diffuse_scattering_model", ""),
+            fields_diffusively_scattered=float(
+                mat.values.get("fields_diffusively_scattered", 0.0),
+            ),
+            cross_polarized_power=float(mat.values.get("cross_polarized_power", 0.0)),
+            directive_alpha=float(mat.values.get("directive_alpha", 4.0)),
+            directive_beta=float(mat.values.get("directive_beta", 4.0)),
+            directive_lambda=float(mat.values.get("directive_lambda", 0.5)),
+            conductivity=float(_outer_layer(mat).values["conductivity"]),
+            permittivity=float(_outer_layer(mat).values["permittivity"]),
+            roughness=float(_outer_layer(mat).values["roughness"]),
+            thickness=float(_outer_layer(mat).values["thickness"]),
+        )
+    return insite_mat.to_material()
+
+
+def parse_materials_with_indices(file: Path) -> list[tuple[int, Material]]:
+    """Parse materials from a file, keeping the index each one declares.
+
+    Wireless InSite faces reference materials by the index written inside the
+    material block (``Material 3``). Those indices are neither contiguous nor
+    equal to the order of declaration, so they must be read explicitly rather
+    than inferred from position.
+
+    Args:
+        file: Path to file to read.
+
+    Returns:
+        List of (declared index, material) pairs, in order of declaration.
+
+    """
+    document = parse_file(file)
+    indexed = []
+
+    for prim in document:
+        # all_values keeps every <Material> block; values would keep only the last.
+        mat_entries = document[prim].all_values.get("Material", [])
+        for mat in mat_entries:
+            # Fall back to declaration order for files that omit the index.
+            declared = mat.values.get("Material")
+            declared_idx = int(declared) if isinstance(declared, int | str) else len(indexed)
+            indexed.append((declared_idx, _build_material(mat)))
+
+    return indexed
+
+
 def parse_materials_from_file(file: Path) -> list[Material]:
     """Parse materials from a single Wireless Insite file.
 
@@ -171,47 +291,7 @@ def parse_materials_from_file(file: Path) -> list[Material]:
         List of Material objects
 
     """
-    document = parse_file(file)
-    materials = []
-
-    for prim in document:
-        mat_entries = document[prim].values["Material"]
-        mat_entries = [mat_entries] if not isinstance(mat_entries, list) else mat_entries
-
-        for mat in mat_entries:
-            if "diffuse_scattering_model" not in mat.values and mat.values.get("thickness", False):
-                # Foliage!
-                insite_mat = InsiteFoliage(
-                    name=mat.name,
-                    thickness=float(mat.values["thickness"]),
-                    density=float(mat.values["density"]),
-                    vertical_attenuation=float(mat.values["VerticalAttenuation"]),
-                    horizontal_attenuation=float(mat.values["HorizontalAttenuation"]),
-                    permittivity_vr=float(mat.values["permittivity_vr"]),
-                    permittivity_hr=float(mat.values["permittivity_hr"]),
-                )
-            else:
-                # Create InsiteMaterial object
-                insite_mat = InsiteMaterial(
-                    name=mat.name,
-                    diffuse_scattering_model=mat.values.get("diffuse_scattering_model", ""),
-                    fields_diffusively_scattered=float(
-                        mat.values.get("fields_diffusively_scattered", 0.0),
-                    ),
-                    cross_polarized_power=float(mat.values.get("cross_polarized_power", 0.0)),
-                    directive_alpha=float(mat.values.get("directive_alpha", 4.0)),
-                    directive_beta=float(mat.values.get("directive_beta", 4.0)),
-                    directive_lambda=float(mat.values.get("directive_lambda", 0.5)),
-                    conductivity=float(mat.values["DielectricLayer"].values["conductivity"]),
-                    permittivity=float(mat.values["DielectricLayer"].values["permittivity"]),
-                    roughness=float(mat.values["DielectricLayer"].values["roughness"]),
-                    thickness=float(mat.values["DielectricLayer"].values["thickness"]),
-                )
-
-            # Convert to base Material
-            materials.append(insite_mat.to_material())
-
-    return materials
+    return [material for _, material in parse_materials_with_indices(file)]
 
 
 def read_materials(sim_folder: str, *, verbose: bool = False) -> dict:
@@ -235,7 +315,7 @@ def read_materials(sim_folder: str, *, verbose: bool = False) -> dict:
 
     # Find all material files
     material_files = []
-    for ext in [".city", ".ter", ".veg", ".flp", ".obj"]:
+    for ext in MATERIAL_FILE_EXTS:
         material_files.extend(sim_folder.glob(f"*{ext}"))
 
     if not material_files:
