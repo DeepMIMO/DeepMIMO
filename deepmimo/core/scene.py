@@ -126,6 +126,175 @@ class BoundingBox:
         )
 
 
+TRIANGLE_VERTEX_COUNT = 3
+
+# Tolerance for the cross-product tests below. Face coordinates are metres, so
+# this treats sub-micrometre turns as straight rather than as real corners.
+_EAR_EPS = 1e-9
+
+
+def _project_to_plane(vertices: np.ndarray) -> np.ndarray:
+    """Project the vertices of a planar face onto 2D coordinates in its own plane.
+
+    The plane is fitted with an SVD rather than taken from the first three
+    vertices, so faces whose leading vertices happen to be collinear still get a
+    usable basis.
+
+    Args:
+        vertices: Array of shape (N, 3).
+
+    Returns:
+        Array of shape (N, 2) with the vertices expressed in the plane's basis.
+
+    """
+    centred = vertices - vertices.mean(axis=0)
+    # Right singular vectors: the first two span the best-fit plane.
+    basis = np.linalg.svd(centred)[2][:2]
+    return centred @ basis.T
+
+
+def _signed_area(points: np.ndarray) -> float:
+    """Return the signed area of a 2D polygon (positive when counter-clockwise).
+
+    Args:
+        points: Array of shape (N, 2).
+
+    Returns:
+        The signed area.
+
+    """
+    x, y = points[:, 0], points[:, 1]
+    return 0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y))
+
+
+def _is_convex(points: np.ndarray) -> bool:
+    """Check whether a 2D polygon turns the same way at every vertex.
+
+    Args:
+        points: Array of shape (N, 2).
+
+    Returns:
+        True if the polygon is convex.
+
+    """
+    edges = np.roll(points, -1, axis=0) - points
+    cross = edges[:, 0] * np.roll(edges[:, 1], -1) - edges[:, 1] * np.roll(edges[:, 0], -1)
+    return not (np.any(cross > _EAR_EPS) and np.any(cross < -_EAR_EPS))
+
+
+def _fan(vertices: np.ndarray) -> list[np.ndarray]:
+    """Split a convex face into a triangle fan anchored at its first vertex.
+
+    Args:
+        vertices: Array of shape (N, 3).
+
+    Returns:
+        List of (3, 3) triangles.
+
+    """
+    return [
+        np.array([vertices[0], vertices[i], vertices[i + 1]]) for i in range(1, len(vertices) - 1)
+    ]
+
+
+def _point_in_triangle(point: np.ndarray, tri: np.ndarray) -> bool:
+    """Check whether a 2D point lies inside a counter-clockwise triangle.
+
+    Args:
+        point: Array of shape (2,).
+        tri: Array of shape (3, 2), wound counter-clockwise.
+
+    Returns:
+        True if the point is inside or on the triangle.
+
+    """
+    edges = np.roll(tri, -1, axis=0) - tri
+    rel = point - tri
+    cross = edges[:, 0] * rel[:, 1] - edges[:, 1] * rel[:, 0]
+    return bool(np.all(cross >= -_EAR_EPS))
+
+
+def _ear_clip(points: np.ndarray) -> list[list[int]] | None:
+    """Triangulate a simple 2D polygon by ear clipping.
+
+    Args:
+        points: Array of shape (N, 2), wound counter-clockwise.
+
+    Returns:
+        List of index triples into ``points``, or None if the polygon could not
+        be triangulated (self-intersecting or otherwise degenerate).
+
+    """
+    remaining = list(range(len(points)))
+    triangles = []
+
+    while len(remaining) > TRIANGLE_VERTEX_COUNT:
+        for offset in range(len(remaining)):
+            prev_i = remaining[offset - 1]
+            curr_i = remaining[offset]
+            next_i = remaining[(offset + 1) % len(remaining)]
+            tri = points[[prev_i, curr_i, next_i]]
+
+            # Reflex corners cut outside the polygon, so they are never ears.
+            edge_a, edge_b = tri[1] - tri[0], tri[2] - tri[1]
+            if edge_a[0] * edge_b[1] - edge_a[1] * edge_b[0] <= _EAR_EPS:
+                continue
+
+            # A valid ear encloses no other vertex of the polygon.
+            others = [i for i in remaining if i not in (prev_i, curr_i, next_i)]
+            if any(_point_in_triangle(points[i], tri) for i in others):
+                continue
+
+            triangles.append([prev_i, curr_i, next_i])
+            remaining.remove(curr_i)
+            break
+        else:
+            # No ear found: the polygon is not simple.
+            return None
+
+    triangles.append(list(remaining))
+    return triangles
+
+
+def triangulate_polygon(vertices: np.ndarray) -> list[np.ndarray]:
+    """Split a planar polygonal face into triangles that cover exactly its area.
+
+    Convex faces keep the cheap triangle fan. Concave faces are ear clipped, so
+    the triangles follow the outline instead of cutting across its concavities.
+    If ear clipping cannot handle the polygon (self-intersecting, or degenerate
+    after projection) the fan is used as a fallback, matching previous
+    behaviour rather than dropping the face.
+
+    Args:
+        vertices: Array of shape (N, 3) describing one planar face.
+
+    Returns:
+        List of (3, 3) triangles.
+
+    """
+    vertices = np.asarray(vertices)
+    if len(vertices) < TRIANGLE_VERTEX_COUNT:
+        return []
+    if len(vertices) == TRIANGLE_VERTEX_COUNT:
+        return [vertices]
+
+    points = _project_to_plane(vertices.astype(float))
+    if _is_convex(points):
+        return _fan(vertices)
+
+    # Ear clipping assumes a counter-clockwise winding.
+    flipped = _signed_area(points) < 0
+    if flipped:
+        points = points[::-1]
+
+    triangles = _ear_clip(points)
+    if triangles is None:
+        return _fan(vertices)
+
+    order = list(range(len(vertices)))[::-1] if flipped else list(range(len(vertices)))
+    return [np.array([vertices[order[i]] for i in tri]) for tri in triangles]
+
+
 class Face:
     """Represents a single face (surface) of a physical object.
 
@@ -139,7 +308,7 @@ class Face:
     - Available through triangular_faces property
     - Better for detailed visualization
     - Preserves exact geometry when needed
-    - Generated using fan triangulation
+    - Generated by :func:`triangulate_polygon`
 
     This dual representation allows the system to be efficient while maintaining
     the ability to represent detailed geometry when required.
@@ -177,17 +346,16 @@ class Face:
 
     @property
     def triangular_faces(self) -> list[np.ndarray]:
-        """Get the triangular faces that make up this face."""
+        """Get the triangular faces that make up this face.
+
+        Convex faces are split with a triangle fan from the first vertex, which
+        tiles them exactly. Concave faces are ear clipped instead: a fan from a
+        single vertex would emit triangles crossing the concavities, covering
+        area the face does not occupy (a 182-vertex block outline in a published
+        city scenario inflated by ~10x this way).
+        """
         if self._triangular_faces is None:
-            tri_vertex_count = 3
-            if len(self.vertices) == tri_vertex_count:
-                self._triangular_faces = [self.vertices]
-            else:
-                triangles = []
-                for i in range(1, len(self.vertices) - 1):
-                    triangle = np.array([self.vertices[0], self.vertices[i], self.vertices[i + 1]])
-                    triangles.append(triangle)
-                self._triangular_faces = triangles
+            self._triangular_faces = triangulate_polygon(self.vertices)
         return self._triangular_faces
 
     @property
