@@ -43,18 +43,23 @@ def test_insite_foliage_conversion() -> None:
 def test_read_materials(mock_parse) -> None:
     """Read and normalize materials from mocked Wireless Insite files."""
     # Mock document structure
-    mat_node = MagicMock()
-    mat_node.name = "Mat1"
-    mat_node.values = {"diffuse_scattering_model": "lambertian", "DielectricLayer": MagicMock()}
-    mat_node.values["DielectricLayer"].values = {
+    layer = MagicMock()
+    layer.values = {
         "conductivity": 1.0,
         "permittivity": 2.0,
         "roughness": 0.0,
         "thickness": 0.1,
     }
+    mat_node = MagicMock()
+    mat_node.name = "Mat1"
+    mat_node.labels = []
+    mat_node.values = {"diffuse_scattering_model": "lambertian", "DielectricLayer": layer}
+    mat_node.all_values = {"DielectricLayer": [layer]}
 
     root_node = MagicMock()
-    root_node.values = {"Material": [mat_node]}  # Can be list or single
+    # Node keeps the last occurrence in `values` and every occurrence in `all_values`
+    root_node.values = {"Material": mat_node}
+    root_node.all_values = {"Material": [mat_node]}
 
     mock_parse.return_value = {"Primitive": root_node}
 

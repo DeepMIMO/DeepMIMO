@@ -120,7 +120,7 @@ def insite_rt_converter(  # noqa: PLR0913
     materials_dict = read_materials(rt_folder)
 
     # Read scene objects
-    scene = read_scene(rt_folder)
+    scene = read_scene(rt_folder, lossless=lossless)
     scene_dict = scene.export_data(temp_folder, lossless=lossless)
     scene_dict[c.SCENE_PARAM_NUMBER_SCENES] = num_scenes
 
