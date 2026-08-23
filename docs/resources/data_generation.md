@@ -107,6 +107,56 @@ rt_params = {
 | Number of rays | ✓ | ✓ | ✓ |
 | Synthetic array | ✓ | ✓ | ✓ |
 
+### UAV receiver grids and existing scenarios
+
+!!! important "Changing altitude requires new ray tracing"
+    A downloaded or converted DeepMIMO scenario contains propagation paths
+    evaluated at fixed TX and RX coordinates. Editing `Dataset.rx_pos`, sampling
+    different users, or changing channel-generation parameters does not recompute
+    path geometry, delays, angles, blockage, or interactions. A ground-level
+    scenario such as legacy `O1_28` therefore cannot be converted into a UAV
+    scenario after ray tracing.
+
+The reusable input is the original 3D scene, not its ray-tracing output. If the
+source geometry for a legacy scenario is unavailable, that scenario cannot be
+reproduced exactly from the DeepMIMO path files alone. Obtain or reconstruct an
+equivalent scene first; the
+[OSM → Sionna RT → DeepMIMO application](../applications/4_osm_pipeline.ipynb)
+shows how to build an urban scene from OpenStreetMap without Blender.
+
+For a static scene, pass all UAV trajectory or grid positions to the ray tracer
+as one RX batch. A separate run per timestamp is only needed when the scene
+geometry or materials change. For example, this creates a 28 GHz horizontal UAV
+grid at 50 m altitude in local Cartesian coordinates:
+
+```python
+from deepmimo.pipelines.txrx_placement import gen_plane_grid
+
+carrier_freq = 28e9
+uav_altitude_m = 50.0
+
+rx_grid = gen_plane_grid(
+    min_coord1=-100.0,
+    max_coord1=100.0,
+    min_coord2=-100.0,
+    max_coord2=100.0,
+    spacing=5.0,
+    fixed_coord=uav_altitude_m,
+    normal="z",
+)
+# Pass carrier_freq and rx_grid to the selected ray-tracing pipeline.
+```
+
+`fixed_coord` is the absolute z-coordinate in the scene's local Cartesian
+frame. It equals height above ground for the linked flat-ground OSM example. For
+a scene with terrain elevation, add the local ground elevation to the desired
+height above ground at each UAV position instead of using one fixed z-coordinate.
+
+Carrier frequency, altitude, and grid spacing are independent simulation inputs.
+A new 28 GHz UAV run does not inherit the frequency or spacing of an existing
+drone scenario. In the linked OSM/Sionna application, set `CARRIER_FREQ`,
+`UE_HEIGHT`, and `GRID_SPACING` before running the path solver.
+
 ### Step 5 — Run Ray Tracer
 
 DeepMIMO wraps each ray tracer with a thin pipeline layer that handles:
