@@ -24,6 +24,7 @@ from deepmimo.core.scene import (
     Scene,
     _get_faces_convex_hull,
     get_object_faces,
+    triangulate_polygon,
 )
 from deepmimo.utils import save_dict_as_json
 
@@ -548,3 +549,91 @@ def test_get_object_faces_too_few_vertices() -> None:
     """Fewer than 3 vertices returns None."""
     result = get_object_faces([[0, 0, 0], [1, 0, 0]])
     assert result is None
+
+
+# --- Polygon triangulation (issue #125) --------------------------------------
+
+
+def _polygon_area_2d(points: np.ndarray) -> float:
+    """Return the absolute area of a 2D polygon via the shoelace formula."""
+    x, y = points[:, 0], points[:, 1]
+    return abs(0.5 * float(np.sum(x * np.roll(y, -1) - np.roll(x, -1) * y)))
+
+
+def _triangulated_area(triangles: list[np.ndarray]) -> float:
+    """Return the summed area of triangles, using their first two coordinates."""
+    return sum(_polygon_area_2d(tri[:, :2]) for tri in triangles)
+
+
+# A U: vertex 0 cannot see into the far arm, so a fan anchored there spans the
+# notch between the arms and over-reports the area (11 units instead of 7).
+U_SHAPE = np.array(
+    [[0, 0, 0], [3, 0, 0], [3, 3, 0], [2, 3, 0], [2, 1, 0], [1, 1, 0], [1, 3, 0], [0, 3, 0]],
+    dtype=float,
+)
+HEXAGON = np.array(
+    [[np.cos(a), np.sin(a), 0.0] for a in np.linspace(0, 2 * np.pi, 7)[:-1]],
+    dtype=float,
+)
+
+
+def test_triangulate_convex_polygon_is_a_fan() -> None:
+    """Convex faces keep the cheap fan anchored at the first vertex."""
+    triangles = triangulate_polygon(HEXAGON)
+
+    expected = [np.array([HEXAGON[0], HEXAGON[i], HEXAGON[i + 1]]) for i in range(1, 5)]
+    assert len(triangles) == len(expected)
+    for actual, want in zip(triangles, expected, strict=True):
+        assert np.array_equal(actual, want)
+
+
+def test_triangulate_concave_polygon_covers_exact_area() -> None:
+    """Ear clipping tiles a concave face without spilling into its notch."""
+    triangles = triangulate_polygon(U_SHAPE)
+
+    assert len(triangles) == len(U_SHAPE) - 2
+    assert _triangulated_area(triangles) == pytest.approx(_polygon_area_2d(U_SHAPE[:, :2]))
+
+
+def test_triangulate_concave_polygon_beats_naive_fan() -> None:
+    """The naive fan really does over-report this polygon, so the test has teeth."""
+    fan = [np.array([U_SHAPE[0], U_SHAPE[i], U_SHAPE[i + 1]]) for i in range(1, len(U_SHAPE) - 1)]
+
+    assert _triangulated_area(fan) > _polygon_area_2d(U_SHAPE[:, :2])
+
+
+def test_triangulate_handles_clockwise_winding() -> None:
+    """Winding order must not change the triangulated area."""
+    triangles = triangulate_polygon(U_SHAPE[::-1])
+
+    assert _triangulated_area(triangles) == pytest.approx(_polygon_area_2d(U_SHAPE[:, :2]))
+
+
+def test_triangulate_vertical_polygon() -> None:
+    """Faces are projected onto their own plane, so vertical walls work too."""
+    # The U-shape rotated into the x=0 plane.
+    wall = U_SHAPE[:, [2, 0, 1]]
+
+    triangles = triangulate_polygon(wall)
+
+    assert len(triangles) == len(wall) - 2
+    assert _triangulated_area([tri[:, 1:] for tri in triangles]) == pytest.approx(
+        _polygon_area_2d(U_SHAPE[:, :2]),
+    )
+
+
+def test_triangulate_degenerate_inputs() -> None:
+    """Triangles pass through unchanged; anything smaller yields nothing."""
+    triangle = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0]], dtype=float)
+
+    assert len(triangulate_polygon(triangle)) == 1
+    assert triangulate_polygon(np.zeros((2, 3))) == []
+
+
+def test_face_triangular_faces_uses_exact_triangulation() -> None:
+    """Face.triangular_faces routes through the shared triangulator."""
+    face = Face(vertices=U_SHAPE)
+
+    assert _triangulated_area(face.triangular_faces) == pytest.approx(
+        _polygon_area_2d(U_SHAPE[:, :2]),
+    )
