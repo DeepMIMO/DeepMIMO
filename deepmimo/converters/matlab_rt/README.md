@@ -52,8 +52,9 @@ It returns a `MatlabRTWriteResult` containing:
 
 ## MATLAB JSON Export
 
-This package includes a MATLAB helper that exports MATLAB Ray Tracing output to
-the JSON schema accepted by `convert_matlab_rt_json(...)`:
+The `deepmimo.exporters` package includes a MATLAB helper at
+`deepmimo/exporters/export_matlab_rt_json.m` that exports MATLAB Ray Tracing
+output to the JSON schema accepted by `convert_matlab_rt_json(...)`:
 
 ```matlab
 export_matlab_rt_json( ...
