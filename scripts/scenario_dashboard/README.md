@@ -107,6 +107,26 @@ Room kinds can be added to the mix but not swapped out, and adding one rarely
 changes the layout — `scripts/pipelines/INFINIGEN.md` has the measurements and
 what a genuine office building would take.
 
+## When a run dies
+
+Tracing writes its Sionna output to the scene folder *before* converting, so a
+conversion that fails costs the conversion and not the hour of tracing. A failed
+run that left `sionna_paths.pkl` behind offers **Convert traced paths**, which
+resumes from those files — three minutes against the eight it took to trace them.
+From the command line that is `infinigen_pipeline_runner.py convert <scene folder>
+--scenario NAME`.
+
+Failures also name their cause rather than a number. A negative exit status is a
+signal, and `exit code -15` says nothing — least of all that nothing in the
+pipeline asked for it. It now reads *"was killed by SIGTERM — something outside
+the pipeline stopped it: the machine under memory pressure, or the server being
+restarted"*.
+
+Conversion is the memory-hungry stage: it loads every traced path at once, and a
+dense grid over a large building can produce hundreds of megabytes of them. If
+runs keep dying there, widen **RX spacing** or draw a smaller receiver footprint
+before reaching for anything else.
+
 ## Exploring
 
 | input | action |

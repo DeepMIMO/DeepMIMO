@@ -612,6 +612,9 @@ PAGE = r"""<!doctype html>
     </div></div>
     </div>
     <div class="err" id="err"></div>
+    <div id="resume" style="display:none;padding:0 12px 10px">
+      <button id="resumeBtn" onclick="convertTraced()">Convert traced paths</button>
+    </div>
     <div id="actions">
       <button id="run" onclick="startRun()">Generate → trace → convert</button>
       <div id="runwhy" class="hint"></div>
@@ -856,6 +859,8 @@ async function poll() {
     if (j.status !== 'running') {
       clearInterval(POLL); RUNNING = false; sourceChanged();
       if (j.status === 'failed') $('err').textContent = j.error || 'job failed';
+      RESUMABLE = j.resumable || null;
+      $('resume').style.display = RESUMABLE ? 'block' : 'none';
       await refreshScenes();
       if (j.scenario) { await refreshScenarios(); $('scenario').value = j.scenario; loadScene(); }
       followViewer();
@@ -863,7 +868,19 @@ async function poll() {
   }, 1200);
 }
 
-let SCENES = [], SCENE_TYPES = {};
+let SCENES = [], SCENE_TYPES = {}, RESUMABLE = null;
+
+window.convertTraced = async () => {
+  if (!RESUMABLE) return;
+  $('resumeBtn').disabled = true; $('err').textContent = '';
+  try {
+    const body = {name: $('p_name').value, convert_only: RESUMABLE};
+    const r = await fetch('api/run', {method: 'POST', body: JSON.stringify(body)});
+    if (!r.ok) throw new Error(await r.text());
+    $('prog').style.display = 'block'; RUNNING = true; poll();
+  } catch (e) { $('err').textContent = e.message; }
+  $('resumeBtn').disabled = false;
+};
 
 window.sceneTypeChanged = () => {
   $('scenehint').textContent = SCENE_TYPES[$('p_scene').value] || '';

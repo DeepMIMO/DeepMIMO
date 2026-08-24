@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -229,6 +230,34 @@ GRAPH_ATTEMPT_LIMIT = 3000
 RE_GRAPH_ATTEMPT = re.compile(r"Generating graphs for (\d+):\s+0%")
 
 
+def describe_exit(code: int) -> str:
+    """Say how a subprocess ended, in words rather than a number.
+
+    A negative status means a signal, and "exit code -15" tells nobody
+    anything - least of all that nothing in the pipeline asked for it.
+
+    Args:
+        code: Subprocess return code.
+
+    Returns:
+        A human-readable description.
+
+    """
+    if code >= 0:
+        return f"exited with status {code}"
+    try:
+        name = signal.Signals(-code).name
+    except ValueError:
+        return f"was killed by signal {-code}"
+    hint = {
+        "SIGKILL": " - the system ran out of memory, most likely",
+        "SIGTERM": " - something outside the pipeline stopped it: the machine "
+                   "under memory pressure, or the server being restarted",
+        "SIGINT": " - interrupted",
+    }.get(name, "")
+    return f"was killed by {name}{hint}"
+
+
 def run_generator(command: list[str], cwd: Path, attempt_limit: int) -> None:
     """Run Infinigen, aborting if the floorplan solver starts thrashing.
 
@@ -270,7 +299,7 @@ def run_generator(command: list[str], cwd: Path, attempt_limit: int) -> None:
             process.kill()
         process.wait()
     if process.returncode:
-        msg = f"generator exited with status {process.returncode}"
+        msg = f"generator {describe_exit(process.returncode)}"
         raise RuntimeError(msg)
 
 
@@ -497,6 +526,38 @@ def cmd_from_scenario(args: argparse.Namespace) -> None:
     print(f"  -> {report['scene_xml']}")
 
 
+def cmd_convert(args: argparse.Namespace) -> None:
+    """Convert already-traced paths into a DeepMIMO scenario.
+
+    Tracing writes its Sionna output beside the scene before converting, so a
+    conversion that fails - or is killed - costs only the conversion. This
+    resumes from those files rather than re-tracing, which is the expensive part.
+
+    Args:
+        args: Parsed command-line arguments.
+
+    Raises:
+        FileNotFoundError: If the folder holds no traced paths.
+
+    """
+    import deepmimo as dm  # noqa: PLC0415
+
+    folder = Path(args.rt_folder)
+    paths = folder / "sionna_paths.pkl"
+    if not paths.exists():
+        msg = (
+            f"{folder} holds no traced paths (no sionna_paths.pkl); "
+            "run the trace first"
+        )
+        raise FileNotFoundError(msg)
+    size = paths.stat().st_size / 1e6
+    print(f"converting {size:,.0f} MB of traced paths from {folder}")
+    scenario = dm.convert(
+        str(folder), scenario_name=args.scenario, overwrite=True, lossless=True,
+    )
+    print(f"-> scenario '{scenario}'")
+
+
 def cmd_trace(args: argparse.Namespace) -> None:
     """Trace an exported scene and convert it to a DeepMIMO scenario.
 
@@ -688,6 +749,14 @@ def main() -> None:
         help="above this many shapes, group by material instead of by object",
     )
     from_scenario.set_defaults(func=cmd_from_scenario)
+
+    convert = sub.add_parser(
+        "convert",
+        help="already-traced paths -> DeepMIMO scenario, without re-tracing",
+    )
+    convert.add_argument("rt_folder", help="folder holding sionna_paths.pkl")
+    convert.add_argument("--scenario", required=True)
+    convert.set_defaults(func=cmd_convert)
 
     trace = sub.add_parser("trace", help="Mitsuba scene -> DeepMIMO scenario (needs Sionna)")
     trace.add_argument("scene_folder")

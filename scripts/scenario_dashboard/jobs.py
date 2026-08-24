@@ -14,6 +14,7 @@ stages hand off through the scene folder on disk.
 from __future__ import annotations
 
 import re
+import signal
 import subprocess
 import threading
 import time
@@ -32,6 +33,34 @@ RE_TRACE_DONE = re.compile(r"-> scenario '([^']+)'")
 
 #: Marks a source that is an existing DeepMIMO scenario rather than a scene folder.
 SCENARIO_PREFIX = "scenario:"
+
+
+def describe_exit(code: int) -> str:
+    """Say how a subprocess ended, in words rather than a number.
+
+    A negative status means a signal, and "exit code -15" tells nobody anything
+    - least of all that nothing in the pipeline asked for it.
+
+    Args:
+        code: Subprocess return code.
+
+    Returns:
+        A human-readable description.
+
+    """
+    if code >= 0:
+        return f"failed with status {code}"
+    try:
+        name = signal.Signals(-code).name
+    except ValueError:
+        return f"was killed by signal {-code}"
+    hint = {
+        "SIGKILL": " - the system ran out of memory, most likely",
+        "SIGTERM": " - something outside the pipeline stopped it: the machine "
+                   "under memory pressure, or the server being restarted",
+        "SIGINT": " - interrupted",
+    }.get(name, "")
+    return f"was killed by {name}{hint}"
 
 # Ray tracing is only part of the trace stage: the scene has to be loaded first
 # and converted to DeepMIMO afterwards, and on a large interior the conversion
@@ -63,6 +92,8 @@ class Job:
     scenario: str | None = None
     error: str | None = None
     weights: dict[str, float] = field(default_factory=dict)
+    rt_folder: str | None = None
+    resumable: str | None = None
     log: list[str] = field(default_factory=list)
 
     def snapshot(self) -> dict[str, Any]:
@@ -83,6 +114,7 @@ class Job:
             "elapsed_seconds": int((self.finished or time.time()) - self.started),
             "scenario": self.scenario,
             "error": self.error,
+            "resumable": self.resumable,
             "log": self.log[-40:],
         }
 
@@ -171,6 +203,8 @@ class JobManager:
             Mapping of stage name to its share of the progress bar.
 
         """
+        if job.params.get("convert_only"):
+            return {"trace": 1.0}
         source = job.params.get("source") or "new"
         stages = ["trace"]
         if source == "new" or source.startswith(SCENARIO_PREFIX) or job.params.get("reexport"):
@@ -212,6 +246,13 @@ class JobManager:
 
         """
         try:
+            if job.params.get("convert_only"):
+                self._set_stage(job, "trace")
+                self._convert(job, Path(job.params["convert_only"]))
+                job.stage = job.status = "done"
+                job.overall, job.eta_seconds = 1.0, 0
+                return
+
             source = job.params.get("source") or "new"
             from_scenario = source.startswith(SCENARIO_PREFIX)
 
@@ -265,6 +306,7 @@ class JobManager:
                 raise RuntimeError(msg)  # noqa: TRY301
 
             self._set_stage(job, "trace")
+            job.rt_folder = str(mitsuba_dir)
             self._trace(job, mitsuba_dir)
 
             job.stage = "done"
@@ -274,6 +316,14 @@ class JobManager:
         except Exception as exc:  # noqa: BLE001 - surfaced to the dashboard
             job.status = "failed"
             job.error = str(exc)
+            # Tracing writes its paths before converting, so a conversion that
+            # dies costs the conversion and not the hour of tracing.
+            if job.rt_folder and (Path(job.rt_folder) / "sionna_paths.pkl").exists():
+                job.resumable = job.rt_folder
+                job.error += (
+                    f". The traced paths survived in {job.rt_folder} - "
+                    "press Convert traced paths to finish without re-tracing"
+                )
         finally:
             job.finished = time.time()
 
@@ -305,7 +355,7 @@ class JobManager:
         code = process.wait()
         if code != 0:
             tail = " | ".join(job.log[-4:])
-            msg = f"{job.stage} failed with exit code {code}: {tail}"
+            msg = f"{job.stage} {describe_exit(code)}: {tail}"
             raise RuntimeError(msg)
 
     def _generate(self, job: Job, out_dir: Path) -> None:
@@ -449,6 +499,32 @@ class JobManager:
 
         self._stream(job, command, on_line)
         job.stage_fraction = 1.0
+
+    def _convert(self, job: Job, rt_folder: Path) -> None:
+        """Convert paths that were already traced, without tracing again.
+
+        Args:
+            job: Job being run.
+            rt_folder: Folder holding the Sionna output.
+
+        """
+        command = [
+            self.rt_python,
+            str(self.runner),
+            "convert",
+            str(rt_folder),
+            "--scenario",
+            job.params["name"],
+        ]
+
+        def on_line(line: str) -> None:
+            self._emit(job, line)
+            job.detail = line.strip()[:80]
+            if match := RE_TRACE_DONE.search(line):
+                job.scenario = match.group(1)
+            job.overall = min(0.95, job.overall + 0.1)
+
+        self._stream(job, command, on_line)
 
     def _trace(self, job: Job, scene_dir: Path) -> None:
         """Ray trace the exported scene and convert it.
