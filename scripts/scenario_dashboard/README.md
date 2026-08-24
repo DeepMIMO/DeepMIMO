@@ -144,6 +144,23 @@ occlusion and contact edges; flat shading made rooms unreadable, because every
 wall met every other wall at the same brightness. Turn the shading off for a
 flat-colour view when comparing materials.
 
+**Coverage map** switches what the bottom-right panel shows, all for the same
+receivers:
+
+| tab | what it maps |
+|---|---|
+| power | received power per receiver, summed over paths in the linear domain |
+| loss | path loss |
+| LOS | line of sight, obstructed, or no path at all |
+| delay | RMS delay spread — the second moment of the power delay profile |
+| paths | how many paths reach each receiver |
+
+A regular receiver grid is drawn as a field rather than as dots, so the rooms
+are readable. Continuous maps clip their colour to the middle 98% — a handful of
+deep-shadow receivers otherwise span half the scale on their own — and the title
+reports the true extremes. **Coverage transmitter** picks one transmitter or the
+best server, chosen per receiver on received power.
+
 **Cut at height** clips above a plane — a converted interior is a closed box
 from outside, so the section is what lets you see in.
 

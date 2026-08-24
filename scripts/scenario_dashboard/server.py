@@ -36,6 +36,8 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
+from matplotlib.colors import BoundaryNorm, ListedColormap  # noqa: E402
+from matplotlib.patches import Patch  # noqa: E402
 import numpy as np  # noqa: E402
 
 import deepmimo as dm  # noqa: E402
@@ -135,46 +137,126 @@ def _load(name: str) -> list:
     return list(data) if isinstance(data, dm.MacroDataset) else [data]
 
 
-def render_coverage(name: str, tx: int) -> bytes:
-    """Render the coverage map for one transmitter, or the best server.
+#: Per-receiver maps the coverage panel can draw. ``better`` says which end of the
+#: scale is the good one, which is what picks the best server for a receiver.
+COVERAGE_METRICS: dict[str, dict[str, Any]] = {
+    "power": {"tab": "power", "title": "received power",
+              "unit": "RX power [dBm]", "better": "high"},
+    "pathloss": {"tab": "loss", "title": "path loss",
+                 "unit": "pathloss [dB]", "better": "low"},
+    "los": {"tab": "LOS", "title": "line of sight", "unit": "", "better": "high"},
+    "delay": {"tab": "delay", "title": "delay spread",
+              "unit": "RMS delay spread [ns]", "better": "low"},
+    "paths": {"tab": "paths", "title": "path count",
+              "unit": "paths per receiver", "better": "high"},
+}
 
-    Geometry is not drawn here: the 3D view handles it interactively, so this
-    stays a plain map of the receiver grid.
+#: Line-of-sight states, in plot order. The two hues are the categorical slots
+#: validated against this panel's surface; "no path" is deliberately not a hue,
+#: because it is missing data rather than a third category.
+LOS_STATES = ((1, "line of sight", "#3987e5"), (0, "obstructed", "#d95926"))
+LOS_NONE = "#3a4149"
+
+
+def _receiver_metric(dataset: Any, metric: str) -> np.ndarray:
+    """Compute one per-receiver quantity from a dataset.
 
     Args:
-        name: Scenario name.
-        tx: Transmitter index, or -1 for the best server across transmitters.
+        dataset: A single TX-RX pair dataset.
+        metric: Key from :data:`COVERAGE_METRICS`.
 
     Returns:
-        PNG image bytes.
+        One value per receiver, NaN where the receiver is unserved.
 
     """
-    pairs = _load(name)
-    dataset = pairs[0]
-    fig, ax = plt.subplots(figsize=(5.4, 4.4))
+    if metric == "pathloss":
+        return np.asarray(dataset.pathloss, dtype=float)
 
-    positions = np.asarray(dataset.rx_pos)
-    stack = np.vstack([np.asarray(p.pathloss) for p in pairs])
-    if tx < 0:
-        values = np.nanmin(np.where(np.isfinite(stack), stack, np.nan), axis=0)
-        label = "best server"
-    else:
-        values = np.asarray(pairs[min(tx, len(pairs) - 1)].pathloss)
-        label = f"TX {tx}"
-    served = np.isfinite(values)
-    if (~served).any():
-        ax.scatter(positions[~served, 0], positions[~served, 1], s=2, c="#3a4149")
-    scatter = ax.scatter(
-        positions[served, 0], positions[served, 1], c=values[served], s=2, cmap="viridis",
-    )
-    for pair in pairs:
-        tx_pos = np.asarray(pair.tx_pos).reshape(-1, 3)
-        ax.scatter(tx_pos[:, 0], tx_pos[:, 1], marker="*", s=150, c="red", edgecolor="k")
-    fig.colorbar(scatter, ax=ax, label="pathloss [dB]")
-    ax.set_aspect("equal")
-    ax.set_xlabel("x [m]")
-    ax.set_ylabel("y [m]")
-    ax.set_title(f"{label} · {100 * served.mean():.0f}% served", fontsize=10)
+    # Per-path powers are in dBm, so they have to be summed in the linear domain.
+    power_db = np.asarray(dataset.power, dtype=float)
+    linear = np.where(np.isfinite(power_db), 10 ** (power_db / 10.0), 0.0)
+    total = linear.sum(axis=1)
+    served = total > 0
+
+    if metric == "power":
+        return np.where(served, 10 * np.log10(np.where(served, total, 1.0)), np.nan)
+    if metric == "paths":
+        return np.where(served, np.asarray(dataset.num_paths, dtype=float), np.nan)
+    if metric == "los":
+        los = np.asarray(dataset.los, dtype=float)
+        return np.where(los < 0, np.nan, los)
+    if metric == "delay":
+        # Power-weighted RMS delay spread, the second central moment of the
+        # power delay profile.
+        toa = np.where(np.isfinite(dataset.toa), np.asarray(dataset.toa, dtype=float), 0.0)
+        mean = np.divide(
+            (linear * toa).sum(axis=1), total,
+            out=np.full(total.shape, np.nan), where=served,
+        )
+        variance = np.divide(
+            (linear * (toa - mean[:, None]) ** 2).sum(axis=1), total,
+            out=np.full(total.shape, np.nan), where=served,
+        )
+        return np.sqrt(variance) * 1e9
+    msg = f"unknown coverage metric {metric!r}"
+    raise ValueError(msg)
+
+
+def _best_server(pairs: list, metric: str) -> np.ndarray:
+    """Pick, per receiver, which transmitter serves it best.
+
+    The choice is always made on received power, not on the metric being drawn:
+    the delay spread of whichever transmitter happens to have the shortest one
+    is not a meaningful map.
+
+    Args:
+        pairs: One dataset per transmitter.
+        metric: Metric being drawn, used only for its direction.
+
+    Returns:
+        Index of the serving transmitter per receiver, -1 where none serves.
+
+    """
+    powers = np.vstack([_receiver_metric(p, "power") for p in pairs])
+    served = np.isfinite(powers).any(axis=0)
+    filled = np.where(np.isfinite(powers), powers, -np.inf)
+    return np.where(served, filled.argmax(axis=0), -1)
+
+
+def _as_grid(positions: np.ndarray, values: np.ndarray) -> tuple | None:
+    """Rasterise receiver values onto their own grid, if they lie on one.
+
+    A regular receiver grid drawn as a field reads as coverage; drawn as dots it
+    reads as dots. Scenarios whose receivers are not gridded fall back to a
+    scatter.
+
+    Args:
+        positions: Receiver positions, (n, 3).
+        values: One value per receiver.
+
+    Returns:
+        ``(image, extent)`` for imshow, or None if the receivers are not gridded.
+
+    """
+    xs, ys = np.unique(positions[:, 0].round(3)), np.unique(positions[:, 1].round(3))
+    if len(xs) < 2 or len(ys) < 2 or len(xs) * len(ys) > 4 * len(values):
+        return None
+    image = np.full((len(ys), len(xs)), np.nan)
+    col = np.searchsorted(xs, positions[:, 0].round(3))
+    row = np.searchsorted(ys, positions[:, 1].round(3))
+    image[row, col] = values
+    dx, dy = (xs[1] - xs[0]) / 2, (ys[1] - ys[0]) / 2
+    return image, (xs[0] - dx, xs[-1] + dx, ys[0] - dy, ys[-1] + dy)
+
+
+def _style_axes(fig: Any, ax: Any) -> None:
+    """Apply the panel's dark surface to a figure.
+
+    Args:
+        fig: Matplotlib figure.
+        ax: Matplotlib axes.
+
+    """
     fig.patch.set_facecolor("#171d24")
     ax.set_facecolor("#12161b")
     for spine in ax.spines.values():
@@ -183,6 +265,110 @@ def render_coverage(name: str, tx: int) -> bytes:
     ax.xaxis.label.set_color("#95a0ad")
     ax.yaxis.label.set_color("#95a0ad")
     ax.title.set_color("#dfe4ea")
+
+
+def render_coverage(name: str, tx: int, metric: str = "pathloss") -> bytes:
+    """Render one coverage map for a transmitter, or for the best server.
+
+    Geometry is not drawn here: the 3D view handles it interactively, so this
+    stays a map of the receiver grid.
+
+    Args:
+        name: Scenario name.
+        tx: Transmitter index, or -1 for the best server across transmitters.
+        metric: Key from :data:`COVERAGE_METRICS`.
+
+    Returns:
+        PNG image bytes.
+
+    """
+    if metric not in COVERAGE_METRICS:
+        metric = "pathloss"
+    spec = COVERAGE_METRICS[metric]
+    pairs = _load(name)
+    positions = np.asarray(pairs[0].rx_pos, dtype=float)
+
+    if tx < 0 and len(pairs) > 1:
+        per_tx = np.vstack([_receiver_metric(p, metric) for p in pairs])
+        serving = _best_server(pairs, metric)
+        values = np.where(
+            serving >= 0, per_tx[np.clip(serving, 0, None), np.arange(per_tx.shape[1])], np.nan,
+        )
+        label = "best server"
+    else:
+        values = _receiver_metric(pairs[min(max(tx, 0), len(pairs) - 1)], metric)
+        label = f"TX {max(tx, 0)}"
+
+    served = np.isfinite(values)
+    fig, ax = plt.subplots(figsize=(5.4, 4.4))
+    gridded = _as_grid(positions, values)
+
+    if metric == "los":
+        colours = ListedColormap([hue for _, _, hue in reversed(LOS_STATES)])
+        norm = BoundaryNorm([-0.5, 0.5, 1.5], colours.N)
+        if gridded:
+            image, extent = gridded
+            masked = np.ma.masked_invalid(image)
+            colours.set_bad(LOS_NONE)
+            ax.imshow(masked, extent=extent, origin="lower", cmap=colours, norm=norm,
+                      interpolation="nearest")
+        else:
+            ax.scatter(positions[~served, 0], positions[~served, 1], s=4, c=LOS_NONE)
+            ax.scatter(positions[served, 0], positions[served, 1], c=values[served],
+                       s=4, cmap=colours, norm=norm)
+        # Identity is never colour alone: the states are named in the legend.
+        handles = [Patch(facecolor=hue, label=text) for _, text, hue in LOS_STATES]
+        handles.append(Patch(facecolor=LOS_NONE, label="no path"))
+        legend = ax.legend(handles=handles, loc="upper right", fontsize=7, framealpha=0.85)
+        legend.get_frame().set_facecolor("#171d24")
+        legend.get_frame().set_edgecolor("#39424c")
+        for text in legend.get_texts():
+            text.set_color("#dfe4ea")
+        summary = f"{100 * np.nanmean(values == 1):.0f}% line of sight"
+    else:
+        cmap = plt.get_cmap("viridis").copy()
+        cmap.set_bad(LOS_NONE)
+        # A handful of deep-shadow receivers can span half the scale on their
+        # own, flattening every room into one colour. The ramp covers the middle
+        # 98% and the title still reports the true extremes.
+        limits = (
+            np.nanpercentile(values, [1, 99]).tolist() if served.any() else [0.0, 1.0]
+        )
+        if limits[0] == limits[1]:
+            limits = [limits[0] - 0.5, limits[1] + 0.5]
+        if gridded:
+            image, extent = gridded
+            drawn = ax.imshow(np.ma.masked_invalid(image), extent=extent, origin="lower",
+                              cmap=cmap, interpolation="nearest",
+                              vmin=limits[0], vmax=limits[1])
+        else:
+            ax.scatter(positions[~served, 0], positions[~served, 1], s=4, c=LOS_NONE)
+            drawn = ax.scatter(positions[served, 0], positions[served, 1],
+                               c=values[served], s=4, cmap=cmap,
+                               vmin=limits[0], vmax=limits[1])
+        bar = fig.colorbar(drawn, ax=ax, label=spec["unit"])
+        bar.ax.yaxis.label.set_color("#95a0ad")
+        bar.ax.tick_params(colors="#95a0ad", labelsize=8)
+        bar.outline.set_edgecolor("#39424c")
+        if served.any():
+            lo, mid, hi = (np.nanpercentile(values, q) for q in (0, 50, 100))
+            summary = f"median {mid:.1f} · range {lo:.1f} to {hi:.1f}"
+        else:
+            summary = "no served receivers"
+
+    for pair in pairs:
+        tx_pos = np.asarray(pair.tx_pos).reshape(-1, 3)
+        ax.scatter(tx_pos[:, 0], tx_pos[:, 1], marker="*", s=150, c="#f5f2e8",
+                   edgecolor="#12161b", linewidth=0.8, zorder=5)
+
+    ax.set_aspect("equal")
+    ax.set_xlabel("x [m]")
+    ax.set_ylabel("y [m]")
+    ax.set_title(
+        f"{spec['title']} · {label} · {100 * served.mean():.0f}% served\n{summary}",
+        fontsize=9,
+    )
+    _style_axes(fig, ax)
     fig.tight_layout()
     return _png(fig)
 
@@ -476,6 +662,11 @@ PAGE = r"""<!doctype html>
  td{padding:2px 0;color:var(--dim)} td:last-child{text-align:right;color:var(--ink)}
  .err{color:#ff9090;white-space:pre-wrap;font:11px ui-monospace,monospace;padding:0 12px 10px}
  .hint{color:#69737e;font-size:10.5px;margin-top:5px}
+ .tabs{display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px}
+ .tabs button{flex:1 1 28%;padding:4px 6px;font-size:10.5px;border-radius:5px;
+   background:#1b222b;color:#95a0ad;border:1px solid #2b333d;cursor:pointer}
+ .tabs button:hover{color:#dfe4ea;border-color:#3d4855}
+ .tabs button.on{background:#2b6cb8;color:#fff;border-color:#2b6cb8}
  .sec.skip .body{opacity:.35;pointer-events:none}
  .sec.skip h2::after{content:' — skipped';color:#69737e;font-weight:400}
 </style>
@@ -599,6 +790,8 @@ PAGE = r"""<!doctype html>
       <div class="hint" id="clipLabel">1.30 m</div>
       <div class="chk"><input type="checkbox" id="invY" onchange="view.setInvertPitch(this.checked)">
         <span>Invert vertical orbit</span></div>
+      <label>Coverage map</label>
+      <div id="covtabs" class="tabs"></div>
       <label>Coverage transmitter</label>
       <select id="tx" onchange="loadCoverage()"><option value="-1">best server</option></select>
       <div class="chk"><input type="checkbox" id="rayMode" checked>
@@ -812,9 +1005,20 @@ view.onPick(hit => {
   }));
 });
 
+let COV_METRIC = 'power';
+
+window.setCoverageMetric = (key) => {
+  COV_METRIC = key;
+  [...$('covtabs').children].forEach(b => b.classList.toggle('on', b.dataset.key === key));
+  loadCoverage();
+};
+
 window.loadCoverage = () => {
+  // The metric tabs are built before the scenario list arrives, so the first
+  // call can land with nothing selected.
+  if (!$('scenario').value) return;
   $('cov').src = `api/coverage?name=${encodeURIComponent($('scenario').value)}` +
-                 `&tx=${$('tx').value}&_=${Date.now()}`;
+                 `&tx=${$('tx').value}&metric=${COV_METRIC}&_=${Date.now()}`;
 };
 
 window.startRun = async () => {
@@ -987,6 +1191,14 @@ async function refreshScenarios() {
 (async () => {
   const opt = await (await fetch('api/options')).json();
   opt.room_types.forEach(r => $('p_room').add(new Option(r || 'every room', r)));
+  const tabs = $('covtabs');
+  Object.entries(opt.coverage_metrics || {}).forEach(([key, title]) => {
+    const b = document.createElement('button');
+    b.textContent = title; b.dataset.key = key;
+    b.onclick = () => setCoverageMetric(key);
+    tabs.appendChild(b);
+  });
+  setCoverageMetric(COV_METRIC);
   SCENE_TYPES = opt.scene_types || {};
   Object.keys(SCENE_TYPES).forEach(k => $('p_scene').add(new Option(k, k)));
   sceneTypeChanged();
@@ -1105,6 +1317,9 @@ class Handler(BaseHTTPRequestHandler):
                     {
                         "room_types": list(ROOM_TYPES),
                         "scene_types": SCENE_TYPE_HELP,
+                        "coverage_metrics": {
+                            key: spec["tab"] for key, spec in COVERAGE_METRICS.items()
+                        },
                         "has_jobs": self.jobs is not None,
                         "can_generate": bool(self.generator_path),
                         "generator": self.generator_path,
@@ -1139,7 +1354,13 @@ class Handler(BaseHTTPRequestHandler):
                 "application/json",
             )
         elif path == "/api/coverage":
-            self._send(render_coverage(query["name"], int(query.get("tx", "-1"))), "image/png")
+            self._send(
+                render_coverage(
+                    query["name"], int(query.get("tx", "-1")),
+                    query.get("metric", "pathloss"),
+                ),
+                "image/png",
+            )
         elif path == "/api/geometry":
             name = query["name"]
             if _GEOMETRY_CACHE.get("name") != name:
