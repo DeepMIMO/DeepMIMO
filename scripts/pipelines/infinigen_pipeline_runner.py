@@ -206,17 +206,18 @@ def place_devices(  # noqa: PLR0913 - placement needs its bounds and spacing
     return tx, rx
 
 
-#: Building presets. Each is a room kind to add to Infinigen's dwelling mix
-#: plus a few structural knobs; see infinigen_launcher for why kinds can only be
-#: added and never swapped out.
+#: Building presets. Infinigen ships one constraint script and it describes a
+#: dwelling, so what can be varied is the building's *shape*, not its room
+#: vocabulary: storeys, storey height and footprint. See infinigen_launcher for
+#: why room kinds cannot be swapped out, and INFINIGEN.md for what a genuine
+#: office or warehouse would take.
 SCENE_TYPES: dict[str, dict] = {
     "home": {},
-    "office": {"add": ("office",), "require": ("office",), "wall_height": 3.0},
     "tall_space": {"wall_height": 5.5},
     "multistorey": {"stories": 2},
-    "office_multistorey": {
-        "add": ("office",), "require": ("office",), "stories": 2, "wall_height": 3.0,
-    },
+    "tall_multistorey": {"stories": 2, "wall_height": 4.0},
+    "compact": {"aspect": (0.95, 1.0)},
+    "elongated": {"aspect": (0.45, 0.65)},
 }
 
 
@@ -285,10 +286,13 @@ def cmd_generate(args: argparse.Namespace) -> None:
         ]
     stories = args.stories or preset.get("stories")
     height = args.wall_height or preset.get("wall_height")
+    aspect = preset.get("aspect")
     if stories:
         overrides.append(f"RoomConstants.n_stories={stories}")
     if height:
         overrides.append(f"RoomConstants.global_params.wall_height={height}")
+    if aspect:
+        overrides.append(f"RoomConstants.aspect_ratio_range=({aspect[0]},{aspect[1]})")
 
     command = [
         sys.executable,
@@ -530,8 +534,9 @@ def main() -> None:
         default=[],
         metavar="KIND",
         help=(
-            "add a room kind to the mix, e.g. office. Repeatable; overrides the "
-            "preset's own additions"
+            "add a room kind to the mix, e.g. office. Repeatable. Note that "
+            "Infinigen's constraints never require a non-home room, so the "
+            "solver rarely places one - see INFINIGEN.md"
         ),
     )
     generate.add_argument(

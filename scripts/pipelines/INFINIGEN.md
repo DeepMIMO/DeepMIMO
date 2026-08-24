@@ -57,31 +57,48 @@ shelving — that last one alone kept 3.6M triangles.
 
 ## Buildings other than dwellings
 
-Infinigen ships one constraint script and it describes a home. Room kinds can be
-**added** to its mix, never swapped out: the constraints require every home room
-to exist — a living room must connect to a bedroom, a kitchen, a bathroom — so
-removing one leaves the floorplan with no solution, and the solver responds by
-retrying forever rather than failing.
+**What varies today is the building's shape, not its room vocabulary.**
 
-Measured on one seed:
+| preset | what changes |
+|---|---|
+| `home` | Infinigen's own dwelling |
+| `tall_space` | 5.5 m storeys — hall-like volumes, long reverberation paths |
+| `multistorey` | two floors, so propagation between them can be studied |
+| `tall_multistorey` | both |
+| `compact` | near-square footprint |
+| `elongated` | long, narrow footprint — corridor-dominated |
+
+Underneath are `--stories N` and `--wall-height M`.
+
+### Why the room vocabulary is fixed
+
+Infinigen ships one constraint script and it describes a home. Two separate
+things block replacing its rooms, and both were measured rather than assumed.
+
+**Removing a kind makes the floorplan unsolvable.** The constraints require
+every home room to exist — a living room must connect to a bedroom, a kitchen, a
+bathroom. Drop one and there is no solution, and the solver reports that by
+retrying forever rather than failing:
 
 | mix | outcome |
 |---|---|
 | replaced with an office-only set | 23,832 graph attempts, 10 min CPU, no convergence |
 | dwelling mix **plus** `office` | solved on the first attempt |
 
-So `--scene-type office` adds office rooms rather than removing home ones.
-Presets: `home`, `office`, `tall_space`, `multistorey`, `office_multistorey`;
-underneath are `--add-room KIND`, `--stories N`, `--wall-height M`.
+**Adding a kind is inert.** Nothing in the shipped constraints ever *requires* a
+room outside the dwelling mix. Every mention of `Semantics.Office` in `home.py`
+is `OfficeShelfItem` — an object tag for what sits on a shelf, not a room — so
+the solver has no reason to place an office, and on the seeds tried it did not.
+`--add-room KIND` is kept because it is the right mechanism and costs nothing,
+and `--require-room KIND` re-rolls the seed and then warns when the kind never
+appears. Every run prints the room kinds it actually built, read back from the
+solver's own state file.
 
-Adding a kind only makes it *available* — whether the solver places one depends
-on the seed. Every run prints the room kinds it actually built, read back from
-the solver's own state file, and `--require-room KIND` re-rolls the seed until
-the kind appears.
-
-Supporting a genuine office or warehouse *building* — one with no bedrooms at
-all — means writing a constraint script for it, alongside Infinigen's
-`infinigen_examples/constraints/home.py`. That is the next step, not a tweak.
+A genuine office or warehouse — a building with no bedrooms in it — needs its
+own constraint script alongside `infinigen_examples/constraints/home.py`:
+room-graph rules saying what an office building contains and how its rooms
+connect, and object rules for desks, meeting tables and racking. That is a piece
+of work in its own right, not a flag.
 
 ## Runtime
 

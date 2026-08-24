@@ -90,30 +90,20 @@ about 5 minutes with it and hours without.
 
 ## Scene types
 
-Infinigen ships one constraint script and it describes a dwelling, so a
-generated building is a home unless told otherwise. Room kinds can be **added**
-to its mix but not swapped out: the constraints require every home room to
-exist — a living room must connect to a bedroom, a kitchen, a bathroom — so
-removing one leaves the floorplan with no solution, and the solver reports that
-by retrying forever rather than failing. Measured on one seed: swapping the mix
-ran 23,832 graph attempts over ten minutes of CPU without converging, while
-adding a kind solved on the first attempt.
+Infinigen ships one constraint script and it describes a dwelling, so what a
+preset varies is the building's shape rather than its room vocabulary.
 
 | preset | what changes |
 |---|---|
-| `home` | Infinigen's own dwelling mix |
-| `office` | adds office rooms — desks, office chairs, shelving — and 3 m storeys |
+| `home` | Infinigen's own dwelling |
 | `tall_space` | 5.5 m storeys, for hall-like volumes |
 | `multistorey` | two floors |
-| `office_multistorey` | both |
+| `tall_multistorey` | both |
+| `compact` / `elongated` | near-square, or long and corridor-dominated |
 
-Underneath are `--add-room KIND`, `--stories N` and `--wall-height M`, so a mix
-can be built without a preset.
-
-Adding a kind only makes it *available*; whether the solver places one depends
-on the seed. `--require-room KIND` re-rolls the seed until it appears, reading
-back the rooms the solver actually built from the state file it writes beside
-the scene. Every run prints the room kinds it produced.
+Room kinds can be added to the mix but not swapped out, and adding one rarely
+changes the layout — `scripts/pipelines/INFINIGEN.md` has the measurements and
+what a genuine office building would take.
 
 ## Exploring
 

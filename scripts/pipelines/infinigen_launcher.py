@@ -20,6 +20,13 @@ solution — measured at 23,832 graph attempts and ten minutes of CPU with no
 convergence, and no error, because the solver simply keeps retrying. Adding a
 kind leaves every existing constraint satisfiable, so it solves as fast as a
 plain dwelling.
+
+Adding is also weaker than it looks. Nothing in the shipped constraints ever
+*requires* a room outside the dwelling mix — every mention of ``Semantics.Office``
+in ``home.py`` is ``OfficeShelfItem``, an object tag for what sits on a shelf —
+so the solver has no reason to place one and, on the seeds tried, did not. This
+hook is the right mechanism and costs nothing to keep, but a building with a
+different room vocabulary needs its own constraint script, not a longer set.
 """
 
 import runpy
