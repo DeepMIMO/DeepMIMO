@@ -238,6 +238,48 @@ void main() {
   outColor = vec4(pow(lit, vec3(1.0 / 2.2)), 1.0);
 }`;
 
+const RAY_VERT = `#version 300 es
+layout(location = 0) in vec3 aP0;
+layout(location = 1) in vec3 aP1;
+layout(location = 2) in vec3 aColor;
+layout(location = 3) in vec2 aParams;   // x: side (-1/+1), y: which endpoint
+uniform mat4 uMVP;
+uniform vec2 uResolution;
+uniform float uWidth;
+out vec3 vColor;
+out float vSide;
+void main() {
+  vec4 clip0 = uMVP * vec4(aP0, 1.0);
+  vec4 clip1 = uMVP * vec4(aP1, 1.0);
+  // Expand in screen space, not world space: a ray keeps the same apparent
+  // thickness whether it is a metre away or across the building.
+  vec2 screen0 = clip0.xy / max(abs(clip0.w), 1e-6) * uResolution;
+  vec2 screen1 = clip1.xy / max(abs(clip1.w), 1e-6) * uResolution;
+  vec2 dir = screen1 - screen0;
+  dir = length(dir) < 1e-6 ? vec2(1.0, 0.0) : normalize(dir);
+  vec2 normal = vec2(-dir.y, dir.x) * aParams.x * uWidth * 0.5;
+
+  vec4 clip = mix(clip0, clip1, aParams.y);
+  clip.xy += normal / uResolution * abs(clip.w);
+  vColor = aColor;
+  vSide = aParams.x;
+  gl_Position = clip;
+}`;
+
+const RAY_FRAG = `#version 300 es
+precision highp float;
+in vec3 vColor;
+in float vSide;
+out vec4 outColor;
+void main() {
+  // Solid through the middle, fading only at the very edge. Lightening the
+  // core would look like a glow on a dark scene but reads as a hollow tube on
+  // a white one, which is where these are mostly seen.
+  float edge = 1.0 - abs(vSide);
+  outColor = vec4(vColor * (0.88 + 0.12 * smoothstep(0.3, 1.0, edge)),
+                  smoothstep(0.0, 0.30, edge));
+}`;
+
 const LINE_VERT = `#version 300 es
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aColor;
@@ -280,6 +322,18 @@ const SHADOW_SIZE = 2048;
  * through exposure and gamma. For the ground plane to fade into the background
  * exactly, it has to start from the value that comes back out as that colour.
  */
+/** Map a normalised received power to a ray colour.
+ *
+ * Violet through red to gold. A ramp through yellow looks hotter in isolation
+ * but disappears against the studio background, which is nearly white.
+ */
+function rayColour(t) {
+  const mix = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k);
+  const weak = [0.38, 0.05, 0.42], mid = [0.85, 0.13, 0.12], strong = [1.0, 0.55, 0.04];
+  const k = Math.min(1, Math.max(0, t));
+  return k < 0.5 ? mix(weak, mid, k * 2) : mix(mid, strong, (k - 0.5) * 2);
+}
+
 function preTonemap(colour, exposure) {
   return colour.map(c => {
     const linear = Math.min(0.999, Math.pow(c, 2.2));
@@ -328,10 +382,11 @@ export class Viewer {
     this.ao = link(gl, POST_VERT, AO_FRAG);
     this.blur = link(gl, POST_VERT, BLUR_FRAG);
     this.comp = link(gl, POST_VERT, COMPOSITE_FRAG);
+    this.ray = link(gl, RAY_VERT, RAY_FRAG);
     this.lineProg = link(gl, LINE_VERT, LINE_FRAG);
     for (const [key, prog] of Object.entries({
-      scene: this.scene, depth: this.depth, ao: this.ao,
-      blur: this.blur, comp: this.comp, line: this.lineProg,
+      scene: this.scene, depth: this.depth, ao: this.ao, blur: this.blur,
+      comp: this.comp, ray: this.ray, line: this.lineProg,
     })) this[key + 'U'] = uniforms(gl, prog);
 
     this.emptyVao = gl.createVertexArray();
@@ -347,6 +402,7 @@ export class Viewer {
     this.groups = [];
     this.markers = null;
     this.rayCount = 0; this.markerCount = 0;
+    this.rayWidth = 4.5;
     this.theme = THEMES.studio;
     this.shading = true;
     this.showGround = true;
@@ -366,6 +422,9 @@ export class Viewer {
 
   /** Show or hide the plane the model casts its shadow onto. */
   setGround(on) { this.showGround = !!on; this.draw(); }
+
+  /** Set the on-screen thickness of propagation rays, in pixels. */
+  setRayWidth(px) { this.rayWidth = Math.max(1, +px || 1); this.draw(); }
 
   _texture(width, height, internal, format, type, filter) {
     const gl = this.gl;
@@ -580,26 +639,42 @@ export class Viewer {
   setInvertPitch(on) { this.invertPitch = on; }
   onPick(fn) { this.pickHandler = fn; }
 
-  /** Draw propagation paths as coloured polylines. */
+  /** Draw propagation paths as ribbons of constant on-screen width. */
   setRays(paths) {
     const gl = this.gl;
-    const pts = [], cols = [];
-    // Colour by received power, strongest paths hot.
+    // Colour by received power. The ramp runs violet through red to gold
+    // rather than through yellow: a yellow ray vanishes on a white background.
     const powers = paths.map(p => p.power_db).filter(Number.isFinite);
     const hi = powers.length ? Math.max(...powers) : 0;
     const lo = powers.length ? Math.min(...powers) : -1;
+
+    const p0 = [], p1 = [], cols = [], params = [];
+    // Two triangles per segment: (side, endpoint) picks each of the six corners.
+    const CORNERS = [[-1, 0], [1, 0], [1, 1], [-1, 0], [1, 1], [-1, 1]];
     for (const path of paths) {
       const t = (path.power_db - lo) / Math.max(hi - lo, 1e-6);
-      const c = [1.0, 0.35 + 0.6 * t, 0.15 + 0.2 * (1 - t)];
+      const c = rayColour(Number.isFinite(t) ? t : 1);
       for (let i = 0; i + 1 < path.points.length; i++) {
-        pts.push(...path.points[i], ...path.points[i + 1]);
-        cols.push(...c, ...c);
+        const a = path.points[i], b = path.points[i + 1];
+        for (const [side, end] of CORNERS) {
+          p0.push(...a); p1.push(...b); cols.push(...c); params.push(side, end);
+        }
       }
     }
-    this.rayCount = pts.length / 3;
+    this.rayCount = params.length / 2;
     if (this.rayVao) gl.deleteVertexArray(this.rayVao);
     if (!this.rayCount) { this.draw(); return; }
-    this.rayVao = this._annotationVao(pts, cols);
+
+    this.rayVao = gl.createVertexArray();
+    gl.bindVertexArray(this.rayVao);
+    for (const [loc, data, size] of [[0, p0, 3], [1, p1, 3], [2, cols, 3], [3, params, 2]]) {
+      const buf = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.STATIC_DRAW);
+      gl.enableVertexAttribArray(loc);
+      gl.vertexAttribPointer(loc, size, gl.FLOAT, false, 0, 0);
+    }
+    gl.bindVertexArray(null);
     this.draw();
   }
 
@@ -802,19 +877,28 @@ export class Viewer {
     gl.bindVertexArray(null);
 
     // 5. Annotation, straight to the screen against the composited depth.
-    if (this.rayCount || this.markerCount) {
+    if (this.rayCount) {
+      gl.useProgram(this.ray);
+      gl.uniformMatrix4fv(this.rayU.uMVP, false, mvp);
+      gl.uniform2f(this.rayU.uResolution, width, height);
+      gl.uniform1f(this.rayU.uWidth, this.rayWidth * (this.canvas.width / this.canvas.clientWidth));
+      gl.enable(gl.BLEND);
+      gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+      // Rays cross each other constantly; writing depth would make the winner
+      // of each crossing depend on draw order rather than on distance.
+      gl.depthMask(false);
+      gl.bindVertexArray(this.rayVao);
+      gl.drawArrays(gl.TRIANGLES, 0, this.rayCount);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+    }
+    if (this.markerCount) {
       gl.useProgram(this.lineProg);
       gl.uniformMatrix4fv(this.lineU.uMVP, false, mvp);
       gl.uniform1f(this.lineU.uSize, this.markerSize || 3.0);
-      if (this.rayCount) {
-        gl.bindVertexArray(this.rayVao);
-        gl.drawArrays(gl.LINES, 0, this.rayCount);
-      }
-      if (this.markerCount) {
-        gl.bindVertexArray(this.markerVao);
-        gl.drawArrays(gl.POINTS, 0, this.markerCount);
-      }
-      gl.bindVertexArray(null);
+      gl.bindVertexArray(this.markerVao);
+      gl.drawArrays(gl.POINTS, 0, this.markerCount);
     }
+    gl.bindVertexArray(null);
   }
 }

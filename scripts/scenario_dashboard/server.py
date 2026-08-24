@@ -587,6 +587,10 @@ PAGE = r"""<!doctype html>
       <select id="tx" onchange="loadCoverage()"><option value="-1">best server</option></select>
       <div class="chk"><input type="checkbox" id="rayMode" checked>
         <span>Click a point to trace its rays</span></div>
+      <label>Ray thickness <span id="l_rayw" class="hint">4.5 px</span></label>
+      <input id="rayW" type="range" min="1" max="12" step="0.5" value="4.5"
+             oninput="view.setRayWidth(this.value);
+                      document.getElementById('l_rayw').textContent=(+this.value).toFixed(1)+' px'">
       <div id="rayinfo" class="hint"></div>
       <div class="hint">drag orbit · shift+drag pan · wheel zoom · F frame · 1/3/7 views</div>
     </div></div>

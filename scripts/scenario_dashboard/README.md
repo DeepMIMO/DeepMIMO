@@ -129,6 +129,13 @@ spent tracing. *Draw footprint* sets it by clicking two corners; *Whole
 footprint* restores the default. Transmitters can be typed as `x,y,z ; x,y,z`
 or placed with *Pick in 3D*, and both appear as markers in the preview.
 
+Rays are drawn as ribbons expanded in screen space rather than as GL lines,
+because `lineWidth` is capped at 1 pixel on essentially every platform — a
+one-pixel path is invisible next to the geometry. **Ray thickness** sets their
+width in pixels, and they are coloured violet through crimson to orange by
+received power: a ramp through yellow looks hotter but disappears against the
+studio background.
+
 **Clicking** traces the propagation paths to the nearest receiver: transmitter →
 interaction points → receiver, coloured by received power, with the strongest
 path's power, delay and bounce count. Seeing which surfaces a path bounces off
