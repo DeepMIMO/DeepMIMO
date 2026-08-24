@@ -214,7 +214,7 @@ def export_scene_rt_params(scene: Scene, **compute_paths_kwargs: Any) -> dict[st
 
     rt_params_dict = {
         "bandwidth": scene_dict["bandwidth"].numpy(),
-        "frequency": scene_dict["frequency"].numpy(),
+        "frequency": float(np.asarray(scene_dict["frequency"].numpy()).reshape(-1)[0]),
         "rx_array_size": rx_array.array_size,
         "rx_array_num_ant": rx_array.num_ant,
         "rx_array_ant_pos": rx_array_ant_pos,
