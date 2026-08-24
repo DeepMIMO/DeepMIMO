@@ -95,10 +95,8 @@ preset varies is the building's shape rather than its room vocabulary.
 
 | preset | what changes |
 |---|---|
-| `home` | Infinigen's own dwelling |
+| `home` | Infinigen's own dwelling — 3.0 m storeys |
 | `tall_space` | 5.5 m storeys, for hall-like volumes |
-| `multistorey` | two floors |
-| `tall_multistorey` | both |
 | `compact` / `elongated` | near-square, or long and corridor-dominated |
 
 Room kinds can be added to the mix but not swapped out, and adding one rarely

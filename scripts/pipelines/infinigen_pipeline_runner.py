@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -214,11 +215,63 @@ def place_devices(  # noqa: PLR0913 - placement needs its bounds and spacing
 SCENE_TYPES: dict[str, dict] = {
     "home": {},
     "tall_space": {"wall_height": 5.5},
-    "multistorey": {"stories": 2},
-    "tall_multistorey": {"stories": 2, "wall_height": 4.0},
     "compact": {"aspect": (0.95, 1.0)},
     "elongated": {"aspect": (0.45, 0.65)},
 }
+
+
+#: Infinigen retries the floorplan graph rather than reporting failure, so an
+#: unsatisfiable set of rooms looks exactly like a slow scene. This many attempts
+#: on one storey is past any plausible search and into thrashing: a solvable
+#: storey has taken one attempt in every run measured here.
+GRAPH_ATTEMPT_LIMIT = 3000
+
+RE_GRAPH_ATTEMPT = re.compile(r"Generating graphs for (\d+):\s+0%")
+
+
+def run_generator(command: list[str], cwd: Path, attempt_limit: int) -> None:
+    """Run Infinigen, aborting if the floorplan solver starts thrashing.
+
+    The solver responds to an unsatisfiable room graph by drawing another
+    candidate, forever. Left alone that burns CPU indefinitely with no error and
+    nothing in the log to say what is wrong - two configurations here ran ten
+    minutes and 23,832 attempts before being killed by hand.
+
+    Args:
+        command: Generator command line.
+        cwd: Directory to run it from.
+        attempt_limit: Graph attempts on one storey before giving up.
+
+    Raises:
+        RuntimeError: If the solver exceeds the attempt limit.
+
+    """
+    attempts: dict[str, int] = {}
+    process = subprocess.Popen(  # noqa: S603
+        command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, bufsize=1,
+    )
+    try:
+        for line in process.stdout:
+            print(line, end="")
+            for storey in RE_GRAPH_ATTEMPT.findall(line):
+                attempts[storey] = attempts.get(storey, 0) + 1
+                if attempts[storey] > attempt_limit:
+                    process.kill()
+                    msg = (
+                        f"the floorplan solver made {attempts[storey]} attempts on "
+                        f"storey {storey} without converging. Its constraints have no "
+                        "solution for this configuration - most often a room mix with "
+                        "a kind removed, or more storeys than the footprint allows"
+                    )
+                    raise RuntimeError(msg)
+    finally:
+        if process.poll() is None:
+            process.kill()
+        process.wait()
+    if process.returncode:
+        msg = f"generator exited with status {process.returncode}"
+        raise RuntimeError(msg)
 
 
 def solved_rooms(output: Path) -> list[str]:
@@ -319,23 +372,34 @@ def cmd_generate(args: argparse.Namespace) -> None:
 
     required = tuple(args.require_room) or preset.get("require", ())
     output = Path(args.output)
-    for attempt in range(max(1, args.max_attempts)):
+    attempts = max(1, args.max_attempts)
+    last_failure = None
+    for attempt in range(attempts):
         seed = args.seed + attempt
         command[command.index("--seed") + 1] = str(seed)
         print(" ".join(command))
-        subprocess.run(command, cwd=package_dir, check=True)  # noqa: S603
+        try:
+            run_generator(command, package_dir, args.attempt_limit)
+        except RuntimeError as exc:
+            # Whether a floorplan has a solution depends on the footprint this
+            # seed drew, so another seed is a real second chance - unlike a
+            # configuration that can never be solved, which exhausts them all.
+            last_failure = exc
+            print(f"  seed {seed} did not solve: {exc}")
+            continue
 
         rooms = solved_rooms(output)
         print(f"  rooms: {', '.join(rooms) or 'unknown'}")
         missing = [kind for kind in required if kind not in rooms]
         if not missing:
             break
-        # The kind was available to the solver and it chose not to place one, so
-        # the only lever left is a different draw.
         print(f"  seed {seed} produced no {', '.join(missing)}; re-rolling")
     else:
+        if last_failure is not None:
+            msg = f"no seed in {attempts} tries produced a solvable layout: {last_failure}"
+            raise RuntimeError(msg)
         print(
-            f"  warning: no {', '.join(required)} after {args.max_attempts} seeds; "
+            f"  warning: no {', '.join(required)} after {attempts} seeds; "
             "keeping the last scene",
         )
     print(f"-> {output / 'scene.blend'}")
@@ -550,6 +614,15 @@ def main() -> None:
         ),
     )
     generate.add_argument(
+        "--attempt-limit",
+        type=int,
+        default=GRAPH_ATTEMPT_LIMIT,
+        help=(
+            "floorplan graph attempts on one storey before giving up; the solver "
+            "retries an unsatisfiable layout forever otherwise"
+        ),
+    )
+    generate.add_argument(
         "--max-attempts",
         type=int,
         default=4,
@@ -559,7 +632,11 @@ def main() -> None:
         "--stories",
         type=int,
         default=None,
-        help="number of storeys; Infinigen samples one if not given",
+        help=(
+            "number of storeys. Infinigen samples one if not given, and its "
+            "constraints often cannot solve a second: four seeds failed here, "
+            "so this is offered as a knob rather than a preset"
+        ),
     )
     generate.add_argument(
         "--wall-height",

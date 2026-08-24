@@ -59,16 +59,30 @@ shelving — that last one alone kept 3.6M triangles.
 
 **What varies today is the building's shape, not its room vocabulary.**
 
-| preset | what changes |
-|---|---|
-| `home` | Infinigen's own dwelling |
-| `tall_space` | 5.5 m storeys — hall-like volumes, long reverberation paths |
-| `multistorey` | two floors, so propagation between them can be studied |
-| `tall_multistorey` | both |
-| `compact` | near-square footprint |
-| `elongated` | long, narrow footprint — corridor-dominated |
+| preset | what changes | measured |
+|---|---|---|
+| `home` | Infinigen's own dwelling | 3.0 m storeys, 15.0 × 17.5 m |
+| `tall_space` | hall-like volumes, long reverberation paths | 5.5 m storeys, 11.5 × 17.5 m |
+| `compact` | near-square footprint | |
+| `elongated` | long, narrow footprint — corridor-dominated | |
 
-Underneath are `--stories N` and `--wall-height M`.
+Underneath are `--wall-height M` and `--stories N`.
+
+`--stories` is a knob rather than a preset because Infinigen's constraints
+often cannot solve a second storey: storey 0 solved on the first attempt while
+storey 1 failed on four consecutive seeds, 1,200 graph attempts each. Its own
+`multistory.gin` samples 1–3 storeys and mostly draws one, which is why the
+limitation is easy to miss.
+
+### When the solver will not converge
+
+An unsatisfiable floorplan does not raise — the solver draws another candidate,
+forever. Two configurations here burned ten minutes and 23,832 attempts before
+being killed by hand. `generate` now watches for that and aborts after
+`--attempt-limit` attempts on one storey (3,000 by default) with a message
+saying what is wrong, and `--max-attempts` re-rolls the seed, since whether a
+layout has a solution depends on the footprint that seed drew. The four-seed
+multi-storey sweep above took four minutes end to end because of it.
 
 ### Why the room vocabulary is fixed
 
