@@ -322,6 +322,21 @@ const SHADOW_SIZE = 2048;
  * through exposure and gamma. For the ground plane to fade into the background
  * exactly, it has to start from the value that comes back out as that colour.
  */
+/** What each interaction letter along a path means, and how it is drawn.
+ *
+ * The four hues pass the colour-vision checks against both the studio and the
+ * dark background; scattering has no validated slot because the tracer cannot
+ * currently produce it, so it falls back to neutral rather than to a fifth hue
+ * that would collide with one of these.
+ */
+export const INTERACTIONS = {
+  '': {label: 'line of sight', color: [0.224, 0.529, 0.898]},   // #3987e5
+  R: {label: 'reflection', color: [0.851, 0.349, 0.149]},       // #d95926
+  D: {label: 'diffraction', color: [0.706, 0.333, 0.690]},      // #b455b0
+  T: {label: 'transmission', color: [0.098, 0.620, 0.439]},     // #199e70
+  S: {label: 'scattering', color: [0.62, 0.60, 0.58]},
+};
+
 /** Map a normalised received power to a ray colour.
  *
  * Violet through red to gold. A ramp through yellow looks hotter in isolation
@@ -639,28 +654,47 @@ export class Viewer {
   setInvertPitch(on) { this.invertPitch = on; }
   onPick(fn) { this.pickHandler = fn; }
 
-  /** Draw propagation paths as ribbons of constant on-screen width. */
-  setRays(paths) {
+  /** Draw propagation paths as ribbons of constant on-screen width.
+   *
+   * Two colourings answer different questions. By power, the ramp says which
+   * paths carry the signal. By interaction, each segment is coloured by what
+   * happened at the end of it, so a ray visibly changes colour where it
+   * diffracts or passes through a wall.
+   */
+  setRays(paths, mode = 'power') {
     const gl = this.gl;
+    this.rayMode = mode;
     // Colour by received power. The ramp runs violet through red to gold
     // rather than through yellow: a yellow ray vanishes on a white background.
     const powers = paths.map(p => p.power_db).filter(Number.isFinite);
     const hi = powers.length ? Math.max(...powers) : 0;
     const lo = powers.length ? Math.min(...powers) : -1;
+    const seen = new Set();
 
     const p0 = [], p1 = [], cols = [], params = [];
     // Two triangles per segment: (side, endpoint) picks each of the six corners.
     const CORNERS = [[-1, 0], [1, 0], [1, 1], [-1, 0], [1, 1], [-1, 1]];
     for (const path of paths) {
       const t = (path.power_db - lo) / Math.max(hi - lo, 1e-6);
-      const c = rayColour(Number.isFinite(t) ? t : 1);
+      const byPower = rayColour(Number.isFinite(t) ? t : 1);
+      const kinds = path.interactions || '';
       for (let i = 0; i + 1 < path.points.length; i++) {
+        let c = byPower;
+        if (mode === 'interaction') {
+          // Segment i ends at bounce i, so it carries that bounce's kind; the
+          // final hop into the receiver keeps the last one it came from.
+          const kind = kinds.length === 0 ? '' : (kinds[i] ?? kinds[kinds.length - 1]);
+          const entry = INTERACTIONS[kind] || INTERACTIONS.S;
+          c = entry.color;
+          seen.add(kinds.length === 0 ? '' : kind);
+        }
         const a = path.points[i], b = path.points[i + 1];
         for (const [side, end] of CORNERS) {
           p0.push(...a); p1.push(...b); cols.push(...c); params.push(side, end);
         }
       }
     }
+    this.rayKinds = [...seen];
     this.rayCount = params.length / 2;
     if (this.rayVao) gl.deleteVertexArray(this.rayVao);
     if (!this.rayCount) { this.draw(); return; }

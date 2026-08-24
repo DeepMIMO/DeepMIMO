@@ -431,7 +431,7 @@ def _material_style(
     material: Any,
     index: int,
     object_names: set[str],
-) -> tuple[str, list[float]]:
+) -> tuple[str, str, list[float]]:
     """Name and colour a material, preferring evidence from the objects using it.
 
     Exporters encode the material in the object name - ``window_glass``,
@@ -446,12 +446,12 @@ def _material_style(
         object_names: Names of the objects that reference this material.
 
     Returns:
-        Tuple of (display name, RGB in 0-1).
+        Tuple of (display name, material class, RGB in 0-1).
 
     """
     for token in ITU_TOKENS:
         if any(token in name.lower() for name in object_names):
-            return f"{token} ({index})", ITU_COLOURS[token]
+            return f"{token} ({index})", token, ITU_COLOURS[token]
 
     get = material.get if isinstance(material, dict) else lambda k, d=None: getattr(material, k, d)
     conductivity = float(get("conductivity", 0.0) or 0.0)
@@ -459,10 +459,10 @@ def _material_style(
     metal_conductivity = 1e3
     dielectric_high = 8.0
     if conductivity > metal_conductivity:
-        return f"metal ({index})", ITU_COLOURS["metal"]
+        return f"metal ({index})", "metal", ITU_COLOURS["metal"]
     if permittivity >= dielectric_high:
-        return f"concrete ({index})", ITU_COLOURS["concrete"]
-    return f"material {index}", [0.62, 0.58, 0.52]
+        return f"concrete ({index})", "concrete", ITU_COLOURS["concrete"]
+    return f"material {index}", "other", [0.62, 0.58, 0.52]
 
 
 def scene_geometry(name: str) -> tuple[bytes, dict[str, Any]]:
@@ -504,12 +504,13 @@ def scene_geometry(name: str) -> tuple[bytes, dict[str, Any]]:
         block = np.concatenate(triangles).astype(np.float32)
         chunks.append(block)
         record = materials[material_idx] if material_idx < len(materials) else {}
-        label, colour = _material_style(
+        label, material, colour = _material_style(
             record, material_idx, names_by_material.get(material_idx, set()),
         )
         groups.append(
             {
                 "name": label,
+                "material": material,
                 "start": start,
                 "count": len(block),
                 "color": colour,
@@ -563,6 +564,9 @@ def scene_rays(name: str, rx_index: int, tx_index: int) -> dict[str, Any]:
     inter = np.asarray(dataset.inter_pos)[rx_index]
     power = np.asarray(dataset.power)[rx_index]
     delay = np.asarray(dataset.delay)[rx_index]
+    # One letter per bounce - R reflection, D diffraction, S scattering,
+    # T transmission - so a path can be coloured by what happened along it.
+    kinds = np.asarray(dataset.inter_str)[rx_index]
 
     paths = []
     for path_index in range(inter.shape[0]):
@@ -577,6 +581,7 @@ def scene_rays(name: str, rx_index: int, tx_index: int) -> dict[str, Any]:
                 "power_db": float(power[path_index]),
                 "delay_ns": float(delay[path_index]) * 1e9,
                 "bounces": int(len(bounces)),
+                "interactions": str(kinds[path_index] or ""),
             },
         )
     paths.sort(key=lambda p: -p["power_db"])
@@ -648,8 +653,10 @@ PAGE = r"""<!doctype html>
  #legend div{display:flex;align-items:center;gap:6px;cursor:pointer;padding:1px 0}
  #legend i{width:10px;height:10px;border-radius:2px;flex:none}
  #legend .off{opacity:.32;text-decoration:line-through}
- #cov{position:absolute;right:10px;bottom:10px;max-width:44%;border:1px solid var(--line);
-      border-radius:7px;cursor:zoom-in}
+ #covbox{position:absolute;right:10px;bottom:10px;width:34%;min-width:200px;max-width:80%;
+      border:1px solid var(--line);border-radius:7px;overflow:hidden;
+      background:#171d24;resize:horizontal;direction:rtl}
+ #cov{display:block;width:100%;height:auto;direction:ltr}
  #prog{position:absolute;left:50%;transform:translateX(-50%);top:10px;width:min(560px,60%);
        display:none}
  .bar{height:6px;background:#222a33;border-radius:3px;overflow:hidden;margin:7px 0 5px}
@@ -800,6 +807,12 @@ PAGE = r"""<!doctype html>
       <select id="tx" onchange="loadCoverage()"><option value="-1">best server</option></select>
       <div class="chk"><input type="checkbox" id="rayMode" checked>
         <span>Click a point to trace its rays</span></div>
+      <label>Ray colour</label>
+      <select id="rayColour" onchange="setRayColour(this.value)">
+        <option value="power">received power</option>
+        <option value="interaction">interaction type</option>
+      </select>
+      <div id="raylegend" class="hint"></div>
       <label>Ray thickness <span id="l_rayw" class="hint">4.5 px</span></label>
       <input id="rayW" type="range" min="1" max="12" step="0.5" value="4.5"
              oninput="view.setRayWidth(this.value);
@@ -828,11 +841,11 @@ PAGE = r"""<!doctype html>
       <div class="prow"><span id="pdetail"></span><span id="pelapsed"></span></div>
       <div id="plog"></div>
     </div>
-    <img id="cov" onclick="this.style.maxWidth=this.style.maxWidth==='88%'?'44%':'88%'">
+    <div id="covbox" title="drag the lower-left corner to resize"><img id="cov"></div>
   </div>
 </main>
 <script type="module">
-import { Viewer } from './viewer.js';
+import { Viewer, INTERACTIONS } from './viewer.js';
 const view = new Viewer(document.getElementById('gl'));
 window.view = view;
 let MANIFEST = null, POLL = null;
@@ -859,14 +872,30 @@ function fmt(sec) {
 
 function drawLegend() {
   const box = $('legend'); box.innerHTML = '';
+  // Sionna needs one material instance per group, so a 41-object scene carries
+  // 41 materials of a dozen classes. The legend is about classes; listing every
+  // instance said "concrete" fourteen times and meant nothing.
+  const classes = new Map();
   for (const g of MANIFEST.groups) {
-    const c = g.color.map(v => Math.round(v * 255)).join(',');
+    const key = g.material || g.name;
+    const entry = classes.get(key) || {color: g.color, triangles: 0, names: []};
+    entry.triangles += g.triangles;
+    entry.names.push(g.name);
+    classes.set(key, entry);
+  }
+  const hidden = new Set();
+  for (const [key, entry] of [...classes].sort((a, b) => b[1].triangles - a[1].triangles)) {
+    const c = entry.color.map(v => Math.round(v * 255)).join(',');
+    const count = entry.names.length > 1 ? ` <span style="color:#69737e">×${entry.names.length}</span>` : '';
     const row = document.createElement('div');
-    row.innerHTML = `<i style="background:rgb(${c})"></i><span>${g.name}</span>` +
-                    `<span style="margin-left:auto;color:#69737e">${g.triangles}</span>`;
+    row.title = entry.names.join(', ');
+    row.innerHTML = `<i style="background:rgb(${c})"></i><span>${key}${count}</span>` +
+                    `<span style="margin-left:auto;color:#69737e">${entry.triangles.toLocaleString()}</span>`;
     row.onclick = () => {
       row.classList.toggle('off');
-      view.setHidden([...box.querySelectorAll('.off span:first-of-type')].map(s => s.textContent));
+      if (row.classList.contains('off')) entry.names.forEach(n => hidden.add(n));
+      else entry.names.forEach(n => hidden.delete(n));
+      view.setHidden([...hidden]);
     };
     box.appendChild(row);
   }
@@ -886,10 +915,14 @@ window.loadScene = async () => {
     $('summary').innerHTML = Object.entries(s)
       .map(([k, v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
     $('hud').textContent =
-      `${(MANIFEST.vertices / 3).toLocaleString()} triangles · ${MANIFEST.groups.length} materials`;
+      `${(MANIFEST.vertices / 3).toLocaleString()} triangles · ` +
+      `${new Set(MANIFEST.groups.map(g => g.material || g.name)).size} materials ` +
+      `in ${MANIFEST.groups.length} instances`;
     view.pickZ = MANIFEST.markers && MANIFEST.markers.rx_z != null
       ? MANIFEST.markers.rx_z : 1.2;
+    RAY_PATHS = [];
     view.setRays([]);
+    drawRayLegend();
     $('rayinfo').textContent = '';
     previewGrid();
     followViewer();
@@ -904,7 +937,9 @@ async function showRays(query) {
   const r = await fetch('api/rays?' + query.toString());
   if (!r.ok) { $('err').textContent = await r.text(); return; }
   const data = await r.json();
-  view.setRays(data.paths);
+  RAY_PATHS = data.paths || [];
+  view.setRays(RAY_PATHS, RAY_COLOUR);
+  drawRayLegend();
   const best = data.paths[0];
   $('rayinfo').innerHTML = data.paths.length
     ? `RX ${data.rx_index} at ${data.rx.map(v => v.toFixed(1)).join(', ')} — ` +
@@ -1077,6 +1112,30 @@ async function poll() {
 }
 
 let SCENES = [], SCENE_TYPES = {}, RESUMABLE = null;
+let RAY_PATHS = [], RAY_COLOUR = 'power';
+
+window.setRayColour = (mode) => {
+  RAY_COLOUR = mode;
+  view.setRays(RAY_PATHS, mode);
+  drawRayLegend();
+};
+
+function drawRayLegend() {
+  const box = $('raylegend');
+  if (RAY_COLOUR !== 'interaction' || !RAY_PATHS.length) {
+    box.innerHTML = RAY_PATHS.length
+      ? 'brightest paths carry the most power' : '';
+    return;
+  }
+  // The hues sit below 3:1 against the scene, so the names carry the identity.
+  box.innerHTML = (view.rayKinds || []).map(k => {
+    const e = INTERACTIONS[k] || INTERACTIONS.S;
+    const rgb = e.color.map(v => Math.round(v * 255)).join(',');
+    return `<span style="display:inline-flex;align-items:center;gap:4px;margin-right:8px">` +
+           `<i style="width:9px;height:9px;border-radius:2px;background:rgb(${rgb})"></i>` +
+           `${e.label}</span>`;
+  }).join('');
+}
 
 window.convertTraced = async () => {
   if (!RESUMABLE) return;

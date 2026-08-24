@@ -144,6 +144,22 @@ occlusion and contact edges; flat shading made rooms unreadable, because every
 wall met every other wall at the same brightness. Turn the shading off for a
 flat-colour view when comparing materials.
 
+**Ray colour** switches what a traced path's colour means. By *received power* a
+single ramp runs violet through red to gold, strongest last. By *interaction
+type* each segment takes the colour of what happened at the end of it, so a ray
+visibly changes colour where it diffracts or passes through a wall — reflection,
+diffraction and transmission each have their own hue, checked for colour-vision
+separation against both the studio and dark backgrounds, and named in a legend
+because the hues sit below 3:1 against the scene.
+
+The material legend lists material **classes**, not instances. Sionna needs a
+separate material instance per group — it merges shapes that share one — so a
+41-object scene carries 41 materials of about five classes, and listing them
+individually said "concrete" eight times to no purpose. Each row shows how many
+instances it stands for and hides all of them at once.
+
+The coverage panel is resizable: drag its lower-left corner.
+
 **Coverage map** switches what the bottom-right panel shows, all for the same
 receivers:
 
