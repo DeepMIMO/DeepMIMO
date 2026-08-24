@@ -94,6 +94,30 @@ sionna_exporter(
 
 ::: deepmimo.exporters.sionna_exporter.sionna_exporter
 
+## Re-tracing an existing scenario
+
+A converted scenario keeps its geometry and its material constants, so it can be
+written back out as a Mitsuba scene and ray traced again — at another carrier
+frequency, with different transmitters, or with a different solver setting —
+without the source files it was built from.
+
+```python
+from deepmimo.exporters import mitsuba_exporter
+
+report = mitsuba_exporter.export_scenario('city_37_seoul_3p5', '/tmp/seoul_scene')
+print(report['shapes'], 'shapes,', report['triangles'], 'triangles')
+```
+
+Materials whose name matches an ITU class are written as `itu-radio-material`,
+so Sionna re-derives them at the new frequency. Anything else keeps the
+permittivity and conductivity the scenario stored, which were measured at one
+frequency and are *not* re-derived — `report['materials']` says which treatment
+each material got.
+
+::: deepmimo.exporters.mitsuba_exporter.export_scenario
+
+::: deepmimo.exporters.mitsuba_exporter.export_scene
+
 ### Converting
 
 ```python

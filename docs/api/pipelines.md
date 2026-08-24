@@ -211,3 +211,44 @@ clear_lat, clear_lon = find_nearest_clear_location(
 ::: deepmimo.pipelines.utils.osm_utils.find_nearest_clear_location
 
 ::: deepmimo.pipelines.utils.osm_utils.is_point_clear_of_buildings
+
+## Infinigen Indoor Scenes
+
+`infinigen_to_mitsuba` turns a furnished [Infinigen](https://infinigen.org)
+interior into a Mitsuba scene Sionna can trace. Infinigen produces millions of
+triangles of interior detail, most of it far below any wavelength a radio scene
+cares about, so every object is classified as architecture, furniture or
+ornament and decimated to its own budget: walls stay exact while a plant loses
+its leaf veins. One apartment went from 8.5M triangles to 61k with its blockers
+intact.
+
+Door leaves are dropped by default so rays can pass between rooms; the openings
+themselves are architecture and stay.
+
+### Typical usage
+
+```python
+from deepmimo.pipelines.infinigen_to_mitsuba import export_blend
+
+summary = export_blend(
+    'scene.blend',
+    'mitsuba_scene/',
+    budgets={'architecture': 2500, 'furniture': 1500, 'ornament': 120},
+    min_size=0.10,        # a wave cannot resolve anything smaller
+    open_doors=True,
+)
+```
+
+Generating the scene in the first place needs Blender and Infinigen, which pin
+`numpy<2` while Sionna needs `numpy>=2`; the two therefore live in separate
+environments and hand over through files on disk. `scripts/pipelines/infinigen_pipeline_runner.py`
+drives all four stages, and `scripts/scenario_dashboard/` puts them behind a
+browser UI.
+
+### API reference
+
+::: deepmimo.pipelines.infinigen_to_mitsuba.export_blend
+
+::: deepmimo.pipelines.infinigen_to_mitsuba.classify_object
+
+::: deepmimo.pipelines.infinigen_to_mitsuba.map_shader_to_material
