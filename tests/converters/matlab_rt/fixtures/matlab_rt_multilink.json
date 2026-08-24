@@ -1,0 +1,439 @@
+{
+  "metadata": {
+    "experiment": "matlab_rt_converter_poc_extended",
+    "matlab_version": "25.2.0.3042426 (R2025b) Update 1",
+    "description": "Two TX, two RX, one vertical PEC reflector wall; validates link indexing and signed angles"
+  },
+  "scene": {
+    "coordinate_system": "cartesian",
+    "frequency_hz": 3.5E+9,
+    "tx_positions_m": [
+      [
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        10,
+        1
+      ]
+    ],
+    "rx_positions_m": [
+      [
+        10,
+        0,
+        1
+      ],
+      [
+        10,
+        10,
+        1
+      ]
+    ],
+    "geometry": "single vertical rectangular PEC reflector wall as a triangulation",
+    "expected_link_layout": "rays_cell{tx_index, rx_index}; exported links are tx-major and 1-based"
+  },
+  "reflector": {
+    "description": "vertical wall at y=5 m",
+    "material": "perfect-reflector / PEC",
+    "vertices_m": [
+      [
+        -5,
+        5,
+        0
+      ],
+      [
+        15,
+        5,
+        0
+      ],
+      [
+        15,
+        5,
+        5
+      ],
+      [
+        -5,
+        5,
+        5
+      ]
+    ],
+    "faces": [
+      [
+        1,
+        2,
+        3
+      ],
+      [
+        1,
+        3,
+        4
+      ]
+    ]
+  },
+  "transmitters": [
+    {
+      "index": 1,
+      "class": "txsite",
+      "name": "tx1",
+      "antenna_position_m": [
+        0,
+        0,
+        1
+      ],
+      "transmitter_frequency_hz": 3.5E+9
+    },
+    {
+      "index": 2,
+      "class": "txsite",
+      "name": "tx2",
+      "antenna_position_m": [
+        0,
+        10,
+        1
+      ],
+      "transmitter_frequency_hz": 3.5E+9
+    }
+  ],
+  "receivers": [
+    {
+      "index": 1,
+      "class": "rxsite",
+      "name": "rx1",
+      "antenna_position_m": [
+        10,
+        0,
+        1
+      ]
+    },
+    {
+      "index": 2,
+      "class": "rxsite",
+      "name": "rx2",
+      "antenna_position_m": [
+        10,
+        10,
+        1
+      ]
+    }
+  ],
+  "propagation_model": {
+    "class": "rfprop.RayTracing",
+    "coordinate_system": "cartesian",
+    "method": "image",
+    "max_num_reflections": 1,
+    "max_num_diffractions": 0,
+    "max_absolute_path_loss_db": null,
+    "max_relative_path_loss_db": 40,
+    "surface_material": "perfect-reflector"
+  },
+  "num_tx": 2,
+  "num_rx": 2,
+  "rays_cell_size": [
+    2,
+    2
+  ],
+  "links": [
+    {
+      "index": 1,
+      "tx_index": 1,
+      "rx_index": 1,
+      "tx_name": "tx1",
+      "rx_name": "rx1",
+      "tx_position_m": [
+        0,
+        0,
+        1
+      ],
+      "rx_position_m": [
+        10,
+        0,
+        1
+      ],
+      "num_rays": 2,
+      "rays": [
+        {
+          "index": 1,
+          "class": "comm.Ray",
+          "path_specification": "Locations",
+          "coordinate_system": "Cartesian",
+          "system_scale": 1,
+          "transmitter_location_m": [
+            0,
+            0,
+            1
+          ],
+          "receiver_location_m": [
+            10,
+            0,
+            1
+          ],
+          "line_of_sight": true,
+          "frequency_hz": 3.5E+9,
+          "path_loss_source": "Custom",
+          "path_loss_db": 63.32914410888889,
+          "phase_shift_rad": 4.6962620502565926,
+          "phase_shift_deg": 269.07599496715767,
+          "propagation_delay_s": 3.3356409519815205E-8,
+          "propagation_distance_m": 10,
+          "angle_of_departure_deg": [
+            0,
+            0
+          ],
+          "angle_of_arrival_deg": [
+            180,
+            0
+          ],
+          "num_interactions": 0,
+          "interactions": [],
+          "path_coordinates_m": [
+            [
+              0,
+              0,
+              1
+            ],
+            [
+              10,
+              0,
+              1
+            ]
+          ]
+        },
+        {
+          "index": 2,
+          "class": "comm.Ray",
+          "path_specification": "Locations",
+          "coordinate_system": "Cartesian",
+          "system_scale": 1,
+          "transmitter_location_m": [
+            0,
+            0,
+            1
+          ],
+          "receiver_location_m": [
+            10,
+            0,
+            1
+          ],
+          "line_of_sight": false,
+          "frequency_hz": 3.5E+9,
+          "path_loss_source": "Custom",
+          "path_loss_db": 66.339444064418942,
+          "phase_shift_rad": 0.66478331949713976,
+          "phase_shift_deg": 38.089278497883079,
+          "propagation_delay_s": 4.7173086728966576E-8,
+          "propagation_distance_m": 14.142135621924069,
+          "angle_of_departure_deg": [
+            44.999999985359111,
+            0
+          ],
+          "angle_of_arrival_deg": [
+            135,
+            0
+          ],
+          "num_interactions": 1,
+          "interactions": [
+            {
+              "index": 1,
+              "class": "struct",
+              "Type": "Reflection",
+              "Location": [
+                5.0000000012776589,
+                4.999999998722342,
+                1
+              ],
+              "MaterialName": "PEC"
+            }
+          ],
+          "path_coordinates_m": [
+            [
+              0,
+              0,
+              1
+            ],
+            [
+              5.0000000012776589,
+              4.999999998722342,
+              1
+            ],
+            [
+              10,
+              0,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "index": 2,
+      "tx_index": 1,
+      "rx_index": 2,
+      "tx_name": "tx1",
+      "rx_name": "rx2",
+      "tx_position_m": [
+        0,
+        0,
+        1
+      ],
+      "rx_position_m": [
+        10,
+        10,
+        1
+      ],
+      "num_rays": 0,
+      "rays": []
+    },
+    {
+      "index": 3,
+      "tx_index": 2,
+      "rx_index": 1,
+      "tx_name": "tx2",
+      "rx_name": "rx1",
+      "tx_position_m": [
+        0,
+        10,
+        1
+      ],
+      "rx_position_m": [
+        10,
+        0,
+        1
+      ],
+      "num_rays": 0,
+      "rays": []
+    },
+    {
+      "index": 4,
+      "tx_index": 2,
+      "rx_index": 2,
+      "tx_name": "tx2",
+      "rx_name": "rx2",
+      "tx_position_m": [
+        0,
+        10,
+        1
+      ],
+      "rx_position_m": [
+        10,
+        10,
+        1
+      ],
+      "num_rays": 2,
+      "rays": [
+        {
+          "index": 1,
+          "class": "comm.Ray",
+          "path_specification": "Locations",
+          "coordinate_system": "Cartesian",
+          "system_scale": 1,
+          "transmitter_location_m": [
+            0,
+            10,
+            1
+          ],
+          "receiver_location_m": [
+            10,
+            10,
+            1
+          ],
+          "line_of_sight": true,
+          "frequency_hz": 3.5E+9,
+          "path_loss_source": "Custom",
+          "path_loss_db": 63.32914410888889,
+          "phase_shift_rad": 4.6962620502565926,
+          "phase_shift_deg": 269.07599496715767,
+          "propagation_delay_s": 3.3356409519815205E-8,
+          "propagation_distance_m": 10,
+          "angle_of_departure_deg": [
+            0,
+            0
+          ],
+          "angle_of_arrival_deg": [
+            180,
+            0
+          ],
+          "num_interactions": 0,
+          "interactions": [],
+          "path_coordinates_m": [
+            [
+              0,
+              10,
+              1
+            ],
+            [
+              10,
+              10,
+              1
+            ]
+          ]
+        },
+        {
+          "index": 2,
+          "class": "comm.Ray",
+          "path_specification": "Locations",
+          "coordinate_system": "Cartesian",
+          "system_scale": 1,
+          "transmitter_location_m": [
+            0,
+            10,
+            1
+          ],
+          "receiver_location_m": [
+            10,
+            10,
+            1
+          ],
+          "line_of_sight": false,
+          "frequency_hz": 3.5E+9,
+          "path_loss_source": "Custom",
+          "path_loss_db": 66.339444064418942,
+          "phase_shift_rad": 0.66478331949713976,
+          "phase_shift_deg": 38.089278497883079,
+          "propagation_delay_s": 4.7173086728966576E-8,
+          "propagation_distance_m": 14.142135621924069,
+          "angle_of_departure_deg": [
+            -44.999999985359111,
+            0
+          ],
+          "angle_of_arrival_deg": [
+            -135,
+            0
+          ],
+          "num_interactions": 1,
+          "interactions": [
+            {
+              "index": 1,
+              "class": "struct",
+              "Type": "Reflection",
+              "Location": [
+                5.000000001277658,
+                5.0000000012776589,
+                1
+              ],
+              "MaterialName": "PEC"
+            }
+          ],
+          "path_coordinates_m": [
+            [
+              0,
+              10,
+              1
+            ],
+            [
+              5.000000001277658,
+              5.0000000012776589,
+              1
+            ],
+            [
+              10,
+              10,
+              1
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -36,6 +36,9 @@ dependencies = [
 include = ["deepmimo*"]
 exclude = ["deepmimo_v3*", "deepmimo_v3.*"]
 
+[tool.setuptools.package-data]
+"deepmimo.exporters" = ["*.m"]
+
 [project.urls]
 Homepage = "https://deepmimo.net/"
 Documentation = "https://deepmimo.net/documentation"
