@@ -318,3 +318,111 @@ def test_read_scene_overlap_threshold_controls_merging(mock_get_faces, mock_load
         "/dummy", [0, 1], deduplicate=True, overlap_threshold=0.95
     )
     assert len(scene_split.objects) == 2
+
+
+# ---------------------------------------------------------------------------
+# Lossless conversion
+# ---------------------------------------------------------------------------
+
+# A vertical wall panel plus a horizontal floor, as two Sionna objects. The wall
+# is the interesting one: its 2D footprint is a line, which the convex-hull path
+# rejects as collinear.
+_WALL_TRIS = np.array([[0, 1, 2], [0, 2, 3]])
+_LOSSLESS_VERTICES = np.array(
+    [
+        # wall at x = 0, spanning y and z
+        [0.0, 0.0, 0.0],
+        [0.0, 4.0, 0.0],
+        [0.0, 4.0, 3.0],
+        [0.0, 0.0, 3.0],
+        # floor slab
+        [0.0, 0.0, 0.0],
+        [4.0, 0.0, 0.0],
+        [4.0, 4.0, 0.0],
+        [0.0, 4.0, 0.0],
+    ],
+)
+_LOSSLESS_OBJECTS = {"wall_panel": (0, 4), "ground_plane": (4, 8)}
+_LOSSLESS_FACES = np.vstack([_WALL_TRIS, _WALL_TRIS + 4])
+
+
+def _patched_pickles(monkeypatch) -> None:
+    """Serve a small synthetic Sionna export to read_scene."""
+    payloads = {
+        "sionna_vertices.pkl": _LOSSLESS_VERTICES,
+        "sionna_objects.pkl": _LOSSLESS_OBJECTS,
+        "sionna_faces.pkl": _LOSSLESS_FACES,
+    }
+    monkeypatch.setattr(
+        sionna_scene,
+        "load_pickle",
+        lambda path: payloads[path.rsplit("/", 1)[-1]],
+    )
+
+
+def test_lossless_keeps_every_declared_triangle(monkeypatch) -> None:
+    """Lossless conversion emits one face per declared triangle."""
+    _patched_pickles(monkeypatch)
+
+    scene = sionna_scene.read_scene("ignored", [0, 1], lossless=True)
+
+    assert len(scene.objects) == len(_LOSSLESS_OBJECTS)
+    assert sum(len(obj.faces) for obj in scene.objects) == len(_LOSSLESS_FACES)
+
+
+def test_lossless_keeps_vertical_walls(monkeypatch) -> None:
+    """A wall the hull path discards as collinear survives losslessly.
+
+    This is the defect that left converted indoor scenes with a floor, a ceiling
+    and no walls at all.
+    """
+    _patched_pickles(monkeypatch)
+
+    scene = sionna_scene.read_scene("ignored", [0, 1], lossless=True)
+    wall = next(obj for obj in scene.objects if obj.name == "wall_panel")
+    vertices = np.concatenate([face.vertices for face in wall.faces])
+
+    assert len(wall.faces) == len(_WALL_TRIS)
+    assert np.ptp(vertices[:, 0]) == 0.0  # perfectly vertical
+    assert np.ptp(vertices[:, 2]) == 3.0  # full height retained
+
+
+def test_lossless_preserves_object_names_and_labels(monkeypatch) -> None:
+    """Object identity survives, and ground surfaces are labelled as terrain."""
+    _patched_pickles(monkeypatch)
+
+    scene = sionna_scene.read_scene("ignored", [0, 1], lossless=True)
+    labels = {obj.name: obj.label for obj in scene.objects}
+
+    assert labels == {"wall_panel": CAT_BUILDINGS, "ground_plane": CAT_TERRAIN}
+
+
+def test_lossless_does_not_run_the_component_split(monkeypatch) -> None:
+    """The connected-component pass is skipped, which is what makes it fast.
+
+    That pass exists to reassemble a merged mesh before hulling it; with no hull
+    it is pure cost, and it dominates conversion time on a detailed interior.
+    """
+    _patched_pickles(monkeypatch)
+    calls = []
+
+    def _record(*args) -> list:
+        calls.append(args)
+        return []
+
+    monkeypatch.setattr(sionna_scene, "_split_into_component_meshes", _record)
+
+    sionna_scene.read_scene("ignored", [0, 1], lossless=True)
+
+    assert calls == []
+
+
+def test_lossless_assigns_material_per_object(monkeypatch) -> None:
+    """Each object's faces carry that object's material index."""
+    _patched_pickles(monkeypatch)
+
+    scene = sionna_scene.read_scene("ignored", [0, 1], lossless=True)
+    by_name = {obj.name: obj for obj in scene.objects}
+
+    assert {f.material_idx for f in by_name["wall_panel"].faces} == {0}
+    assert {f.material_idx for f in by_name["ground_plane"].faces} == {1}

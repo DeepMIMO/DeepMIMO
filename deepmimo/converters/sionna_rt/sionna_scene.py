@@ -22,7 +22,7 @@ from deepmimo.core.scene import (
 from deepmimo.utils import load_pickle
 
 # (vertices, material_idx, label, name)
-_Component = tuple[np.ndarray, int, str, str]
+_Component = tuple[np.ndarray, int, str, str, np.ndarray]
 
 
 def _split_into_components(
@@ -53,6 +53,48 @@ def _split_into_components(
     )
     _, labels = connected_components(graph, directed=False)
     return [obj_vertices[labels == lbl] for lbl in np.unique(labels)]
+
+
+def _split_into_component_meshes(
+    obj_vertices: np.ndarray,
+    obj_faces: np.ndarray,
+) -> list[tuple[np.ndarray, np.ndarray]]:
+    """Split a mesh into connected components, keeping each one's triangles.
+
+    :func:`_split_into_components` returns only vertices, which is all the
+    convex-hull path needs. Preserving the triangles as well is what allows the
+    lossless path to keep the declared geometry.
+
+    Args:
+        obj_vertices: (N, 3) vertex array for this object.
+        obj_faces: (F, 3) face indices local to obj_vertices.
+
+    Returns:
+        List of (vertices, faces) pairs, with faces re-indexed into vertices.
+
+    """
+    n_verts = len(obj_vertices)
+    if n_verts == 0:
+        return []
+    if len(obj_faces) == 0:
+        return [(obj_vertices, np.zeros((0, 3), dtype=np.int64))]
+
+    rows = np.concatenate([obj_faces[:, 0], obj_faces[:, 1], obj_faces[:, 2]])
+    cols = np.concatenate([obj_faces[:, 1], obj_faces[:, 2], obj_faces[:, 0]])
+    graph = coo_matrix(
+        (np.ones(len(rows), dtype=np.int8), (rows, cols)),
+        shape=(n_verts, n_verts),
+    )
+    _, labels = connected_components(graph, directed=False)
+
+    meshes = []
+    for lbl in np.unique(labels):
+        keep = labels == lbl
+        remap = np.full(n_verts, -1, dtype=np.int64)
+        remap[keep] = np.arange(int(keep.sum()))
+        comp_faces = obj_faces[keep[obj_faces[:, 0]]]
+        meshes.append((obj_vertices[keep], remap[comp_faces]))
+    return meshes
 
 
 def _aabb_overlap_ratio(
@@ -145,12 +187,62 @@ def _cluster_by_aabb(
     return list(clusters.values())
 
 
-def read_scene(
+def _read_scene_lossless(
+    obj_items: list[tuple[str, tuple[int, int]]],
+    obj_faces_map: list[np.ndarray],
+    vertices: np.ndarray,
+    material_indices: list[int],
+    terrain_keywords: list[str],
+) -> Scene:
+    """Build a scene from the triangles Sionna declared, one object at a time.
+
+    This path needs neither the connected-component split nor the AABB
+    clustering the hull path performs: both exist to reassemble one object out
+    of a merged mesh before a convex hull is taken, and no hull is taken here.
+    Sionna already groups geometry per object, so each object maps straight to a
+    :class:`PhysicalElement`. Skipping the component pass is what makes the
+    lossless path fast as well as exact - that pass dominates conversion time on
+    a large scene, to the point of being unusable on a detailed interior.
+
+    Args:
+        obj_items: (name, vertex range) per Sionna object.
+        obj_faces_map: Triangle indices belonging to each object.
+        vertices: Global vertex array.
+        material_indices: Material index per object.
+        terrain_keywords: Object-name fragments that mark ground surfaces.
+
+    Returns:
+        Scene: Loaded scene with the declared geometry preserved.
+
+    """
+    scene = Scene()
+    for obj_idx, (name, _vertex_range) in enumerate(obj_items):
+        obj_faces = obj_faces_map[obj_idx]
+        if len(obj_faces) == 0:
+            continue
+        is_floor = any(word in name.lower() for word in terrain_keywords)
+        material_idx = material_indices[obj_idx]
+        scene.add_object(
+            PhysicalElement(
+                faces=[
+                    Face(vertices=triangle, material_idx=material_idx)
+                    for triangle in vertices[obj_faces]
+                ],
+                object_id=obj_idx,
+                label=CAT_TERRAIN if is_floor else CAT_BUILDINGS,
+                name=name,
+            ),
+        )
+    return scene
+
+
+def read_scene(  # noqa: C901 - one branch per phase of the hull pipeline
     load_folder: str,
     material_indices: list[int],
     *,
     deduplicate: bool = True,
     overlap_threshold: float = 0.8,
+    lossless: bool = False,
 ) -> Scene:
     """Load scene data from Sionna format.
 
@@ -171,6 +263,9 @@ def read_scene(
     Args:
         load_folder: Path to folder containing Sionna scene files.
         material_indices: List of material indices, one per object.
+        lossless: If True, keep the triangles Sionna declared instead of replacing
+            each object with its convex hull. Required for indoor scenes, whose
+            flat walls the hull path discards.
         deduplicate: Merge building components whose bounding boxes substantially
             overlap.  Resolves the visual duplication that arises from Sionna's
             default ``merge_shapes=True`` scene loading.  Set to ``False`` to
@@ -207,6 +302,15 @@ def read_scene(
 
     terrain_keywords = ["plane", "floor", "terrain", "roads", "paths", "ground"]
 
+    if lossless:
+        return _read_scene_lossless(
+            obj_items,
+            obj_faces_map,
+            vertices,
+            material_indices,
+            terrain_keywords,
+        )
+
     # --- Phase 1: split every material mesh into connected components ---
     all_components: list[_Component] = []
     for mat_idx_pos, (name, vertex_range) in enumerate(obj_items):
@@ -219,12 +323,14 @@ def read_scene(
             obj_vertices = vertices[start_idx:end_idx]
             obj_faces = obj_faces_map[mat_idx_pos] - start_idx
 
-            components = _split_into_components(obj_vertices, obj_faces)
+            components = _split_into_component_meshes(obj_vertices, obj_faces)
             n_comps = len(components)
 
-            for comp_idx, comp_verts in enumerate(components):
+            for comp_idx, (comp_verts, comp_faces) in enumerate(components):
                 comp_name = name if n_comps == 1 else f"{name}_{comp_idx}"
-                all_components.append((comp_verts, material_idx, obj_label, comp_name))
+                all_components.append(
+                    (comp_verts, material_idx, obj_label, comp_name, comp_faces),
+                )
 
         except Exception as e:
             print(f"Error processing object {name}: {e!s}")
@@ -240,13 +346,25 @@ def read_scene(
     obj_counter = 0
     for cluster in clusters:
         merged_verts = np.vstack([all_components[k][0] for k in cluster])
-        _, material_idx, obj_label, comp_name = all_components[cluster[0]]
+        _, material_idx, obj_label, comp_name, _ = all_components[cluster[0]]
 
-        generated_faces = get_object_faces(merged_verts)
-        if generated_faces is None:
-            continue
-
-        object_faces = [Face(vertices=fv, material_idx=material_idx) for fv in generated_faces]
+        if lossless:
+            # Sionna meshes are already triangulated, so each declared triangle
+            # becomes a face directly. The hull path below would instead rebuild
+            # each object from its 2D footprint, where a flat wall projects to a
+            # line and is dropped as collinear.
+            object_faces = [
+                Face(vertices=verts[tri], material_idx=material_idx)
+                for k in cluster
+                for verts, tri in [(all_components[k][0], t) for t in all_components[k][4]]
+            ]
+            if not object_faces:
+                continue
+        else:
+            generated_faces = get_object_faces(merged_verts)
+            if generated_faces is None:
+                continue
+            object_faces = [Face(vertices=fv, material_idx=material_idx) for fv in generated_faces]
         obj = PhysicalElement(
             faces=object_faces,
             object_id=obj_counter,

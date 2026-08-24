@@ -160,6 +160,11 @@ def raytrace_sionna(  # noqa: PLR0912, C901
         "specular_reflection": bool(rt_params["max_reflections"]),
         "diffuse_reflection": rt_params["ds_enable"],
         "refraction": rt_params["refraction"],
+        # Sionna 2.x solves diffraction, and it is the dominant mechanism behind
+        # obstacles - around rack uprights indoors, around building corners
+        # outdoors - so leaving it off understates coverage in cluttered scenes.
+        "diffraction": bool(rt_params["max_diffractions"]),
+        "edge_diffraction": bool(rt_params.get("edge_diffraction", False)),
     }
 
     def none_or_index(x: Any, i: Any) -> Any:

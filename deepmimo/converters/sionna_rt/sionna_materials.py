@@ -4,10 +4,11 @@ This module handles loading and converting material data from Sionna's format to
 """
 
 from pathlib import Path
-from typing import Any
 
 from deepmimo.core.materials import Material, MaterialList
 from deepmimo.utils import load_pickle
+
+from .sionna_compat import as_scalar
 
 
 def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:
@@ -40,24 +41,20 @@ def read_materials(load_folder: str) -> tuple[dict, dict[str, int]]:
     for i, mat_property in enumerate(material_properties):
         # Get scattering model type and handle case where scattering is disabled
         scattering_model = scat_model[mat_property["scattering_pattern"]]
-        scat_coeff = mat_property["scattering_coefficient"]
+        scat_coeff = as_scalar(mat_property["scattering_coefficient"])
         scattering_model = Material.SCATTERING_NONE if not scat_coeff else scattering_model
-
-        # Create Material object
-        def safe_float(val: Any, default: float = 0.0) -> float:
-            return float(val) if val is not None else float(default)
 
         material = Material(
             id=i,
             name=f"material_{i}",  # Default name if not provided
-            permittivity=float(mat_property["relative_permittivity"]),
-            conductivity=float(mat_property["conductivity"]),
+            permittivity=as_scalar(mat_property["relative_permittivity"]),
+            conductivity=as_scalar(mat_property["conductivity"]),
             scattering_model=scattering_model,
-            scattering_coefficient=float(scat_coeff),
-            cross_polarization_coefficient=float(mat_property["xpd_coefficient"]),
-            alpha_r=safe_float(mat_property["alpha_r"]),
-            alpha_i=safe_float(mat_property["alpha_i"]),
-            lambda_param=safe_float(mat_property["lambda_"]),
+            scattering_coefficient=as_scalar(scat_coeff),
+            cross_polarization_coefficient=as_scalar(mat_property["xpd_coefficient"]),
+            alpha_r=as_scalar(mat_property["alpha_r"], default=0.0),
+            alpha_i=as_scalar(mat_property["alpha_i"], default=0.0),
+            lambda_param=as_scalar(mat_property["lambda_"], default=0.0),
         )
         materials.append(material)
 

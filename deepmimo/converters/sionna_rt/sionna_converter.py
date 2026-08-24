@@ -103,6 +103,7 @@ def sionna_rt_converter(  # noqa: PLR0913
         material_indices,
         deduplicate=deduplicate,
         overlap_threshold=overlap_threshold,
+        lossless=lossless,
     )
     scene_dict = scene.export_data(temp_folder, lossless=lossless) if scene else {}
     scene_dict[c.SCENE_PARAM_NUMBER_SCENES] = num_scenes

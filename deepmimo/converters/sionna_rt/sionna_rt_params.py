@@ -22,6 +22,8 @@ from deepmimo.consts import RAYTRACER_NAME_SIONNA
 from deepmimo.core.rt_params import RayTracingParameters
 from deepmimo.utils import load_pickle
 
+from .sionna_compat import as_scalar
+
 
 def read_rt_params(load_folder: str) -> dict:
     """Read Sionna RT parameters from a folder."""
@@ -114,10 +116,12 @@ class SionnaRayTracingParameters(RayTracingParameters):
             "raytracer_name": RAYTRACER_NAME_SIONNA,
             "raytracer_version": raw_params.get("raytracer_version", config.get("sionna_version")),
             # Base required parameters
-            "frequency": int(raw_params["frequency"]),
+            "frequency": int(as_scalar(raw_params["frequency"])),
             # Ray tracing interaction settings
-            "max_path_depth": int(raw_params["max_depth"]),
-            "max_reflections": int(raw_params["max_depth"]) if raw_params["reflection"] else 0,
+            "max_path_depth": int(as_scalar(raw_params["max_depth"])),
+            "max_reflections": int(as_scalar(raw_params["max_depth"]))
+            if raw_params["reflection"]
+            else 0,
             "max_diffractions": int(
                 raw_params["diffraction"],
             ),  # Sionna only supports 1 diffraction event
@@ -132,7 +136,7 @@ class SionnaRayTracingParameters(RayTracingParameters):
             ],  # Sionna only supports 1 diffraction, may be on terrain
             "terrain_scattering": raw_params["scattering"],
             # Details on diffraction, scattering, and transmission
-            "diffuse_reflections": int(raw_params["max_depth"])
+            "diffuse_reflections": int(as_scalar(raw_params["max_depth"]))
             - 1,  # Sionna only supports diffuse reflections
             "diffuse_diffractions": 0,  # Sionna supports one diffraction, no diffuse scattering
             "diffuse_transmissions": 0,  # Sionna does not support transmissions
