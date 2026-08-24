@@ -718,7 +718,7 @@ PAGE = r"""<!doctype html>
         <div><label>Rooms to furnish</label>
           <input id="p_rooms" type="number" min="0" value="1"
                  oninput="roomsChanged()"></div>
-        <div><label>Furnish only</label><select id="p_room"></select></div>
+        <div><label>Restrict to type</label><select id="p_room"></select></div>
       </div>
       <div class="hint" id="roomshint"></div>
       <label>Furniture density <span id="l_furn" class="hint"></span></label>
@@ -1093,7 +1093,7 @@ window.convertTraced = async () => {
 window.roomsChanged = () => {
   const n = Math.max(0, +$('p_rooms').value || 0);
   $('roomshint').textContent = n === 0
-    ? 'every room — hours on this machine'
+    ? 'all of them — hours on this machine'
     : n === 1
       ? 'one room gets furniture; the rest are laid out but empty (~3 min)'
       : `${n} rooms get furniture. Cost climbs steeply, not linearly: ` +
@@ -1204,7 +1204,7 @@ async function refreshScenarios() {
 
 (async () => {
   const opt = await (await fetch('api/options')).json();
-  opt.room_types.forEach(r => $('p_room').add(new Option(r || 'every room', r)));
+  opt.room_types.forEach(r => $('p_room').add(new Option(r || 'any room type', r)));
   const tabs = $('covtabs');
   Object.entries(opt.coverage_metrics || {}).forEach(([key, title]) => {
     const b = document.createElement('button');
