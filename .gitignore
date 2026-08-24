@@ -9,6 +9,8 @@
 
 # Daily use folders
 deepmimo_scenarios*
+dashboard_scenes/
+scenario_studio/
 
 # Tests and Tutorials
 deepmimo_scen/*
