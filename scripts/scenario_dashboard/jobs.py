@@ -389,8 +389,7 @@ class JobManager:
             command += ["--room-type", params["room_type"]]
         if params.get("fast", True):
             command += ["--fast"]
-        if params.get("single_room", True):
-            command += ["--single-room"]
+        command += ["--max-rooms", str(params.get("max_rooms", 1))]
 
         state = {"total": None, "done": 0, "stage_start": time.time()}
 

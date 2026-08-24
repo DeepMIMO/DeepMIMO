@@ -114,18 +114,34 @@ room-graph rules saying what an office building contains and how its rooms
 connect, and object rules for desks, meeting tables and racking. That is a piece
 of work in its own right, not a flag.
 
-## Runtime
+## How much furniture, and where
 
-Measured on an M-series laptop, one furnished dwelling:
+Two knobs are easy to confuse, and only one of them puts furniture in more rooms.
 
-| setting | time |
+- `--max-rooms N` — how many rooms get **any** furniture. Infinigen's
+  `solve_max_rooms`. The rest of the building is still laid out; it just comes
+  out empty.
+- `--furniture D` — how eagerly the solver adds objects *within those rooms*.
+  Infinigen's `addition_weight_scalar`. It cannot put a chair in a room
+  `--max-rooms` excluded, so turning it up with `--max-rooms 1` just crams one
+  room fuller.
+
+`--max-rooms` is also the dominant cost, and it is not linear. Measured on an
+M-series laptop with `--fast`:
+
+| rooms furnished | outcome |
 |---|---|
-| `--single-room --fast` | ~5 min |
-| full solve | hours — one run sat on a nine-hour trajectory |
+| 1 | ~3 min |
+| 4 | 7 of 67 solver stages in 13 min — hours to finish |
+| all | hours; one run sat on a nine-hour trajectory |
 
-`--single-room` is the dominant lever, not `--fast`: it cuts the solver's greedy
-stage count rather than the steps per stage, and the result is still multi-room.
-It also turns off open wall cuts, so rooms connect through doorways only.
+The per-iteration cost is what climbs: with one room the annealer stepped in
+~0.06 s, with four it stepped in ~11 s, because every added object enlarges the
+placement search for every later one. Two rooms is the sensible middle.
+
+This pipeline sets `solve_max_rooms` directly rather than taking Infinigen's
+`singleroom.gin`, which pins it to 1 *and* switches off open wall cuts — the
+doorless openings between rooms that indoor propagation depends on.
 
 ## Placement and tracing
 

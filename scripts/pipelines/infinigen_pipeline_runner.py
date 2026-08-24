@@ -366,6 +366,11 @@ def cmd_generate(args: argparse.Namespace) -> None:
             "RoomConstants.room_type=@deepmimo_room_types()",
             f"deepmimo_room_types.add=[{names}]",
         ]
+    if args.max_rooms and args.max_rooms > 0:
+        # Infinigen's own singleroom.gin pins this to 1, but it also switches
+        # off open wall cuts - the doorless openings rays travel through - so
+        # the parameter is set directly instead of taking that preset.
+        overrides.append(f"restrict_solving.solve_max_rooms={args.max_rooms}")
     stories = args.stories or preset.get("stories")
     height = args.wall_height or preset.get("wall_height")
     aspect = preset.get("aspect")
@@ -394,8 +399,6 @@ def cmd_generate(args: argparse.Namespace) -> None:
     presets = []
     if args.fast:
         presets.append("fast_solve.gin")
-    if args.single_room:
-        presets.append("singleroom.gin")
     if presets:
         command[-len(overrides) - 1 : -len(overrides) - 1] = ["-g", *presets]
 
@@ -643,9 +646,14 @@ def main() -> None:
         help="fast_solve preset: fewer solver steps per stage",
     )
     generate.add_argument(
-        "--single-room",
-        action="store_true",
-        help="singleroom preset: far fewer solver stages, so minutes not hours",
+        "--max-rooms",
+        type=int,
+        default=1,
+        help=(
+            "how many rooms get furniture at all (0 for every room). This is the "
+            "dominant cost: one room takes minutes, a whole dwelling took hours. "
+            "Furniture density cannot fill a room this excludes"
+        ),
     )
     generate.add_argument(
         "--scene-type",

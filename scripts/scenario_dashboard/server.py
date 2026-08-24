@@ -711,12 +711,16 @@ PAGE = r"""<!doctype html>
         <div><label>Seed</label><input id="p_seed" type="number" value="1"></div>
         <div><label>Building</label><select id="p_scene" onchange="sceneTypeChanged()"></select></div>
       </div>
+      <div><label>Storey height [m]</label>
+        <input id="p_wallh" type="number" step="0.1" placeholder="preset"></div>
+      <div class="hint" id="scenehint"></div>
       <div class="g">
-        <div><label>Storey height [m]</label>
-          <input id="p_wallh" type="number" step="0.1" placeholder="preset"></div>
+        <div><label>Rooms to furnish</label>
+          <input id="p_rooms" type="number" min="0" value="1"
+                 oninput="roomsChanged()"></div>
         <div><label>Furnish only</label><select id="p_room"></select></div>
       </div>
-      <div class="hint" id="scenehint"></div>
+      <div class="hint" id="roomshint"></div>
       <label>Furniture density <span id="l_furn" class="hint"></span></label>
       <input id="p_furniture" type="range" min="1" max="12" step="0.5" value="6"
              oninput="document.getElementById('l_furn').textContent='×'+this.value">
@@ -1030,7 +1034,7 @@ window.startRun = async () => {
     material_mode: $('p_matmode').value,
     seed: +$('p_seed').value, room_type: $('p_room').value,
     tx_pos: $('p_txpos').value.trim(), rx_bounds: $('p_rxb').value.trim(),
-    single_room: true,
+    max_rooms: Math.max(0, +$('p_rooms').value || 0),
     furniture: +$('p_furniture').value, fast: $('p_fast').checked,
     architecture_budget: +$('p_arch').value, furniture_budget: +$('p_furn_b').value,
     ornament_budget: +$('p_orn').value, min_size: +$('p_min').value,
@@ -1084,6 +1088,16 @@ window.convertTraced = async () => {
     $('prog').style.display = 'block'; RUNNING = true; poll();
   } catch (e) { $('err').textContent = e.message; }
   $('resumeBtn').disabled = false;
+};
+
+window.roomsChanged = () => {
+  const n = Math.max(0, +$('p_rooms').value || 0);
+  $('roomshint').textContent = n === 0
+    ? 'every room — hours on this machine'
+    : n === 1
+      ? 'one room gets furniture; the rest are laid out but empty (~3 min)'
+      : `${n} rooms get furniture. Cost climbs steeply, not linearly: ` +
+        'one room ran ~3 min, four ran into hours';
 };
 
 window.sceneTypeChanged = () => {
@@ -1202,6 +1216,7 @@ async function refreshScenarios() {
   SCENE_TYPES = opt.scene_types || {};
   Object.keys(SCENE_TYPES).forEach(k => $('p_scene').add(new Option(k, k)));
   sceneTypeChanged();
+  roomsChanged();
   SCENES = opt.scenes || [];
   $('l_furn').textContent = '×' + $('p_furniture').value;
   HAS_JOBS = !!opt.has_jobs;
