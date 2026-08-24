@@ -27,7 +27,7 @@ Every parameter is exposed:
 | panel | parameters |
 |---|---|
 | Source | generate, reuse a built scene, or rebuild an existing scenario |
-| Generate scene | name, seed, room type, furniture density, solver presets |
+| Generate scene | name, seed, building preset, storey height, which rooms to furnish, furniture density, solver presets |
 | Geometry budget | per-class triangle budgets, minimum object size, open doorways |
 | Ray tracing | carrier frequency, reflections, receiver spacing and height, transmitter count and height, rays per source, diffraction, explicit placement |
 
@@ -98,6 +98,10 @@ preset varies is the building's shape rather than its room vocabulary.
 | `home` | Infinigen's own dwelling — 3.0 m storeys |
 | `tall_space` | 5.5 m storeys, for hall-like volumes |
 | `compact` / `elongated` | near-square, or long and corridor-dominated |
+
+**Building** picks the preset; **Storey height** overrides it. **Furnish only**
+is a different thing entirely — it restricts which rooms get furniture, and
+leaves the rest of the building bare.
 
 Room kinds can be added to the mix but not swapped out, and adding one rarely
 changes the layout — `scripts/pipelines/INFINIGEN.md` has the measurements and

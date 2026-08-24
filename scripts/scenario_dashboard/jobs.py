@@ -327,6 +327,14 @@ class JobManager:
             "--furniture",
             str(params.get("furniture", 4.0)),
         ]
+        if params.get("scene_type"):
+            command += ["--scene-type", params["scene_type"]]
+        if params.get("wall_height"):
+            command += ["--wall-height", str(params["wall_height"])]
+        if params.get("stories"):
+            command += ["--stories", str(params["stories"])]
+        for kind in params.get("add_rooms") or []:
+            command += ["--add-room", kind]
         if params.get("room_type"):
             command += ["--room-type", params["room_type"]]
         if params.get("fast", True):

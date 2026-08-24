@@ -48,6 +48,16 @@ DEFAULT_CUT_HEIGHT = 1.3
 _GEOMETRY_CACHE: dict[str, Any] = {}
 
 # Room types Infinigen can be restricted to.
+#: What each building preset does, shown under the picker. Infinigen ships one
+#: constraint script and it describes a dwelling, so these vary the building's
+#: shape rather than its room vocabulary - see scripts/pipelines/INFINIGEN.md.
+SCENE_TYPE_HELP = {
+    "home": "Infinigen's dwelling — about 3 m storeys",
+    "tall_space": "5.5 m storeys: hall-like volumes and longer reverberation",
+    "compact": "near-square footprint",
+    "elongated": "long and narrow — corridor-dominated propagation",
+}
+
 ROOM_TYPES = (
     "", "LivingRoom", "Kitchen", "Bedroom", "Bathroom", "DiningRoom",
     "Utility", "Garage", "Balcony", "Closet", "Hallway", "Staircase",
@@ -508,8 +518,14 @@ PAGE = r"""<!doctype html>
       <input id="p_name" value="studio_scene" oninput="NAME_PICKED = true">
       <div class="g">
         <div><label>Seed</label><input id="p_seed" type="number" value="1"></div>
-        <div><label>Room type</label><select id="p_room"></select></div>
+        <div><label>Building</label><select id="p_scene" onchange="sceneTypeChanged()"></select></div>
       </div>
+      <div class="g">
+        <div><label>Storey height [m]</label>
+          <input id="p_wallh" type="number" step="0.1" placeholder="preset"></div>
+        <div><label>Furnish only</label><select id="p_room"></select></div>
+      </div>
+      <div class="hint" id="scenehint"></div>
       <label>Furniture density <span id="l_furn" class="hint"></span></label>
       <input id="p_furniture" type="range" min="1" max="12" step="0.5" value="6"
              oninput="document.getElementById('l_furn').textContent='×'+this.value">
@@ -801,6 +817,7 @@ window.loadCoverage = () => {
 window.startRun = async () => {
   const body = {
     name: $('p_name').value,
+    scene_type: $('p_scene').value, wall_height: +$('p_wallh').value || 0,
     source: $('p_scenepath').value.trim() || $('p_source').value,
     reexport: $('p_reexport').checked,
     material_mode: $('p_matmode').value,
@@ -846,7 +863,11 @@ async function poll() {
   }, 1200);
 }
 
-let SCENES = [];
+let SCENES = [], SCENE_TYPES = {};
+
+window.sceneTypeChanged = () => {
+  $('scenehint').textContent = SCENE_TYPES[$('p_scene').value] || '';
+};
 // Generating is the expensive stage, so it is never what a run does by default:
 // the source follows the scenario on screen until the user chooses otherwise.
 let SOURCE_PICKED = false, NAME_PICKED = false, HAS_JOBS = true, RUNNING = false;
@@ -948,7 +969,10 @@ async function refreshScenarios() {
 
 (async () => {
   const opt = await (await fetch('api/options')).json();
-  opt.room_types.forEach(r => $('p_room').add(new Option(r || 'whole dwelling', r)));
+  opt.room_types.forEach(r => $('p_room').add(new Option(r || 'every room', r)));
+  SCENE_TYPES = opt.scene_types || {};
+  Object.keys(SCENE_TYPES).forEach(k => $('p_scene').add(new Option(k, k)));
+  sceneTypeChanged();
   SCENES = opt.scenes || [];
   $('l_furn').textContent = '×' + $('p_furniture').value;
   HAS_JOBS = !!opt.has_jobs;
@@ -1063,6 +1087,7 @@ class Handler(BaseHTTPRequestHandler):
                 json.dumps(
                     {
                         "room_types": list(ROOM_TYPES),
+                        "scene_types": SCENE_TYPE_HELP,
                         "has_jobs": self.jobs is not None,
                         "can_generate": bool(self.generator_path),
                         "generator": self.generator_path,
