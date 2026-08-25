@@ -151,7 +151,21 @@ TX_CANDIDATE_STEP = 0.75
 TX_CEILING_CLEARANCE = 0.25
 TX_MIN_CEILING = 2.2
 TX_BODY_RADIUS = 0.35
-TX_SCORE_SAMPLES = 400
+TX_SCORE_SAMPLES = 600
+
+#: Multi-wall path-loss model, fitted against traced ground truth on a furnished
+#: apartment and checked on a held-out transmitter:
+#:
+#:     pathloss = FSPL(d, f) + TX_WALL_OFFSET + TX_WALL_LOSS * sqrt(crossings)
+#:
+#: r = 0.76 in-fit, 0.81 held out, RMSE 8.4 dB, bias +0.2 dB. Counting surfaces
+#: beats asking whether the path is clear - binary line of sight manages only
+#: r = 0.59 - and the square root matters because attenuation saturates: past a
+#: few walls the energy arrives around corners rather than through them, so
+#: stacking losses linearly overestimates.
+TX_WALL_OFFSET = 4.45
+TX_WALL_LOSS = 8.73
+TX_MAX_CROSSINGS = 14
 
 
 def _cast(scene: Any, origins: np.ndarray, directions: np.ndarray,
@@ -180,6 +194,82 @@ def _cast(scene: Any, origins: np.ndarray, directions: np.ndarray,
     return np.where(np.array(hit.is_valid()), np.array(hit.t, dtype=np.float64), np.inf)
 
 
+def count_crossings(
+    scene: Any,
+    origins: np.ndarray,
+    targets: np.ndarray,
+    limit: int = TX_MAX_CROSSINGS,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Count the surfaces between each origin and its target.
+
+    The ray is marched: intersect, step past the hit, repeat. A solid wall is
+    two surfaces, which the fitted loss per crossing already accounts for.
+
+    Args:
+        scene: Mitsuba scene.
+        origins: Ray origins, (n, 3).
+        targets: Ray targets, (n, 3).
+        limit: Maximum surfaces to count before giving up on a ray.
+
+    Returns:
+        Tuple of (crossing count, straight-line distance).
+
+    """
+    import mitsuba as mi  # noqa: PLC0415
+
+    delta = targets - origins
+    distance = np.linalg.norm(delta, axis=1)
+    safe = np.maximum(distance, 1e-6)
+    direction = np.ascontiguousarray(delta / safe[:, None], dtype=np.float32)
+    travelled = np.full(len(origins), 1e-3)
+    crossings = np.zeros(len(origins), dtype=np.int32)
+    for _ in range(limit):
+        remaining = distance - travelled - 1e-3
+        live = remaining > 1e-3
+        if not live.any():
+            break
+        start = np.ascontiguousarray(
+            origins + direction * travelled[:, None], dtype=np.float32,
+        )
+        ray = mi.Ray3f(mi.Point3f(start.T), mi.Vector3f(direction.T))
+        ray.maxt = mi.Float(
+            np.ascontiguousarray(np.where(live, remaining, 0.0), dtype=np.float32),
+        )
+        found = scene.ray_intersect(ray)
+        hit = np.array(found.is_valid()) & live
+        step = np.array(found.t, dtype=np.float64)
+        crossings += hit
+        travelled = np.where(hit, travelled + np.maximum(step, 1e-3) + 1e-3, distance)
+    return crossings, distance
+
+
+def estimate_pathloss(
+    scene: Any,
+    origins: np.ndarray,
+    targets: np.ndarray,
+    frequency: float,
+) -> np.ndarray:
+    """Estimate path loss without ray tracing, for ranking candidate sites.
+
+    Args:
+        scene: Mitsuba scene.
+        origins: Transmitter positions, (n, 3).
+        targets: Receiver positions, (n, 3).
+        frequency: Carrier frequency in Hz.
+
+    Returns:
+        Estimated path loss in dB, one per pair.
+
+    """
+    crossings, distance = count_crossings(scene, origins, targets)
+    fspl = (
+        20 * np.log10(np.maximum(distance, 0.1))
+        + 20 * np.log10(frequency)
+        - 147.55
+    )
+    return fspl + TX_WALL_OFFSET + TX_WALL_LOSS * np.sqrt(crossings)
+
+
 def choose_tx_positions(  # noqa: PLR0913 - placement is governed by its thresholds
     scene: Any,
     lo: np.ndarray,
@@ -187,6 +277,7 @@ def choose_tx_positions(  # noqa: PLR0913 - placement is governed by its thresho
     rx: np.ndarray,
     n_tx: int,
     *,
+    frequency: float = 3.5e9,
     step: float = TX_CANDIDATE_STEP,
     clearance: float = TX_CEILING_CLEARANCE,
     seed: int = 0,
@@ -205,10 +296,13 @@ def choose_tx_positions(  # noqa: PLR0913 - placement is governed by its thresho
     within ``TX_BODY_RADIUS`` horizontally or below. Survivors hang below their
     own local ceiling, so a scene with rooms of different heights is handled.
 
-    Choosing among them is greedy maximum coverage on line of sight to a sample
-    of the receivers, which is cheap: Mitsuba answers about 300,000 visibility
-    rays a second, so the whole search costs a fraction of a second against ray
-    tracing's minutes.
+    Choosing among them is greedy on estimated path loss rather than on line of
+    sight. Whether a receiver can *see* a transmitter is a poor proxy for
+    whether it is served - a room off a corridor is covered through its doorway
+    - so each pair is scored with the multi-wall model above, and each
+    transmitter is the one that most improves the 90th percentile of the
+    best-server path loss: the tail, where coverage holes live, rather than the
+    average, which the already-well-served dominate.
 
     Args:
         scene: Mitsuba scene to query.
@@ -216,6 +310,7 @@ def choose_tx_positions(  # noqa: PLR0913 - placement is governed by its thresho
         hi: Upper corner of the scene.
         rx: Receiver positions to cover.
         n_tx: How many transmitters to place.
+        frequency: Carrier frequency in Hz, for the free-space term.
         step: Candidate grid spacing in metres.
         clearance: Distance below the local ceiling to hang at.
         seed: Seed for the receiver subsample.
@@ -262,30 +357,34 @@ def choose_tx_positions(  # noqa: PLR0913 - placement is governed by its thresho
     take = min(TX_SCORE_SAMPLES, len(rx))
     sample = rx[rng.choice(len(rx), size=take, replace=False)]
 
-    origins = np.repeat(mounts, len(sample), axis=0)
-    targets = np.tile(sample, (len(mounts), 1))
-    delta = targets - origins
-    distance = np.linalg.norm(delta, axis=1)
-    eps = 1e-3
-    blocked = _cast(
-        scene, origins + delta / distance[:, None] * eps, delta, maxt=distance - 2 * eps,
-    )
-    visible = (~np.isfinite(blocked)).reshape(len(mounts), len(sample))
+    predicted = estimate_pathloss(
+        scene,
+        np.repeat(mounts, len(sample), axis=0),
+        np.tile(sample, (len(mounts), 1)),
+        frequency,
+    ).reshape(len(mounts), len(sample))
 
     chosen: list[int] = []
-    covered = np.zeros(len(sample), dtype=bool)
+    best_server = np.full(len(sample), np.inf)
     for _ in range(n_tx):
-        gain = (visible & ~covered).sum(axis=1)
-        if not gain.max():
-            break
-        best = int(gain.argmax())
+        # The 90th percentile is the objective because it is the tail that
+        # decides whether a floor has holes in it; the mean is dominated by
+        # receivers that are already fine.
+        scores = [
+            np.percentile(np.minimum(best_server, predicted[i]), 90)
+            for i in range(len(mounts))
+        ]
+        best = int(np.argmin(scores))
+        if chosen and scores[best] >= np.percentile(best_server, 90) - 0.05:
+            break  # nothing left to add that moves the tail
         chosen.append(best)
-        covered |= visible[best]
+        best_server = np.minimum(best_server, predicted[best])
     if not chosen:
         return None
     print(
         f"  placed {len(chosen)} transmitter(s) from {len(mounts)} plausible spots; "
-        f"{100 * covered.mean():.0f}% of sampled receivers in line of sight",
+        f"predicted path loss median {np.median(best_server):.0f} dB, "
+        f"90th percentile {np.percentile(best_server, 90):.0f} dB",
     )
     return mounts[chosen]
 
@@ -753,7 +852,7 @@ def cmd_trace(args: argparse.Namespace) -> None:
         )
         placed = choose_tx_positions(
             mi_scene, lo, hi, rx[indoors] if indoors.any() else rx, args.n_tx,
-            clearance=args.clearance, seed=args.seed,
+            frequency=args.frequency, clearance=args.clearance, seed=args.seed,
         )
         if placed is not None:
             tx = placed if args.tx_height is None else np.column_stack(

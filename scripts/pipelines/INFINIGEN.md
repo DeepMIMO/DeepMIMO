@@ -145,14 +145,61 @@ doorless openings between rooms that indoor propagation depends on.
 
 ## Placement and tracing
 
-Transmitters are placed where an access point could plausibly go: candidates
-must sit under a ceiling at least 2.2 m above their floor and clear of
-geometry, hang below their own local ceiling, and are chosen by greedy maximum
-line-of-sight coverage of the receivers. On a furnished apartment that took
-receivers in line of sight from 42.5% to 62.7% with two transmitters, and from
-30.8% to 79.8% with three — the even spacing it replaces got *worse* from two to
-three, because it moves every transmitter rather than adding one. Pass
-`--tx-auto grid` for the old behaviour.
+### Where the transmitters go
+
+Automatic placement asks the geometry instead of dividing the bounding box.
+
+**A candidate has to be somewhere an access point could go.** It must sit under
+a ceiling at least 2.2 m above *its own* floor — an upward ray that stops at
+1.6 m has found the underside of a table — with nothing within 0.35 m
+horizontally or below. Survivors hang below their local ceiling, so rooms of
+different heights are handled. On one apartment that leaves 207 spots from 345
+grid points.
+
+**Choosing among them is scored on estimated path loss, not visibility.**
+Whether a receiver can *see* a transmitter says little about whether it is
+served; a room off a corridor is covered through its doorway. Each pair is
+scored by marching a ray and counting the surfaces it crosses:
+
+```
+pathloss ≈ FSPL(d, f) + 4.45 dB + 8.73 dB × √crossings
+```
+
+Fitted against traced ground truth and checked on a held-out transmitter:
+
+| predictor | correlation with traced path loss |
+|---|---|
+| binary line of sight | 0.59 |
+| surface crossings, this model | **0.76** in-fit, **0.81** held out |
+
+RMSE 8.4 dB, bias +0.2 dB. The square root matters: attenuation saturates,
+because past a few walls the energy arrives around corners rather than through
+them, and stacking losses linearly overestimates. The fitted 8.73 dB per surface
+is about 5.7 dB per solid wall, which is where ITU interior-wall figures sit.
+
+Transmitters are then added greedily, each one chosen to most improve the **90th
+percentile** of best-server path loss — the tail, where coverage holes live,
+rather than the average, which the already-well-served dominate.
+
+**Checked by tracing both.** Same scene, same settings, two transmitters each —
+these are traced results, not the model's own opinion of itself:
+
+| | evenly spaced | path-loss placed |
+|---|---|---|
+| receivers with no path at all | 7.2% | **3.7%** |
+| median best-server path loss | 71.3 dB | **69.2 dB** |
+| 90th percentile (unserved counted as failure) | 91.0 dB | **86.8 dB** |
+| within a 75 dB budget | 61.2% | **74.2%** |
+
+Read those carefully: statistics over *served* receivers alone favour the worse
+placement, because serving more receivers means the marginal ones join the
+population and drag its tail down. The old placement's "worst 10%" looks better
+only because its worst 10% were unserved and therefore not counted. Any
+comparison here has to score unserved receivers as failures.
+
+The whole search costs a few seconds against minutes of ray tracing, because
+Mitsuba is already loaded and answers about 300,000 rays a second. Pass
+`--tx-auto grid` for the old even spacing.
 
 Both can be pinned instead:
 
