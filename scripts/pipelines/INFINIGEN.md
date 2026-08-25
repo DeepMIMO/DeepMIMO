@@ -145,7 +145,16 @@ doorless openings between rooms that indoor propagation depends on.
 
 ## Placement and tracing
 
-Transmitters and receivers default to the scene bounds and can be pinned:
+Transmitters are placed where an access point could plausibly go: candidates
+must sit under a ceiling at least 2.2 m above their floor and clear of
+geometry, hang below their own local ceiling, and are chosen by greedy maximum
+line-of-sight coverage of the receivers. On a furnished apartment that took
+receivers in line of sight from 42.5% to 62.7% with two transmitters, and from
+30.8% to 79.8% with three — the even spacing it replaces got *worse* from two to
+three, because it moves every transmitter rather than adding one. Pass
+`--tx-auto grid` for the old behaviour.
+
+Both can be pinned instead:
 
 ```bash
 $RT $R trace /tmp/mitsuba --scenario my_office_3p5 \

@@ -767,6 +767,12 @@ PAGE = r"""<!doctype html>
       <div class="hint">Without diffraction a cluttered interior reports large
         false outages: a warehouse went 87% → 53% served.</div>
 
+      <label>Automatic placement</label>
+      <select id="p_txauto" onchange="txAutoChanged()">
+        <option value="coverage">coverage-aware — under real ceilings</option>
+        <option value="grid">evenly spaced across the bounding box</option>
+      </select>
+      <div class="hint" id="txautohint"></div>
       <label>Transmitter positions <span class="hint">x,y,z ; x,y,z</span></label>
       <input id="p_txpos" placeholder="auto — below the ceiling">
       <button id="pickTx" class="ghost" onclick="toggleTxPick()">Pick in 3D</button>
@@ -1077,7 +1083,7 @@ window.startRun = async () => {
     frequency: +$('p_freq').value * 1e9, max_reflections: +$('p_refl').value,
     spacing: +$('p_space').value, rx_height: +$('p_rxh').value,
     n_tx: +$('p_ntx').value, samples: +$('p_samp').value, diffraction: $('p_diff').checked,
-    tx_height: +$('p_txh').value,
+    tx_height: +$('p_txh').value, tx_auto: $('p_txauto').value,
   };
   RUNNING = true; $('run').disabled = true; $('err').textContent = '';
   try {
@@ -1147,6 +1153,15 @@ window.convertTraced = async () => {
     $('prog').style.display = 'block'; RUNNING = true; poll();
   } catch (e) { $('err').textContent = e.message; }
   $('resumeBtn').disabled = false;
+};
+
+window.txAutoChanged = () => {
+  $('txautohint').textContent = $('p_txauto').value === 'coverage'
+    ? 'Keeps only spots that sit under a ceiling at least 2.2 m up and clear of '
+      + 'geometry, then picks the set that sees the most receivers. Ignored when '
+      + 'positions are given below.'
+    : 'Spaces transmitters along the bounding box, which is not the floor plate: '
+      + 'a position can land in a wall, and adding one moves them all.';
 };
 
 window.roomsChanged = () => {
@@ -1276,6 +1291,7 @@ async function refreshScenarios() {
   Object.keys(SCENE_TYPES).forEach(k => $('p_scene').add(new Option(k, k)));
   sceneTypeChanged();
   roomsChanged();
+  txAutoChanged();
   SCENES = opt.scenes || [];
   $('l_furn').textContent = '×' + $('p_furniture').value;
   HAS_JOBS = !!opt.has_jobs;

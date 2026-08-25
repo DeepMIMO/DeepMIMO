@@ -144,6 +144,28 @@ occlusion and contact edges; flat shading made rooms unreadable, because every
 wall met every other wall at the same brightness. Turn the shading off for a
 flat-colour view when comparing materials.
 
+**Automatic placement** decides where transmitters go when you do not name
+positions. *Coverage-aware* keeps only candidates that are genuinely indoors —
+an upward ray must reach a ceiling at least 2.2 m above the floor, so the
+underside of a table does not count — and clear of anything they would be
+embedded in, hangs each below its **own** local ceiling, then picks the set
+seeing the most receivers by greedy maximum coverage.
+
+*Evenly spaced* is the old behaviour, kept for comparison. It spaces
+transmitters across the bounding box, which is not the floor plate: a position
+can land inside a wall, and asking for one more moves them all rather than
+adding one. Measured on a furnished apartment, receivers in line of sight:
+
+| transmitters | evenly spaced | coverage-aware |
+|---|---|---|
+| 1 | 28.5% | 44.5% |
+| 2 | 42.5% | 62.7% |
+| 3 | 30.8% | 79.8% |
+
+The third row is the point: going from two transmitters to three made the even
+spacing *worse*. The search costs about 0.05 s — Mitsuba answers roughly 300,000
+visibility rays a second, against minutes for the ray tracing itself.
+
 **Ray colour** switches what a traced path's colour means. By *received power* a
 single ramp runs violet through red to gold, strongest last. By *interaction
 type* each segment takes the colour of what happened at the end of it, so a ray

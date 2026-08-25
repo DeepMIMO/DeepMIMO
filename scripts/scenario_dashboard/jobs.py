@@ -554,6 +554,7 @@ class JobManager:
             "--samples",
             str(params.get("samples", 250_000)),
         ]
+        command += ["--tx-auto", params.get("tx_auto", "coverage")]
         if params.get("tx_height"):
             command += ["--tx-height", str(params["tx_height"])]
         if params.get("tx_pos"):

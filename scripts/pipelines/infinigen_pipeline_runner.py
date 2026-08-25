@@ -145,6 +145,151 @@ def parse_bounds(text: str | None) -> tuple[float, float, float, float] | None:
     return values[0], values[1], values[2], values[3]
 
 
+#: Transmitter placement defaults. A candidate must sit under a real ceiling
+#: rather than under a table, and clear of anything it would be embedded in.
+TX_CANDIDATE_STEP = 0.75
+TX_CEILING_CLEARANCE = 0.25
+TX_MIN_CEILING = 2.2
+TX_BODY_RADIUS = 0.35
+TX_SCORE_SAMPLES = 400
+
+
+def _cast(scene: Any, origins: np.ndarray, directions: np.ndarray,
+          maxt: np.ndarray | None = None) -> np.ndarray:
+    """Trace a batch of rays and return hit distances.
+
+    Args:
+        scene: Mitsuba scene.
+        origins: Ray origins, (n, 3).
+        directions: Ray directions, (n, 3); normalised internally.
+        maxt: Optional per-ray maximum distance.
+
+    Returns:
+        Distance to the first hit per ray, ``inf`` where nothing was hit.
+
+    """
+    import mitsuba as mi  # noqa: PLC0415
+
+    origins = np.ascontiguousarray(origins, dtype=np.float32)
+    directions = np.ascontiguousarray(directions, dtype=np.float32)
+    directions = directions / np.linalg.norm(directions, axis=1, keepdims=True)
+    ray = mi.Ray3f(mi.Point3f(origins.T), mi.Vector3f(directions.T))
+    if maxt is not None:
+        ray.maxt = mi.Float(np.ascontiguousarray(maxt, dtype=np.float32))
+    hit = scene.ray_intersect(ray)
+    return np.where(np.array(hit.is_valid()), np.array(hit.t, dtype=np.float64), np.inf)
+
+
+def choose_tx_positions(  # noqa: PLR0913 - placement is governed by its thresholds
+    scene: Any,
+    lo: np.ndarray,
+    hi: np.ndarray,
+    rx: np.ndarray,
+    n_tx: int,
+    *,
+    step: float = TX_CANDIDATE_STEP,
+    clearance: float = TX_CEILING_CLEARANCE,
+    seed: int = 0,
+) -> np.ndarray | None:
+    """Place transmitters where an access point could plausibly go, and cover well.
+
+    Spacing transmitters evenly across a bounding box ignores the building: the
+    box is not the floor plate, so a position can land in a wall, in a closet,
+    or outside the walls entirely, and moving from two transmitters to three
+    can lower coverage because every position shifts rather than one being
+    added.
+
+    A candidate here has to survive being indoors: an upward ray must reach a
+    ceiling at least ``TX_MIN_CEILING`` above its floor - an upward ray that
+    stops at 1.6 m has found the underside of a table - and nothing may sit
+    within ``TX_BODY_RADIUS`` horizontally or below. Survivors hang below their
+    own local ceiling, so a scene with rooms of different heights is handled.
+
+    Choosing among them is greedy maximum coverage on line of sight to a sample
+    of the receivers, which is cheap: Mitsuba answers about 300,000 visibility
+    rays a second, so the whole search costs a fraction of a second against ray
+    tracing's minutes.
+
+    Args:
+        scene: Mitsuba scene to query.
+        lo: Lower corner of the scene.
+        hi: Upper corner of the scene.
+        rx: Receiver positions to cover.
+        n_tx: How many transmitters to place.
+        step: Candidate grid spacing in metres.
+        clearance: Distance below the local ceiling to hang at.
+        seed: Seed for the receiver subsample.
+
+    Returns:
+        Chosen positions, or None if the scene offers no plausible spot.
+
+    """
+    xs = np.arange(lo[0] + step, hi[0], step)
+    ys = np.arange(lo[1] + step, hi[1], step)
+    if not len(xs) or not len(ys):
+        return None
+    grid_x, grid_y = np.meshgrid(xs, ys)
+    probe_z = lo[2] + 1.5
+    candidates = np.stack(
+        [grid_x.ravel(), grid_y.ravel(), np.full(grid_x.size, probe_z)], axis=-1,
+    )
+
+    up = np.tile([0.0, 0.0, 1.0], (len(candidates), 1))
+    down = np.tile([0.0, 0.0, -1.0], (len(candidates), 1))
+    to_ceiling = _cast(scene, candidates, up)
+    to_floor = _cast(scene, candidates, down)
+    enclosed = (
+        np.isfinite(to_ceiling)
+        & np.isfinite(to_floor)
+        & (to_ceiling + to_floor >= TX_MIN_CEILING)
+    )
+    if not enclosed.any():
+        return None
+
+    mounts = candidates[enclosed]
+    mounts[:, 2] = probe_z + to_ceiling[enclosed] - clearance
+
+    # Horizontal and downward only: the mount is deliberately close to the
+    # ceiling, so testing upwards would reject every candidate.
+    keep = np.ones(len(mounts), dtype=bool)
+    for direction in ([1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, -1]):
+        keep &= _cast(scene, mounts, np.tile(direction, (len(mounts), 1))) > TX_BODY_RADIUS
+    mounts = mounts[keep]
+    if not len(mounts):
+        return None
+
+    rng = np.random.default_rng(seed)
+    take = min(TX_SCORE_SAMPLES, len(rx))
+    sample = rx[rng.choice(len(rx), size=take, replace=False)]
+
+    origins = np.repeat(mounts, len(sample), axis=0)
+    targets = np.tile(sample, (len(mounts), 1))
+    delta = targets - origins
+    distance = np.linalg.norm(delta, axis=1)
+    eps = 1e-3
+    blocked = _cast(
+        scene, origins + delta / distance[:, None] * eps, delta, maxt=distance - 2 * eps,
+    )
+    visible = (~np.isfinite(blocked)).reshape(len(mounts), len(sample))
+
+    chosen: list[int] = []
+    covered = np.zeros(len(sample), dtype=bool)
+    for _ in range(n_tx):
+        gain = (visible & ~covered).sum(axis=1)
+        if not gain.max():
+            break
+        best = int(gain.argmax())
+        chosen.append(best)
+        covered |= visible[best]
+    if not chosen:
+        return None
+    print(
+        f"  placed {len(chosen)} transmitter(s) from {len(mounts)} plausible spots; "
+        f"{100 * covered.mean():.0f}% of sampled receivers in line of sight",
+    )
+    return mounts[chosen]
+
+
 def place_devices(  # noqa: PLR0913 - placement needs its bounds and spacing
     lo: np.ndarray,
     hi: np.ndarray,
@@ -596,6 +741,26 @@ def cmd_trace(args: argparse.Namespace) -> None:
         rx_bounds=parse_bounds(args.rx_bounds),
         tx_height=args.tx_height,
     )
+
+    if parse_positions(args.tx_pos) is None and args.tx_auto == "coverage":
+        # Receivers outside the walls cannot be covered by anything, and would
+        # drag the search toward the building's edge; drop them from the score.
+        import sionna.rt as srt  # noqa: PLC0415
+
+        mi_scene = srt.load_scene(str(scene_folder / "scene.xml")).mi_scene
+        indoors = np.isfinite(
+            _cast(mi_scene, rx, np.tile([0.0, 0.0, 1.0], (len(rx), 1))),
+        )
+        placed = choose_tx_positions(
+            mi_scene, lo, hi, rx[indoors] if indoors.any() else rx, args.n_tx,
+            clearance=args.clearance, seed=args.seed,
+        )
+        if placed is not None:
+            tx = placed if args.tx_height is None else np.column_stack(
+                [placed[:, :2], np.full(len(placed), args.tx_height)],
+            )
+        else:
+            print("  no plausible indoor spot found; falling back to even spacing")
     print(f"{len(tx)} TX, {len(rx)} RX")
 
     start = time.time()
@@ -783,6 +948,19 @@ def main() -> None:
         "--rx-bounds",
         default=None,
         help='receiver grid footprint as "xmin,ymin,xmax,ymax"',
+    )
+    trace.add_argument(
+        "--tx-auto",
+        choices=("coverage", "grid"),
+        default="coverage",
+        help=(
+            "how to place transmitters when --tx-pos is not given: coverage "
+            "hangs them under real ceilings and maximises line of sight, grid "
+            "spaces them evenly across the bounding box"
+        ),
+    )
+    trace.add_argument(
+        "--seed", type=int, default=0, help="seed for the placement search",
     )
     trace.add_argument(
         "--tx-height",
