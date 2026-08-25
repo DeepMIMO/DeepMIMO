@@ -31,7 +31,7 @@ ADDON_URLS = {
 
 # Material names for scene objects
 FLOOR_MATERIAL = "itu_wet_ground"
-PROJ_ROOT = str(Path(str(Path(__file__).resolve()).parent))
+PROJ_ROOT = str(Path(__file__).resolve().parent)
 
 # Blender version
 BLENDER_MAJOR_VERSION = bpy.app.version[0]
