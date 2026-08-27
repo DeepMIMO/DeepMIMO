@@ -663,7 +663,7 @@ PAGE = r"""<!doctype html>
  .bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .35s ease}
  .prow{display:flex;justify-content:space-between;gap:10px;color:var(--dim)}
  .prow b{color:var(--ink);font-weight:600}
- #stop{margin-left:10px;padding:2px 9px;font-size:10.5px;border-radius:5px;
+ #stop{flex:0 0 auto;margin-left:auto;padding:2px 9px;font-size:10.5px;border-radius:5px;
        background:#3a2226;color:#ff9090;border:1px solid #5a2f35;cursor:pointer}
  #stop:hover{background:#4a2a2f;color:#ffbcbc}
  #stop:disabled{opacity:.45;cursor:default}
@@ -847,8 +847,8 @@ PAGE = r"""<!doctype html>
     <div class="float" id="legend"></div>
     <div class="float" id="prog">
       <div class="prow"><b id="pstage">—</b>
-        <span id="peta"></span>
-        <button id="stop" class="ghost" onclick="stopRun()">Stop</button></div>
+        <span id="peta" style="flex:1 1 auto"></span>
+        <button id="stop" onclick="stopRun()">Stop</button></div>
       <div class="bar"><i id="pbar"></i></div>
       <div class="prow"><span id="pdetail"></span><span id="pelapsed"></span></div>
       <div id="plog"></div>

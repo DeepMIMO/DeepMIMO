@@ -33,6 +33,16 @@ RE_ANNEAL = re.compile(r"it=(\d+)/(\d+)")
 RE_EXPORT_DONE = re.compile(r"exported ([\d,]+) triangles")
 RE_TRACE_DONE = re.compile(r"-> scenario '([^']+)'")
 
+#: Lines that look like failures and are not. Blender prints a leak report as it
+#: exits and labels it "Error", even when the leak is a few dozen bytes of its
+#: own housekeeping - which reads, in a log, exactly like the run went wrong.
+NOISE = re.compile(
+    r"Not freed memory blocks|"
+    r"performance warning -- this file uses the ASCII PLY|"
+    r"Attempted to use \(input_socket|"
+    r"^\s*Info: Removed \d+ vertices",
+)
+
 #: Marks a source that is an existing DeepMIMO scenario rather than a scene folder.
 SCENARIO_PREFIX = "scenario:"
 
@@ -218,13 +228,15 @@ class JobManager:
         return max(self.jobs.values(), key=lambda j: j.started)
 
     def _emit(self, job: Job, line: str) -> None:
-        """Record a log line on a job.
+        """Record a log line on a job, dropping known noise.
 
         Args:
             job: Job to update.
             line: Log line.
 
         """
+        if NOISE.search(line):
+            return
         job.log.append(line.rstrip())
         del job.log[:-400]
 
