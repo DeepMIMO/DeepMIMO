@@ -663,6 +663,10 @@ PAGE = r"""<!doctype html>
  .bar>i{display:block;height:100%;background:var(--accent);width:0;transition:width .35s ease}
  .prow{display:flex;justify-content:space-between;gap:10px;color:var(--dim)}
  .prow b{color:var(--ink);font-weight:600}
+ #stop{margin-left:10px;padding:2px 9px;font-size:10.5px;border-radius:5px;
+       background:#3a2226;color:#ff9090;border:1px solid #5a2f35;cursor:pointer}
+ #stop:hover{background:#4a2a2f;color:#ffbcbc}
+ #stop:disabled{opacity:.45;cursor:default}
  #plog{margin-top:6px;max-height:120px;overflow:auto;font:10.5px ui-monospace,monospace;
        color:#7f8994;white-space:pre-wrap}
  table{width:100%;border-collapse:collapse;font-size:11.5px}
@@ -842,7 +846,9 @@ PAGE = r"""<!doctype html>
     <div class="float" id="hud">—</div>
     <div class="float" id="legend"></div>
     <div class="float" id="prog">
-      <div class="prow"><b id="pstage">—</b><span id="peta"></span></div>
+      <div class="prow"><b id="pstage">—</b>
+        <span id="peta"></span>
+        <button id="stop" class="ghost" onclick="stopRun()">Stop</button></div>
       <div class="bar"><i id="pbar"></i></div>
       <div class="prow"><span id="pdetail"></span><span id="pelapsed"></span></div>
       <div id="plog"></div>
@@ -1100,6 +1106,8 @@ async function poll() {
     const j = await (await fetch('api/job')).json();
     if (j.status === 'none') { clearInterval(POLL); return; }
     $('pstage').textContent = j.stage;
+    $('stop').style.display = j.cancellable ? '' : 'none';
+    if (j.cancellable) { $('stop').disabled = false; $('stop').textContent = 'Stop'; }
     $('pbar').style.width = (j.overall * 100).toFixed(1) + '%';
     $('pdetail').textContent = j.detail || '';
     $('pelapsed').textContent = fmt(j.elapsed_seconds) + ' elapsed';
@@ -1108,6 +1116,7 @@ async function poll() {
     if (j.status !== 'running') {
       clearInterval(POLL); RUNNING = false; sourceChanged();
       if (j.status === 'failed') $('err').textContent = j.error || 'job failed';
+      if (j.status === 'cancelled') $('pdetail').textContent = 'stopped';
       RESUMABLE = j.resumable || null;
       $('resume').style.display = RESUMABLE ? 'block' : 'none';
       await refreshScenes();
@@ -1119,6 +1128,15 @@ async function poll() {
 
 let SCENES = [], SCENE_TYPES = {}, RESUMABLE = null;
 let RAY_PATHS = [], RAY_COLOUR = 'power';
+
+window.stopRun = async () => {
+  $('stop').disabled = true;
+  $('stop').textContent = 'Stopping…';
+  try {
+    const r = await fetch('api/cancel', {method: 'POST', body: '{}'});
+    if (!r.ok) throw new Error(await r.text());
+  } catch (e) { $('err').textContent = e.message; }
+};
 
 window.setRayColour = (mode) => {
   RAY_COLOUR = mode;
@@ -1361,7 +1379,12 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:  # noqa: N802 - required by BaseHTTPRequestHandler
         """Start a pipeline run."""
-        if urlparse(self.path).path != "/api/run":
+        path = urlparse(self.path).path
+        if path == "/api/cancel":
+            stopped = self.jobs.cancel() if self.jobs else False
+            self._send(json.dumps({"stopped": stopped}).encode(), "application/json")
+            return
+        if path != "/api/run":
             self._send(b"not found", "text/plain", status=404)
             return
         try:

@@ -107,6 +107,21 @@ Room kinds can be added to the mix but not swapped out, and adding one rarely
 changes the layout — `scripts/pipelines/INFINIGEN.md` has the measurements and
 what a genuine office building would take.
 
+## Stopping a run
+
+The progress panel carries a **Stop** button while a job is running. Generation
+can take hours, and until now the only way out was finding the process in a
+terminal and killing it.
+
+Stopping signals the whole process group, not just the child: the runner spawns
+Blender, which spawns more, and signalling the child alone leaves those running.
+The group gets SIGTERM, then SIGKILL five seconds later — Blender ignores a
+polite request while it is inside a solver step. A stopped job ends as
+*cancelled* rather than *failed*, so it reports no error.
+
+Stopping during the trace stage keeps whatever was already written: if the
+traced paths reached disk, **Convert traced paths** still appears.
+
 ## When a run dies
 
 Tracing writes its Sionna output to the scene folder *before* converting, so a

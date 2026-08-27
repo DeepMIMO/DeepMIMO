@@ -13,6 +13,8 @@ stages hand off through the scene folder on disk.
 
 from __future__ import annotations
 
+import contextlib
+import os
 import re
 import signal
 import subprocess
@@ -94,6 +96,8 @@ class Job:
     weights: dict[str, float] = field(default_factory=dict)
     rt_folder: str | None = None
     resumable: str | None = None
+    process: Any = None
+    cancelled: bool = False
     log: list[str] = field(default_factory=list)
 
     def snapshot(self) -> dict[str, Any]:
@@ -115,6 +119,7 @@ class Job:
             "scenario": self.scenario,
             "error": self.error,
             "resumable": self.resumable,
+            "cancellable": self.status == "running",
             "log": self.log[-40:],
         }
 
@@ -155,6 +160,39 @@ class JobManager:
             self.jobs[job.id] = job
         threading.Thread(target=self._run, args=(job,), daemon=True).start()
         return job
+
+    def cancel(self, job_id: str | None = None) -> bool:
+        """Stop a running job, and everything it started.
+
+        Args:
+            job_id: Job to stop, or None for the most recent one.
+
+        Returns:
+            True if a running job was signalled.
+
+        """
+        job = self.get(job_id) if job_id else self.latest()
+        if job is None or job.status != "running":
+            return False
+        job.cancelled = True
+        process = job.process
+        if process is None or process.poll() is not None:
+            return True
+        try:
+            group = os.getpgid(process.pid)
+        except OSError:
+            process.kill()
+            return True
+        # Ask the whole group to stop, then insist. Blender ignores a polite
+        # request while it is inside a solver step.
+        with contextlib.suppress(OSError):
+            os.killpg(group, signal.SIGTERM)
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            with contextlib.suppress(OSError):
+                os.killpg(group, signal.SIGKILL)
+        return True
 
     def get(self, job_id: str) -> Job | None:
         """Look up a job.
@@ -314,6 +352,12 @@ class JobManager:
             job.overall = 1.0
             job.eta_seconds = 0
         except Exception as exc:  # noqa: BLE001 - surfaced to the dashboard
+            if job.cancelled:
+                job.status = "cancelled"
+                job.stage = "stopped"
+                job.error = None
+                job.eta_seconds = None
+                return
             job.status = "failed"
             job.error = str(exc)
             # Tracing writes its paths before converting, so a conversion that
@@ -340,19 +384,28 @@ class JobManager:
 
         """
         self._emit(job, "$ " + " ".join(command[-6:]))
+        # Its own process group, so cancelling reaches the whole tree: the
+        # runner spawns Blender, which spawns more, and signalling only the
+        # child would leave those running.
         process = subprocess.Popen(  # noqa: S603
             command,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
             text=True,
             bufsize=1,
+            start_new_session=True,
         )
+        job.process = process
         for raw in process.stdout:  # type: ignore[union-attr]
             line = raw.rstrip()
             if line.startswith(("PROGRESS", "STATUS")):
                 continue
             on_line(line)
         code = process.wait()
+        job.process = None
+        if job.cancelled:
+            msg = "stopped"
+            raise RuntimeError(msg)
         if code != 0:
             tail = " | ".join(job.log[-4:])
             msg = f"{job.stage} {describe_exit(code)}: {tail}"
