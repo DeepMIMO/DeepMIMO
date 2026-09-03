@@ -368,24 +368,61 @@ def _rotate_angles_batch(
     )
 
 
-def steering_vec(array: NDArray, phi: float = 0, theta: float = 0, spacing: float = 0.5) -> NDArray:
+def steering_vec(
+    array: NDArray,
+    phi: float = 0,
+    theta: float | None = None,
+    spacing: float = 0.5,
+    angle_convention: str = "polar",
+) -> NDArray:
     """Calculate the steering vector for an antenna array.
 
     This function computes the normalized array response vector for a given array
     geometry and steering direction.
 
+    By default ``theta`` uses the same convention as the rest of DeepMIMO: the polar
+    angle measured from +z (see ``docs/resources/conventions.md``). Dataset angles such
+    as ``dataset.aoa_el`` / ``dataset.aod_el`` can therefore be passed straight in, and
+    the result matches the array response used to build the channel.
+
     Args:
-        array (NDArray): Array of antenna positions
+        array (NDArray): Panel size as (horizontal, vertical) number of elements.
         phi (float): Azimuth angle in degrees. (0°=+x, 90°=+y) Defaults to 0.
-        theta (float): Elevation angle in degrees. (0°=xy-plane, 90°=+z) Defaults to 0.
+        theta (float | None): Vertical angle in degrees, interpreted according to
+            ``angle_convention``. Defaults to the xy-plane (90° for ``"polar"``,
+            0° for ``"elevation"``).
         spacing (float): Antenna spacing in wavelengths. Defaults to 0.5.
+        angle_convention (str): How ``theta`` is measured. ``"polar"`` (default) measures
+            it from +z (0°=+z, 90°=xy-plane, 180°=-z), matching the dataset angles and
+            the internal array response. ``"elevation"`` measures it up from the xy-plane
+            (0°=xy-plane, 90°=+z).
 
     Returns:
         NDArray: Complex normalized steering (array response) vector
 
+    Raises:
+        ValueError: If ``angle_convention`` is not ``"polar"`` or ``"elevation"``.
+
+    Note:
+        This is a behavior change: ``theta`` was previously always treated as an
+        elevation angle, which disagreed with the polar angles stored in the dataset and
+        produced a mismatched array manifold (see issue #63). Pass
+        ``angle_convention="elevation"`` to keep the old interpretation.
+
     """
-    idxs = _ant_indices(array)
-    theta_polar = np.pi / 2 - np.deg2rad(theta)  # convert elevation -> polar
+    if angle_convention not in ("polar", "elevation"):
+        msg = f"angle_convention must be 'polar' or 'elevation', got {angle_convention!r}."
+        raise ValueError(msg)
+
+    if theta is None:
+        theta = 90.0 if angle_convention == "polar" else 0.0
+
+    theta_polar = (
+        np.deg2rad(theta)
+        if angle_convention == "polar"
+        else np.pi / 2 - np.deg2rad(theta)  # convert elevation -> polar
+    )
     phi_rad = np.deg2rad(phi)
+    idxs = _ant_indices(array)
     resp = _array_response(idxs, theta_polar, phi_rad, 2 * np.pi * spacing)
     return resp / np.linalg.norm(resp)
