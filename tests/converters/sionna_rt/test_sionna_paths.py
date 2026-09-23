@@ -312,3 +312,78 @@ def test_read_paths_los_code_stored(mock_load) -> None:
     inter_key = c.INTERACTIONS_PARAM_NAME
     assert inter_key in saved
     assert saved[inter_key][0, 0] == pytest.approx(float(c.INTERACTION_LOS))
+
+
+# ---------------------------------------------------------------------------
+# _process_paths_batch: which paths survive MAX_PATHS
+# ---------------------------------------------------------------------------
+
+
+def _single_rx_batch(amps: np.ndarray, los_slot: int, max_depth: int = 3) -> dict:
+    """One receiver, one TX, single antenna; every path a reflection except ``los_slot``."""
+    n = len(amps)
+    interactions = np.zeros((max_depth, 1, 1, n))
+    interactions[0, 0, 0, :] = SIONNA_INTERACTION_SPECULAR
+    interactions[:, 0, 0, los_slot] = SIONNA_INTERACTION_NONE
+    return {
+        "a": amps.astype(np.complex128).reshape(1, 1, 1, 1, n),
+        "tau": np.linspace(1e-7, 2e-6, n).reshape(1, 1, n),
+        "phi_r": np.zeros((1, 1, n)),
+        "phi_t": np.zeros((1, 1, n)),
+        "theta_r": np.zeros((1, 1, n)),
+        "theta_t": np.zeros((1, 1, n)),
+        "interactions": interactions,
+        "vertices": np.zeros((max_depth, 1, 1, n, 3)),
+    }
+
+
+def _convert_single_rx(paths_dict: dict) -> dict:
+    target = np.array([[5.0, 5.0, 1.5]])
+    data = sionna_paths._preallocate_data(1)  # noqa: SLF001
+    data[c.RX_POS_PARAM_NAME] = target
+    sionna_paths._process_paths_batch(  # noqa: SLF001
+        paths_dict,
+        data,
+        0,
+        target,
+        sionna_paths._build_rx_pos_index(target),  # noqa: SLF001
+    )
+    return data
+
+
+def test_strongest_path_kept_beyond_max_paths() -> None:
+    """A dominant LoS path stored after MAX_PATHS weaker ones must survive.
+
+    Sionna's path index is not ordered by power. A receiver with more than
+    MAX_PATHS paths used to keep the first MAX_PATHS by index, losing a strong
+    path that happened to sit later - typically the line-of-sight path in
+    diffuse-heavy scenes.
+    """
+    n = c.MAX_PATHS + 20
+    amps = np.full(n, 1e-6)
+    amps += np.arange(n) * 1e-9  # distinct magnitudes
+    los_slot = n - 1
+    amps[los_slot] = 1e-3  # 60 dB above everything else
+    data = _convert_single_rx(_single_rx_batch(amps, los_slot))
+
+    power = data[c.POWER_PARAM_NAME][0]
+    assert power[0] == pytest.approx(20 * np.log10(1e-3), abs=1e-4)
+    assert data[c.INTERACTIONS_PARAM_NAME][0, 0] == c.INTERACTION_LOS
+    expected = np.sort(np.abs(amps))[::-1][: c.MAX_PATHS]
+    np.testing.assert_array_equal(power, (20 * np.log10(expected)).astype(power.dtype))
+
+
+def test_path_selection_independent_of_sionna_order() -> None:
+    """Shuffling Sionna's path order must not change what is stored."""
+    rng = np.random.default_rng(0)
+    n = c.MAX_PATHS + 30
+    amps = rng.uniform(1e-6, 1e-3, n)
+    batch = _single_rx_batch(amps, los_slot=int(np.argmax(amps)))
+    perm = rng.permutation(n)
+    path_axis = {"vertices": -2}
+    shuffled = {k: np.take(v, perm, axis=path_axis.get(k, -1)) for k, v in batch.items()}
+
+    reference = _convert_single_rx(batch)
+    data = _convert_single_rx(shuffled)
+    for key in (c.POWER_PARAM_NAME, c.DELAY_PARAM_NAME, c.INTERACTIONS_PARAM_NAME):
+        np.testing.assert_array_equal(data[key], reference[key], err_msg=key)

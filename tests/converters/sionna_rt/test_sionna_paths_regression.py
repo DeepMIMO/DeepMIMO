@@ -14,7 +14,7 @@ Synthetic fixtures exercise the edge cases the optimization must preserve:
     - NONE(0) padding *between* bounces (e.g. ``[1, 0, 1]`` -> code 11),
     - interaction positions that are exactly 0.0 with a non-zero type (must NOT
       be nulled) vs. NONE slots (must be nulled),
-    - more than ``MAX_PATHS`` active paths (clip-then-sort-by-power),
+    - more than ``MAX_PATHS`` active paths (keep the strongest, sort by power),
     - targets absent from the global ``rx_pos`` grid (skipped, not counted),
     - single- and multi-antenna array layouts.
 
@@ -121,7 +121,12 @@ def _baseline_process_paths_batch(  # noqa: PLR0913, PLR0915
 
         amp = a[rel_rx_idx]
 
-        non_zero_path_idxs = np.where(amp != 0)[0][: c.MAX_PATHS]
+        # Deliberate change from the verbatim original, which kept the first
+        # MAX_PATHS paths by Sionna index: that index is not ordered by power,
+        # so it dropped strong paths. Keep the MAX_PATHS strongest instead.
+        non_zero_all = np.where(amp != 0)[0]
+        strongest = np.argsort(-np.abs(amp[non_zero_all]), kind="stable")[: c.MAX_PATHS]
+        non_zero_path_idxs = np.sort(non_zero_all[strongest])
         n_paths = len(non_zero_path_idxs)
         if n_paths == 0:
             inactive_count += 1
@@ -446,7 +451,11 @@ def test_process_batch_multi_tx_columns(n_tx: int) -> None:
 
 
 def test_process_batch_more_than_max_paths() -> None:
-    """>MAX_PATHS active paths: clip-to-first-MAX_PATHS then sort-by-power identically."""
+    """>MAX_PATHS active paths: the strongest MAX_PATHS survive, sorted by power.
+
+    The fixture's magnitudes grow with Sionna index, so keeping the first
+    MAX_PATHS by index (the old behaviour) would keep the weakest ones.
+    """
     rng = np.random.default_rng(11)
     max_paths = c.MAX_PATHS + 15
     paths_dict = _make_single_ant_batch(
@@ -467,6 +476,15 @@ def test_process_batch_more_than_max_paths() -> None:
     assert opt_inactive == base_inactive
     assert opt_data[c.POWER_PARAM_NAME].shape[1] <= c.MAX_PATHS
     _assert_data_identical(opt_data, base_data)
+
+    # Independently of the baseline: each receiver's stored powers are exactly
+    # its MAX_PATHS largest raw magnitudes.
+    amps = np.abs(paths_dict["a"][:, 0, 0, 0, :])
+    for rx in range(len(targets)):
+        raw = np.sort(amps[rx][amps[rx] > 0])[::-1][: c.MAX_PATHS]
+        stored = opt_data[c.POWER_PARAM_NAME][rx]
+        stored = stored[np.isfinite(stored)]
+        np.testing.assert_array_equal(stored, (20 * np.log10(raw)).astype(stored.dtype))
 
 
 def test_process_batch_all_inactive() -> None:
