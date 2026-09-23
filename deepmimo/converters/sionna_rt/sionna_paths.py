@@ -169,9 +169,8 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
     Fully vectorized over the batch's receivers: every receiver's active-path
     selection, descending-power sort, scalar conversions and interaction
     encoding are computed in a handful of array ops instead of a per-receiver
-    Python loop.  The output is numerically identical to the original loop (and
-    byte-identical when per-receiver path magnitudes are distinct, which they
-    always are for physical ray-tracing data).
+    Python loop.  Each receiver keeps its ``MAX_PATHS`` strongest non-zero
+    paths, strongest first.
 
     Args:
         paths_dict: Exported Sionna path dictionary (Sionna 2.0 format).
@@ -247,21 +246,17 @@ def _process_paths_batch(  # noqa: PLR0913, PLR0915
     )
     found = abs_idx >= 0
 
-    # Select active paths: non-zero amplitude, keeping the first MAX_PATHS (by
-    # Sionna index) then sorting those by descending magnitude. ``cumsum`` of the
-    # non-zero mask reproduces the original ``np.where(amp != 0)[0][:MAX_PATHS]``.
+    # Keep each receiver's MAX_PATHS strongest non-zero paths, strongest first.
+    # Sionna's path index carries no ordering by power, so clipping to the first
+    # MAX_PATHS by index before sorting (the previous behaviour) kept an
+    # arbitrary subset whenever a receiver had more paths than that, routinely
+    # dropping its line-of-sight and other dominant paths. Equal magnitudes are
+    # ordered by Sionna index (stable sort).
     mag = np.abs(a)
     nonzero = a != 0
-    keep = nonzero & (np.cumsum(nonzero, axis=1) <= c.MAX_PATHS)
-    n_paths = keep.sum(axis=1)
-
-    # Reversing a stable ascending sort places kept paths first in descending
-    # magnitude order while reproducing the original ``np.argsort(...)[::-1]``
-    # tie ordering: numpy's default sort is insertion sort (stable) for the
-    # per-receiver path counts seen here, so equal-magnitude paths keep the exact
-    # order the loop produced. Non-kept slots (key -inf) sort to the very end.
-    sort_key = np.where(keep, mag, -np.inf)
-    order = np.argsort(sort_key, axis=1, kind="stable")[:, ::-1]
+    n_paths = np.minimum(nonzero.sum(axis=1), c.MAX_PATHS)
+    sort_key = np.where(nonzero, -mag, np.inf)
+    order = np.argsort(sort_key, axis=1, kind="stable")
 
     n_take = min(n_sionna_paths, c.MAX_PATHS)
     cols = order[:, :n_take]  # (n_batch, n_take) Sionna path indices, strongest-first
