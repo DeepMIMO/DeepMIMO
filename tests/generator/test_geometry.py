@@ -200,6 +200,57 @@ def test_steering_vec_properties() -> None:
     np.testing.assert_allclose(np.linalg.norm(vec), 1.0, rtol=1e-12, atol=1e-12)
 
 
+def test_steering_vec_matches_channel_array_response() -> None:
+    """steering_vec must reproduce the manifold the channel generator builds.
+
+    Regression test for issue #63: dataset angles (aoa_el/aod_el) are polar angles
+    measured from +z, so feeding them to steering_vec has to yield exactly the array
+    response used to synthesize the channel.
+    """
+    panel_size = (1, 8)  # vertical ULA -> the response depends strongly on theta
+    spacing = 0.5
+    kd = 2 * np.pi * spacing
+    idxs = ant_indices(panel_size)
+
+    # Angles exactly as a Dataset stores them: degrees, polar measured from +z.
+    for aoa_el, aoa_az in [(30.0, 45.0), (75.0, 10.0), (120.0, 200.0), (90.0, 0.0)]:
+        expected = array_response(idxs, np.deg2rad(aoa_el), np.deg2rad(aoa_az), kd).ravel()
+        expected = expected / np.linalg.norm(expected)
+        got = steering_vec(panel_size, phi=aoa_az, theta=aoa_el, spacing=spacing).ravel()
+
+        np.testing.assert_allclose(got, expected, rtol=1e-12, atol=1e-12)
+        assert abs(np.vdot(got, expected)) == pytest.approx(1.0, abs=1e-12)
+
+
+def test_steering_vec_elevation_convention_is_complement() -> None:
+    """The elevation convention must match the polar convention at 90 - theta."""
+    panel_size = (2, 4)
+    for theta_el in (-40.0, 0.0, 25.0, 60.0):
+        polar = steering_vec(panel_size, phi=15.0, theta=90.0 - theta_el)
+        elevation = steering_vec(panel_size, phi=15.0, theta=theta_el, angle_convention="elevation")
+        np.testing.assert_allclose(elevation, polar, rtol=1e-12, atol=1e-12)
+
+
+def test_steering_vec_default_theta_is_xy_plane() -> None:
+    """Azimuth-only calls keep steering along the xy-plane under either convention."""
+    panel_size = (4, 2)
+    horizon = steering_vec(panel_size, phi=30.0, theta=90.0)
+
+    np.testing.assert_allclose(steering_vec(panel_size, phi=30.0), horizon, rtol=1e-12, atol=1e-12)
+    np.testing.assert_allclose(
+        steering_vec(panel_size, phi=30.0, angle_convention="elevation"),
+        horizon,
+        rtol=1e-12,
+        atol=1e-12,
+    )
+
+
+def test_steering_vec_rejects_unknown_convention() -> None:
+    """An unrecognized angle convention is rejected instead of silently ignored."""
+    with pytest.raises(ValueError, match="angle_convention"):
+        steering_vec((2, 2), phi=0.0, theta=45.0, angle_convention="zenith")
+
+
 def test_ant_indices() -> None:
     """Test antenna indices generation."""
     panel_size = [6, 4]
