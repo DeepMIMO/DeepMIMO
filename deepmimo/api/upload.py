@@ -269,7 +269,7 @@ def _process_params_data(params_dict: dict, extra_metadata: dict | None = None) 
     }
 
     advanced_params = {
-        "dmVersion": params_dict.get("version", "4.0.0a"),
+        "dmVersion": params_dict.get(c.DATASET_VERSION_PARAM_NAME, c.DATASET_VERSION),
         "numTx": num_tx,
         "multiRxAnt": any(
             set_info.get("num_ant", 0) > 1
