@@ -1,6 +1,21 @@
 """Geometry utilities for DeepMIMO.
 
 This module provides functions for coordinate transformations and geometric calculations.
+
+Angle convention
+----------------
+Both conversions below use the DeepMIMO spherical convention documented in
+``docs/resources/conventions.md``, matching the dataset angle arrays
+(``aoa_el``/``aod_el`` and ``aoa_az``/``aod_az``) and the array-response code in
+``deepmimo.generator.geometry``:
+
+- ``theta`` is the polar (inclination) angle measured from +z: 0 at +z, pi/2 in the
+  xy-plane, pi at -z. Despite the historical ``_el`` suffix on the dataset arrays, this
+  is *not* an elevation measured up from the horizon.
+- ``phi`` is the azimuth measured counter-clockwise from +x in the xy-plane.
+
+Both functions order their triples as ``(r, theta, phi)`` so that they are exact
+inverses of one another.
 """
 
 import numpy as np
@@ -10,18 +25,32 @@ def cartesian_to_spherical(cartesian_coords: np.ndarray) -> np.ndarray:
     """Convert Cartesian coordinates to spherical coordinates.
 
     Args:
-        cartesian_coords: Array [n_points, 3] of Cartesian coordinates (x, y, z)
+        cartesian_coords: Array of Cartesian coordinates (x, y, z). Leading dimensions
+            are allowed; the last dimension must be 3.
 
     Returns:
-        Array [n_points, 3] of spherical coordinates (r, azimuth, elevation) in radians.
-        r is the magnitude (distance from origin).
+        Array of the same shape containing spherical coordinates (r, theta, phi), with
+        the angles in radians. ``r`` is the distance from the origin, ``theta`` is the
+        polar angle from +z in [0, pi] and ``phi`` is the azimuth from +x in (-pi, pi].
+        This is the exact inverse of :func:`spherical_to_cartesian`.
+
+    Note:
+        This is a behavior change: the returned triple is now ordered ``(r, theta, phi)``.
+        It was previously ``(r, phi, elevation_from_xy_plane)``, which was neither the
+        library's documented angle convention nor the inverse of
+        :func:`spherical_to_cartesian` (see issue #63).
 
     """
-    spherical_coords = np.zeros((cartesian_coords.shape[0], 3))
-    spherical_coords[:, 0] = np.sqrt(np.sum(cartesian_coords**2, axis=1))
-    spherical_coords[:, 1] = np.arctan2(cartesian_coords[:, 1], cartesian_coords[:, 0])
-    r_xy = np.sqrt(cartesian_coords[:, 0] ** 2 + cartesian_coords[:, 1] ** 2)
-    spherical_coords[:, 2] = np.arctan2(cartesian_coords[:, 2], r_xy)
+    cartesian_coords = np.asarray(cartesian_coords, dtype=float)
+    x = cartesian_coords[..., 0]
+    y = cartesian_coords[..., 1]
+    z = cartesian_coords[..., 2]
+
+    r_xy = np.hypot(x, y)
+    spherical_coords = np.zeros_like(cartesian_coords)
+    spherical_coords[..., 0] = np.hypot(r_xy, z)
+    spherical_coords[..., 1] = np.arctan2(r_xy, z)
+    spherical_coords[..., 2] = np.arctan2(y, x)
     return spherical_coords
 
 
@@ -29,21 +58,23 @@ def spherical_to_cartesian(spherical_coords: np.ndarray) -> np.ndarray:
     """Convert spherical coordinates to Cartesian coordinates.
 
     Args:
-        spherical_coords: Array with spherical coordinates (r, elevation, azimuth) in radians.
-            r is the magnitude (distance from origin). Leading dimensions allowed; last
-            dimension must be 3.
+        spherical_coords: Array with spherical coordinates (r, theta, phi), with the
+            angles in radians. ``r`` is the distance from the origin, ``theta`` is the
+            polar angle from +z and ``phi`` is the azimuth from +x. Leading dimensions
+            are allowed; the last dimension must be 3.
             Reference: https://en.wikipedia.org/wiki/Spherical_coordinate_system
-            Note: DeepMIMO uses elevation from the xy plane, while Sionna/Wikipedia use z-axis.
 
     Returns:
-        Array of same shape containing Cartesian coordinates (x, y, z).
+        Array of the same shape containing Cartesian coordinates (x, y, z).
 
     """
-    cartesian_coords = np.zeros_like(spherical_coords)
+    spherical_coords = np.asarray(spherical_coords, dtype=float)
     r = spherical_coords[..., 0]
-    elevation = spherical_coords[..., 1]
-    azimuth = spherical_coords[..., 2]
-    cartesian_coords[..., 0] = r * np.sin(elevation) * np.cos(azimuth)
-    cartesian_coords[..., 1] = r * np.sin(elevation) * np.sin(azimuth)
-    cartesian_coords[..., 2] = r * np.cos(elevation)
+    theta = spherical_coords[..., 1]
+    phi = spherical_coords[..., 2]
+
+    cartesian_coords = np.zeros_like(spherical_coords)
+    cartesian_coords[..., 0] = r * np.sin(theta) * np.cos(phi)
+    cartesian_coords[..., 1] = r * np.sin(theta) * np.sin(phi)
+    cartesian_coords[..., 2] = r * np.cos(theta)
     return cartesian_coords
