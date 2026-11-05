@@ -133,38 +133,36 @@ def test_dot_dict() -> None:
 
 
 def test_coordinate_conversion() -> None:
-    """Test coordinate conversion functions."""
-    # Test cartesian to spherical
+    """Test coordinate conversion functions.
+
+    Both helpers use the DeepMIMO convention (docs/resources/conventions.md): triples are
+    ordered (r, theta, phi) with theta the polar angle from +z and phi the azimuth from
+    +x. Regression test for issue #63, where the two were neither mutually consistent nor
+    inverses of each other.
+    """
     cart = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
     sph = general_utils.cartesian_to_spherical(cart)
 
-    # Point (1,0,0): r=1, az=0, el=0
-    assert np.allclose(sph[0], [1, 0, 0])
+    # Point (1,0,0): r=1, theta=pi/2 (xy-plane), phi=0
+    assert np.allclose(sph[0], [1, np.pi / 2, 0])
 
-    # Point (0,1,0): r=1, az=pi/2, el=0
-    assert np.allclose(sph[1], [1, np.pi / 2, 0])
+    # Point (0,1,0): r=1, theta=pi/2 (xy-plane), phi=pi/2
+    assert np.allclose(sph[1], [1, np.pi / 2, np.pi / 2])
 
-    # Point (0,0,1): r=1, az=0 (undefined), el=pi/2
+    # Point (0,0,1): r=1, theta=0 (+z), phi undefined (0)
     assert np.isclose(sph[2, 0], 1)
-    assert np.isclose(sph[2, 2], np.pi / 2)
+    assert np.isclose(sph[2, 1], 0)
 
-    # Test spherical to cartesian (inverse)
-    # NOTE: spherical_to_cartesian expects inclination (from z-axis) but
-    # cartesian_to_spherical returns elevation (from xy-plane). Convert before testing inverse.
-    sph_for_inverse = sph.copy()
-    sph_for_inverse[..., 1] = (
-        np.pi / 2 - sph[..., 2]
-    )  # Inclination = pi/2 - Elevation (if Elevation is from horizon)
-    # cartesian_to_spherical returns (r, az, el); spherical_to_cartesian expects (r, inc, az).
-    # Implementation treats "elevation" as inclination, so swap indices and convert el->inc.
-
-    sph_input = np.zeros_like(sph)
-    sph_input[..., 0] = sph[..., 0]  # r
-    sph_input[..., 1] = np.pi / 2 - sph[..., 2]  # inclination from z = pi/2 - elevation from xy
-    sph_input[..., 2] = sph[..., 1]  # azimuth
-
-    back_cart = general_utils.spherical_to_cartesian(sph_input)
+    # The conversions are exact inverses -- no reordering or angle fix-up needed.
+    back_cart = general_utils.spherical_to_cartesian(sph)
     assert np.allclose(back_cart, cart, atol=1e-7)
+
+    rng = np.random.default_rng(0)
+    points = rng.standard_normal((50, 3))
+    round_tripped = general_utils.spherical_to_cartesian(
+        general_utils.cartesian_to_spherical(points)
+    )
+    assert np.allclose(round_tripped, points, atol=1e-10)
 
 
 def test_delegating_list() -> None:

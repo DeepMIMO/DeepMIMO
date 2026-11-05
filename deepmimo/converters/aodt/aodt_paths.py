@@ -216,18 +216,21 @@ def read_paths(  # noqa: C901, PLR0912, PLR0915
                         data[c.TX_POS_PARAM_NAME][0] = tx_pos
                     data[c.RX_POS_PARAM_NAME][rx_idx] = rx_pos
 
-                # Calculate angles
+                # Calculate angles. cartesian_to_spherical returns (r, theta, phi) where
+                # theta is the polar angle from +z and phi the azimuth from +x, which is
+                # the convention the *_el / *_az dataset arrays use (see
+                # docs/resources/conventions.md).
                 # Departure angles - vector from TX to first interaction point
                 departure_vector = interaction_points[1] - tx_pos
                 departure_angles = gu.cartesian_to_spherical(departure_vector.reshape(1, -1))[0]
-                data[c.AOD_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[1])
-                data[c.AOD_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[2])
+                data[c.AOD_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[1])
+                data[c.AOD_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(departure_angles[2])
 
                 # Arrival angles - vector from last interaction point to RX
                 arrival_vector = rx_pos - interaction_points[-2]
                 arrival_angles = gu.cartesian_to_spherical(arrival_vector.reshape(1, -1))[0]
-                data[c.AOA_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[1])
-                data[c.AOA_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[2])
+                data[c.AOA_EL_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[1])
+                data[c.AOA_AZ_PARAM_NAME][rx_idx, path_idx] = np.rad2deg(arrival_angles[2])
 
                 # Store interaction data - skip first (TX) and last (RX) points
                 actual_interactions = interaction_points[1:-1]
