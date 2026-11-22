@@ -21,6 +21,7 @@ from pathlib import Path
 import requests
 from tqdm import tqdm
 
+from deepmimo import consts as c
 from deepmimo.utils import (
     get_rt_source_folder,
     get_rt_sources_dir,
@@ -32,11 +33,14 @@ from deepmimo.utils import (
 from ._common import API_BASE_URL, HEADERS, REQUEST_TIMEOUT
 
 
-def _download_url(scenario_name: str, *, rt_source: bool = False) -> str:
+def _download_url(
+    scenario_name: str, *, version: str = c.DATASET_VERSION, rt_source: bool = False
+) -> str:
     """Get the secure download endpoint URL for a DeepMIMO scenario.
 
     Args:
         scenario_name: Name of the scenario ZIP file
+        version: Dataset version to request (defaults to current DATASET_VERSION).
         rt_source: Whether to download the raytracing source file
 
     Returns:
@@ -50,14 +54,16 @@ def _download_url(scenario_name: str, *, rt_source: bool = False) -> str:
     if not scenario_name.endswith(".zip"):
         scenario_name += ".zip"
 
-    # Return the secure download endpoint URL with the filename as a parameter
     rt_param = "&rt_source=true" if rt_source else ""
-    return f"{API_BASE_URL}/api/download/secure?filename={scenario_name}{rt_param}"
+    base = f"{API_BASE_URL}/api/download/secure?filename={scenario_name}&version={version}"
+    return base + rt_param
 
 
-def download_url(scenario_name: str, *, rt_source: bool = False) -> str:
+def download_url(
+    scenario_name: str, *, version: str = c.DATASET_VERSION, rt_source: bool = False
+) -> str:
     """Public wrapper around `_download_url`."""
-    return _download_url(scenario_name, rt_source=rt_source)
+    return _download_url(scenario_name, version=version, rt_source=rt_source)
 
 
 def _resolve_download_paths(
@@ -228,6 +234,7 @@ def download(
     scenario_name: str,
     output_dir: str | None = None,
     *,
+    version: str = c.DATASET_VERSION,
     rt_source: bool = False,
 ) -> str | None:
     """Download a DeepMIMO scenario from the database.
@@ -235,6 +242,9 @@ def download(
     Args:
         scenario_name: Name of the scenario
         output_dir: Directory to save file (defaults to current directory)
+        version: Dataset version to request. Defaults to the current DATASET_VERSION
+            constant so most users never need to set this. Pass an explicit value
+            (e.g. ``"4a"``) to pin a specific build.
         rt_source: Whether to download the raytracing source file instead of the scenario
 
     Returns:
@@ -256,7 +266,7 @@ def download(
         download_type = "raytracing source" if rt_source else "scenario"
         print(f"Downloading {download_type} '{scenario_name}'")
 
-        url = _download_url(scenario_name, rt_source=rt_source)
+        url = _download_url(scenario_name, version=version, rt_source=rt_source)
         if not _download_file_from_server(url, output_path):
             return None
     else:

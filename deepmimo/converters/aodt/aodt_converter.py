@@ -112,6 +112,7 @@ def aodt_rt_converter(  # noqa: PLR0913
     # Save parameters to params.json
     params = {
         c.VERSION_PARAM_NAME: c.VERSION,
+        c.DATASET_VERSION_PARAM_NAME: c.DATASET_VERSION,
         c.RT_PARAMS_PARAM_NAME: rt_params,
         c.TXRX_PARAM_NAME: txrx_dict,
         c.MATERIALS_PARAM_NAME: materials_dict,
